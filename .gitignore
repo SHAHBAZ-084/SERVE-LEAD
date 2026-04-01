@@ -1,0 +1,25 @@
+# Dependencies
+**/node_modules/
+**/package-lock.json (Optional, some prefer keeping it)
+
+# Sensitive data
+**/.env
+**/.env.*
+**/creds.json
+**/logs/
+
+# Build outputs
+**/dist/
+**/build/
+**/.vs/
+**/.vscode/
+
+# Local system files
+.DS_Store
+Thumbs.db
+
+# Large media (already in uploads)
+**/uploads/events/*
+!**/uploads/events/.gitkeep
+**/uploads/team/*
+!**/uploads/team/.gitkeep
