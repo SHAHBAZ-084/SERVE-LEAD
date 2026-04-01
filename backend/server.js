@@ -40,8 +40,8 @@ app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev', {
 
 // Global Rate Limiter
 const limiter = rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 100, 
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: process.env.NODE_ENV === 'production' ? 100 : 10000, // Developer bypass
     message: { error: 'Too many requests from this IP.' }
 });
 app.use('/api/', limiter);

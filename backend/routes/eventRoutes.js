@@ -91,14 +91,29 @@ router.post('/', authMiddleware, isAdmin, upload.single('image'), asyncHandler(a
     const { title, description, date, endDate, location, is_active, time } = req.body;
     const image_url = req.file ? `/uploads/events/${req.file.filename}` : '';
 
-    const newEvent = new Event({ 
-        title, description, date, endDate: endDate || date,
-        location, is_active: is_active === 'true' || is_active === true, 
-        image_url, time 
-    });
+    try {
+        let slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
+        
+        // Ensure slug uniqueness before saving
+        let slugExists = await Event.findOne({ slug });
+        if (slugExists) {
+            slug = `${slug}-${Math.random().toString(36).substring(2, 7)}`;
+        }
 
-    await newEvent.save();
-    res.status(201).json(newEvent);
+        const newEvent = new Event({ 
+            title, slug, description, date, endDate: endDate || date,
+            location, is_active: is_active === 'true' || is_active === true, 
+            image_url, time 
+        });
+
+        await newEvent.save();
+        res.status(201).json(newEvent);
+    } catch (error) {
+        if (error.code === 11000) {
+            return res.status(400).json({ error: 'An event with a similar title already exists. Please use a unique title.' });
+        }
+        throw error; // Let asyncHandler catch other errors
+    }
 }));
 
 // DELETE Event (Admin only)
@@ -106,8 +121,5 @@ router.delete('/:id', authMiddleware, isAdmin, asyncHandler(async (req, res) => 
     await Event.findByIdAndDelete(req.params.id);
     res.json({ message: 'Event deleted' });
 }));
-
-module.exports = router;
-
 
 module.exports = router;

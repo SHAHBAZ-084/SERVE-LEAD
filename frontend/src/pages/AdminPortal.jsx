@@ -924,7 +924,7 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
                                 <i className="fas fa-eye mr-2" />
                                 Preview Draft
                             </button>
-                            <button
+<button
                                 onClick={isBulkMode ? handleBulkIssue : handleIssue}
                                 disabled={(!isBulkMode && !form.memberId) || (isBulkMode && !form.eventId) || submitting}
                                 className="w-full sm:flex-1 py-4 bg-[#002147] text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 shadow-xl shadow-blue-900/10 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
@@ -938,22 +938,27 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
             )}
 
             <div className="bg-white rounded-3xl border border-slate-100 overflow-hidden shadow-sm relative mt-8">
+                {/* Floating Bulk Actions - Responsive */}
                 {selectedCertIds.length > 0 && (
-                    <div className="absolute top-4 left-1/2 -translate-x-1/2 z-30 bg-slate-900 text-white px-8 py-2.5 rounded-2xl shadow-2xl shadow-blue-900/40 flex items-center gap-6 animate-fade-up border border-slate-700">
-                        <span className="text-[10px] font-black bg-white/10 px-3 py-1.5 rounded-xl uppercase tracking-widest">{selectedCertIds.length} Selected</span>
-                        <div className="w-px h-4 bg-white/20" />
-                        <div className="flex items-center gap-6">
-                            <button onClick={handleBulkDownload} disabled={isDownloading} className="text-blue-400 hover:text-blue-300 text-[10px] font-black uppercase tracking-widest transition-colors flex items-center gap-2">
-                                {isDownloading ? <i className="fas fa-spinner fa-spin" /> : <i className="fas fa-file-arrow-down" />} Download Files
+                    <div className="fixed sm:absolute bottom-6 sm:bottom-auto sm:top-4 left-1/2 -translate-x-1/2 z-[100] bg-slate-900 text-white px-5 sm:px-8 py-3 rounded-2xl sm:rounded-2xl shadow-2xl shadow-blue-900/40 flex flex-wrap items-center justify-center gap-4 sm:gap-6 animate-fade-up border border-slate-700 w-[90%] sm:w-auto ring-4 ring-slate-900/20 backdrop-blur-md">
+                        <span className="text-[9px] sm:text-[10px] font-black bg-white/10 px-3 py-1.5 rounded-xl uppercase tracking-widest whitespace-nowrap">{selectedCertIds.length} Selected</span>
+                        <div className="hidden sm:block w-px h-4 bg-white/20" />
+                        <div className="flex items-center gap-5 sm:gap-6">
+                            <button onClick={handleBulkDownload} disabled={isDownloading} className="text-blue-400 hover:text-blue-300 text-[9px] sm:text-[10px] font-black uppercase tracking-widest transition-colors flex items-center gap-2">
+                                {isDownloading ? <i className="fas fa-spinner fa-spin" /> : <i className="fas fa-file-arrow-down" />} Download
                             </button>
-                            <button onClick={handleBulkRevoke} disabled={isRevoking} className="text-rose-400 hover:text-rose-300 text-[10px] font-black uppercase tracking-widest transition-colors flex items-center gap-2">
-                                {isRevoking ? <i className="fas fa-spinner fa-spin" /> : <i className="fas fa-trash-alt" />} Revoke Selected
+                            <button onClick={handleBulkRevoke} disabled={isRevoking} className="text-rose-400 hover:text-rose-300 text-[9px] sm:text-[10px] font-black uppercase tracking-widest transition-colors flex items-center gap-2">
+                                {isRevoking ? <i className="fas fa-spinner fa-spin" /> : <i className="fas fa-trash-alt" />} Revoke
                             </button>
                         </div>
                     </div>
                 )}
-                <div className="px-8 py-6 border-b border-slate-50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                    <h3 className="text-sm font-black uppercase tracking-widest text-[#002147]">Issuance History</h3>
+
+                <div className="px-6 sm:px-8 py-6 border-b border-slate-50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <div>
+                        <h3 className="text-sm font-black uppercase tracking-widest text-[#002147]">Issuance History</h3>
+                        <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-widest">Archive of verified awards</p>
+                    </div>
                     <div className="flex gap-3 w-full sm:w-auto">
                         <div className="relative flex-1 sm:flex-none">
                             <i className="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-xs" />
@@ -962,85 +967,154 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
                                 placeholder="Filter records..." 
                                 value={searchCert}
                                 onChange={(e) => setSearchCert(e.target.value)}
-                                className="w-full sm:w-48 bg-slate-50 border border-slate-100 rounded-xl pl-10 pr-4 py-2 text-xs focus:ring-2 focus:ring-[#002147]/10 outline-none transition-all placeholder:text-slate-300 shadow-inner"
+                                className="w-full sm:w-56 bg-slate-50 border border-slate-100 rounded-xl pl-10 pr-4 py-2.5 text-xs focus:ring-2 focus:ring-[#002147]/10 outline-none transition-all placeholder:text-slate-300 shadow-inner"
                             />
                         </div>
-                        <button onClick={() => { setSelectMode(!selectMode); setSelectedCertIds([]); }} className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${selectMode ? 'bg-[#002147] text-white shadow-sm' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>
+                        <button onClick={() => { setSelectMode(!selectMode); setSelectedCertIds([]); }} className={`px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border ${selectMode ? 'bg-[#002147] text-white border-[#002147] shadow-lg shadow-blue-900/20' : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'}`}>
                             <i className="fas fa-layer-group mr-2" /> {selectMode ? "Done" : "Select"}
                         </button>
                     </div>
                 </div>
+
                 {loading ? (
                     <div className="p-20 text-center text-slate-400 italic text-sm">Loading history...</div>
                 ) : (
-                    <div className="overflow-x-auto">
-                        <table className="w-full">
-                            <thead className="bg-slate-50/50 border-b border-slate-50">
-                                <tr>
+                    <div className="p-4 sm:p-0">
+                        {/* Mobile Certificate Card List */}
+                        <div className="sm:hidden space-y-4">
+                            {issuedCertificates.filter(c => 
+                                c.memberId?.name?.toLowerCase().includes(searchCert.toLowerCase()) || 
+                                c.memberId?.member_id?.toLowerCase().includes(searchCert.toLowerCase()) ||
+                                c.eventId?.title?.toLowerCase().includes(searchCert.toLowerCase()) ||
+                                c.category?.toLowerCase().includes(searchCert.toLowerCase())
+                            ).length === 0 ? (
+                                <div className="text-center py-20 text-slate-300 bg-slate-50/50 rounded-[2rem] border-2 border-dashed border-slate-100">
+                                    <i className="fas fa-file-circle-exclamation text-4xl mb-3 block opacity-10" />
+                                    <p className="text-[10px] font-black uppercase tracking-widest">No matching history</p>
+                                </div>
+                            ) : issuedCertificates.filter(c => 
+                                c.memberId?.name?.toLowerCase().includes(searchCert.toLowerCase()) || 
+                                c.memberId?.member_id?.toLowerCase().includes(searchCert.toLowerCase()) ||
+                                c.eventId?.title?.toLowerCase().includes(searchCert.toLowerCase()) ||
+                                c.category?.toLowerCase().includes(searchCert.toLowerCase())
+                            ).map((cert) => (
+                                <div key={cert._id} className="bg-white rounded-[2rem] border border-slate-100 shadow-sm p-6 relative overflow-hidden group active:scale-[0.98] transition-all">
                                     {selectMode && (
-                                        <th className="px-6 py-4 w-10 text-center transition-all">
-                                            <input type="checkbox" checked={selectedCertIds.length === issuedCertificates.length && issuedCertificates.length > 0} onChange={handleSelectAllCerts} className="w-4 h-4 text-[#002147] border-slate-300 rounded focus:ring-[#002147]" />
-                                        </th>
+                                        <div className="absolute top-4 left-4 z-10">
+                                            <input type="checkbox" checked={selectedCertIds.includes(cert._id)} onChange={() => toggleCertSelect(cert._id)} className="w-5 h-5 text-[#002147] border-slate-300 rounded-lg focus:ring-[#002147]" />
+                                        </div>
                                     )}
-                                    <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Recipient</th>
-                                    <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Type</th>
-                                    <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Event context</th>
-                                    <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 text-left">Date Issued</th>
-                                    <th className="px-6 py-4 text-center text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-50">
-                                {issuedCertificates.filter(c => 
-                                    c.memberId?.name?.toLowerCase().includes(searchCert.toLowerCase()) || 
-                                    c.memberId?.member_id?.toLowerCase().includes(searchCert.toLowerCase()) ||
-                                    c.eventId?.title?.toLowerCase().includes(searchCert.toLowerCase()) ||
-                                    c.category?.toLowerCase().includes(searchCert.toLowerCase())
-                                ).map(cert => (
-                                    <tr key={cert._id} className={`transition-colors ${selectedCertIds.includes(cert._id) ? 'bg-[#002147]/5' : 'hover:bg-slate-50/50'}`}>
-                                        {selectMode && (
-                                            <td className="px-6 py-4 text-center transition-all">
-                                                <input type="checkbox" checked={selectedCertIds.includes(cert._id)} onChange={() => toggleCertSelect(cert._id)} className="w-4 h-4 text-[#002147] border-slate-300 rounded focus:ring-[#002147]" />
-                                            </td>
-                                        )}
-                                        <td className="px-6 py-4">
-                                            <div className="flex flex-col">
-                                                <span className="text-xs font-bold text-slate-800">{cert.memberId?.name}</span>
-                                                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{cert.memberId?.member_id}</span>
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <span className="text-[10px] font-black uppercase tracking-widest py-1 px-2 rounded-lg bg-[#002147]/5 text-[#002147]">
+                                    <div className="flex justify-between items-start mb-4">
+                                        <div className={`${selectMode ? 'ml-10' : ''}`}>
+                                            <h4 className="font-black text-slate-800 text-sm leading-tight mb-1">{cert.memberId?.name}</h4>
+                                            <p className="text-[10px] font-bold text-[#002147] uppercase tracking-widest">{cert.memberId?.member_id}</p>
+                                        </div>
+                                        <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest text-right">
+                                            Issued: {new Date(cert.createdAt).toLocaleDateString()}
+                                        </span>
+                                    </div>
+                                    
+                                    <div className="grid grid-cols-2 gap-3 mb-4">
+                                        <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                                            <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Award Type</p>
+                                            <p className="text-[10px] font-bold text-slate-700 leading-tight">
                                                 {cert.category === 'Other' ? cert.customCategory : cert.category}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-4 text-xs font-medium text-slate-500">
-                                            {cert.eventId?.title || "—"}
-                                        </td>
-                                        <td className="px-6 py-4 text-xs font-bold text-slate-600">
-                                            {new Date(cert.createdAt).toLocaleDateString('en-GB')}
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <div className="flex justify-center gap-2">
-                                                <button onClick={() => downloadPDF(cert)} className="p-2 text-blue-500 hover:bg-blue-50 rounded-lg transition-colors" title="Download PDF">
-                                                    <i className="fas fa-file-pdf" />
-                                                </button>
-                                                <button onClick={() => revokeCertificate(cert._id)} className="p-2 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors" title="Revoke Certificate">
-                                                    <i className="fas fa-trash-alt" />
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))}
-                                {issuedCertificates.length === 0 && (
+                                            </p>
+                                        </div>
+                                        <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                                            <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Event Context</p>
+                                            <p className="text-[10px] font-bold text-slate-700 leading-tight truncate">
+                                                {cert.eventId?.title || "Society Member"}
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <button onClick={() => downloadPDF(cert)} className="flex-1 bg-blue-50 text-blue-600 border border-blue-100 py-3 rounded-xl text-[9px] font-black uppercase tracking-widest flex items-center justify-center gap-2">
+                                            <i className="fas fa-file-pdf" /> PDF File
+                                        </button>
+                                        <button onClick={() => revokeCertificate(cert._id)} className="flex-1 bg-rose-50 text-rose-500 border border-rose-100 py-3 rounded-xl text-[9px] font-black uppercase tracking-widest flex items-center justify-center gap-2">
+                                            <i className="fas fa-trash-alt" /> Revoke
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* Desktop Table Registry */}
+                        <div className="hidden sm:block overflow-x-auto">
+                            <table className="w-full text-left">
+                                <thead className="bg-slate-50/50 border-b border-slate-100">
                                     <tr>
-                                        <td colSpan={5} className="py-20 text-center">
-                                            <div className="opacity-10 mb-4"><i className="fas fa-medal text-5xl" /></div>
-                                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-300">No certificates issued yet</p>
-                                        </td>
+                                        {selectMode && (
+                                            <th className="px-8 py-5 w-10 text-center transition-all">
+                                                <input type="checkbox" checked={selectedCertIds.length === issuedCertificates.length && issuedCertificates.length > 0} onChange={handleSelectAllCerts} className="w-4 h-4 text-[#002147] border-slate-300 rounded focus:ring-[#002147] cursor-pointer" />
+                                            </th>
+                                        )}
+                                        <th className="px-8 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Recipient Member</th>
+                                        <th className="px-8 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Award Classification</th>
+                                        <th className="px-8 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Official Occasion</th>
+                                        <th className="px-8 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Date Issued</th>
+                                        <th className="px-8 py-5 text-right text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Actions</th>
                                     </tr>
-                                )}
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody className="divide-y divide-slate-50">
+                                    {issuedCertificates.filter(c => 
+                                        c.memberId?.name?.toLowerCase().includes(searchCert.toLowerCase()) || 
+                                        c.memberId?.member_id?.toLowerCase().includes(searchCert.toLowerCase()) ||
+                                        c.eventId?.title?.toLowerCase().includes(searchCert.toLowerCase()) ||
+                                        c.category?.toLowerCase().includes(searchCert.toLowerCase())
+                                    ).length === 0 ? (
+                                        <tr>
+                                            <td colSpan={selectMode ? 6 : 5} className="py-20 text-center">
+                                                <div className="opacity-10 mb-4"><i className="fas fa-medal text-5xl" /></div>
+                                                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">No certificates matching query</p>
+                                            </td>
+                                        </tr>
+                                    ) : issuedCertificates.filter(c => 
+                                        c.memberId?.name?.toLowerCase().includes(searchCert.toLowerCase()) || 
+                                        c.memberId?.member_id?.toLowerCase().includes(searchCert.toLowerCase()) ||
+                                        c.eventId?.title?.toLowerCase().includes(searchCert.toLowerCase()) ||
+                                        c.category?.toLowerCase().includes(searchCert.toLowerCase())
+                                    ).map(cert => (
+                                        <tr key={cert._id} className={`transition-all ${selectedCertIds.includes(cert._id) ? 'bg-[#002147]/5' : 'hover:bg-slate-50/30'}`}>
+                                            {selectMode && (
+                                                <td className="px-8 py-6 text-center transition-all">
+                                                    <input type="checkbox" checked={selectedCertIds.includes(cert._id)} onChange={() => toggleCertSelect(cert._id)} className="w-4 h-4 text-[#002147] border-slate-300 rounded focus:ring-[#002147] cursor-pointer" />
+                                                </td>
+                                            )}
+                                            <td className="px-8 py-6">
+                                                <div className="flex flex-col">
+                                                    <span className="text-xs font-bold text-slate-800 tracking-tight leading-none mb-1.5">{cert.memberId?.name}</span>
+                                                    <span className="text-[10px] text-[#002147] font-black uppercase tracking-widest leading-none">{cert.memberId?.member_id}</span>
+                                                </div>
+                                            </td>
+                                            <td className="px-8 py-6 font-bold text-xs text-slate-600">
+                                                <span className="px-3 py-1 rounded-lg bg-slate-50 border border-slate-100">
+                                                    {cert.category === 'Other' ? cert.customCategory : cert.category}
+                                                </span>
+                                            </td>
+                                            <td className="px-8 py-6 text-xs font-bold text-slate-400 italic">
+                                                {cert.eventId?.title || "Society Delegate"}
+                                            </td>
+                                            <td className="px-8 py-6 text-xs font-bold text-slate-500">
+                                                {new Date(cert.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                            </td>
+                                            <td className="px-8 py-6 text-right">
+                                                <div className="flex justify-end gap-3">
+                                                    <button onClick={() => downloadPDF(cert)} className="w-9 h-9 flex items-center justify-center bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-600 hover:text-white transition-all shadow-sm" title="Download Document">
+                                                        <i className="fas fa-file-pdf text-xs" />
+                                                    </button>
+                                                    <button onClick={() => revokeCertificate(cert._id)} className="w-9 h-9 flex items-center justify-center bg-rose-50 text-rose-500 rounded-xl hover:bg-rose-500 hover:text-white transition-all shadow-sm" title="Revoke Certificate">
+                                                        <i className="fas fa-trash-alt text-xs" />
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 )}
             </div>
@@ -1310,10 +1384,10 @@ function AdminPortal() {
         return (
             <div className="space-y-6 animate-fade-up relative">
                 {selectedIds.length > 0 && (
-                    <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 bg-slate-900 text-white px-6 py-3 rounded-full shadow-2xl shadow-blue-900/40 flex items-center gap-4 animate-fade-up border border-slate-700">
-                        <span className="text-xs font-bold bg-white/10 px-3 py-1 rounded-full">{selectedIds.length} Selected</span>
-                        <div className="w-px h-4 bg-white/20" />
-                        <button onClick={handleBulkDelete} disabled={isProcessing} className="text-rose-400 hover:text-rose-300 text-xs font-black uppercase tracking-widest transition-colors flex items-center gap-2">
+                    <div className="fixed sm:absolute bottom-6 sm:bottom-auto sm:top-0 left-1/2 -translate-x-1/2 sm:-translate-y-1/2 z-[100] bg-slate-900 text-white px-5 sm:px-6 py-3 rounded-2xl sm:rounded-full shadow-2xl shadow-blue-900/40 flex flex-wrap items-center justify-center gap-4 animate-fade-up border border-slate-700 w-[90%] sm:w-auto ring-4 ring-slate-900/20 backdrop-blur-md">
+                        <span className="text-[10px] sm:text-xs font-bold bg-white/10 px-3 py-1 rounded-xl sm:rounded-full whitespace-nowrap">{selectedIds.length} Selected</span>
+                        <div className="hidden sm:block w-px h-4 bg-white/20" />
+                        <button onClick={handleBulkDelete} disabled={isProcessing} className="text-rose-400 hover:text-rose-300 text-[10px] sm:text-xs font-black uppercase tracking-widest transition-colors flex items-center gap-2">
                             {isProcessing ? <i className="fas fa-spinner fa-spin" /> : <i className="fas fa-trash-alt" />} Delete
                         </button>
                     </div>
@@ -1341,78 +1415,134 @@ function AdminPortal() {
                 </div>
 
                 {loading ? <Spinner /> : (
-                    <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-sm">
-                                <thead>
-                                    <tr className="bg-slate-50 border-b border-slate-100 text-left">
-                                        {bulkMode && (<th className="px-6 py-4 w-10 text-center transition-all">
-                                            <input type="checkbox" checked={selectedIds.length === generalMembers.length && generalMembers.length > 0} onChange={handleSelectAll} className="w-4 h-4 text-[#002147] border-slate-300 rounded focus:ring-[#002147]" />
-                                        </th>)}
-                                        <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest">S.No</th>
-                                        <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest">Member ID</th>
-                                        <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest">Official Name</th>
-                                        <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest">Gmail / Email</th>
-                                        <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest">Role</th>
-                                        <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest">Status</th>
-                                        <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest text-right">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-50">
-                                    {generalMembers.length === 0 ? (
-                                        <tr><td colSpan={8} className="text-center py-20 text-slate-400">
-                                            <i className="fas fa-id-badge text-5xl mb-4 block opacity-10" /> No records matched the query.
-                                        </td></tr>
-                                    ) : generalMembers.map((m) => (
-                                        <tr key={m.member_id} className={`transition-colors group ${selectedIds.includes(m.member_id) ? 'bg-[#002147]/5' : 'hover:bg-slate-50'}`}>
-                                            {bulkMode && (<td className="px-6 py-5 text-center transition-all">
-                                                <input type="checkbox" checked={selectedIds.includes(m.member_id)} onChange={() => toggleSelect(m.member_id)} className="w-4 h-4 text-[#002147] border-slate-300 rounded focus:ring-[#002147]" />
-                                            </td>)}
-                                            <td className="px-6 py-5 font-mono text-xs text-slate-400">{m.serial_number || "-"}</td>
-                                            <td className="px-6 py-5 font-mono text-xs text-[#002147] font-bold">{m.member_id}</td>
-                                            <td className="px-6 py-5 text-slate-800 font-bold">{m.name}</td>
-                                            <td className="px-6 py-5 text-slate-500 text-xs">{m.email}</td>
-                                            <td className="px-6 py-5">
-                                                <span className={`text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider ${m.role === 'Executive' ? "bg-purple-100 text-purple-700" :
-                                                        m.role === 'Admin' ? "bg-amber-100 text-amber-800" :
-                                                            m.role === 'Superuser' ? "bg-rose-100 text-rose-800" :
-                                                                "bg-blue-50 text-blue-700"
-                                                    }`}>
-                                                    {m.role || "General"}
-                                                </span>
-                                            </td>
-                                            <td className="px-6 py-5">
-                                                <span className={`text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider ${m.status === 'blocked' ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"}`}>
-                                                    {m.status === 'blocked' ? "Suspended" : "Active"}
-                                                </span>
-                                            </td>
-                                            <td className="px-6 py-5 text-right">
-                                                <div className="flex justify-end gap-2">
-                                                    {m.role !== 'Superuser' && m.member_id !== adminUser && (
-                                                        <>
-                                                            <button onClick={() => toggleSuspend(m._id)}
-                                                                title={m.status === 'blocked' ? "Reactivate Membership" : "Suspend Membership"}
-                                                                className={`text-xs font-bold uppercase tracking-widest px-3 py-1.5 rounded-lg transition-all ${m.status === 'blocked' ? "text-emerald-500 hover:bg-emerald-50" : "text-amber-500 hover:bg-amber-50"}`}>
-                                                                <i className={`fas ${m.status === 'blocked' ? "fa-user-check" : "fa-user-lock"} mr-1`} />
-                                                                {m.status === 'blocked' ? "Reactivate" : "Suspend"}
-                                                            </button>
-                                                            <button onClick={() => deleteSingle(m._id, m.name)}
-                                                                className="text-xs font-bold uppercase tracking-widest text-rose-500 hover:bg-rose-50 px-3 py-1.5 rounded-lg transition-all">
-                                                                <i className="fas fa-trash-alt mr-1" /> Delete
-                                                            </button>
-                                                        </>
-                                                    )}
-                                                    {m.member_id === adminUser && (
-                                                        <span className="text-xs font-bold uppercase tracking-[0.2em] text-slate-400 opacity-50 px-3 py-1.5">Owner</span>
-                                                    )}
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
+                    <>
+                        {/* Mobile Card List View */}
+                        <div className="sm:hidden space-y-4">
+                            {generalMembers.length === 0 ? (
+                                <div className="text-center py-20 text-slate-300 bg-white rounded-[2rem] border-2 border-dashed border-slate-100">
+                                    <i className="fas fa-id-badge text-5xl mb-4 block opacity-10" /> 
+                                    <p className="text-[10px] font-black uppercase tracking-widest">No records matched</p>
+                                </div>
+                            ) : generalMembers.map((m) => (
+                                <div key={m.member_id} className="p-6 bg-white rounded-[2rem] border border-slate-200 shadow-sm space-y-4 relative overflow-hidden group active:scale-[0.98] transition-all">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-10 h-10 bg-[#002147] text-white rounded-xl flex items-center justify-center font-black text-xs uppercase shadow-lg shadow-blue-900/10">
+                                                {m.name.charAt(0)}
+                                            </div>
+                                            <div>
+                                                <h4 className="font-black text-slate-800 leading-none mb-1 text-sm">{m.name}</h4>
+                                                <p className="text-[10px] font-bold text-[#002147] uppercase tracking-widest">{m.member_id}</p>
+                                            </div>
+                                        </div>
+                                        <span className={`text-[9px] font-black px-3 py-1 rounded-full uppercase tracking-wider ${m.status === 'blocked' ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"}`}>
+                                            {m.status === 'blocked' ? "Suspended" : "Active"}
+                                        </span>
+                                    </div>
+                                    
+                                    <div className="pl-1 space-y-2 border-l-2 border-slate-100 ml-5 py-1">
+                                        <div className="flex items-center gap-2 text-slate-500">
+                                            <i className="fas fa-envelope text-[10px] w-4" />
+                                            <span className="text-[11px] font-medium truncate">{m.email}</span>
+                                        </div>
+                                        <div className="flex items-center gap-2 text-slate-500">
+                                            <i className="fas fa-user-tag text-[10px] w-4" />
+                                            <span className="text-[11px] font-bold uppercase tracking-widest">{m.role || "General"} Member</span>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex gap-2 pt-2 border-t border-slate-50">
+                                        {m.role !== 'Superuser' && m.member_id !== adminUser && (
+                                            <>
+                                                <button onClick={() => toggleSuspend(m._id)}
+                                                    className={`flex-1 text-[10px] font-black uppercase tracking-widest py-3 rounded-xl transition-all border ${m.status === 'blocked' ? "bg-emerald-50 text-emerald-600 border-emerald-100" : "bg-amber-50 text-amber-600 border-amber-100"}`}>
+                                                    {m.status === 'blocked' ? "Reactivate" : "Suspend"}
+                                                </button>
+                                                <button onClick={() => deleteSingle(m._id, m.name)}
+                                                    className="flex-1 text-[10px] font-black uppercase tracking-widest bg-rose-50 text-rose-500 border border-rose-100 py-3 rounded-xl">
+                                                    Delete
+                                                </button>
+                                            </>
+                                        )}
+                                    </div>
+                                </div>
+                            ))}
                         </div>
-                    </div>
+
+                        {/* Desktop Table View */}
+                        <div className="hidden sm:block bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-sm">
+                                    <thead>
+                                        <tr className="bg-slate-50 border-b border-slate-100 text-left">
+                                            {bulkMode && (<th className="px-6 py-4 w-10 text-center transition-all">
+                                                <input type="checkbox" checked={selectedIds.length === generalMembers.length && generalMembers.length > 0} onChange={handleSelectAll} className="w-4 h-4 text-[#002147] border-slate-300 rounded focus:ring-[#002147]" />
+                                            </th>)}
+                                            <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest">S.No</th>
+                                            <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest">Member ID</th>
+                                            <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest">Official Name</th>
+                                            <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest">Gmail / Email</th>
+                                            <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest">Role</th>
+                                            <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest">Status</th>
+                                            <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest text-right">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-50">
+                                        {generalMembers.length === 0 ? (
+                                            <tr><td colSpan={8} className="text-center py-20 text-slate-400">
+                                                <i className="fas fa-id-badge text-5xl mb-4 block opacity-10" /> No records matched the query.
+                                            </td></tr>
+                                        ) : generalMembers.map((m) => (
+                                            <tr key={m.member_id} className={`transition-colors group ${selectedIds.includes(m.member_id) ? 'bg-[#002147]/5' : 'hover:bg-slate-50'}`}>
+                                                {bulkMode && (<td className="px-6 py-5 text-center transition-all">
+                                                    <input type="checkbox" checked={selectedIds.includes(m.member_id)} onChange={() => toggleSelect(m.member_id)} className="w-4 h-4 text-[#002147] border-slate-300 rounded focus:ring-[#002147]" />
+                                                </td>)}
+                                                <td className="px-6 py-5 font-mono text-xs text-slate-400">{m.serial_number || "-"}</td>
+                                                <td className="px-6 py-5 font-mono text-xs text-[#002147] font-bold">{m.member_id}</td>
+                                                <td className="px-6 py-5 text-slate-800 font-bold">{m.name}</td>
+                                                <td className="px-6 py-5 text-slate-500 text-xs">{m.email}</td>
+                                                <td className="px-6 py-5">
+                                                    <span className={`text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider ${m.role === 'Executive' ? "bg-purple-100 text-purple-700" :
+                                                            m.role === 'Admin' ? "bg-amber-100 text-amber-800" :
+                                                                m.role === 'Superuser' ? "bg-rose-100 text-rose-800" :
+                                                                    "bg-blue-50 text-blue-700"
+                                                        }`}>
+                                                        {m.role || "General"}
+                                                    </span>
+                                                </td>
+                                                <td className="px-6 py-5">
+                                                    <span className={`text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider ${m.status === 'blocked' ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"}`}>
+                                                        {m.status === 'blocked' ? "Suspended" : "Active"}
+                                                    </span>
+                                                </td>
+                                                <td className="px-6 py-5 text-right">
+                                                    <div className="flex justify-end gap-2">
+                                                        {m.role !== 'Superuser' && m.member_id !== adminUser && (
+                                                            <>
+                                                                <button onClick={() => toggleSuspend(m._id)}
+                                                                    title={m.status === 'blocked' ? "Reactivate Membership" : "Suspend Membership"}
+                                                                    className={`text-xs font-bold uppercase tracking-widest px-3 py-1.5 rounded-lg transition-all ${m.status === 'blocked' ? "text-emerald-500 hover:bg-emerald-50" : "text-amber-500 hover:bg-amber-50"}`}>
+                                                                    <i className={`fas ${m.status === 'blocked' ? "fa-user-check" : "fa-user-lock"} mr-1`} />
+                                                                    {m.status === 'blocked' ? "Reactivate" : "Suspend"}
+                                                                </button>
+                                                                <button onClick={() => deleteSingle(m._id, m.name)}
+                                                                    className="text-xs font-bold uppercase tracking-widest text-rose-500 hover:bg-rose-50 px-3 py-1.5 rounded-lg transition-all">
+                                                                    <i className="fas fa-trash-alt mr-1" /> Delete
+                                                                </button>
+                                                            </>
+                                                        )}
+                                                        {m.member_id === adminUser && (
+                                                            <span className="text-xs font-bold uppercase tracking-[0.2em] text-slate-400 opacity-50 px-3 py-1.5">Owner</span>
+                                                        )}
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </>
                 )}
             </div>
         );
@@ -1509,14 +1639,14 @@ function AdminPortal() {
         return (
             <div className="space-y-6 animate-fade-up relative">
                 {selectedIds.length > 0 && (
-                    <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 bg-slate-900 text-white px-6 py-3 rounded-full shadow-2xl shadow-blue-900/40 flex items-center gap-4 animate-fade-up border border-slate-700">
-                        <span className="text-xs font-bold bg-white/10 px-3 py-1 rounded-full">{selectedIds.length} Selected</span>
-                        <div className="w-px h-4 bg-white/20" />
-                        <button onClick={handleBulkApprove} disabled={isProcessing} className="text-emerald-400 hover:text-emerald-300 text-xs font-black uppercase tracking-widest transition-colors flex items-center gap-2">
+                    <div className="fixed sm:absolute bottom-6 sm:bottom-auto sm:top-0 left-1/2 -translate-x-1/2 sm:-translate-y-1/2 z-[100] bg-slate-900 text-white px-5 sm:px-6 py-3 rounded-2xl sm:rounded-full shadow-2xl shadow-blue-900/40 flex flex-wrap items-center justify-center gap-4 animate-fade-up border border-slate-700 w-[90%] sm:w-auto ring-4 ring-slate-900/20 backdrop-blur-md">
+                        <span className="text-[10px] sm:text-xs font-bold bg-white/10 px-3 py-1 rounded-xl sm:rounded-full whitespace-nowrap">{selectedIds.length} Selected</span>
+                        <div className="hidden sm:block w-px h-4 bg-white/20" />
+                        <button onClick={handleBulkApprove} disabled={isProcessing} className="text-emerald-400 hover:text-emerald-300 text-[10px] sm:text-xs font-black uppercase tracking-widest transition-colors flex items-center gap-2">
                             {isProcessing ? <i className="fas fa-spinner fa-spin" /> : <i className="fas fa-check-double" />} Approve
                         </button>
-                        <div className="w-px h-4 bg-white/20" />
-                        <button onClick={handleBulkDelete} disabled={isProcessing} className="text-rose-400 hover:text-rose-300 text-xs font-black uppercase tracking-widest transition-colors flex items-center gap-2">
+                        <div className="hidden sm:block w-px h-4 bg-white/20" />
+                        <button onClick={handleBulkDelete} disabled={isProcessing} className="text-rose-400 hover:text-rose-300 text-[10px] sm:text-xs font-black uppercase tracking-widest transition-colors flex items-center gap-2">
                              <i className="fas fa-trash-alt" /> Delete
                         </button>
                     </div>
@@ -1541,145 +1671,186 @@ function AdminPortal() {
                 </div>
 
                 {loading ? <Spinner /> : (
-                    <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
-                        <div className="overflow-x-auto custom-scrollbar-horizontal">
-                            <table className="w-full text-sm">
-                                <thead>
-                                    <tr className="bg-slate-50 border-b border-slate-200 text-left">
-                                        {bulkMode && (<th className="px-5 py-3.5 w-10 text-center transition-all">
-                                            <input type="checkbox" checked={selectedIds.length === filtered.length && filtered.length > 0} onChange={handleSelectAll} className="w-4 h-4 text-[#002147] border-slate-300 rounded focus:ring-[#002147]" />
-                                        </th>)}
-                                        <th className="px-5 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-widest">Applicant Name</th>
-                                        <th className="px-5 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-widest">Email Record</th>
-                                        <th className="px-5 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-widest">Entry Year</th>
-                                        <th className="px-5 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-widest text-right">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-100">
-                                    {filtered.length === 0 ? (
-                                        <tr><td colSpan={5} className="text-center py-20 text-slate-400">
-                                            <i className="fas fa-check-circle text-4xl mb-4 block text-emerald-300/50" />
-                                            <p className="text-xs font-black uppercase tracking-widest">All caught up! No pending applications.</p>
-                                        </td></tr>
-                                    ) : filtered.map((m) => (
-                                        <tr key={m._id} className={`transition-colors group ${selectedIds.includes(m._id) ? 'bg-[#002147]/5' : 'hover:bg-amber-50/40'}`}>
-                                            {bulkMode && (<td className="px-5 py-3.5 text-center transition-all">
-                                                <input type="checkbox" checked={selectedIds.includes(m._id)} onChange={() => toggleSelect(m._id)} className="w-4 h-4 text-[#002147] border-slate-300 rounded focus:ring-[#002147]" />
-                                            </td>)}
-                                            <td className="px-5 py-3.5">
-                                                <div className="flex flex-col">
-                                                    <span className="text-slate-800 font-bold">{m.name}</span>
-                                                    <div className="flex items-center gap-1.5 mt-1">
-                                                        <span className="text-xs font-black text-blue-500 uppercase tracking-widest bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100">Applicant</span>
-                                                        {m.interview_called ? (
-                                                            <span className="text-xs font-black text-emerald-500 uppercase tracking-widest bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100 flex items-center gap-1">
-                                                                <i className="fas fa-check-circle text-xs" /> Called
-                                                            </span>
-                                                        ) : (
-                                                            <span className="text-xs font-black text-slate-400 uppercase tracking-widest bg-slate-50 px-1.5 py-0.5 rounded border border-slate-100">Not Called</span>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            </td>
-                                            <td className="px-5 py-3.5 text-slate-500">{m.email}</td>
-                                            <td className="px-5 py-3.5 font-bold text-slate-400 font-mono tracking-tighter">{m.joining_year}</td>
-                                            <td className="px-5 py-3.5 text-right flex justify-end gap-2">
-                                                <button onClick={() => setInterviewTarget(m)}
-                                                    className={`text-xs px-4 py-2 rounded-xl transition-all font-bold uppercase tracking-widest flex items-center gap-1.5 shadow-sm border ${
-                                                        m.interview_called 
-                                                        ? "bg-amber-50 text-amber-600 border-amber-200 hover:bg-amber-100" 
-                                                        : "bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100"
-                                                    }`}>
-                                                    <i className={m.interview_called ? "fas fa-sync-alt" : "fas fa-microphone-alt"} /> 
-                                                    {m.interview_called ? "Call Again" : "Interview Call"}
-                                                </button>
-                                                <button onClick={() => approveSingle(m._id)} disabled={isProcessing}
-                                                    className="text-xs bg-emerald-50 text-emerald-600 border border-emerald-200 px-4 py-2 rounded-xl hover:bg-emerald-100 transition-colors font-bold uppercase tracking-widest disabled:opacity-50 flex items-center gap-1.5 shadow-sm">
-                                                    <i className="fas fa-check" /> Approve
-                                                </button>
-                                                <button onClick={() => deleteSingle(m._id, m.name)} disabled={isProcessing}
-                                                    className="text-white bg-rose-500 w-10 h-10 rounded-xl hover:bg-rose-600 transition-all flex items-center justify-center shadow-lg shadow-rose-900/20 active:scale-95 disabled:opacity-50" title="Delete Application">
-                                                    <i className="fas fa-trash-alt" />
-                                                </button>
-                                            </td>
+                    <>
+                         {/* Mobile Application Card List */}
+                         <div className="sm:hidden space-y-4">
+                            {filtered.length === 0 ? (
+                                <div className="text-center py-20 text-slate-300 bg-white rounded-[2rem] border-2 border-dashed border-slate-100">
+                                    <i className="fas fa-check-circle text-4xl mb-3 block opacity-20" />
+                                    <p className="text-[10px] font-black uppercase tracking-widest">Queue is empty</p>
+                                </div>
+                            ) : filtered.map((m) => (
+                                <div key={m._id} className="p-6 bg-white rounded-[2rem] border border-slate-200 shadow-sm space-y-4 relative overflow-hidden group active:scale-[0.98] transition-all">
+                                    <div className="flex justify-between items-start">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center font-black text-xs uppercase shadow-inner">
+                                                {m.name.charAt(0)}
+                                            </div>
+                                            <div>
+                                                <h4 className="font-black text-slate-800 leading-none mb-1 text-sm">{m.name}</h4>
+                                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none mt-1">Applied: {m.joining_year}</p>
+                                            </div>
+                                        </div>
+                                        {m.interview_called ? (
+                                            <span className="text-[9px] font-black text-emerald-500 uppercase tracking-widest bg-emerald-50 px-2 py-1 rounded-lg border border-emerald-100">Called</span>
+                                        ) : (
+                                            <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest bg-slate-50 px-2 py-1 rounded-lg border border-slate-100">Pending</span>
+                                        )}
+                                    </div>
+
+                                    <div className="px-1 text-[11px] font-medium text-slate-500 truncate">
+                                        <i className="fas fa-envelope mr-2 opacity-50" /> {m.email}
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-2 pt-2">
+                                        <button onClick={() => setInterviewTarget(m)}
+                                            className={`text-[9px] py-3 rounded-xl font-black uppercase tracking-widest border transition-all ${
+                                                m.interview_called ? "bg-amber-50 text-amber-600 border-amber-100" : "bg-blue-50 text-blue-600 border-blue-100"
+                                            }`}>
+                                            Interview
+                                        </button>
+                                        <button onClick={() => approveSingle(m._id)} disabled={isProcessing}
+                                            className="text-[9px] bg-emerald-50 text-emerald-600 border border-emerald-100 py-3 rounded-xl font-black uppercase tracking-widest disabled:opacity-50">
+                                            Approve
+                                        </button>
+                                        <button onClick={() => deleteSingle(m._id, m.name)} disabled={isProcessing}
+                                            className="col-span-2 text-[9px] bg-rose-500 text-white py-3 rounded-xl font-black uppercase tracking-widest shadow-lg shadow-rose-900/10">
+                                            Delete Application
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
+                         </div>
+
+                        {/* Desktop Table View */}
+                        <div className="hidden sm:block bg-white rounded-2xl sm:rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+                            <div className="overflow-x-auto custom-scrollbar-horizontal">
+                                <table className="w-full text-sm">
+                                    <thead>
+                                        <tr className="bg-slate-50 border-b border-slate-200 text-left">
+                                            {bulkMode && (<th className="px-5 py-3.5 w-10 text-center transition-all">
+                                                <input type="checkbox" checked={selectedIds.length === filtered.length && filtered.length > 0} onChange={handleSelectAll} className="w-4 h-4 text-[#002147] border-slate-300 rounded focus:ring-[#002147]" />
+                                            </th>)}
+                                            <th className="px-5 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-widest">Applicant Name</th>
+                                            <th className="px-5 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-widest">Email Record</th>
+                                            <th className="px-5 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-widest">Entry Year</th>
+                                            <th className="px-5 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-widest text-right">Actions</th>
                                         </tr>
-                                    ))}
-                                </tbody>
-                            </table>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-100">
+                                        {filtered.length === 0 ? (
+                                            <tr><td colSpan={5} className="text-center py-20 text-slate-400">
+                                                <i className="fas fa-check-circle text-4xl mb-4 block text-emerald-300/50" />
+                                                <p className="text-xs font-black uppercase tracking-widest">All caught up! No pending applications.</p>
+                                            </td></tr>
+                                        ) : filtered.map((m) => (
+                                            <tr key={m._id} className={`transition-colors group ${selectedIds.includes(m._id) ? 'bg-[#002147]/5' : 'hover:bg-amber-50/40'}`}>
+                                                {bulkMode && (<td className="px-5 py-3.5 text-center transition-all">
+                                                    <input type="checkbox" checked={selectedIds.includes(m._id)} onChange={() => toggleSelect(m._id)} className="w-4 h-4 text-[#002147] border-slate-300 rounded focus:ring-[#002147]" />
+                                                </td>)}
+                                                <td className="px-5 py-3.5">
+                                                    <div className="flex flex-col">
+                                                        <span className="text-slate-800 font-bold">{m.name}</span>
+                                                        <div className="flex items-center gap-1.5 mt-1">
+                                                            <span className="text-xs font-black text-blue-500 uppercase tracking-widest bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100">Applicant</span>
+                                                            {m.interview_called ? (
+                                                                <span className="text-xs font-black text-emerald-500 uppercase tracking-widest bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100 flex items-center gap-1">
+                                                                    <i className="fas fa-check-circle text-xs" /> Called
+                                                                </span>
+                                                            ) : (
+                                                                <span className="text-xs font-black text-slate-400 uppercase tracking-widest bg-slate-50 px-1.5 py-0.5 rounded border border-slate-100">Not Called</span>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td className="px-5 py-3.5 text-slate-500">{m.email}</td>
+                                                <td className="px-5 py-3.5 font-bold text-slate-400 font-mono tracking-tighter">{m.joining_year}</td>
+                                                <td className="px-5 py-3.5 text-right flex justify-end gap-2">
+                                                    <button onClick={() => setInterviewTarget(m)}
+                                                        className={`text-xs px-4 py-2 rounded-xl transition-all font-bold uppercase tracking-widest flex items-center gap-1.5 shadow-sm border ${
+                                                            m.interview_called 
+                                                            ? "bg-amber-50 text-amber-600 border-amber-200 hover:bg-amber-100" 
+                                                            : "bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100"
+                                                        }`}>
+                                                        <i className={m.interview_called ? "fas fa-sync-alt" : "fas fa-microphone-alt"} /> 
+                                                        {m.interview_called ? "Call Again" : "Interview Call"}
+                                                    </button>
+                                                    <button onClick={() => approveSingle(m._id)} disabled={isProcessing}
+                                                        className="text-xs bg-emerald-50 text-emerald-600 border border-emerald-200 px-4 py-2 rounded-xl hover:bg-emerald-100 transition-colors font-bold uppercase tracking-widest disabled:opacity-50 flex items-center gap-1.5 shadow-sm">
+                                                        <i className="fas fa-check" /> Approve
+                                                    </button>
+                                                    <button onClick={() => deleteSingle(m._id, m.name)} disabled={isProcessing}
+                                                        className="text-white bg-rose-500 w-10 h-10 rounded-xl hover:bg-rose-600 transition-all flex items-center justify-center shadow-lg shadow-rose-900/20 active:scale-95 disabled:opacity-50" title="Delete Application">
+                                                        <i className="fas fa-trash-alt" />
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
-                    </div>
+                    </>
                 )}
 
-                {/* Interview Call Modal */}
+                {/* Interview Call Modal - Simplified Form View */}
                 {interviewTarget && (
-                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-6 bg-slate-900/60 backdrop-blur-sm animate-fade-in overflow-y-auto pt-20">
-                        <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl border border-slate-100 overflow-hidden animate-zoom-in my-auto">
-                            <div className="bg-[#002147] p-6 sm:p-8 text-white relative">
-                                <button onClick={() => setInterviewTarget(null)} className="absolute top-6 right-6 text-white/40 hover:text-white transition-colors">
-                                    <i className="fas fa-times text-lg" />
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
+                        <div className="bg-white rounded-[2.5rem] w-full max-w-lg shadow-2xl border border-slate-100 overflow-hidden animate-zoom-in max-h-[90vh] flex flex-col">
+                            <div className="bg-[#002147] p-8 text-white relative flex-shrink-0">
+                                <button onClick={() => setInterviewTarget(null)} className="absolute top-8 right-8 text-white/40 hover:text-white transition-all transform hover:rotate-90">
+                                    <i className="fas fa-times text-xl" />
                                 </button>
-                                <div className="w-16 h-16 bg-white/10 rounded-2xl flex items-center justify-center mb-4 backdrop-blur-md">
+                                <div className="w-14 h-14 bg-white/10 rounded-2xl flex items-center justify-center mb-5 backdrop-blur-md border border-white/10">
                                     <i className="fas fa-calendar-check text-2xl" />
                                 </div>
                                 <h3 className="text-2xl font-black tracking-tight leading-tight uppercase">Schedule Interview Call</h3>
-                                <p className="text-white/60 text-xs font-black uppercase tracking-[0.2em] mt-2">Recruitment Drive Invitation</p>
+                                <p className="text-white/50 text-[10px] font-black uppercase tracking-[0.3em] mt-2">Recruitment Drive Invitation</p>
                             </div>
 
-                            <form onSubmit={handleInterviewCall} className="p-8 space-y-7">
+                            <form onSubmit={handleInterviewCall} className="p-8 space-y-6 overflow-y-auto custom-scrollbar flex-1">
                                 <div className="group">
-                                    <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3 ml-1 group-focus-within:text-blue-600 transition-colors">Target Applicant</label>
-                                    <div className="bg-slate-50/80 border border-slate-100 rounded-[1.25rem] px-5 py-4 flex items-center gap-4">
-                                        <div className="w-10 h-10 bg-[#002147] rounded-xl flex items-center justify-center text-white text-xs font-bold shadow-lg shadow-blue-900/10">
-                                            {interviewTarget.name.charAt(0)}
-                                        </div>
-                                        <div>
-                                            <p className="text-sm font-black text-slate-800 leading-none mb-1">{interviewTarget.name}</p>
-                                            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">{interviewTarget.email}</p>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="group">
-                                    <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3 ml-1 group-focus-within:text-blue-600 transition-colors">Interview Venue / Location</label>
+                                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 ml-1 group-focus-within:text-[#002147] transition-colors">Interview Venue / Location</label>
                                     <div className="relative">
-                                        <i className="fas fa-map-marker-alt absolute left-5 top-1/2 -translate-y-1/2 text-blue-500/50 group-focus-within:text-blue-500 transition-colors" />
+                                        <i className="fas fa-location-dot absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-[#002147] transition-colors" />
                                         <input 
                                             type="text" 
                                             required
                                             value={interviewForm.venue}
                                             onChange={e => setInterviewForm({ ...interviewForm, venue: e.target.value })}
-                                            className="w-full bg-white border border-slate-200 rounded-[1.5rem] pl-12 pr-5 py-4.5 text-sm font-bold text-slate-800 placeholder:text-slate-300 placeholder:font-normal focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 outline-none transition-all shadow-sm"
-                                            placeholder="e.g. Society Office or Zoom Link"
+                                            className="w-full bg-slate-50 border border-slate-100 rounded-2xl pl-12 pr-5 py-4 text-sm font-bold text-slate-800 placeholder:text-slate-300 focus:bg-white focus:ring-4 focus:ring-[#002147]/5 focus:border-[#002147] outline-none transition-all"
+                                            placeholder="e.g. Society HQ or Online Link"
                                         />
                                     </div>
                                 </div>
 
                                 <div className="group">
-                                    <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3 ml-1 group-focus-within:text-blue-600 transition-colors">Personal Message (Optional)</label>
+                                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 ml-1 group-focus-within:text-[#002147] transition-colors">Interview Description / Details</label>
                                     <textarea 
                                         rows="4"
+                                        required
                                         value={interviewForm.message}
                                         onChange={e => setInterviewForm({ ...interviewForm, message: e.target.value })}
-                                        className="w-full bg-white border border-slate-200 rounded-[1.5rem] px-5 py-5 text-sm font-bold text-slate-800 placeholder:text-slate-300 placeholder:font-normal focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 outline-none transition-all resize-none shadow-sm"
-                                        placeholder="Add specific instructions for the candidate..."
+                                        className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-5 text-sm font-bold text-slate-800 placeholder:text-slate-300 focus:bg-white focus:ring-4 focus:ring-[#002147]/5 focus:border-[#002147] outline-none transition-all resize-none shadow-sm"
+                                        placeholder="Add schedule, instructions or requirements..."
                                     />
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-4 pt-2">
+                                <div className="grid grid-cols-2 gap-4 pt-2 pb-2">
                                     <button 
                                         type="button"
                                         onClick={() => setInterviewTarget(null)}
-                                        className="px-6 py-5 bg-slate-50 text-slate-400 rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-slate-100 hover:text-slate-600 transition-all border border-slate-100"
+                                        className="px-6 py-4 bg-slate-100 text-slate-500 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-200 transition-all border border-slate-100 shadow-sm"
                                     >
-                                        Dismiss
+                                        Cancel
                                     </button>
                                     <button 
                                         type="submit"
                                         disabled={sendingCall}
-                                        className="px-6 py-5 bg-[#002147] text-white rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-slate-800 transition-all shadow-xl shadow-blue-900/20 flex items-center justify-center gap-2 disabled:opacity-50 active:scale-95"
+                                        className="px-6 py-4 bg-[#002147] text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 transition-all shadow-xl shadow-blue-900/20 flex items-center justify-center gap-2 disabled:opacity-50 active:scale-95"
                                     >
                                         {sendingCall ? <i className="fas fa-spinner fa-spin" /> : <i className="fas fa-paper-plane" />}
-                                        Post Announcement
+                                        {sendingCall ? "Sending..." : "Confirm & Send"}
                                     </button>
                                 </div>
                             </form>
@@ -1707,10 +1878,14 @@ function AdminPortal() {
         const [selectedIds, setSelectedIds] = useState([]);
         const [isProcessing, setIsProcessing] = useState(false);
         const [bulkMode, setBulkMode] = useState(false);
+        const ldt = new Date();
+        const todayStr = `${ldt.getFullYear()}-${String(ldt.getMonth() + 1).padStart(2, '0')}-${String(ldt.getDate()).padStart(2, '0')}`;
 
         const filteredEvents = events.filter(e => {
             const matchSearch = e.title?.toLowerCase().includes(searchTerm.toLowerCase()) || e.location?.toLowerCase().includes(searchTerm.toLowerCase());
-            const hasEnded = new Date() > new Date(e.endDate || e.date);
+            // An event only truly "Ends" after the final second of its end date
+            const endTimestamp = new Date(`${e.endDate || e.date}T23:59:59`).getTime();
+            const hasEnded = Date.now() > endTimestamp;
             const matchStatus = statusFilter === "All" || (statusFilter === "Running" && !hasEnded) || (statusFilter === "Ended" && hasEnded);
             return matchSearch && matchStatus;
         });
@@ -1727,7 +1902,42 @@ function AdminPortal() {
         };
 
         const create = async (e) => {
-            e.preventDefault(); setCreating(true);
+            e.preventDefault(); 
+            
+            const now = new Date();
+            const isToday = form.date === todayStr;
+
+            if (!form.date) {
+                notify("Please select a date", "error");
+                return;
+            }
+
+            // Only block if a specific time was provided for TODAY and THAT time is in the past
+            if (isToday && form.time) {
+                try {
+                    const eventStartTime = new Date(`${form.date}T${form.time}:00`);
+                    if (!isNaN(eventStartTime.getTime()) && eventStartTime < now) {
+                        notify("Selected time has already passed for today.", "error");
+                        return;
+                    }
+                } catch (e) {
+                    console.error("Date validation error:", e);
+                }
+            }
+            
+            // Block if the date itself is earlier than today
+            if (form.date < todayStr) {
+                notify("Event date cannot be in the past", "error");
+                return;
+            }
+
+            // Simple end-date check
+            if (form.endDate && form.endDate < form.date) {
+                notify("The event cannot end before it starts.", "error");
+                return;
+            }
+
+            setCreating(true);
             try {
                 const formData = new FormData();
                 formData.append("title", form.title);
@@ -1813,19 +2023,19 @@ function AdminPortal() {
                             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
                                 <div className="sm:col-span-2 lg:col-span-1">
                                     <label className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 block ml-1">Event Title *</label>
-                                    <input type="text" placeholder="e.g. Annual Symposium 2026" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className={inputCls} required />
+                                    <input type="text" placeholder="Official Event Name" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className={inputCls} required />
                                 </div>
                                 <div>
                                     <label className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 block ml-1">Start Date *</label>
-                                    <input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} className={inputCls} required />
+                                    <input type="date" min={todayStr} value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value, endDate: e.target.value > form.endDate ? e.target.value : form.endDate })} className={inputCls} required />
                                 </div>
                                 <div>
                                     <label className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 block ml-1">End Date *</label>
-                                    <input type="date" value={form.endDate} onChange={(e) => setForm({ ...form, endDate: e.target.value })} className={inputCls} required />
+                                    <input type="date" min={form.date || todayStr} value={form.endDate} onChange={(e) => setForm({ ...form, endDate: e.target.value })} className={inputCls} required />
                                 </div>
                                 <div>
                                     <label className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 block ml-1">Starting Time</label>
-                                    <input type="text" placeholder="e.g. 09:00 AM" value={form.time} onChange={(e) => setForm({ ...form, time: e.target.value })} className={inputCls} />
+                                    <input type="time" value={form.time} onChange={(e) => setForm({ ...form, time: e.target.value })} className={inputCls} />
                                 </div>
                                 <div>
                                     <label className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 block ml-1">Physical Location</label>
@@ -1871,10 +2081,10 @@ function AdminPortal() {
                 {activeSubTab === "view" && (
                     <div className="space-y-8 animate-fade-in relative">
                         {selectedIds.length > 0 && (
-                            <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 bg-slate-900 text-white px-6 py-3 rounded-full shadow-2xl shadow-blue-900/40 flex items-center gap-4 animate-fade-up border border-slate-700">
-                                <span className="text-xs font-bold bg-white/10 px-3 py-1 rounded-full">{selectedIds.length} Selected</span>
-                                <div className="w-px h-4 bg-white/20" />
-                                <button onClick={handleBulkDelete} disabled={isProcessing} className="text-rose-400 hover:text-rose-300 text-xs font-black uppercase tracking-widest transition-colors flex items-center gap-2">
+                            <div className="fixed sm:absolute bottom-6 sm:bottom-auto sm:top-0 left-1/2 -translate-x-1/2 sm:-translate-y-1/2 z-[100] bg-slate-900 text-white px-5 sm:px-6 py-3 rounded-2xl sm:rounded-full shadow-2xl shadow-blue-900/40 flex flex-wrap items-center justify-center gap-4 animate-fade-up border border-slate-700 w-[90%] sm:w-auto ring-4 ring-slate-900/20 backdrop-blur-md">
+                                <span className="text-[10px] sm:text-xs font-bold bg-white/10 px-3 py-1 rounded-xl sm:rounded-full whitespace-nowrap">{selectedIds.length} Selected</span>
+                                <div className="hidden sm:block w-px h-4 bg-white/20" />
+                                <button onClick={handleBulkDelete} disabled={isProcessing} className="text-rose-400 hover:text-rose-300 text-[10px] sm:text-xs font-black uppercase tracking-widest transition-colors flex items-center gap-2">
                                     {isProcessing ? <i className="fas fa-spinner fa-spin" /> : <i className="fas fa-trash-alt" />} Delete Records
                                 </button>
                             </div>
@@ -1888,11 +2098,13 @@ function AdminPortal() {
                             </div>
                             <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-xl shadow-slate-200/40">
                                 <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1">Active / Running</p>
-                                <p className="text-3xl font-black text-emerald-500 uppercase">{events.filter(e => new Date() <= new Date(e.endDate || e.date)).length}</p>
+                                <p className="text-3xl font-black text-emerald-500 uppercase">
+                                    {events.filter(e => Date.now() <= new Date(`${e.endDate || e.date}T23:59:59`).getTime()).length}
+                                </p>
                             </div>
                             <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-xl shadow-slate-200/40">
                                 <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1">Ended / Archive</p>
-                                <p className="text-3xl font-black text-slate-300 uppercase">{events.filter(e => new Date() > new Date(e.endDate || e.date)).length}</p>
+                                <p className="text-3xl font-black text-slate-300 uppercase">{events.filter(e => Date.now() > new Date(`${e.endDate || e.date}T23:59:59`).getTime()).length}</p>
                             </div>
                         </div>
 
@@ -1914,7 +2126,69 @@ function AdminPortal() {
                             </div>
                         </div>
 
-                        <div className="bg-white rounded-[2.5rem] border border-slate-200 shadow-2xl overflow-hidden">
+                        {/* Mobile Event Card List */}
+                        <div className="sm:hidden space-y-4">
+                            {filteredEvents.length === 0 ? (
+                                <div className="text-center py-24 bg-white rounded-[2rem] border border-slate-100 shadow-sm">
+                                    <i className="fas fa-calendar-xmark text-4xl mb-4 block text-slate-100" />
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-300">No events found</p>
+                                </div>
+                            ) : filteredEvents.map((ev) => {
+                                const hasEnded = Date.now() > new Date(`${ev.endDate || ev.date}T23:59:59`).getTime();
+                                return (
+                                    <div key={ev._id} className="bg-white rounded-[2rem] border border-slate-200 shadow-sm overflow-hidden relative group active:scale-[0.98] transition-all">
+                                        <div className="relative h-32 bg-slate-100">
+                                            {ev.image_url ? (
+                                                <img src={getImgUrl(ev.image_url)} className="w-full h-full object-cover" />
+                                            ) : (
+                                                <div className="w-full h-full flex items-center justify-center">
+                                                    <i className="fas fa-calendar-alt text-3xl text-slate-200" />
+                                                </div>
+                                            )}
+                                            <div className="absolute top-4 right-4">
+                                                <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest shadow-lg ${
+                                                    hasEnded ? "bg-slate-900/60 text-white backdrop-blur-md" : "bg-emerald-50 text-white shadow-emerald-500/20"
+                                                }`}>
+                                                    {hasEnded ? "Ended" : "Live Now"}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        
+                                        <div className="p-6 space-y-4">
+                                            <div>
+                                                <h4 className="font-black text-slate-800 text-lg leading-tight mb-1">{ev.title}</h4>
+                                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                                                    <i className="fas fa-location-dot text-blue-500" /> {ev.location || "TBA"}
+                                                </p>
+                                            </div>
+
+                                            <div className="grid grid-cols-2 gap-3 py-3 border-y border-slate-100">
+                                                <div className="flex flex-col">
+                                                    <span className="text-[8px] font-black uppercase tracking-widest text-slate-400">Schedule</span>
+                                                    <span className="text-[10px] font-bold text-slate-700">{new Date(ev.date).toLocaleDateString()}</span>
+                                                </div>
+                                                <div className="flex flex-col text-right">
+                                                    <span className="text-[8px] font-black uppercase tracking-widest text-slate-400">Records</span>
+                                                    <span className="text-[10px] font-bold text-[#002147]">{ev.participants?.length || 0} Members</span>
+                                                </div>
+                                            </div>
+
+                                            <div className="flex gap-2">
+                                                <button onClick={() => viewParticipants(ev)} className="flex-1 bg-[#002147] text-white py-3 rounded-xl text-[9px] font-black uppercase tracking-[0.2em] shadow-lg shadow-blue-900/20">
+                                                    Participants
+                                                </button>
+                                                <button onClick={() => deleteSingle(ev._id)} className="w-12 bg-rose-50 text-rose-500 rounded-xl flex items-center justify-center border border-rose-100">
+                                                    <i className="fas fa-trash-alt" />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+
+                        {/* Desktop Table Registry */}
+                        <div className="hidden sm:block bg-white rounded-[2.5rem] border border-slate-200 shadow-2xl overflow-hidden">
                             <div className="overflow-x-auto">
                                 <table className="w-full text-sm">
                                     <thead>
@@ -1936,7 +2210,7 @@ function AdminPortal() {
                                                 <p className="text-xs font-bold uppercase tracking-widest">No events found in registry.</p>
                                             </td></tr>
                                         ) : filteredEvents.map((ev) => {
-                                            const hasEnded = new Date() > new Date(ev.endDate || ev.date);
+                                            const hasEnded = Date.now() > new Date(`${ev.endDate || ev.date}T23:59:59`).getTime();
                                             return (
                                                 <tr key={ev._id} className={`transition-colors group ${selectedIds.includes(ev._id) ? 'bg-[#002147]/5' : 'hover:bg-slate-50/50'}`}>
                                                     {bulkMode && (<td className="px-8 py-6 text-center transition-all">
@@ -2088,7 +2362,7 @@ function AdminPortal() {
         return (
             <div className="space-y-10 animate-fade-up relative">
                 {selectedIds.length > 0 && (
-                    <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 bg-slate-900 text-white px-6 py-3 rounded-full shadow-2xl shadow-blue-900/40 flex items-center gap-4 animate-fade-up border border-slate-700">
+                    <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 bg-slate-900 text-white px-6 py-3 rounded-full shadow-2xl shadow-blue-900/40 flex items-center gap-4 animate-fade-up border border-slate-700">
                         <span className="text-xs font-bold bg-white/10 px-3 py-1 rounded-full">{selectedIds.length} Selected</span>
                         <div className="w-px h-4 bg-white/20" />
                         <button onClick={handleBulkDelete} disabled={isProcessing} className="text-rose-400 hover:text-rose-300 text-xs font-black uppercase tracking-widest transition-colors flex items-center gap-2">
@@ -2096,101 +2370,164 @@ function AdminPortal() {
                         </button>
                     </div>
                 )}
-                <div className="bg-white border border-slate-200 rounded-[2.5rem] p-10 shadow-xl relative overflow-hidden">
-                    <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-indigo-500 to-indigo-700" />
-                    <h3 className="text-2xl font-black text-slate-800 mb-8 flex items-center gap-4">
-                        <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center text-xl shadow-inner"><i className="fas fa-bullhorn" /></div>
-                        Post New Announcement
-                    </h3>
+                {/* Premium Post Announcement Form */}
+                <div className="bg-white border border-slate-200 rounded-[2.5rem] p-6 sm:p-10 shadow-xl relative overflow-hidden group">
+                    <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-indigo-700" />
+                    <div className="flex items-center gap-4 mb-8">
+                        <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center text-xl shadow-inner group-hover:scale-110 transition-transform">
+                            <i className="fas fa-bullhorn" />
+                        </div>
+                        <div>
+                            <h3 className="text-xl sm:text-2xl font-black text-slate-800 tracking-tight leading-none mb-1">Society Broadcast</h3>
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">Draft a new official announcement</p>
+                        </div>
+                    </div>
+
                     <form onSubmit={create} className="space-y-6">
-                        <div className="grid sm:grid-cols-3 gap-6">
+                        <div className="grid sm:grid-cols-3 gap-5">
                             <div className="sm:col-span-2">
-                                <label className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 block ml-1">Announcement Title</label>
-                                <input type="text" placeholder="e.g. Society Membership Drive 2026" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className={inputCls} required />
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2 block ml-1">Broadcast Title *</label>
+                                <input type="text" placeholder="e.g. Annual Symposium 2026 Registration" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className={`${inputCls} !py-4`} required />
                             </div>
                             <div>
-                                <label className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 block ml-1">Priority Level</label>
-                                <select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })} className={inputCls}>
-                                    <option value="Info">General Information</option>
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2 block ml-1">Priority Channel</label>
+                                <select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })} className={`${inputCls} !py-4 bg-white`}>
+                                    <option value="Info">General Info</option>
                                     <option value="Urgent">Urgent / Critical</option>
-                                    <option value="Success">Success / Celebration</option>
+                                    <option value="Success">Achievement</option>
                                 </select>
                             </div>
                         </div>
                         <div>
-                            <label className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 block ml-1">Detailed Content</label>
-                            <textarea placeholder="Write the announcement body here..." value={form.content} onChange={(e) => setForm({ ...form, content: e.target.value })} rows={5} className={`${inputCls} resize-none`} required />
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2 block ml-1">Detailed Message Content</label>
+                            <textarea placeholder="Type your announcement content here..." value={form.content} onChange={(e) => setForm({ ...form, content: e.target.value })} rows={4} className={`${inputCls} resize-none !py-4`} required />
                         </div>
-                        <div className="flex justify-end pt-4">
-                            <button type="submit" disabled={submitting} className={`px-12 py-4 rounded-2xl text-xs font-black uppercase tracking-[0.3em] transition-all shadow-xl ${submitting ? "bg-slate-100 text-slate-400 cursor-not-allowed" : "bg-indigo-600 text-white hover:bg-slate-800 shadow-indigo-900/20 active:scale-95"}`}>
-                                {submitting ? "Publishing..." : "Post Official Update"}
+                        <div className="flex justify-end pt-2">
+                            <button type="submit" disabled={submitting} 
+                                className={`w-full sm:w-auto px-10 py-4 rounded-2xl text-xs font-black uppercase tracking-[0.3em] transition-all flex items-center justify-center gap-3 ${
+                                    submitting ? "bg-slate-100 text-slate-400 cursor-not-allowed" : "bg-indigo-600 text-white hover:bg-[#002147] shadow-xl shadow-indigo-900/10 active:scale-[0.98]"
+                                }`}>
+                                {submitting ? <i className="fas fa-spinner fa-spin" /> : <i className="fas fa-paper-plane" />}
+                                {submitting ? "BROADCASTING..." : "RELEASE UPDATE"}
                             </button>
                         </div>
                     </form>
                 </div>
 
-                <div className="bg-white rounded-3xl sm:rounded-[2.5rem] shadow-2xl overflow-hidden">
-                    <div className="p-5 sm:p-8 border-b border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                        <div>
-                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mb-1">Activity History</p>
-                            <h4 className="text-lg sm:text-xl font-black text-slate-800">Past Announcements</h4>
-                        </div>
-                        <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-                            <button onClick={() => { setBulkMode(!bulkMode); setSelectedIds([]); }} className={`px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-widest transition-all ${bulkMode ? 'bg-[#002147] text-white shadow-sm' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>
-                                <i className="fas fa-layer-group mr-2" /> {bulkMode ? "Done" : "Select"}
-                            </button>
-                            <div className="relative w-full sm:w-64">
-                                <i className="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm" />
-                                <input type="text" placeholder="Search archives..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl pl-11 pr-4 py-2.5 text-slate-800 text-sm shadow-sm outline-none focus:border-[#002147] focus:ring-2 focus:ring-[#002147]/10" />
+                {/* History Section Refined */}
+                <div className="bg-white rounded-[2.5rem] shadow-2xl border border-slate-100/50 overflow-hidden">
+                    <div className="p-6 sm:p-10 border-b border-slate-100 bg-slate-50/30">
+                        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
+                            <div>
+                                <p className="text-[10px] font-black text-indigo-500 uppercase tracking-[0.3em] mb-2 pl-1">Historical Archive</p>
+                                <h4 className="text-2xl font-black text-slate-800 tracking-tight">System Broadcasts</h4>
+                            </div>
+                            
+                            <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
+                                <div className="relative flex-1 sm:w-72">
+                                    <i className="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-xs" />
+                                    <input type="text" placeholder="Search broadcasts..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full bg-white border border-slate-200 rounded-2xl pl-11 pr-4 py-3 text-sm font-bold text-slate-800 placeholder:text-slate-300 focus:border-indigo-500 outline-none transition-all" />
+                                </div>
+                                <button onClick={() => { setBulkMode(!bulkMode); setSelectedIds([]); }} 
+                                    className={`px-6 py-3 rounded-2xl text-xs font-black uppercase tracking-widest transition-all border ${
+                                        bulkMode ? 'bg-[#002147] text-white border-[#002147]' : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'
+                                    }`}>
+                                    {bulkMode ? "CANCEL" : "SELECT RECORDS"}
+                                </button>
                             </div>
                         </div>
                     </div>
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-sm">
-                            <thead>
-                                <tr className="bg-white border-b border-slate-100 text-left">
-                                    {bulkMode && (<th className="px-8 py-5 w-10 text-center transition-all">
-                                        <input type="checkbox" checked={selectedIds.length === filtered.length && filtered.length > 0} onChange={handleSelectAll} className="w-4 h-4 text-[#002147] border-slate-300 rounded focus:ring-[#002147] cursor-pointer" />
-                                    </th>)}
-                                    <th className="px-8 py-5 text-xs font-black text-slate-400 uppercase tracking-widest">Title & Priority</th>
-                                    <th className="px-8 py-5 text-xs font-black text-slate-400 uppercase tracking-widest">Display Preview</th>
-                                    <th className="px-8 py-5 text-xs font-black text-slate-400 uppercase tracking-widest">Date Posted</th>
-                                    <th className="px-8 py-5 text-xs font-black text-slate-400 uppercase tracking-widest text-right">Delete</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-50">
-                                {filtered.length === 0 ? (
-                                    <tr><td colSpan={5} className="text-center py-20 text-slate-300">
-                                        <i className="fas fa-comment-slash text-4xl mb-3 block opacity-20" />
-                                        <p className="text-xs font-black uppercase tracking-widest">No history recorded yet</p>
-                                    </td></tr>
-                                ) : filtered.map((ann) => (
-                                    <tr key={ann._id} className={`transition-colors ${selectedIds.includes(ann._id) ? 'bg-[#002147]/5' : 'hover:bg-slate-50/50'}`}>
-                                        {bulkMode && (<td className="px-8 py-6 text-center transition-all">
-                                            <input type="checkbox" checked={selectedIds.includes(ann._id)} onChange={() => toggleSelect(ann._id)} className="w-4 h-4 text-[#002147] border-slate-300 rounded focus:ring-[#002147] cursor-pointer" />
-                                        </td>)}
-                                        <td className="px-8 py-6">
-                                            <p className="font-black text-slate-800 leading-tight mb-2">{ann.title}</p>
-                                            <span className={`px-3 py-1 rounded-lg text-xs font-black uppercase tracking-widest ${
-                                                ann.type === 'Urgent' ? 'bg-rose-50 text-rose-600' : 
-                                                ann.type === 'Success' ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-blue-600'
-                                            }`}>{ann.type}</span>
-                                        </td>
-                                        <td className="px-8 py-6">
-                                            <p className="text-slate-500 font-medium line-clamp-2 text-xs max-w-xs">{ann.content}</p>
-                                        </td>
-                                        <td className="px-8 py-6">
-                                            <p className="text-xs font-black text-slate-400 uppercase tracking-widest">{new Date(ann.createdAt).toLocaleDateString()}</p>
-                                        </td>
-                                        <td className="px-8 py-6 text-right">
-                                            <button onClick={() => deleteSingle(ann._id)} className="text-rose-400 hover:text-rose-600 p-3 hover:bg-rose-50 rounded-xl transition-all">
-                                                <i className="fas fa-trash-alt" />
+
+                    <div className="p-4 sm:p-10">
+                        {/* Mobile Redesign - Card Style */}
+                        <div className="sm:hidden space-y-5">
+                            {filtered.length === 0 ? (
+                                <div className="text-center py-20 bg-slate-50 rounded-[2rem] border-2 border-dashed border-slate-100">
+                                    <i className="fas fa-comment-slash text-4xl mb-4 block text-slate-100" />
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-300">Archive is empty</p>
+                                </div>
+                            ) : filtered.map((ann) => (
+                                <div key={ann._id} className="relative group overflow-hidden bg-white rounded-[2rem] border border-slate-100 shadow-sm transition-all active:scale-[0.98]">
+                                    <div className="p-6 bg-slate-50/50 border-b border-slate-100">
+                                        <div className="flex justify-between items-start mb-4">
+                                            <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest shadow-sm ${
+                                                ann.type === 'Urgent' ? 'bg-rose-500 text-white shadow-rose-900/10' : 
+                                                ann.type === 'Success' ? 'bg-emerald-500 text-white shadow-emerald-900/10' : 
+                                                'bg-[#002147] text-white'
+                                            }`}>
+                                                {ann.type}
+                                            </span>
+                                            <button onClick={() => deleteSingle(ann._id)} className="w-9 h-9 flex items-center justify-center bg-white text-rose-500 rounded-xl border border-slate-100 shadow-sm active:scale-90 transition-all">
+                                                <i className="fas fa-trash-alt text-xs" />
                                             </button>
-                                        </td>
+                                        </div>
+                                        <h4 className="font-black text-slate-800 text-lg leading-tight">{ann.title}</h4>
+                                        <div className="flex items-center gap-2 mt-2 opacity-50">
+                                            <i className="fas fa-clock text-[9px]" />
+                                            <span className="text-[9px] font-black uppercase tracking-widest">{new Date(ann.createdAt).toLocaleDateString()}</span>
+                                        </div>
+                                    </div>
+                                    <div className="p-6 bg-white">
+                                        <div className="bg-slate-50/80 p-4 rounded-3xl border border-slate-100/50">
+                                            <p className="text-[11px] font-medium text-slate-600 leading-relaxed italic line-clamp-3">
+                                                "{ann.content}"
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* Desktop Table Registry */}
+                        <div className="hidden sm:block overflow-x-auto rounded-[2rem] border border-slate-100 shadow-sm">
+                            <table className="w-full text-sm">
+                                <thead>
+                                    <tr className="bg-slate-50/50 border-b border-slate-100 text-left">
+                                        {bulkMode && (<th className="px-8 py-5 w-10 text-center transition-all">
+                                            <input type="checkbox" checked={selectedIds.length === filtered.length && filtered.length > 0} onChange={handleSelectAll} className="w-4 h-4 text-[#002147] border-slate-300 rounded focus:ring-[#002147] cursor-pointer" />
+                                        </th>)}
+                                        <th className="px-8 py-5 text-xs font-black text-slate-400 uppercase tracking-widest">Broadcast Details</th>
+                                        <th className="px-8 py-5 text-xs font-black text-slate-400 uppercase tracking-widest">Message Preview</th>
+                                        <th className="px-8 py-5 text-xs font-black text-slate-400 uppercase tracking-widest">Release Date</th>
+                                        <th className="px-8 py-5 text-xs font-black text-slate-400 uppercase tracking-widest text-right">Delete</th>
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody className="divide-y divide-slate-50">
+                                    {filtered.length === 0 ? (
+                                        <tr><td colSpan={5} className="text-center py-20 text-slate-300">
+                                            <i className="fas fa-comment-slash text-4xl mb-3 block opacity-20" />
+                                            <p className="text-xs font-black uppercase tracking-widest">No history recorded yet</p>
+                                        </td></tr>
+                                    ) : filtered.map((ann) => (
+                                        <tr key={ann._id} className={`transition-colors ${selectedIds.includes(ann._id) ? 'bg-[#002147]/5' : 'hover:bg-slate-50/50'}`}>
+                                            {bulkMode && (<td className="px-8 py-6 text-center transition-all">
+                                                <input type="checkbox" checked={selectedIds.includes(ann._id)} onChange={() => toggleSelect(ann._id)} className="w-4 h-4 text-[#002147] border-slate-300 rounded focus:ring-[#002147] cursor-pointer" />
+                                            </td>)}
+                                            <td className="px-8 py-6">
+                                                <p className="font-black text-slate-800 leading-tight mb-2">{ann.title}</p>
+                                                <span className={`px-3 py-1 rounded-lg text-xs font-black uppercase tracking-widest shadow-sm ${
+                                                    ann.type === 'Urgent' ? 'bg-rose-50 text-rose-600' : 
+                                                    ann.type === 'Success' ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-blue-600'
+                                                }`}>{ann.type}</span>
+                                            </td>
+                                            <td className="px-8 py-6">
+                                                <div className="bg-slate-50/50 px-4 py-2 rounded-xl border border-slate-100 max-w-sm">
+                                                    <p className="text-slate-500 font-medium line-clamp-2 text-xs italic">"{ann.content}"</p>
+                                                </div>
+                                            </td>
+                                            <td className="px-8 py-6">
+                                                <p className="text-xs font-black text-slate-400 uppercase tracking-widest font-mono">{new Date(ann.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric'})}</p>
+                                            </td>
+                                            <td className="px-8 py-6 text-right">
+                                                <button onClick={() => deleteSingle(ann._id)} className="text-rose-400 hover:text-rose-600 p-3 hover:bg-rose-50 rounded-xl transition-all">
+                                                    <i className="fas fa-trash-alt" />
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -2283,62 +2620,114 @@ function AdminPortal() {
                         </div>
                     </div>
                     
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left text-sm">
-                            <thead>
-                                <tr className="bg-slate-50 border-b border-slate-200">
-                                    <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wide">Timestamp</th>
-                                    <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wide">Administrator</th>
-                                    <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wide">Action</th>
-                                    <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wide">Additional Details</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-100">
-                                {logs.length === 0 && !loadingLogs && (
-                                    <tr>
-                                        <td colSpan={4} className="px-6 py-12 text-center text-slate-400">
-                                            <i className="fas fa-inbox text-4xl mb-3 block opacity-20" />
-                                            No system logs recorded yet.
-                                        </td>
-                                    </tr>
-                                )}
-                                {logs.map((log) => {
-                                    const actionText = log.action || '';
-                                    return (
-                                    <tr key={log._id} className="hover:bg-slate-50 transition-colors">
-                                        <td className="px-6 py-4 whitespace-nowrap text-xs text-slate-500 font-medium">
-                                            {new Date(log.createdAt).toLocaleString()}
-                                        </td>
-                                        <td className="px-6 py-4">
+                    <div className="p-1 sm:p-0">
+                        {/* Mobile List View */}
+                        <div className="sm:hidden space-y-4 px-4 py-2">
+                            {logs.length === 0 && !loadingLogs ? (
+                                <div className="text-center py-16 bg-slate-50/50 border-2 border-dashed border-slate-100 rounded-3xl">
+                                    <i className="fas fa-inbox text-4xl mb-3 opacity-20 block text-slate-400" />
+                                    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">No system logs recorded yet.</p>
+                                </div>
+                            ) : logs.map((log) => {
+                                const actionText = log.action || '';
+                                return (
+                                    <div key={log._id} className="bg-white rounded-[2rem] p-6 shadow-sm border border-slate-100 relative overflow-hidden group">
+                                        <div className="flex justify-between items-start mb-4">
                                             <div className="flex items-center gap-3">
-                                                <div className="w-8 h-8 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center text-xs font-bold uppercase">
+                                                <div className="w-10 h-10 rounded-xl bg-slate-50 text-slate-600 flex items-center justify-center text-sm font-black uppercase shadow-inner border border-slate-100">
                                                     {log.admin_name?.charAt(0) || <i className="fas fa-robot text-slate-400" />}
                                                 </div>
-                                                <span className="font-bold text-slate-800 text-xs">
-                                                    {log.admin_name || "System/Unknown"}
-                                                </span>
+                                                <div className="flex flex-col">
+                                                    <span className="font-bold text-slate-800 text-sm leading-none mb-1">
+                                                        {log.admin_name || "System/Unknown"}
+                                                    </span>
+                                                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none">
+                                                        {new Date(log.createdAt).toLocaleString()}
+                                                    </span>
+                                                </div>
                                             </div>
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <span className={`px-3 py-1 text-[10px] font-bold uppercase tracking-widest rounded-full ${
-                                                actionText.includes('LOGIN') ? 'bg-blue-100 text-blue-700' :
-                                                actionText.includes('CREATE') || actionText.includes('APPROVE') || actionText.includes('Add') ? 'bg-emerald-100 text-emerald-700' :
-                                                actionText.includes('BLOCK') || actionText.includes('DELETE') ? 'bg-rose-100 text-rose-700' :
-                                                'bg-slate-100 text-slate-700'
+                                        </div>
+                                        <div className="mb-4">
+                                            <span className={`inline-block px-3 py-1.5 text-[9px] font-black uppercase tracking-widest rounded-lg shadow-sm border ${
+                                                actionText.includes('LOGIN') ? 'bg-blue-50 text-blue-600 border-blue-100' :
+                                                actionText.includes('CREATE') || actionText.includes('APPROVE') || actionText.includes('Add') ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
+                                                actionText.includes('BLOCK') || actionText.includes('DELETE') ? 'bg-rose-50 text-rose-600 border-rose-100' :
+                                                'bg-slate-50 text-slate-600 border-slate-200'
                                             }`}>
                                                 {actionText}
                                             </span>
-                                        </td>
-                                        <td className="px-6 py-4 text-xs text-slate-600 font-medium">
-                                            {log.details}
-                                            {log.target_id && (
-                                                <span className="ml-1 text-[#002147] font-bold mt-1 inline-block">ID: {log.target_id.name || log.target_id.email || log.target_id._id || log.target_id}</span>
-                                            )}
-                                        </td>
+                                        </div>
+                                        <div className="bg-slate-50 p-4 rounded-xl border border-slate-100/50">
+                                            <p className="text-xs text-slate-600 font-medium">
+                                                {log.details}
+                                                {log.target_id && (
+                                                    <span className="block mt-2 text-[#002147] font-bold text-[10px] uppercase tracking-widest">Target ID: {log.target_id.name || log.target_id.email || log.target_id._id || log.target_id}</span>
+                                                )}
+                                            </p>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    
+                        {/* Desktop Table View */}
+                        <div className="hidden sm:block overflow-x-auto">
+                            <table className="w-full text-left text-sm">
+                                <thead>
+                                    <tr className="bg-slate-50 border-b border-slate-200">
+                                        <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wide">Timestamp</th>
+                                        <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wide">Administrator</th>
+                                        <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wide">Action</th>
+                                        <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wide">Additional Details</th>
                                     </tr>
-                                )})}
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100">
+                                    {logs.length === 0 && !loadingLogs && (
+                                        <tr>
+                                            <td colSpan={4} className="px-6 py-12 text-center text-slate-400">
+                                                <i className="fas fa-inbox text-4xl mb-3 block opacity-20" />
+                                                No system logs recorded yet.
+                                            </td>
+                                        </tr>
+                                    )}
+                                    {logs.map((log) => {
+                                        const actionText = log.action || '';
+                                        return (
+                                        <tr key={log._id} className="hover:bg-slate-50 transition-colors">
+                                            <td className="px-6 py-4 whitespace-nowrap text-xs text-slate-500 font-medium">
+                                                {new Date(log.createdAt).toLocaleString()}
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-8 h-8 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center text-xs font-bold uppercase">
+                                                        {log.admin_name?.charAt(0) || <i className="fas fa-robot text-slate-400" />}
+                                                    </div>
+                                                    <span className="font-bold text-slate-800 text-xs">
+                                                        {log.admin_name || "System/Unknown"}
+                                                    </span>
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <span className={`px-3 py-1 text-[10px] font-bold uppercase tracking-widest rounded-full ${
+                                                    actionText.includes('LOGIN') ? 'bg-blue-100 text-blue-700' :
+                                                    actionText.includes('CREATE') || actionText.includes('APPROVE') || actionText.includes('Add') ? 'bg-emerald-100 text-emerald-700' :
+                                                    actionText.includes('BLOCK') || actionText.includes('DELETE') ? 'bg-rose-100 text-rose-700' :
+                                                    'bg-slate-100 text-slate-700'
+                                                }`}>
+                                                    {actionText}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-4 text-xs text-slate-600 font-medium">
+                                                {log.details}
+                                                {log.target_id && (
+                                                    <span className="ml-1 text-[#002147] font-bold mt-1 inline-block">ID: {log.target_id.name || log.target_id.email || log.target_id._id || log.target_id}</span>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    )})}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                     
                     {totalPages > 1 && (
@@ -2403,14 +2792,20 @@ function AdminPortal() {
                     <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-[#002147] to-blue-500" />
 
                     <div className="p-6 md:p-12">
-                        <div className="flex items-center gap-4 mb-8 sm:mb-10">
-                            <div className="w-12 h-12 sm:w-14 sm:h-14 bg-blue-50 rounded-xl sm:rounded-2xl flex items-center justify-center text-[#002147] text-lg sm:text-xl shadow-inner">
-                                <i className="fas fa-user-edit" />
+                        <div className="flex flex-wrap items-center justify-between gap-4 mb-8 sm:mb-10">
+                            <div className="flex items-center gap-4">
+                                <div className="w-12 h-12 sm:w-14 sm:h-14 bg-blue-50 rounded-xl sm:rounded-2xl flex items-center justify-center text-[#002147] text-lg sm:text-xl shadow-inner">
+                                    <i className="fas fa-user-edit" />
+                                </div>
+                                <div>
+                                    <h2 className="text-xl sm:text-2xl font-black text-slate-800 tracking-tight">Security & Profile</h2>
+                                    <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mt-1">Self-Management Console</p>
+                                </div>
                             </div>
-                            <div>
-                                <h2 className="text-xl sm:text-2xl font-black text-slate-800 tracking-tight">Security & Profile</h2>
-                                <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mt-1">Self-Management Console</p>
-                            </div>
+                            <button type="button" onClick={logout} className="group flex items-center gap-2 px-5 py-2.5 bg-rose-50 text-rose-600 rounded-xl hover:bg-rose-100 transition-all border border-rose-100 shadow-sm active:scale-95">
+                                <i className="fas fa-power-off text-xs group-hover:scale-110 transition-transform" />
+                                <span className="text-[10px] font-black uppercase tracking-[0.2em]">Logout</span>
+                            </button>
                         </div>
 
                         <form onSubmit={handleUpdate} className="space-y-8">
@@ -2450,13 +2845,6 @@ function AdminPortal() {
                             </button>
                         </form>
 
-                        <div className="mt-8 pt-6 border-t border-slate-100 flex justify-center">
-                            <button onClick={logout}
-                                className="flex items-center gap-3 px-6 py-3 rounded-2xl bg-rose-50 border border-rose-100 text-rose-600 hover:bg-rose-100 transition-all group group">
-                                <i className="fas fa-power-off text-xs" />
-                                <span className="text-xs font-black uppercase tracking-[0.2em]">Logout</span>
-                            </button>
-                        </div>
                     </div>
                 </div>
             </div>
@@ -2590,71 +2978,118 @@ function AdminPortal() {
                     </div>
                 )}
 
-                {/* Personnel Table */}
-                <div>
-                    <h2 className="text-xl font-bold text-slate-800 mb-4">Official Personnel</h2>
-                    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden text-right">
-                        <div className="overflow-x-auto text-left">
-                            <table className="w-full text-sm">
-                                <thead>
-                                    <tr className="bg-slate-50 border-b border-slate-200 text-left">
-                                        <th className="px-5 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">ID/Username</th>
-                                        <th className="px-5 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">Name</th>
-                                        <th className="px-5 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">Privilege Level</th>
-                                        <th className="px-5 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">Status</th>
-                                        <th className="px-5 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wide text-right">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-100">
-                                    {adminList.filter(m => m.role !== 'Superuser').map((m) => (
-                                        <tr key={m.member_id} className={`hover:bg-purple-50/40 transition-colors group text-left ${m.status === 'blocked' ? "opacity-60 bg-slate-50/10" : ""}`}>
-                                            <td className="px-5 py-3.5 font-mono text-xs text-slate-800 font-bold">{m.member_id}</td>
-                                            <td className="px-5 py-3.5 text-slate-800 font-medium">{m.name}</td>
-                                            <td className="px-5 py-3.5">
-                                                <span className="text-xs font-bold px-2 py-0.5 rounded-full uppercase bg-purple-100 text-purple-700">
-                                                    {m.role}
-                                                </span>
-                                            </td>
-                                            <td className="px-5 py-3.5">
-                                                <span className={`text-xs font-bold px-2 py-0.5 rounded-full uppercase ${m.status === 'blocked' ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"}`}>
-                                                    {m.status === 'blocked' ? "Blocked" : "Active"}
-                                                </span>
-                                            </td>
-                                            <td className="px-5 py-3.5 text-right flex items-center justify-end gap-2">
+                {/* Personnel Management Section */}
+                <div className="space-y-4">
+                    <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                        <i className="fas fa-users-gear text-slate-400" /> Official Personnel
+                    </h2>
+                    
+                    {/* Mobile Admin Card List */}
+                    <div className="sm:hidden space-y-4">
+                        {adminList.filter(m => m.role !== 'Superuser').length === 0 ? (
+                            <div className="text-center py-20 bg-white rounded-[2rem] border-2 border-dashed border-slate-100">
+                                <i className="fas fa-user-shield text-4xl mb-4 opacity-10" />
+                                <p className="text-[10px] font-black uppercase tracking-widest text-slate-300">No admins found</p>
+                            </div>
+                        ) : adminList.filter(m => m.role !== 'Superuser').map((m) => (
+                            <div key={m.member_id} className={`p-6 bg-white rounded-[2rem] border border-slate-200 shadow-sm space-y-4 relative overflow-hidden active:scale-[0.98] transition-all ${m.status === 'blocked' ? "opacity-75" : ""}`}>
+                                <div className="flex justify-between items-start">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center font-black text-xs shadow-inner">
+                                            {m.name.charAt(0)}
+                                        </div>
+                                        <div>
+                                            <h4 className="font-black text-slate-800 leading-none mb-1 text-sm">{m.name}</h4>
+                                            <p className="text-[10px] font-bold text-indigo-600 uppercase tracking-widest">{m.member_id}</p>
+                                        </div>
+                                    </div>
+                                    <span className={`text-[9px] font-black px-2 py-1 rounded-lg uppercase tracking-widest ${m.status === 'blocked' ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"}`}>
+                                        {m.status === 'blocked' ? "Blocked" : "Active"}
+                                    </span>
+                                </div>
+                                
+                                <div className="flex items-center gap-2 bg-slate-50 px-3 py-2 rounded-xl">
+                                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Privilege:</span>
+                                    <span className="text-[9px] font-black text-purple-600 uppercase tracking-widest bg-purple-50 px-1.5 py-0.5 rounded border border-purple-100">{m.role}</span>
+                                </div>
+
+                                <div className="flex gap-2 pt-2 border-t border-slate-50">
+                                    {m.member_id !== adminUser ? (
+                                        <>
+                                            <button onClick={() => toggleBlock(m._id)}
+                                                className={`flex-1 text-[9px] py-3 rounded-xl font-black uppercase tracking-widest border transition-all ${m.status === 'blocked' ? "bg-emerald-50 text-emerald-600 border-emerald-100" : "bg-amber-50 text-amber-600 border-amber-100"}`}>
+                                                {m.status === 'blocked' ? "Unblock" : "Block"}
+                                            </button>
+                                            <button onClick={() => { setEditing(m.member_id); setEditForm({ name: m.name, password: "" }); }}
+                                                className="flex-1 text-[9px] bg-slate-50 text-slate-600 border border-slate-100 py-3 rounded-xl font-black uppercase tracking-widest">
+                                                Edit
+                                            </button>
+                                            <button onClick={() => del(m.member_id)}
+                                                className="w-10 bg-rose-50 text-rose-500 rounded-xl flex items-center justify-center border border-rose-100">
+                                                <i className="fas fa-trash-alt" />
+                                            </button>
+                                        </>
+                                    ) : (
+                                        <div className="w-full text-center py-2 text-[10px] font-black uppercase tracking-[0.3em] text-blue-400 opacity-50 bg-blue-50/50 rounded-xl">Account Owner</div>
+                                    )}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* Desktop Admin Table View */}
+                    <div className="hidden sm:block bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                        <table className="w-full text-sm">
+                            <thead>
+                                <tr className="bg-slate-50 border-b border-slate-200 text-left">
+                                    <th className="px-6 py-4 text-xs font-black text-slate-500 uppercase tracking-widest">ID/Username</th>
+                                    <th className="px-6 py-4 text-xs font-black text-slate-500 uppercase tracking-widest">Name</th>
+                                    <th className="px-6 py-4 text-xs font-black text-slate-500 uppercase tracking-widest">Privilege Level</th>
+                                    <th className="px-6 py-4 text-xs font-black text-slate-500 uppercase tracking-widest">Status</th>
+                                    <th className="px-6 py-4 text-xs font-black text-slate-500 uppercase tracking-widest text-right">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                                {adminList.filter(m => m.role !== 'Superuser').map((m) => (
+                                    <tr key={m.member_id} className={`hover:bg-purple-50/40 transition-colors group text-left ${m.status === 'blocked' ? "opacity-60 bg-slate-50/10" : ""}`}>
+                                        <td className="px-6 py-4 font-mono text-xs text-slate-800 font-bold">{m.member_id}</td>
+                                        <td className="px-6 py-4 text-slate-800 font-bold">{m.name}</td>
+                                        <td className="px-6 py-4">
+                                            <span className="text-xs font-bold px-3 py-1 rounded-full uppercase tracking-widest bg-purple-100 text-purple-700">
+                                                {m.role}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <span className={`text-xs font-bold px-3 py-1 rounded-full uppercase tracking-widest ${m.status === 'blocked' ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"}`}>
+                                                {m.status === 'blocked' ? "Blocked" : "Active"}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4 text-right">
+                                            <div className="flex justify-end items-center gap-2">
                                                 {m.member_id !== adminUser ? (
                                                     <>
                                                         <button onClick={() => toggleBlock(m._id)}
-                                                            title={m.status === 'blocked' ? "Unblock Admin" : "Block Admin"}
-                                                            className={`text-xs border px-3 py-1.5 rounded-lg transition-colors font-semibold ${m.status === 'blocked' ? "bg-emerald-50 text-emerald-600 border-emerald-200 hover:bg-emerald-100" : "bg-amber-50 text-amber-600 border-amber-200 hover:bg-amber-100"}`}>
-                                                            <i className={`fas ${m.status === 'blocked' ? "fa-user-check" : "fa-user-lock"} mr-1`} />
+                                                            className={`text-[9px] font-black uppercase tracking-widest border px-3 py-2 rounded-lg transition-all ${m.status === 'blocked' ? "bg-emerald-50 text-emerald-600 border-emerald-200 hover:bg-emerald-100" : "bg-amber-50 text-amber-600 border-amber-200 hover:bg-amber-100"}`}>
                                                             {m.status === 'blocked' ? "Unblock" : "Block"}
                                                         </button>
                                                         <button onClick={() => { setEditing(m.member_id); setEditForm({ name: m.name, password: "" }); }}
-                                                            className="text-xs bg-slate-50 text-slate-600 border border-slate-200 px-3 py-1.5 rounded-lg hover:bg-slate-100 transition-colors font-semibold">
-                                                            <i className="fas fa-edit mr-1" /> Edit
+                                                            className="text-[9px] font-black uppercase tracking-widest bg-slate-50 text-slate-600 border border-slate-200 px-3 py-2 rounded-lg hover:bg-slate-100 transition-all">
+                                                            Edit
                                                         </button>
                                                         <button onClick={() => del(m.member_id)}
-                                                            className="text-xs bg-red-50 text-red-600 border border-red-200 px-3 py-1.5 rounded-lg hover:bg-red-100 transition-colors font-semibold">
-                                                            <i className="fas fa-trash-alt mr-1" /> Delete
+                                                            className="text-rose-400 hover:text-rose-600 p-2 hover:bg-rose-50 rounded-lg transition-all">
+                                                            <i className="fas fa-trash-alt" />
                                                         </button>
                                                     </>
                                                 ) : (
-                                                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-500/60 bg-blue-50 px-3 py-1 rounded-full">Owner</span>
+                                                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-500/60 bg-blue-50 px-4 py-1.5 rounded-full">Owner</span>
                                                 )}
-                                            </td>
-                                        </tr>
-                                    ))}
-                                    {adminList.filter(m => m.role !== 'Superuser').length === 0 && (
-                                        <tr>
-                                            <td colSpan={4} className="px-5 py-20 text-center text-slate-400">
-                                                <i className="fas fa-user-shield text-4xl mb-4 opacity-10" />
-                                                <p className="text-xs font-bold uppercase tracking-widest">No subordinate administrators found</p>
-                                            </td>
-                                        </tr>
-                                    )}
-                                </tbody>
-                            </table>
-                        </div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
@@ -2716,7 +3151,40 @@ function AdminPortal() {
                         </div>
                     </div>
 
-                    <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-2xl overflow-hidden">
+                    {/* Mobile Batch Member Cards */}
+                    <div className="sm:hidden space-y-4">
+                        {batchMembers.length === 0 ? (
+                            <div className="text-center py-20 bg-white rounded-[2rem] border-2 border-dashed border-slate-100">
+                                <i className="fas fa-search-minus text-4xl text-slate-100 mb-4 block" />
+                                <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest leading-none">No matching records</p>
+                            </div>
+                        ) : batchMembers.map(m => (
+                            <div key={m._id} className="p-6 bg-white rounded-[2rem] border border-slate-200 shadow-sm space-y-4 relative overflow-hidden active:scale-[0.98] transition-all">
+                                <div className="flex justify-between items-start">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 bg-[#002147]/5 text-[#002147] rounded-xl flex items-center justify-center font-black text-xs shadow-inner">
+                                            {m.name.charAt(0)}
+                                        </div>
+                                        <div>
+                                            <h4 className="font-black text-slate-800 leading-none mb-1 text-sm">{m.name}</h4>
+                                            <p className="text-[10px] font-bold text-[#003366] uppercase tracking-widest">{m.member_id || 'PENDING'}</p>
+                                        </div>
+                                    </div>
+                                    <div className="text-right">
+                                        <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-0.5">Joined</span>
+                                        <span className="text-[10px] font-bold text-slate-600 block">{m.createdAt ? new Date(m.createdAt).toLocaleDateString() : 'N/A'}</span>
+                                    </div>
+                                </div>
+                                
+                                <button onClick={() => setDetailView(m)} className="w-full bg-[#002147] text-white py-3.5 rounded-xl font-black uppercase tracking-[0.2em] text-[10px] shadow-lg shadow-blue-900/10">
+                                    <i className="fas fa-eye mr-2" /> View Dossier
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* Desktop Batch Member Table */}
+                    <div className="hidden sm:block bg-white rounded-[2.5rem] border border-slate-100 shadow-2xl overflow-hidden">
                         <div className="overflow-x-auto">
                             <table className="w-full text-left">
                                 <thead>
@@ -2727,14 +3195,7 @@ function AdminPortal() {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-50 text-[13px]">
-                                    {batchMembers.length === 0 ? (
-                                        <tr>
-                                            <td colSpan={3} className="px-8 py-20 text-center">
-                                                <i className="fas fa-search-minus text-4xl text-slate-100 mb-4 block" />
-                                                <p className="text-xs font-black text-slate-300 uppercase tracking-widest">No matching records found in this batch</p>
-                                            </td>
-                                        </tr>
-                                    ) : batchMembers.map(m => (
+                                    {batchMembers.map(m => (
                                         <tr key={m._id} className="hover:bg-slate-50/30 transition-colors">
                                             <td className="px-8 py-5">
                                                 <div className="flex flex-col">
@@ -2953,26 +3414,6 @@ function AdminPortal() {
                     .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
                 `}} />
 
-                {/* Bottom Profile (Polished User Card) */}
-                <div className="p-4 bg-black/10">
-                    <div className="bg-white/5 border border-white/5 p-4 rounded-2xl hover:bg-white/[0.08] transition-all group">
-                        <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-blue-400 rounded-xl flex items-center justify-center border border-white/10 shadow-lg text-white font-black text-xs uppercase">
-                                {adminUser?.charAt(0) || "A"}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                                <p className="text-white text-xs font-black truncate tracking-wide">{adminUser}</p>
-                                <div className="flex items-center gap-1.5 mt-0.5">
-                                    <div className={`w-1.5 h-1.5 rounded-full ${isSuper ? "bg-rose-400" : "bg-emerald-400"} animate-pulse`} />
-                                    <p className="text-white/40 text-[9px] font-black uppercase tracking-widest">{isSuper ? "Superuser" : "Staff"}</p>
-                                </div>
-                            </div>
-                            <button onClick={() => setActiveTab("settings")} className="text-white/20 hover:text-white transition-colors p-2" title="Profile Settings">
-                                <i className="fas fa-cog text-sm" />
-                            </button>
-                        </div>
-                    </div>
-                </div>
             </aside>
 
             {/* Mobile backdrop */}
@@ -2991,10 +3432,14 @@ function AdminPortal() {
                             <p className="text-slate-400 text-[9px] font-black uppercase tracking-widest hidden sm:block">Logistics Command</p>
                         </div>
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 sm:gap-3">
+                        <button onClick={() => setActiveTab("settings")}
+                            className="text-xs font-bold text-slate-500 hover:text-[#002147] w-10 h-10 sm:w-auto sm:h-auto sm:px-4 sm:py-2 hover:bg-slate-50 rounded-xl flex items-center justify-center sm:justify-start gap-2 transition-all border border-transparent hover:border-slate-100">
+                            <i className="fas fa-cog text-[14px] sm:text-xs" /> <span className="hidden sm:inline">Settings</span>
+                        </button>
                         <button onClick={() => navigate("/")}
-                            className="text-xs font-bold text-slate-500 hover:text-[#002147] px-4 py-2 hover:bg-slate-50 rounded-lg flex items-center gap-2 transition-all">
-                            <i className="fas fa-home" /> Site Overview
+                            className="text-xs font-bold text-[#002147] w-10 h-10 sm:w-auto sm:h-auto sm:px-4 sm:py-2 bg-blue-50 hover:bg-blue-100 rounded-xl flex items-center justify-center sm:justify-start gap-2 transition-all border border-transparent">
+                            <i className="fas fa-home text-[14px] sm:text-xs" /> <span className="hidden sm:inline">Site Overview</span>
                         </button>
                     </div>
                 </header>

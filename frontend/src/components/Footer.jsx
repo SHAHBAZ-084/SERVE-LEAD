@@ -67,10 +67,16 @@ export default function Footer() {
                     </div>
                 </div>
 
-                <div className="pt-10 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-8">
-                    <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest text-center md:text-left">
-                        © {new Date().getFullYear()} Serve & Lead Society. All rights reserved.
-                    </p>
+                <div className="pt-10 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-8 text-center md:text-left">
+                    <div className="flex flex-col">
+                        <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest">
+                            © {new Date().getFullYear()} Serve & Lead Society. All rights reserved.
+                        </p>
+                        <p className="text-slate-400 text-[8px] font-black uppercase tracking-[0.4em] mt-3 flex items-center justify-center md:justify-start gap-3 opacity-60 hover:opacity-100 transition-all duration-700">
+                            <span className="w-1.5 h-1.5 bg-cyan-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(6,182,212,0.6)]" />
+                            System Developed by <span className="text-white font-black tracking-[0.2em]">Shahbaz & Ali</span>
+                        </p>
+                    </div>
                     <div className="flex gap-6">
                         <a href="https://www.facebook.com/share/15vTx4Y1r6/" target="_blank" rel="noopener noreferrer" className="w-11 h-11 rounded-2xl bg-white/5 flex items-center justify-center text-slate-400 hover:bg-cyan-500 hover:text-white transition-all shadow-xl">
                             <i className="fab fa-facebook-f" />

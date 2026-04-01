@@ -39,7 +39,15 @@ export default function MemberLogin() {
       navigate("/dashboard");
     } catch (err) {
       console.error("Login Error:", err);
-      const msg = err.response?.data?.error || "Invalid Credentials. Please try again.";
+      const status = err.response?.status;
+      let msg = err.response?.data?.error || "Invalid Credentials. Please try again.";
+      
+      if (status === 403) {
+        msg = `Access Denied: ${msg}`;
+      } else if (status === 401) {
+        msg = "Incorrect email or password. Please verify and try again.";
+      }
+      
       setError(msg);
     } finally {
       setLoading(false);

@@ -415,7 +415,7 @@ function MemberDashboard() {
 
     const renderDashboard = () => {
         const joinedEventsCount = events.filter(e => e.participants?.some(p => p.memberId === user.dbId || p.memberId?._id === user.dbId)).length;
-        const upcomingEventsCount = events.filter(e => new Date() < new Date(e.endDate || e.date)).length;
+        const upcomingEventsCount = events.filter(e => Date.now() <= new Date(`${e.endDate || e.date}T23:59:59`).getTime()).length;
 
         return (
             <div className="animate-fade-up space-y-8">
@@ -470,65 +470,112 @@ function MemberDashboard() {
                 {/* Joined Events Table */}
                 <div className="mt-12 bg-white rounded-[3rem] p-8 md:p-12 shadow-2xl shadow-slate-200/40 border border-slate-100 relative overflow-hidden">
                     <div className="absolute top-0 left-0 w-2 h-full bg-gradient-to-b from-[#002147] to-blue-500" />
-                    <div className="flex items-center gap-4 mb-8">
-                        <div className="w-12 h-12 bg-[#002147]/10 text-[#002147] rounded-2xl flex items-center justify-center text-xl shadow-inner border border-[#002147]/10">
-                            <i className="fas fa-calendar-check" />
-                        </div>
-                        <div>
-                            <h3 className="text-2xl font-black text-slate-800 tracking-tight leading-tight">My Participations</h3>
-                            <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mt-1">Events you have joined</p>
+                    <div className="flex flex-col sm:flex-row items-start justify-between gap-4 mb-8">
+                        <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 bg-[#002147]/10 text-[#002147] rounded-2xl flex items-center justify-center text-xl shadow-inner border border-[#002147]/10">
+                                <i className="fas fa-calendar-check" />
+                            </div>
+                            <div>
+                                <h3 className="text-xl sm:text-2xl font-black text-slate-800 tracking-tight leading-tight">My Participations</h3>
+                                <p className="text-slate-400 text-[9px] sm:text-[10px] font-bold uppercase tracking-widest mt-1">Events you have joined</p>
+                            </div>
                         </div>
                     </div>
 
-                    <div className="overflow-x-auto custom-scrollbar">
-                        <table className="w-full text-left border-collapse">
-                            <thead>
-                                <tr className="border-b-2 border-slate-100">
-                                    <th className="pb-4 pt-2 font-black text-[10px] uppercase tracking-widest text-slate-400">Event Title</th>
-                                    <th className="pb-4 pt-2 font-black text-[10px] uppercase tracking-widest text-slate-400">Date</th>
-                                    <th className="pb-4 pt-2 font-black text-[10px] uppercase tracking-widest text-slate-400">Venue</th>
-                                    <th className="pb-4 pt-2 font-black text-[10px] uppercase tracking-widest text-slate-400 text-right">Certificate</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-50">
-                                {events.filter(e => e.participants?.some(p => p.memberId === user.dbId || p.memberId?._id === user.dbId)).length === 0 ? (
-                                    <tr>
-                                        <td colSpan={4} className="py-12 text-center text-slate-400">
-                                            <i className="fas fa-ghost text-3xl mb-3 opacity-20 block" />
-                                            <p className="text-[10px] font-bold uppercase tracking-widest">No events joined yet.</p>
-                                        </td>
-                                    </tr>
-                                ) : (
-                                    events.filter(e => e.participants?.some(p => p.memberId === user.dbId || p.memberId?._id === user.dbId)).map(event => {
-                                        const earnedCert = certificates.find(cert => cert.eventId?._id === event._id || cert.eventId === event._id);
-                                        return (
-                                            <tr key={event._id} className="hover:bg-slate-50/50 transition-colors group">
-                                                <td className="py-5 pr-4">
-                                                    <p className="font-bold text-slate-800 group-hover:text-[#002147] transition-colors">{event.title}</p>
-                                                </td>
-                                                <td className="py-5 pr-4 text-xs font-bold text-slate-500">
+                    <div className="p-1 sm:p-0">
+                        {/* Mobile Participation Card List */}
+                        <div className="sm:hidden space-y-4">
+                            {events.filter(e => e.participants?.some(p => p.memberId === user.dbId || p.memberId?._id === user.dbId)).length === 0 ? (
+                                <div className="text-center py-16 bg-slate-50/50 border-2 border-dashed border-slate-100 rounded-3xl">
+                                    <i className="fas fa-ghost text-3xl mb-3 opacity-20 block text-slate-400" />
+                                    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">No events joined yet.</p>
+                                </div>
+                            ) : events.filter(e => e.participants?.some(p => p.memberId === user.dbId || p.memberId?._id === user.dbId)).map(event => {
+                                const earnedCert = certificates.find(cert => cert.eventId?._id === event._id || cert.eventId === event._id);
+                                return (
+                                    <div key={event._id} className="bg-white rounded-3xl border border-slate-100 p-6 shadow-sm relative overflow-hidden group">
+                                        <div className="flex justify-between items-start mb-4">
+                                            <h4 className="font-bold text-slate-800 text-sm leading-tight max-w-[70%]">{event.title}</h4>
+                                            {earnedCert ? (
+                                                <span className="inline-flex items-center gap-1.5 px-2 py-1 bg-emerald-50 text-emerald-600 rounded-md text-[8px] font-black uppercase tracking-widest border border-emerald-100 whitespace-nowrap">
+                                                    <i className="fas fa-medal" /> Earned
+                                                </span>
+                                            ) : (
+                                                <span className="inline-flex items-center gap-1.5 px-2 py-1 bg-amber-50 text-amber-600 rounded-md text-[8px] font-black uppercase tracking-widest border border-amber-100 whitespace-nowrap">
+                                                    <i className="fas fa-hourglass-half" /> Pending
+                                                </span>
+                                            )}
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-3 mb-2">
+                                            <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100/50">
+                                                <i className="far fa-calendar-alt text-slate-400 mb-1 block text-xs" />
+                                                <p className="text-[10px] font-bold text-slate-600">
                                                     {new Date(event.date).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}
-                                                </td>
-                                                <td className="py-5 pr-4 text-xs font-medium text-slate-500">
+                                                </p>
+                                            </div>
+                                            <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100/50">
+                                                <i className="fas fa-location-dot text-slate-400 mb-1 block text-xs" />
+                                                <p className="text-[10px] font-bold text-slate-600 truncate">
                                                     {event.location || "TBA"}
-                                                </td>
-                                                <td className="py-5 text-right">
-                                                    {earnedCert ? (
-                                                        <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 text-emerald-600 rounded-lg text-[9px] font-black uppercase tracking-widest border border-emerald-100 shadow-sm">
-                                                            <i className="fas fa-medal" /> Earned
-                                                        </span>
-                                                    ) : (
-                                                        <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-50 text-amber-600 rounded-lg text-[9px] font-black uppercase tracking-widest border border-amber-100 shadow-sm">
-                                                            <i className="fas fa-hourglass-half" /> Pending
-                                                        </span>
-                                                    )}
-                                                </td>
-                                            </tr>
-                                        )
-                                    })
-                                )}
-                            </tbody>
-                        </table>
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+
+                        {/* Desktop Table View */}
+                        <div className="hidden sm:block overflow-x-auto custom-scrollbar">
+                            <table className="w-full text-left border-collapse">
+                                <thead>
+                                    <tr className="border-b-2 border-slate-100">
+                                        <th className="pb-4 pt-2 font-black text-[10px] uppercase tracking-widest text-slate-400">Event Title</th>
+                                        <th className="pb-4 pt-2 font-black text-[10px] uppercase tracking-widest text-slate-400">Date</th>
+                                        <th className="pb-4 pt-2 font-black text-[10px] uppercase tracking-widest text-slate-400">Venue</th>
+                                        <th className="pb-4 pt-2 font-black text-[10px] uppercase tracking-widest text-slate-400 text-right">Certificate</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-50">
+                                    {events.filter(e => e.participants?.some(p => p.memberId === user.dbId || p.memberId?._id === user.dbId)).length === 0 ? (
+                                        <tr>
+                                            <td colSpan={4} className="py-12 text-center text-slate-400">
+                                                <i className="fas fa-ghost text-3xl mb-3 opacity-20 block" />
+                                                <p className="text-[10px] font-bold uppercase tracking-widest">No events joined yet.</p>
+                                            </td>
+                                        </tr>
+                                    ) : (
+                                        events.filter(e => e.participants?.some(p => p.memberId === user.dbId || p.memberId?._id === user.dbId)).map(event => {
+                                            const earnedCert = certificates.find(cert => cert.eventId?._id === event._id || cert.eventId === event._id);
+                                            return (
+                                                <tr key={event._id} className="hover:bg-slate-50/50 transition-colors group">
+                                                    <td className="py-5 pr-4">
+                                                        <p className="font-bold text-slate-800 group-hover:text-[#002147] transition-colors">{event.title}</p>
+                                                    </td>
+                                                    <td className="py-5 pr-4 text-xs font-bold text-slate-500">
+                                                        {new Date(event.date).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                                    </td>
+                                                    <td className="py-5 pr-4 text-xs font-medium text-slate-500">
+                                                        {event.location || "TBA"}
+                                                    </td>
+                                                    <td className="py-5 text-right">
+                                                        {earnedCert ? (
+                                                            <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 text-emerald-600 rounded-lg text-[9px] font-black uppercase tracking-widest border border-emerald-100 shadow-sm">
+                                                                <i className="fas fa-medal" /> Earned
+                                                            </span>
+                                                        ) : (
+                                                            <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-50 text-amber-600 rounded-lg text-[9px] font-black uppercase tracking-widest border border-amber-100 shadow-sm">
+                                                                <i className="fas fa-hourglass-half" /> Pending
+                                                            </span>
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            )
+                                        })
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -612,7 +659,7 @@ function MemberDashboard() {
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                     {events.map((event, index) => {
-                        const hasEnded = new Date() > new Date(event.endDate || event.date);
+                        const hasEnded = Date.now() > new Date(`${event.endDate || event.date}T23:59:59`).getTime();
                         const isJoined = event.participants?.some(p => p.memberId === user.dbId || p.memberId?._id === user.dbId);
                         
                         return (
@@ -703,7 +750,7 @@ function MemberDashboard() {
                         <div className="p-10 overflow-y-auto custom-scrollbar">
                             <div className="flex items-center gap-3 mb-6">
                                 <span className="px-4 py-2 bg-[#002147] text-white text-[9px] font-bold uppercase tracking-widest rounded-xl shadow-lg shadow-blue-900/20">Official Event</span>
-                                {new Date() > new Date(selectedEvent.endDate || selectedEvent.date) && (
+                                {Date.now() > new Date(`${selectedEvent.endDate || selectedEvent.date}T23:59:59`).getTime() && (
                                     <span className="px-4 py-2 bg-rose-50 text-rose-600 border border-rose-100 text-[9px] font-bold uppercase tracking-widest rounded-xl">Event Ended</span>
                                 )}
                             </div>
@@ -734,7 +781,7 @@ function MemberDashboard() {
 
                         <div className="p-8 bg-slate-50 border-t border-slate-100 flex justify-end gap-4">
                             <button onClick={() => setSelectedEvent(null)} className="px-8 py-3.5 text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:text-slate-600 transition-colors">Dismiss</button>
-                            {!(new Date() > new Date(selectedEvent.endDate || selectedEvent.date)) && !selectedEvent.participants?.some(p => p.memberId === user.dbId || p.memberId?._id === user.dbId) && (
+                            {!(Date.now() > new Date(`${selectedEvent.endDate || selectedEvent.date}T23:59:59`).getTime()) && !selectedEvent.participants?.some(p => p.memberId === user.dbId || p.memberId?._id === user.dbId) && (
                                 <button 
                                     onClick={() => handleJoinEvent(selectedEvent._id)}
                                     className="px-10 py-4 bg-[#002147] text-white rounded-2xl text-[10px] font-bold uppercase tracking-widest shadow-xl shadow-blue-900/20 hover:scale-105 transition-all"
@@ -822,9 +869,17 @@ function MemberDashboard() {
             <div className="space-y-8">
                 {/* Profile Form */}
                 <form onSubmit={handleProfileUpdate} className="bg-white p-10 rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 space-y-6">
-                    <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center justify-between mb-4">
                         <p className="text-[10px] font-bold text-[#002147] uppercase tracking-[0.2em]">Profile Credentials</p>
-                        <div className="w-10 h-10 bg-slate-50 rounded-full flex items-center justify-center text-slate-400"><i className="fas fa-shield-halved text-sm" /></div>
+                        <div className="flex items-center gap-3">
+                            <button type="button" onClick={handleLogout} className="group flex items-center gap-2 px-4 py-2 bg-rose-50 text-rose-600 rounded-full hover:bg-rose-100 transition-all border border-rose-100 shadow-sm active:scale-95">
+                                <i className="fas fa-power-off text-[10px] group-hover:scale-110 transition-transform" />
+                                <span className="text-[9px] font-bold uppercase tracking-[0.2em]">Logout</span>
+                            </button>
+                            <div className="w-10 h-10 bg-slate-50 rounded-full flex items-center justify-center text-slate-400 border border-slate-100 shadow-inner hidden sm:flex">
+                                <i className="fas fa-shield-halved text-sm" />
+                            </div>
+                        </div>
                     </div>
                     <div className="grid gap-6">
                         <div>
@@ -845,13 +900,6 @@ function MemberDashboard() {
                     </button>
                 </form>
 
-                {/* Logout Section */}
-                <div className="pt-8 text-center border-t border-slate-50 mt-10">
-                    <button onClick={handleLogout} className="group inline-flex items-center gap-3 bg-rose-50 text-rose-600 px-8 py-4 rounded-2xl font-bold uppercase text-[10px] tracking-[0.3em] hover:bg-rose-100 transition-all shadow-sm">
-                        <i className="fas fa-power-off group-hover:rotate-90 transition-transform duration-500" />
-                        Logout
-                    </button>
-                </div>
             </div>
         </div>
     );
@@ -940,26 +988,6 @@ function MemberDashboard() {
               .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
           `}} />
 
-                {/* Bottom Profile (Polished User Card) */}
-                <div className="p-4 bg-black/10">
-                    <div className="bg-white/5 border border-white/5 p-4 rounded-2xl hover:bg-white/[0.08] transition-all group">
-                        <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-blue-400 rounded-xl flex items-center justify-center border border-white/10 shadow-lg text-white font-bold text-xs uppercase">
-                                {user.name?.charAt(0) || "M"}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                                <p className="text-white text-xs font-bold truncate tracking-wide">{user.name}</p>
-                                <div className="flex items-center gap-1.5 mt-1">
-                                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                                    <p className="text-white/40 text-[9px] font-bold uppercase tracking-widest">Active Session</p>
-                                </div>
-                            </div>
-                            <button onClick={() => setActiveTab("settings")} className="text-white/20 hover:text-white transition-colors p-2" title="Profile Settings">
-                                <i className="fas fa-cog text-sm" />
-                            </button>
-                        </div>
-                    </div>
-                </div>
             </aside>
 
             {/* Mobile backdrop */}
@@ -978,10 +1006,14 @@ function MemberDashboard() {
                             <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest hidden sm:block">Member Dashboard</p>
                         </div>
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 sm:gap-3">
+                        <button onClick={() => setActiveTab("settings")}
+                            className="text-xs font-bold text-slate-500 hover:text-[#002147] w-10 h-10 sm:w-auto sm:h-auto sm:px-4 sm:py-2 hover:bg-slate-50 rounded-xl flex items-center justify-center sm:justify-start gap-2 transition-all border border-transparent hover:border-slate-100">
+                            <i className="fas fa-cog text-[14px] sm:text-xs" /> <span className="hidden sm:inline">Settings</span>
+                        </button>
                         <button onClick={() => navigate("/")}
-                            className="text-xs font-bold text-slate-500 hover:text-[#002147] px-4 py-2 hover:bg-slate-50 rounded-lg flex items-center gap-2 transition-all">
-                            <i className="fas fa-home" /> Site Overview
+                            className="text-xs font-bold text-[#002147] w-10 h-10 sm:w-auto sm:h-auto sm:px-4 sm:py-2 bg-blue-50 hover:bg-blue-100 rounded-xl flex items-center justify-center sm:justify-start gap-2 transition-all border border-transparent">
+                            <i className="fas fa-home text-[14px] sm:text-xs" /> <span className="hidden sm:inline">Site Overview</span>
                         </button>
                     </div>
                 </header>
