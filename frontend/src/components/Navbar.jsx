@@ -9,7 +9,6 @@ export default function Navbar() {
   const location = useLocation();
 
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [userName, setUserName] = useState("");
 
   const navLinks = [
     { name: "Home", path: "/" },
@@ -26,7 +25,6 @@ export default function Navbar() {
 
     if (token && status === "approved") {
       setIsLoggedIn(true);
-      setUserName(name || "Member");
     } else {
       setIsLoggedIn(false);
     }

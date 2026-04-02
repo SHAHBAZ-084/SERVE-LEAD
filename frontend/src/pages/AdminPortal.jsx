@@ -693,7 +693,7 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
                 const reader = new FileReader();
                 reader.onloadend = () => setCertAssets(prev => ({ ...prev, [key]: reader.result }));
                 reader.readAsDataURL(blob);
-            } catch (e) {
+            } catch (err) {
                 console.error(`Failed to load ${key} as Base64:`, e);
             }
         };
@@ -894,7 +894,7 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
                     await downloadPDF(cert);
                     // Add a small delay for browser stability
                     await new Promise(r => setTimeout(r, 500));
-                } catch (e) {
+                } catch (err) {
                     console.error("Bulk Download Error:", e);
                 }
             }
@@ -1861,7 +1861,7 @@ function AdminPortal() {
             setIsProcessing(true);
             let count = 0;
             await Promise.all(selectedIds.map(async id => {
-                try { await api.post(`admin/approve-member/${id}`, {}, auth); count++; } catch (e) {}
+                try { await api.post(`admin/approve-member/${id}`, {}, auth); count++; } catch { } // eslint-disable-line no-empty
             }));
             notify(`Approved ${count} members.`);
             fetchPendingMembers();
@@ -2176,7 +2176,7 @@ function AdminPortal() {
                         notify("Selected time has already passed for today.", "error");
                         return;
                     }
-                } catch (e) {
+                } catch (err) {
                     console.error("Date validation error:", e);
                 }
             }

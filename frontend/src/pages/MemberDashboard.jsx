@@ -1,8 +1,13 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import api, { getImgUrl } from "../api";
 import logo from "../assets/logo.png";
 import sealImg from "../assets/sealcertificate.png";
+const Spinner = () => (
+    <div className="flex justify-center py-16">
+        <div className="w-8 h-8 border-3 border-[#002147] border-t-transparent rounded-full animate-spin" style={{ borderWidth: "3px" }} />
+    </div>
+);
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 
@@ -13,7 +18,7 @@ const inputCls =
 /** Counts up from 0 → target with easeOutQuart easing */
 function useCountUp(target, duration = 1200) {
     const [count, setCount] = useState(0);
-    const raf = (typeof window !== 'undefined') ? { current: null } : null;
+    const raf = useRef(null);
     useEffect(() => {
         const end = Number(target);
         if (!end || isNaN(end)) { setCount(0); return; }
@@ -26,7 +31,9 @@ function useCountUp(target, duration = 1200) {
             else setCount(end);
         };
         raf.current = requestAnimationFrame(tick);
-        return () => cancelAnimationFrame(raf.current);
+        return () => {
+             if (raf.current) cancelAnimationFrame(raf.current);
+        };
     }, [target, duration]);
     return count;
 }
@@ -58,13 +65,7 @@ const StatCard = ({ icon, label, value, color }) => {
     );
 };
 
-const Spinner = () => (
-    <div className="flex justify-center py-20">
-        <div className="w-8 h-8 border-3 border-[#002147] border-t-transparent rounded-full animate-spin" style={{ borderWidth: "3px" }} />
-    </div>
-);
-
-function MemberDashboard() {
+const MemberDashboard = () => {
     const [activeTab, setActiveTab] = useState("dashboard");
     const [certificates, setCertificates] = useState([]);
     const [events, setEvents] = useState([]);
@@ -78,15 +79,34 @@ function MemberDashboard() {
     const [joining, setJoining] = useState(false);
 
     const navigate = useNavigate();
-    const status = localStorage.getItem("status");
+
+    const auth = useMemo(() => ({
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
+    }), []);
+
+    const handleLogout = useCallback(() => {
+        localStorage.clear();
+        navigate("/");
+    }, [navigate]);
+
+    const fetchAllData = useCallback(async () => {
+        setLoading(true);
+        try {
+            const certRes = await api.get("certificates/member/me", auth);
+            setCertificates(certRes.data);
+            const eventRes = await api.get("events", auth);
+            setEvents(eventRes.data);
+            const annRes = await api.get("announcements", auth);
+            setAnnouncements(annRes.data);
+        } catch (err) {
+            console.error("Error fetching dashboard data:", err);
+        } finally {
+            setLoading(false);
+        }
+    }, [auth]);
 
     useEffect(() => {
         const token = localStorage.getItem("token");
-        const storedName = localStorage.getItem("userName");
-        const storedEmail = localStorage.getItem("userEmail");
-        const storedRole = localStorage.getItem("userRole") || "General Member";
-        const storedYear = localStorage.getItem("joiningYear") || "20XX";
-
         if (!token) {
             navigate("/login");
             return;
@@ -94,75 +114,33 @@ function MemberDashboard() {
 
         const fetchStatus = async () => {
             try {
-                const res = await api.get("auth/me", { headers: { Authorization: `Bearer ${token}` } });
+                const res = await api.get("auth/me", auth);
                 const member = res.data;
-                
-                // Update local storage with real-time status
-                localStorage.setItem("status", member.status);
-                localStorage.setItem("memberId", member.member_id || "Awaiting Approval");
-                localStorage.setItem("userName", member.name);
-                localStorage.setItem("userRole", `${member.role} Member`);
-                
-                setUser(prev => ({
-                    ...prev,
+                setUser({
                     name: member.name,
                     email: member.email,
                     id: member.member_id || "Awaiting Approval",
                     dbId: member._id,
                     role: `${member.role} Member`,
                     year: member.joining_year || "20XX",
+                    status: member.status,
                     interview_called: member.interview_called
-                }));
-
-                if (member.status === "pending") {
-                    setLoading(false);
-                } else {
-                    fetchAllData();
-                }
+                });
+                if (member.status === "pending") setLoading(false);
+                else fetchAllData();
             } catch (err) {
-                console.error("Auth verify failed:", err);
-                // If token is invalid or user deleted
-                if (err.response?.status === 401 || err.response?.status === 404) {
-                    handleLogout();
-                }
+                if (err.response?.status === 401 || err.response?.status === 404) handleLogout();
                 setLoading(false);
             }
         };
-
         fetchStatus();
-    }, [navigate]);
-
-    const fetchAllData = async () => {
-        setLoading(true);
-        const token = localStorage.getItem("token");
-        const auth = { headers: { Authorization: `Bearer ${token}` } };
-
-        try {
-            // Fetch Certificates (Dynamic Metadata)
-            const certRes = await api.get("certificates/member/me", auth);
-            setCertificates(certRes.data);
-
-            // Fetch Events
-            const eventRes = await api.get("events", auth);
-            setEvents(eventRes.data);
-
-            // Fetch Announcements
-            const annRes = await api.get("announcements", auth);
-            setAnnouncements(annRes.data);
-
-        } catch (err) {
-            console.error("Error fetching dashboard data:", err);
-        } finally {
-            setLoading(false);
-        }
-    };
+    }, [navigate, fetchAllData, handleLogout, auth]);
 
     const [exportData, setExportData] = useState(null);
     const [exporting, setExporting] = useState(false);
     const [certAssets, setCertAssets] = useState({ logo: null, seal: null });
 
     useEffect(() => {
-        // Pre-load assets into Base64 to bypass CORS/Taint issues during capture
         const loadToDataURL = async (url, key) => {
             try {
                 const response = await fetch(url);
@@ -170,36 +148,27 @@ function MemberDashboard() {
                 const reader = new FileReader();
                 reader.onloadend = () => setCertAssets(prev => ({ ...prev, [key]: reader.result }));
                 reader.readAsDataURL(blob);
-            } catch (e) {
-                console.error(`Failed to load ${key} as Base64:`, e);
-            }
+            } catch { } // eslint-disable-line no-empty
         };
         loadToDataURL(logo, 'logo');
         loadToDataURL(sealImg, 'seal');
     }, []);
 
-    const handleLogout = () => {
-        localStorage.removeItem("token");
-        localStorage.removeItem("userName");
-        localStorage.removeItem("memberId");
-        localStorage.removeItem("status");
-        localStorage.removeItem("userEmail");
-        localStorage.removeItem("userRole");
-        localStorage.removeItem("joiningYear");
-        navigate("/");
-    };
-
     const handleProfileUpdate = async (e) => {
-        // ... (existing code omitted for brevity but I'll replace the block)
+        if (e && e.preventDefault) e.preventDefault();
+        try {
+            await api.put("auth/profile", profileForm, auth);
+            alert("Profile updated successfully!");
+            setProfileForm(prev => ({ ...prev, password: "" }));
+        } catch (err) {
+            alert(err.response?.data?.error || "Failed to update profile");
+        }
     };
 
     const handleJoinEvent = async (eventId) => {
-        const token = localStorage.getItem("token");
         setJoining(true);
         try {
-            const res = await api.post(`events/${eventId}/join`, {}, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            const res = await api.post(`events/${eventId}/join`, {}, auth);
             alert(res.data.message || "Successfully joined!");
             fetchAllData(); // Refresh list to show 'Joined' status
         } catch (err) {
