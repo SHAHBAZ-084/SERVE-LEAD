@@ -2,7 +2,7 @@ import Navbar from "../components/Navbar";
 import StatsSection from "../components/StatsSection";
 import TeamSection from "../components/TeamSection";
 import Footer from "../components/Footer";
-import bgPhoto from "../assets/Facebook.jpg";
+import bgPhoto from "../assets/facebook.jpg";
 
 export default function AboutPage() {
   return (
