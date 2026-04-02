@@ -62,6 +62,7 @@ jobs:
     needs: build-and-test
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
+    environment: FIREBASE_SERVICE_ACCOUNT
 
     steps:
       - name: Checkout Repository
