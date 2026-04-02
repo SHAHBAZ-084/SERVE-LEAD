@@ -102,7 +102,8 @@ router.post('/forgot-password', asyncHandler(async (req, res) => {
 
     await member.save();
 
-    const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/reset-password/${resetToken}`;
+    const frontendBase = process.env.FRONTEND_URL || 'http://localhost:5173';
+    const resetUrl = `${frontendBase}${frontendBase.endsWith('/') ? '' : '/'}reset-password/${resetToken}`;
     const success = await sendResetPasswordEmail(member.email, member.name, resetUrl);
 
     if (!success) {

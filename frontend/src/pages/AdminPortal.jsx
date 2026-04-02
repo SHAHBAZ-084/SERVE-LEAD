@@ -1,19 +1,10 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import api from "../api";
+import api, { getImgUrl, API_BASE as API_BASE_URL } from "../api";
 import logo from "../assets/logo.png";
 import sealImg from "../assets/sealcertificate.png";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
-const getImgUrl = (path) => {
-    if (!path) return "";
-    if (path.startsWith('http')) return path;
-    const base = API_BASE_URL.replace(/\/$/, '');
-    const cleanPath = path.startsWith('/') ? path : `/${path}`;
-    return `${base}${cleanPath}`;
-};
 
 // ── Shared Primitives ─────────────────────────────────────
 const inputCls =
@@ -73,14 +64,276 @@ const Spinner = () => (
     </div>
 );
 
+// ── Batches Tab (Refactored Standalone) ───────────────────
+const BatchesTab = ({ members, issuedCertificates, auth, api, notify }) => {
+    const [selectedBatch, setSelectedBatch] = useState(null);
+    const [detailView, setDetailView] = useState(null);
+    const [batchSearch, setBatchSearch] = useState("");
+
+    // Group members by their joining date using the Sep 1st boundary
+    const calculateBatch = (dateStr) => {
+        if (!dateStr) return new Date().getFullYear();
+        const date = new Date(dateStr);
+        if (isNaN(date.getTime())) return new Date().getFullYear();
+        const year = date.getFullYear();
+        const month = date.getMonth(); // 0 is Jan, 8 is Sept
+        return month >= 8 ? year : year - 1;
+    };
+
+    // 1. Identify active members
+    const activeMembers = (members || []).filter(m => m && m.role !== 'Admin' && m.role !== 'Superuser');
+    const activeIds = new Set(activeMembers.map(m => m.member_id));
+
+    // 2. Extract unique historical members from certificates that are no longer in the active list
+    const historicalShadows = [];
+    const seenHistoricalIds = new Set();
+
+    (issuedCertificates || []).forEach(cert => {
+        const idStr = cert.member_id_str || cert.memberId?.member_id;
+        const nameStr = cert.memberName || cert.memberId?.name;
+
+        if (idStr && !activeIds.has(idStr) && !seenHistoricalIds.has(idStr)) {
+            historicalShadows.push({
+                _id: `hist-${idStr}`,
+                member_id: idStr,
+                name: nameStr,
+                createdAt: cert.createdAt,
+                isHistorical: true,
+                role: 'General'
+            });
+            seenHistoricalIds.add(idStr);
+        }
+    });
+
+    // 3. Complete Registry (Active + Historical)
+    const completeRegistry = [...activeMembers, ...historicalShadows];
+
+    const batchData = completeRegistry.reduce((acc, m) => {
+        const batchYear = calculateBatch(m.createdAt);
+        if (!acc[batchYear]) acc[batchYear] = [];
+        acc[batchYear].push(m);
+        return acc;
+    }, {});
+
+    const sortedBatchYears = Object.keys(batchData).sort((a, b) => b - a);
+
+    if (selectedBatch) {
+        const batchMembers = (batchData[selectedBatch] || []).filter(m =>
+            (m.name || "").toLowerCase().includes(batchSearch.toLowerCase()) ||
+            (m.member_id || "").toLowerCase().includes(batchSearch.toLowerCase())
+        );
+
+        return (
+            <div className="space-y-8 animate-fade-up">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
+                    <button onClick={() => { setSelectedBatch(null); setBatchSearch(""); }} className="flex items-center gap-2 text-slate-400 hover:text-[#002147] transition-colors text-xs font-black uppercase tracking-widest leading-none bg-transparent border-none cursor-pointer">
+                        <i className="fas fa-arrow-left" /> Back to Overview
+                    </button>
+
+                    <div className="flex-1 max-w-md w-full relative">
+                        <i className="fas fa-search absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 text-xs" />
+                        <input
+                            type="text"
+                            placeholder={`Search in Batch ${selectedBatch}...`}
+                            value={batchSearch}
+                            onChange={(e) => setBatchSearch(e.target.value)}
+                            className="w-full bg-white border border-slate-200 rounded-2xl pl-12 pr-6 py-3.5 text-sm font-bold text-slate-800 placeholder:text-slate-300 focus:ring-8 focus:ring-[#002147]/5 focus:border-[#002147] outline-none transition-all shadow-sm"
+                        />
+                    </div>
+                </div>
+
+                <div className="sm:hidden space-y-4">
+                    {batchMembers.map(m => (
+                        <div key={m._id} className="bg-white rounded-[2rem] border border-slate-100 shadow-xl p-6 relative overflow-hidden group">
+                            <div className="absolute top-0 right-0 p-4 opacity-[0.03] group-hover:opacity-[0.06] transition-opacity">
+                                <i className="fas fa-id-card text-6xl" />
+                            </div>
+                            <div className="flex items-center justify-between mb-6">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-14 h-14 bg-slate-100 text-[#002147] rounded-2xl flex items-center justify-center text-xl font-black shadow-inner border border-white">
+                                        {(m.name || "?")[0].toUpperCase()}
+                                    </div>
+                                    <div className="flex flex-col">
+                                        <span className="font-bold text-slate-800 tracking-tight leading-none mb-1.5">
+                                            {m.name}
+                                            {m.isHistorical && <span className="ml-2 text-[8px] bg-rose-50 text-rose-500 px-1.5 py-0.5 rounded border border-rose-100">DELETED</span>}
+                                        </span>
+                                        <p className="text-[10px] font-bold text-[#003366] uppercase tracking-widest">{m.member_id || 'PENDING'}</p>
+                                    </div>
+                                </div>
+                                <div className="text-right">
+                                    <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-0.5">Joined</span>
+                                    <span className="text-[10px] font-bold text-slate-600 block">{m.createdAt ? new Date(m.createdAt).toLocaleDateString() : 'N/A'}</span>
+                                </div>
+                            </div>
+                            <button onClick={() => setDetailView(m)} className="w-full bg-[#002147] text-white py-3.5 rounded-xl font-black uppercase tracking-[0.2em] text-[10px] shadow-lg shadow-blue-900/10">
+                                <i className="fas fa-eye mr-2" /> View Dossier
+                            </button>
+                        </div>
+                    ))}
+                </div>
+
+                <div className="hidden sm:block bg-white rounded-[2.5rem] border border-slate-100 shadow-2xl overflow-hidden">
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left">
+                            <thead>
+                                <tr className="bg-slate-50/50 border-b border-slate-100">
+                                    <th className="px-8 py-5 text-xs font-black uppercase tracking-widest text-slate-400">Identity</th>
+                                    <th className="px-8 py-5 text-xs font-black uppercase tracking-widest text-slate-400">Joining Date</th>
+                                    <th className="px-8 py-5 text-xs font-black uppercase tracking-widest text-slate-400 text-right">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-50 text-[13px]">
+                                {batchMembers.map(m => (
+                                    <tr key={m._id} className="hover:bg-slate-50/30 transition-colors">
+                                        <td className="px-8 py-5">
+                                            <div className="flex flex-col">
+                                                <span className="font-bold text-slate-800 tracking-tight leading-none mb-1.5">
+                                                    {m.name}
+                                                    {m.isHistorical && <span className="ml-2 text-[8px] bg-rose-50 text-rose-500 px-1.5 py-0.5 rounded border border-rose-100">DELETED</span>}
+                                                </span>
+                                                <span className="text-xs font-bold text-[#003366] uppercase tracking-widest">{m.member_id || 'PENDING'}</span>
+                                            </div>
+                                        </td>
+                                        <td className="px-8 py-5 font-bold text-slate-500">
+                                            {m.createdAt ? new Date(m.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : 'N/A'}
+                                        </td>
+                                        <td className="px-8 py-5 text-right">
+                                            <button onClick={() => setDetailView(m)} className="text-xs bg-slate-900 shadow-lg shadow-black/10 text-white px-5 py-2.5 rounded-xl hover:bg-slate-800 transition-all font-black uppercase tracking-widest leading-none">
+                                                <i className="fas fa-eye mr-2" /> View Detail
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                 {detailView && (
+                    <div className="fixed inset-0 z-[200] flex items-center justify-center p-3 sm:p-6 md:p-10 bg-slate-900/80 backdrop-blur-xl animate-fade-in">
+                        <div className="bg-white w-[98%] sm:w-[95%] max-w-2xl rounded-[2rem] sm:rounded-[3rem] shadow-2xl border border-white/20 overflow-hidden relative animate-zoom-in max-h-[95vh] sm:max-h-[90vh] flex flex-col">
+                            <div className="bg-[#002147] pt-10 pb-8 px-6 sm:px-10 text-white flex-shrink-0 relative">
+                                <button onClick={() => setDetailView(null)} className="absolute top-6 right-8 w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center hover:bg-rose-500 hover:text-white transition-all shadow-xl active:scale-95 z-20 group">
+                                    <i className="fas fa-times text-xl group-hover:rotate-90 transition-transform duration-500" />
+                                </button>
+                                <div className="flex flex-col items-center text-center gap-3 sm:gap-5 relative z-10">
+                                    <div className="w-20 h-20 sm:w-24 sm:h-24 bg-white/10 rounded-[2rem] sm:rounded-[2.5rem] flex items-center justify-center text-3xl sm:text-4xl font-black shadow-inner border border-white/10 backdrop-blur-md">
+                                        {(detailView.name || "?")[0].toUpperCase()}
+                                    </div>
+                                    <div className="space-y-1.5 sm:space-y-2">
+                                        <h3 className="text-xl sm:text-2xl md:text-3xl font-black tracking-tight leading-tight uppercase italic">{detailView.name || 'Anonymous ID'}</h3>
+                                        <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3">
+                                            <span className="bg-white/10 border border-white/10 px-3 py-1 sm:px-4 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-black uppercase tracking-widest sm:tracking-[0.2em] backdrop-blur-sm">#{detailView.member_id}</span>
+                                            <span className="bg-blue-400/20 px-3 py-1 sm:px-4 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-black uppercase tracking-widest text-blue-200">Batch {calculateBatch(detailView.createdAt)}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="p-6 sm:p-10 overflow-y-auto custom-scrollbar flex-1 bg-white">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 text-left">
+                                    <div className="bg-slate-50 p-5 rounded-2xl border border-slate-100">
+                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 flex items-center gap-2"><i className="fas fa-envelope text-slate-300" /> Email</p>
+                                        <p className="text-sm font-bold text-slate-800 break-all">{detailView.email || 'N/A'}</p>
+                                    </div>
+                                    <div className="bg-slate-50 p-5 rounded-2xl border border-slate-100">
+                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 flex items-center gap-2"><i className="fas fa-phone text-slate-300" /> Contact</p>
+                                        <p className="text-sm font-bold text-slate-800">{detailView.whatsapp || detailView.phone || 'N/A'}</p>
+                                    </div>
+                                    <div className="bg-slate-50 p-5 rounded-2xl border border-slate-100">
+                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 flex items-center gap-2"><i className="fas fa-user-tie text-slate-300" /> Father's Name</p>
+                                        <p className="text-sm font-bold text-slate-800">{detailView.father_name || 'N/A'}</p>
+                                    </div>
+                                    <div className="bg-slate-50 p-5 rounded-2xl border border-slate-100">
+                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 flex items-center gap-2"><i className="fas fa-map-marker-alt text-slate-300" /> Residence</p>
+                                        <p className="text-sm font-bold text-slate-800">{detailView.city ? `${detailView.address || ''}, ${detailView.city}`.replace(/^, /, '') : (detailView.address || 'N/A')}</p>
+                                    </div>
+
+                                    {/* Academic Background */}
+                                    <div className="sm:col-span-2 mt-4 flex items-center gap-3">
+                                        <div className="h-px bg-slate-200 flex-1" />
+                                        <span className="text-[10px] font-black text-[#002147] uppercase tracking-widest bg-blue-50 px-4 py-1.5 rounded-full border border-blue-100"><i className="fas fa-graduation-cap mr-2" /> Academic Profile</span>
+                                        <div className="h-px bg-slate-200 flex-1" />
+                                    </div>
+
+                                    <div className="bg-indigo-50/50 p-5 rounded-2xl border border-indigo-100/50">
+                                        <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-1.5">Education Level</p>
+                                        <p className="text-sm font-bold text-indigo-900">{detailView.education_level || 'N/A'}</p>
+                                    </div>
+                                    <div className="bg-indigo-50/50 p-5 rounded-2xl border border-indigo-100/50">
+                                        <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-1.5">Degree / Program</p>
+                                        <p className="text-sm font-bold text-indigo-900">{detailView.program || 'N/A'}</p>
+                                    </div>
+                                    <div className="bg-indigo-50/50 p-5 rounded-2xl border border-indigo-100/50">
+                                        <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-1.5">Institution / University</p>
+                                        <p className="text-sm font-bold text-indigo-900">{detailView.university || 'N/A'}</p>
+                                    </div>
+                                    <div className="bg-indigo-50/50 p-5 rounded-2xl border border-indigo-100/50">
+                                        <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-1.5">Passing Year</p>
+                                        <p className="text-sm font-bold text-indigo-900">{detailView.passing_year || 'N/A'}</p>
+                                    </div>
+                                    
+                                    {/* Administrative Info */}
+                                    <div className="sm:col-span-2 mt-4 flex items-center gap-3">
+                                        <div className="h-px bg-slate-200 flex-1" />
+                                        <span className="text-[10px] font-black text-[#002147] uppercase tracking-widest bg-blue-50 px-4 py-1.5 rounded-full border border-blue-100"><i className="fas fa-sitemap mr-2" /> System Status</span>
+                                        <div className="h-px bg-slate-200 flex-1" />
+                                    </div>
+                                    
+                                    <div className="bg-slate-50 p-5 rounded-2xl border border-slate-100">
+                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Assigned Role</p>
+                                        <p className="text-sm font-bold text-[#002147] tracking-widest uppercase">{detailView.role || 'N/A'}</p>
+                                    </div>
+                                    <div className="bg-slate-50 p-5 rounded-2xl border border-slate-100">
+                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Account Status</p>
+                                        <p className={`text-sm font-bold uppercase tracking-widest ${detailView.status === 'blocked' ? 'text-rose-600' : 'text-emerald-600'}`}>{detailView.status || 'N/A'}</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="p-8 bg-slate-50 border-t border-slate-100 flex items-center justify-end">
+                                <button onClick={() => setDetailView(null)} className="px-6 py-3 bg-[#002147] text-white text-xs font-black uppercase tracking-widest rounded-xl hover:bg-slate-800 transition-all">Close</button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </div>
+        );
+    }
+
+    return (
+        <div className="space-y-10 animate-fade-up">
+            <div className="relative p-12 rounded-[3.5rem] overflow-hidden border border-slate-100 bg-white shadow-2xl shadow-slate-200/40">
+                <div className="absolute top-0 right-0 w-96 h-96 bg-blue-500/5 blur-[120px] -mr-48 -mt-48" />
+                <div className="relative z-10 text-left">
+                    <h2 className="text-4xl font-black text-slate-900 tracking-tight leading-tight">Society Batches</h2>
+                    <p className="text-slate-400 text-[10px] font-bold uppercase tracking-[0.4em] mt-3">Seasonal Grouping (Sep 1st Boundary)</p>
+                </div>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+                {sortedBatchYears.map(year => (
+                    <button key={year} onClick={() => setSelectedBatch(year)} className="group p-10 bg-white border border-slate-100 rounded-[3rem] shadow-2xl hover:-translate-y-3 transition-all text-left relative overflow-hidden active:scale-95">
+                        <div className="absolute top-0 right-0 p-8 text-[#002147]/5 group-hover:text-[#002147]/10 transition-colors"><i className="fas fa-calendar-alt text-8xl rotate-12" /></div>
+                        <h4 className="text-3xl font-black text-slate-800 mb-2 tracking-tight">Batch {year}</h4>
+                        <p className="text-[#003366] text-xs font-bold uppercase tracking-widest">{batchData[year].length} Members</p>
+                    </button>
+                ))}
+            </div>
+        </div>
+    );
+};
+
 // ── Main Portal ───────────────────────────────────────────
 // ── Customization Tab (SUPERUSER ONLY) ──────────────────
-const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api }) => {
+const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, members }) => {
     const [activeSubTab, setActiveSubTab] = useState("donation");
     const [channels, setChannels] = useState([]);
     const [teamStructure, setTeamStructure] = useState([]);
     const [leadership, setLeadership] = useState({ name: "", role: "", program: "", desc: "", img: "" });
     const [submitting, setSubmitting] = useState(false);
+    
+    // Admin Promotion State
+    const [adminSearch, setAdminSearch] = useState("");
+    const [foundMembers, setFoundMembers] = useState([]);
 
     const PAK_BANKS = [
         "Meezan Bank", "Habib Bank Limited (HBL)", "United Bank Limited (UBL)",
@@ -104,6 +357,19 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api }) =
             }
         });
     }, [api]);
+
+    useEffect(() => {
+        if (adminSearch.length > 2) {
+            const delayDebounceFn = setTimeout(() => {
+                api.get(`admin/members?search=${adminSearch}`, auth).then(r => {
+                    setFoundMembers(r.data.members.filter(m => m.role === 'General'));
+                }).catch(() => setFoundMembers([]));
+            }, 300);
+            return () => clearTimeout(delayDebounceFn);
+        } else {
+            setFoundMembers([]);
+        }
+    }, [adminSearch]);
 
     const save = async (e) => {
         if (e) e.preventDefault();
@@ -131,6 +397,18 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api }) =
         finally { setSubmitting(false); }
     };
 
+    const promoteMember = async (id, name) => {
+        if (!window.confirm(`Promote ${name} to Administrator role?`)) return;
+        setSubmitting(true);
+        try {
+            await api.patch(`admin/members/${id}/promote`, {}, auth);
+            notify(`${name} is now an Admin!`);
+            setAdminSearch("");
+            setFoundMembers([]);
+        } catch (err) { notify(err.response?.data?.error || "Promotion failed", "error"); }
+        finally { setSubmitting(false); }
+    };
+
     const addChannel = (type) => {
         const newChannel = type === 'Bank'
             ? { id: Date.now(), type: 'Bank', bankName: PAK_BANKS[0], iban: "", accountNumber: "" }
@@ -138,12 +416,8 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api }) =
         setChannels([...channels, newChannel]);
     };
 
-    const updateChannel = (id, field, value) => {
-        setChannels(channels.map(c => c.id === id ? { ...c, [field]: value } : c));
-    };
-
+    const updateChannel = (id, field, value) => setChannels(channels.map(c => c.id === id ? { ...c, [field]: value } : c));
     const removeChannel = (id) => setChannels(channels.filter(c => c.id !== id));
-
     const addCategory = () => setTeamStructure([...teamStructure, { id: Date.now(), name: "N/A Category", members: [] }]);
     const updateCategory = (id, name) => setTeamStructure(teamStructure.map(c => c.id === id ? { ...c, name } : c));
     const removeCategory = (id) => setTeamStructure(teamStructure.filter(c => c.id !== id));
@@ -179,22 +453,18 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api }) =
 
     return (
         <div className="max-w-4xl mx-auto space-y-8 animate-fade-up pb-20">
-            {/* Sub-Navigation Buttons */}
             <div className="flex gap-4 p-2 bg-slate-200/50 rounded-2xl w-fit">
-                <button
-                    onClick={() => setActiveSubTab("donation")}
-                    className={`py-2.5 px-6 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all ${activeSubTab === "donation" ? "bg-white text-cyan-600 shadow-sm" : "text-slate-500 hover:text-slate-800"
-                        }`}
-                >
+                <button onClick={() => setActiveSubTab("donation")} className={`py-2.5 px-6 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all ${activeSubTab === "donation" ? "bg-white text-cyan-600 shadow-sm" : "text-slate-500 hover:text-slate-800"}`}>
                     <i className="fas fa-money-check-dollar mr-2"></i> Donation Channels
                 </button>
-                <button
-                    onClick={() => setActiveSubTab("team")}
-                    className={`py-2.5 px-6 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all ${activeSubTab === "team" ? "bg-white text-purple-600 shadow-sm" : "text-slate-500 hover:text-slate-800"
-                        }`}
-                >
+                <button onClick={() => setActiveSubTab("team")} className={`py-2.5 px-6 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all ${activeSubTab === "team" ? "bg-white text-purple-600 shadow-sm" : "text-slate-500 hover:text-slate-800"}`}>
                     <i className="fas fa-users-gear mr-2"></i> Team Management
                 </button>
+                {auth.is_superuser && (
+                    <button onClick={() => setActiveSubTab("admins")} className={`py-2.5 px-6 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all ${activeSubTab === "admins" ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500 hover:text-slate-800"}`}>
+                        <i className="fas fa-shield-halved mr-2"></i> Manage Admins
+                    </button>
+                )}
             </div>
 
             {activeSubTab === "donation" && (
@@ -204,71 +474,54 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api }) =
                         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
                             <div className="flex items-center gap-4">
                                 <div className="w-12 h-12 bg-cyan-50 text-cyan-600 rounded-2xl flex items-center justify-center text-xl shadow-inner">
-                                    <i className="fas fa-screwdriver-wrench" />
+                                    <i className="fas fa-money-bill-transfer" />
                                 </div>
                                 <div>
-                                    <h3 className="text-2xl font-black text-slate-800 tracking-tight uppercase">Donation Channels</h3>
-                                    <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mt-1">Global Financial Overrides</p>
+                                    <h3 className="text-xl font-black text-slate-800 tracking-tight">Financial Channels</h3>
+                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Global donation and account settings</p>
                                 </div>
                             </div>
                             <div className="flex gap-2">
-                                <button type="button" onClick={() => addChannel('Wallet')} className="px-5 py-2.5 bg-emerald-50 text-emerald-600 rounded-xl text-[10px] font-black uppercase tracking-widest border border-emerald-100 hover:bg-emerald-100 transition-all">
-                                    + Add Wallet
-                                </button>
-                                <button type="button" onClick={() => addChannel('Bank')} className="px-5 py-2.5 bg-blue-50 text-blue-600 rounded-xl text-[10px] font-black uppercase tracking-widest border border-blue-100 hover:bg-blue-100 transition-all">
-                                    + Add Bank
-                                </button>
+                                <button type="button" onClick={() => addChannel('Wallet')} className="px-5 py-2.5 bg-emerald-50 text-emerald-600 rounded-xl text-[10px] font-black uppercase border border-emerald-100">+ Add Wallet</button>
+                                <button type="button" onClick={() => addChannel('Bank')} className="px-5 py-2.5 bg-blue-50 text-blue-600 rounded-xl text-[10px] font-black uppercase border border-blue-100">+ Add Bank</button>
                             </div>
                         </div>
 
                         <div className="space-y-6">
-                            {channels.length === 0 && (
-                                <div className="text-center py-12 bg-slate-50 rounded-3xl border border-dashed border-slate-200">
-                                    <i className="fas fa-plus-circle text-slate-200 text-3xl mb-3 block" />
-                                    <p className="text-slate-400 text-xs font-bold uppercase tracking-widest">No channels configured</p>
-                                </div>
-                            )}
+                            {channels.length === 0 && <div className="text-center py-12 bg-slate-50 rounded-3xl border border-dashed border-slate-200 text-slate-400 text-xs font-bold uppercase">No channels configured</div>}
                             <div className="grid grid-cols-1 gap-6">
                                 {channels.map((ch) => (
-                                    <div key={ch.id} className="p-6 bg-slate-50/50 rounded-3xl border border-slate-200/60 relative group animate-fade-up">
-                                        <button type="button" onClick={() => removeChannel(ch.id)} className="absolute top-4 right-4 text-slate-300 hover:text-rose-500 transition-colors p-2">
-                                            <i className="fas fa-trash-alt text-sm" />
-                                        </button>
+                                    <div key={ch.id} className="p-6 bg-slate-50/50 rounded-3xl border border-slate-200/60 relative group">
+                                        <button type="button" onClick={() => removeChannel(ch.id)} className="absolute top-4 right-4 text-slate-300 hover:text-rose-500 transition-colors p-2"><i className="fas fa-trash-alt text-sm" /></button>
                                         <div className="flex items-center gap-3 mb-6">
-                                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs ${ch.type === 'Bank' ? 'bg-blue-100 text-blue-600' : 'bg-emerald-100 text-emerald-600'}`}>
-                                                <i className={`fas ${ch.type === 'Bank' ? 'fa-building-columns' : 'fa-mobile-screen'}`} />
-                                            </div>
+                                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs ${ch.type === 'Bank' ? 'bg-blue-100 text-blue-600' : 'bg-emerald-100 text-emerald-600'}`}><i className={`fas ${ch.type === 'Bank' ? 'fa-building-columns' : 'fa-mobile-screen'}`} /></div>
                                             <span className="text-xs font-black text-slate-900 uppercase tracking-widest">{ch.type} Channel</span>
                                         </div>
                                         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
                                             {ch.type === 'Wallet' ? (
                                                 <>
                                                     <div>
-                                                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 block">Wallet Type</label>
-                                                        <select value={ch.walletType} onChange={e => updateChannel(ch.id, 'walletType', e.target.value)} className={inputCls}>
-                                                            <option>EasyPaisa</option><option>JazzCash</option><option>SadaPay</option><option>NayaPay</option>
-                                                        </select>
+                                                        <label className="text-[10px] font-black text-slate-500 uppercase mb-1.5 block">Wallet Type</label>
+                                                        <select value={ch.walletType} onChange={e => updateChannel(ch.id, 'walletType', e.target.value)} className={inputCls}><option>EasyPaisa</option><option>JazzCash</option><option>SadaPay</option><option>NayaPay</option></select>
                                                     </div>
                                                     <div className="sm:col-span-2">
-                                                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 block">11-Digit Account Number</label>
+                                                        <label className="text-[10px] font-black text-slate-500 uppercase mb-1.5 block">Account Number</label>
                                                         <input type="text" maxLength={11} placeholder="03XXXXXXXXX" value={ch.number} onChange={e => updateChannel(ch.id, 'number', e.target.value)} className={inputCls} required />
                                                     </div>
                                                 </>
                                             ) : (
                                                 <>
                                                     <div>
-                                                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 block">Select Bank</label>
-                                                        <select value={ch.bankName} onChange={e => updateChannel(ch.id, 'bankName', e.target.value)} className={inputCls}>
-                                                            {PAK_BANKS.map(b => <option key={b}>{b}</option>)}
-                                                        </select>
+                                                        <label className="text-[10px] font-black text-slate-500 uppercase mb-1.5 block">Bank</label>
+                                                        <select value={ch.bankName} onChange={e => updateChannel(ch.id, 'bankName', e.target.value)} className={inputCls}>{PAK_BANKS.map(b => <option key={b}>{b}</option>)}</select>
                                                     </div>
                                                     <div>
-                                                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 block">Account Number</label>
-                                                        <input type="text" placeholder="Account #" value={ch.accountNumber} onChange={e => updateChannel(ch.id, 'accountNumber', e.target.value)} className={inputCls} required />
+                                                        <label className="text-[10px] font-black text-slate-500 uppercase mb-1.5 block">Account #</label>
+                                                        <input type="text" value={ch.accountNumber} onChange={e => updateChannel(ch.id, 'accountNumber', e.target.value)} className={inputCls} required />
                                                     </div>
                                                     <div>
-                                                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 block">IBAN Number</label>
-                                                        <input type="text" placeholder="PK24XXXX..." value={ch.iban} onChange={e => updateChannel(ch.id, 'iban', e.target.value)} className={inputCls} required />
+                                                        <label className="text-[10px] font-black text-slate-500 uppercase mb-1.5 block">IBAN</label>
+                                                        <input type="text" value={ch.iban} onChange={e => updateChannel(ch.id, 'iban', e.target.value)} className={inputCls} required />
                                                     </div>
                                                 </>
                                             )}
@@ -877,6 +1130,17 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
                                         <option value="">{isBulkMode ? 'Select an event...' : 'No Specific Event'}</option>
                                         {events.map(e => <option key={e._id} value={e._id}>{e.title}</option>)}
                                     </select>
+                                    {isBulkMode && form.eventId && (
+                                        <div className="mt-2 flex items-center justify-between p-3 bg-blue-50 rounded-xl border border-blue-100">
+                                            <div className="flex items-center gap-2">
+                                                <i className="fas fa-info-circle text-blue-500" />
+                                                <span className="text-[10px] font-bold text-blue-700 uppercase tracking-widest">
+                                                    {events.find(e => e._id === form.eventId)?.participants?.filter(p => p.attended).length || 0} Members Marked Present
+                                                </span>
+                                            </div>
+                                            <p className="text-[9px] font-bold text-blue-500 italic">Certificate target group filtered</p>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 
@@ -924,7 +1188,7 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
                                 <i className="fas fa-eye mr-2" />
                                 Preview Draft
                             </button>
-<button
+                            <button
                                 onClick={isBulkMode ? handleBulkIssue : handleIssue}
                                 disabled={(!isBulkMode && !form.memberId) || (isBulkMode && !form.eventId) || submitting}
                                 className="w-full sm:flex-1 py-4 bg-[#002147] text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 shadow-xl shadow-blue-900/10 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
@@ -938,7 +1202,6 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
             )}
 
             <div className="bg-white rounded-3xl border border-slate-100 overflow-hidden shadow-sm relative mt-8">
-                {/* Floating Bulk Actions - Responsive */}
                 {selectedCertIds.length > 0 && (
                     <div className="fixed sm:absolute bottom-6 sm:bottom-auto sm:top-4 left-1/2 -translate-x-1/2 z-[100] bg-slate-900 text-white px-5 sm:px-8 py-3 rounded-2xl sm:rounded-2xl shadow-2xl shadow-blue-900/40 flex flex-wrap items-center justify-center gap-4 sm:gap-6 animate-fade-up border border-slate-700 w-[90%] sm:w-auto ring-4 ring-slate-900/20 backdrop-blur-md">
                         <span className="text-[9px] sm:text-[10px] font-black bg-white/10 px-3 py-1.5 rounded-xl uppercase tracking-widest whitespace-nowrap">{selectedCertIds.length} Selected</span>
@@ -980,23 +1243,22 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
                     <div className="p-20 text-center text-slate-400 italic text-sm">Loading history...</div>
                 ) : (
                     <div className="p-4 sm:p-0">
-                        {/* Mobile Certificate Card List */}
                         <div className="sm:hidden space-y-4">
                             {issuedCertificates.filter(c => 
-                                c.memberId?.name?.toLowerCase().includes(searchCert.toLowerCase()) || 
-                                c.memberId?.member_id?.toLowerCase().includes(searchCert.toLowerCase()) ||
-                                c.eventId?.title?.toLowerCase().includes(searchCert.toLowerCase()) ||
-                                c.category?.toLowerCase().includes(searchCert.toLowerCase())
+                                (c.memberId?.name || c.memberName || "").toLowerCase().includes(searchCert.toLowerCase()) || 
+                                (c.memberId?.member_id || c.member_id_str || "").toLowerCase().includes(searchCert.toLowerCase()) ||
+                                (c.eventId?.title || "").toLowerCase().includes(searchCert.toLowerCase()) ||
+                                (c.category || "").toLowerCase().includes(searchCert.toLowerCase())
                             ).length === 0 ? (
                                 <div className="text-center py-20 text-slate-300 bg-slate-50/50 rounded-[2rem] border-2 border-dashed border-slate-100">
                                     <i className="fas fa-file-circle-exclamation text-4xl mb-3 block opacity-10" />
                                     <p className="text-[10px] font-black uppercase tracking-widest">No matching history</p>
                                 </div>
                             ) : issuedCertificates.filter(c => 
-                                c.memberId?.name?.toLowerCase().includes(searchCert.toLowerCase()) || 
-                                c.memberId?.member_id?.toLowerCase().includes(searchCert.toLowerCase()) ||
-                                c.eventId?.title?.toLowerCase().includes(searchCert.toLowerCase()) ||
-                                c.category?.toLowerCase().includes(searchCert.toLowerCase())
+                                (c.memberId?.name || c.memberName || "").toLowerCase().includes(searchCert.toLowerCase()) || 
+                                (c.memberId?.member_id || c.member_id_str || "").toLowerCase().includes(searchCert.toLowerCase()) ||
+                                (c.eventId?.title || "").toLowerCase().includes(searchCert.toLowerCase()) ||
+                                (c.category || "").toLowerCase().includes(searchCert.toLowerCase())
                             ).map((cert) => (
                                 <div key={cert._id} className="bg-white rounded-[2rem] border border-slate-100 shadow-sm p-6 relative overflow-hidden group active:scale-[0.98] transition-all">
                                     {selectMode && (
@@ -1041,7 +1303,6 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
                             ))}
                         </div>
 
-                        {/* Desktop Table Registry */}
                         <div className="hidden sm:block overflow-x-auto">
                             <table className="w-full text-left">
                                 <thead className="bg-slate-50/50 border-b border-slate-100">
@@ -1060,10 +1321,10 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
                                 </thead>
                                 <tbody className="divide-y divide-slate-50">
                                     {issuedCertificates.filter(c => 
-                                        c.memberId?.name?.toLowerCase().includes(searchCert.toLowerCase()) || 
-                                        c.memberId?.member_id?.toLowerCase().includes(searchCert.toLowerCase()) ||
-                                        c.eventId?.title?.toLowerCase().includes(searchCert.toLowerCase()) ||
-                                        c.category?.toLowerCase().includes(searchCert.toLowerCase())
+                                        (c.memberId?.name || c.memberName || "").toLowerCase().includes(searchCert.toLowerCase()) || 
+                                        (c.memberId?.member_id || c.member_id_str || "").toLowerCase().includes(searchCert.toLowerCase()) ||
+                                        (c.eventId?.title || "").toLowerCase().includes(searchCert.toLowerCase()) ||
+                                        (c.category || "").toLowerCase().includes(searchCert.toLowerCase())
                                     ).length === 0 ? (
                                         <tr>
                                             <td colSpan={selectMode ? 6 : 5} className="py-20 text-center">
@@ -1071,47 +1332,52 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
                                                 <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">No certificates matching query</p>
                                             </td>
                                         </tr>
-                                    ) : issuedCertificates.filter(c => 
-                                        c.memberId?.name?.toLowerCase().includes(searchCert.toLowerCase()) || 
-                                        c.memberId?.member_id?.toLowerCase().includes(searchCert.toLowerCase()) ||
-                                        c.eventId?.title?.toLowerCase().includes(searchCert.toLowerCase()) ||
-                                        c.category?.toLowerCase().includes(searchCert.toLowerCase())
-                                    ).map(cert => (
-                                        <tr key={cert._id} className={`transition-all ${selectedCertIds.includes(cert._id) ? 'bg-[#002147]/5' : 'hover:bg-slate-50/30'}`}>
-                                            {selectMode && (
-                                                <td className="px-8 py-6 text-center transition-all">
-                                                    <input type="checkbox" checked={selectedCertIds.includes(cert._id)} onChange={() => toggleCertSelect(cert._id)} className="w-4 h-4 text-[#002147] border-slate-300 rounded focus:ring-[#002147] cursor-pointer" />
+                                    ) : (
+                                        issuedCertificates.filter(c => 
+                                            (c.memberId?.name || c.memberName || "").toLowerCase().includes(searchCert.toLowerCase()) || 
+                                            (c.memberId?.member_id || c.member_id_str || "").toLowerCase().includes(searchCert.toLowerCase()) ||
+                                            (c.eventId?.title || "").toLowerCase().includes(searchCert.toLowerCase()) ||
+                                            (c.category || "").toLowerCase().includes(searchCert.toLowerCase())
+                                        ).map(cert => (
+                                            <tr key={cert._id} className={`transition-all ${selectedCertIds.includes(cert._id) ? 'bg-[#002147]/5' : 'hover:bg-slate-50/30'}`}>
+                                                {selectMode && (
+                                                    <td className="px-8 py-6 text-center transition-all">
+                                                        <input type="checkbox" checked={selectedCertIds.includes(cert._id)} onChange={() => toggleCertSelect(cert._id)} className="w-4 h-4 text-[#002147] border-slate-300 rounded focus:ring-[#002147] cursor-pointer" />
+                                                    </td>
+                                                )}
+                                                <td className="px-8 py-6">
+                                                    <div className="flex flex-col">
+                                                        <span className="text-xs font-bold text-slate-800 tracking-tight leading-none mb-1.5">{cert.memberId?.name || cert.memberName || "Deleted Member"}</span>
+                                                        <span className="text-[10px] text-[#002147] font-black uppercase tracking-widest leading-none">
+                                                            {cert.memberId?.member_id || cert.member_id_str || "N/A"}
+                                                            {!cert.memberId && <span className="ml-2 text-rose-400 font-bold opacity-60">[HISTORICAL]</span>}
+                                                        </span>
+                                                    </div>
                                                 </td>
-                                            )}
-                                            <td className="px-8 py-6">
-                                                <div className="flex flex-col">
-                                                    <span className="text-xs font-bold text-slate-800 tracking-tight leading-none mb-1.5">{cert.memberId?.name}</span>
-                                                    <span className="text-[10px] text-[#002147] font-black uppercase tracking-widest leading-none">{cert.memberId?.member_id}</span>
-                                                </div>
-                                            </td>
-                                            <td className="px-8 py-6 font-bold text-xs text-slate-600">
-                                                <span className="px-3 py-1 rounded-lg bg-slate-50 border border-slate-100">
-                                                    {cert.category === 'Other' ? cert.customCategory : cert.category}
-                                                </span>
-                                            </td>
-                                            <td className="px-8 py-6 text-xs font-bold text-slate-400 italic">
-                                                {cert.eventId?.title || "Society Delegate"}
-                                            </td>
-                                            <td className="px-8 py-6 text-xs font-bold text-slate-500">
-                                                {new Date(cert.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
-                                            </td>
-                                            <td className="px-8 py-6 text-right">
-                                                <div className="flex justify-end gap-3">
-                                                    <button onClick={() => downloadPDF(cert)} className="w-9 h-9 flex items-center justify-center bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-600 hover:text-white transition-all shadow-sm" title="Download Document">
-                                                        <i className="fas fa-file-pdf text-xs" />
-                                                    </button>
-                                                    <button onClick={() => revokeCertificate(cert._id)} className="w-9 h-9 flex items-center justify-center bg-rose-50 text-rose-500 rounded-xl hover:bg-rose-500 hover:text-white transition-all shadow-sm" title="Revoke Certificate">
-                                                        <i className="fas fa-trash-alt text-xs" />
-                                                    </button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))}
+                                                <td className="px-8 py-6 font-bold text-xs text-slate-600">
+                                                    <span className="px-3 py-1 rounded-lg bg-slate-50 border border-slate-100">
+                                                        {cert.category === 'Other' ? cert.customCategory : cert.category}
+                                                    </span>
+                                                </td>
+                                                <td className="px-8 py-6 text-xs font-bold text-slate-400 italic">
+                                                    {cert.eventId?.title || "Society Delegate"}
+                                                </td>
+                                                <td className="px-8 py-6 text-xs font-bold text-slate-500">
+                                                    {new Date(cert.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                                </td>
+                                                <td className="px-8 py-6 text-right">
+                                                    <div className="flex justify-end gap-3">
+                                                        <button onClick={() => downloadPDF(cert)} className="w-9 h-9 flex items-center justify-center bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-600 hover:text-white transition-all shadow-sm" title="Download Document">
+                                                            <i className="fas fa-file-pdf text-xs" />
+                                                        </button>
+                                                        <button onClick={() => revokeCertificate(cert._id)} className="w-9 h-9 flex items-center justify-center bg-rose-50 text-rose-500 rounded-xl hover:bg-rose-500 hover:text-white transition-all shadow-sm" title="Revoke Certificate">
+                                                            <i className="fas fa-trash-alt text-xs" />
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        )))
+                                    }
                                 </tbody>
                             </table>
                         </div>
@@ -1124,7 +1390,6 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
                     <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setShowPreview(false)} />
                     
                     <div className="relative bg-white rounded-[32px] shadow-2xl flex flex-col max-h-[96vh] w-full max-w-5xl overflow-hidden animate-in fade-in zoom-in duration-200">
-                        {/* Professional Header */}
                         <div className="flex justify-between items-center px-8 py-5 border-b border-slate-100 bg-white">
                             <div className="flex items-center gap-3">
                                 <div className="w-10 h-10 rounded-xl bg-[#002147]/5 flex items-center justify-center">
@@ -1140,7 +1405,6 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
                             </button>
                         </div>
 
-                        {/* Document Content Area */}
                         <div className="flex-1 overflow-auto p-8 sm:p-14 bg-slate-50/50 custom-scrollbar">
                            <div className="flex justify-center min-h-[1150px] w-full">
                                <div className="transform scale-[0.65] sm:scale-[0.8] lg:scale-[0.65] xl:scale-[0.75] origin-top h-fit shadow-[0_20px_50px_rgba(0,33,71,0.15)] ring-1 ring-slate-200 rounded-sm overflow-hidden">
@@ -1153,7 +1417,6 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
                             </div>
                         </div>
 
-                        {/* Action Footer */}
                         <div className="px-8 py-5 bg-white border-t border-slate-100 flex flex-col sm:flex-row justify-between items-center gap-4">
                             <div className="hidden sm:flex items-center gap-2 text-slate-400 text-[11px] font-bold uppercase tracking-wide">
                                 <i className="fas fa-shield-check text-emerald-500" />
@@ -1189,7 +1452,6 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
                 </div>
             )}
 
-            {/* HIGH-RESOLUTION GHOST EXPORT ENGINE */}
             <div style={{ position: 'fixed', top: 0, left: 0, width: '794px', height: '1123px', opacity: 0, pointerEvents: 'none', zIndex: -100, overflow: 'hidden' }}>
                 {exportData && (
                     <div id="cert-export-node">
@@ -1215,6 +1477,7 @@ function AdminPortal() {
     const [events, setEvents] = useState([]);
     const [toast, setToast] = useState(null);
     const [mobileNav, setMobileNav] = useState(false);
+    const [issuedCertificates, setIssuedCertificates] = useState([]);
 
     const token = localStorage.getItem("adminToken");
     const [adminUser, setAdminUser] = useState(localStorage.getItem("adminUser"));
@@ -1222,7 +1485,6 @@ function AdminPortal() {
     const auth = { headers: { Authorization: `Bearer ${token}` } };
 
     useEffect(() => {
-        // Hard Access Guard for restricted tabs
         const restrictedTabs = ["admins", "customization", "logs"];
         if (restrictedTabs.includes(activeTab) && !isSuper) {
             setActiveTab("dashboard");
@@ -1234,6 +1496,7 @@ function AdminPortal() {
         if (activeTab === "approvals") fetchPendingMembers();
         if (activeTab === "events" || activeTab === "certificates") fetchEvents();
         if (activeTab === "announcements") fetchAnnouncements();
+        if (activeTab === "certificates" || activeTab === "batches") fetchCertificates();
     }, [activeTab, isSuper]);
 
     const notify = (text, type = "success") => {
@@ -1248,7 +1511,6 @@ function AdminPortal() {
         setLoading(true);
         try {
             const r = await api.get(`admin/members?search=${search}`, auth);
-            // Node backend returns { members: [...] }
             setMembers(r.data.members || []);
         }
         catch (err) { console.error(err); }
@@ -1264,6 +1526,9 @@ function AdminPortal() {
     };
     const fetchAnnouncements = async () => {
         try { const r = await api.get("announcements", auth); setAnnouncements(r.data); } catch { }
+    };
+    const fetchCertificates = async () => {
+        try { const r = await api.get("certificates/admin/all", auth); setIssuedCertificates(r.data); } catch { }
     };
 
     const logout = () => {
@@ -1316,7 +1581,6 @@ function AdminPortal() {
                 </div>
             ) : <Spinner />}
 
-            {/* Quick Nav */}
             <div className="space-y-4">
                 <p className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">Quick Management</p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -1416,7 +1680,6 @@ function AdminPortal() {
 
                 {loading ? <Spinner /> : (
                     <>
-                        {/* Mobile Card List View */}
                         <div className="sm:hidden space-y-4">
                             {generalMembers.length === 0 ? (
                                 <div className="text-center py-20 text-slate-300 bg-white rounded-[2rem] border-2 border-dashed border-slate-100">
@@ -1469,7 +1732,6 @@ function AdminPortal() {
                             ))}
                         </div>
 
-                        {/* Desktop Table View */}
                         <div className="hidden sm:block bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
                             <div className="overflow-x-auto">
                                 <table className="w-full text-sm">
@@ -1555,7 +1817,6 @@ function AdminPortal() {
         const [isProcessing, setIsProcessing] = useState(false);
         const [bulkMode, setBulkMode] = useState(false);
         
-        // Interview Modal State
         const [interviewTarget, setInterviewTarget] = useState(null);
         const [interviewForm, setInterviewForm] = useState({ venue: "SLS Society HQ, Campus Block B", message: "" });
         const [sendingCall, setSendingCall] = useState(false);
@@ -1672,7 +1933,6 @@ function AdminPortal() {
 
                 {loading ? <Spinner /> : (
                     <>
-                         {/* Mobile Application Card List */}
                          <div className="sm:hidden space-y-4">
                             {filtered.length === 0 ? (
                                 <div className="text-center py-20 text-slate-300 bg-white rounded-[2rem] border-2 border-dashed border-slate-100">
@@ -1722,7 +1982,6 @@ function AdminPortal() {
                             ))}
                          </div>
 
-                        {/* Desktop Table View */}
                         <div className="hidden sm:block bg-white rounded-2xl sm:rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
                             <div className="overflow-x-auto custom-scrollbar-horizontal">
                                 <table className="w-full text-sm">
@@ -1793,7 +2052,6 @@ function AdminPortal() {
                     </>
                 )}
 
-                {/* Interview Call Modal - Simplified Form View */}
                 {interviewTarget && (
                     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
                         <div className="bg-white rounded-[2.5rem] w-full max-w-lg shadow-2xl border border-slate-100 overflow-hidden animate-zoom-in max-h-[90vh] flex flex-col">
@@ -1861,11 +2119,9 @@ function AdminPortal() {
         );
     };
 
-
-
     // ── Events Tab ───────────────────────────────────────────
     const EventsTab = () => {
-        const [activeSubTab, setActiveSubTab] = useState("view"); // "view" or "create"
+        const [activeSubTab, setActiveSubTab] = useState("view");
         const [form, setForm] = useState({ title: "", description: "", date: "", endDate: "", location: "", is_active: true, time: "" });
         const [creating, setCreating] = useState(false);
         const [file, setFile] = useState(null);
@@ -1873,6 +2129,8 @@ function AdminPortal() {
         const [participants, setParticipants] = useState([]);
         const [showParticipants, setShowParticipants] = useState(false);
         const [selectedEventName, setSelectedEventName] = useState("");
+        const [selectedEventId, setSelectedEventId] = useState(null);
+        const [selectedMemberIds, setSelectedMemberIds] = useState([]);
         const [searchTerm, setSearchTerm] = useState("");
         const [statusFilter, setStatusFilter] = useState("All");
         const [selectedIds, setSelectedIds] = useState([]);
@@ -1883,7 +2141,6 @@ function AdminPortal() {
 
         const filteredEvents = events.filter(e => {
             const matchSearch = e.title?.toLowerCase().includes(searchTerm.toLowerCase()) || e.location?.toLowerCase().includes(searchTerm.toLowerCase());
-            // An event only truly "Ends" after the final second of its end date
             const endTimestamp = new Date(`${e.endDate || e.date}T23:59:59`).getTime();
             const hasEnded = Date.now() > endTimestamp;
             const matchStatus = statusFilter === "All" || (statusFilter === "Running" && !hasEnded) || (statusFilter === "Ended" && hasEnded);
@@ -1912,7 +2169,6 @@ function AdminPortal() {
                 return;
             }
 
-            // Only block if a specific time was provided for TODAY and THAT time is in the past
             if (isToday && form.time) {
                 try {
                     const eventStartTime = new Date(`${form.date}T${form.time}:00`);
@@ -1925,13 +2181,11 @@ function AdminPortal() {
                 }
             }
             
-            // Block if the date itself is earlier than today
             if (form.date < todayStr) {
                 notify("Event date cannot be in the past", "error");
                 return;
             }
 
-            // Simple end-date check
             if (form.endDate && form.endDate < form.date) {
                 notify("The event cannot end before it starts.", "error");
                 return;
@@ -1985,6 +2239,7 @@ function AdminPortal() {
 
         const viewParticipants = async (event) => {
             setSelectedEventName(event.title);
+            setSelectedEventId(event._id);
             try {
                 const res = await api.get(`events/${event._id}/participants`, auth);
                 setParticipants(res.data);
@@ -1994,9 +2249,51 @@ function AdminPortal() {
             }
         };
 
+        const handleToggleAttendance = async (eventId, memberId, currentStatus) => {
+            try {
+                await api.patch(`events/${eventId}/attendance`, { memberId, attended: !currentStatus }, auth);
+                setParticipants(prev => prev.map(p => 
+                    p.memberId?._id === memberId || p.memberId === memberId ? { ...p, attended: !currentStatus } : p
+                ));
+                fetchEvents();
+                notify(`Attendance updated!`);
+            } catch (err) {
+                notify("Failed to update attendance", "error");
+            }
+        };
+
+        const handleBulkAttendance = async (eventId, status) => {
+            const idsToUpdate = selectedMemberIds.length > 0 ? selectedMemberIds : null;
+            const targetCount = idsToUpdate ? idsToUpdate.length : participants.length;
+            
+            if (!window.confirm(`Mark ${targetCount} selected participants as ${status ? 'PRESENT' : 'ABSENT'}?`)) return;
+            
+            setIsProcessing(true);
+            try {
+                await api.patch(`events/${eventId}/attendance/bulk`, { attended: status, ids: idsToUpdate }, auth);
+                setParticipants(prev => prev.map(p => {
+                    const mId = p.memberId?._id || p.memberId;
+                    if (!idsToUpdate || idsToUpdate.includes(mId)) {
+                        return { ...p, attended: status };
+                    }
+                    return p;
+                }));
+                fetchEvents();
+                notify(`Attendance updated for ${targetCount} members!`);
+                setSelectedMemberIds([]); 
+            } catch (err) {
+                notify("Bulk update failed", "error");
+            } finally {
+                setIsProcessing(false);
+            }
+        };
+
+        const toggleMemberSelection = (id) => {
+            setSelectedMemberIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
+        };
+
         return (
             <div className="space-y-6 animate-fade-up">
-                {/* Sub-Navigation */}
                 <div className="flex gap-4 p-2 bg-slate-100 rounded-2xl w-fit">
                     <button 
                         onClick={() => setActiveSubTab("view")}
@@ -2090,7 +2387,6 @@ function AdminPortal() {
                             </div>
                         )}
 
-                        {/* Summary Stats for Events */}
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
                             <div className="bg-white p-5 sm:p-8 rounded-2xl sm:rounded-[2rem] border border-slate-100 shadow-xl shadow-slate-200/40">
                                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Posts</p>
@@ -2126,7 +2422,6 @@ function AdminPortal() {
                             </div>
                         </div>
 
-                        {/* Mobile Event Card List */}
                         <div className="sm:hidden space-y-4">
                             {filteredEvents.length === 0 ? (
                                 <div className="text-center py-24 bg-white rounded-[2rem] border border-slate-100 shadow-sm">
@@ -2187,7 +2482,6 @@ function AdminPortal() {
                             })}
                         </div>
 
-                        {/* Desktop Table Registry */}
                         <div className="hidden sm:block bg-white rounded-[2.5rem] border border-slate-200 shadow-2xl overflow-hidden">
                             <div className="overflow-x-auto">
                                 <table className="w-full text-sm">
@@ -2257,18 +2551,43 @@ function AdminPortal() {
                     </div>
                 )}
 
-                {/* Participants Viewer Modal */}
                 {showParticipants && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center p-6 backdrop-blur-md bg-slate-900/40 animate-fade-in">
                         <div className="bg-white w-full max-w-2xl rounded-[3rem] shadow-2xl border border-slate-100 overflow-hidden relative max-h-[85vh] flex flex-col">
-                            <div className="p-10 border-b border-slate-50 flex justify-between items-center flex-shrink-0">
-                                <div>
-                                    <p className="text-xs font-black text-slate-400 uppercase tracking-[0.3em] mb-2">Member Registration Record</p>
-                                    <h2 className="text-2xl font-black text-slate-800 tracking-tight">{selectedEventName}</h2>
+                            <div className="p-8 sm:p-10 border-b border-slate-50 bg-white sticky top-0 z-[60] flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
+                                <div className="flex items-center gap-5">
+                                    <div className="relative group">
+                                        <input 
+                                            type="checkbox" 
+                                            id="selectAllParticipants"
+                                            checked={selectedMemberIds.length === participants.length && participants.length > 0}
+                                            onChange={() => {
+                                                if (selectedMemberIds.length === participants.length) setSelectedMemberIds([]);
+                                                else setSelectedMemberIds(participants.map(p => p.memberId?._id || p.memberId));
+                                            }}
+                                            className="w-6 h-6 text-[#002147] border-2 border-slate-200 rounded-lg focus:ring-blue-500 cursor-pointer transition-all hover:border-[#002147]" 
+                                        />
+                                    </div>
+                                    <div>
+                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">Attendance Registry</p>
+                                        <h2 className="text-xl font-black text-slate-800 tracking-tight">{selectedEventName}</h2>
+                                    </div>
                                 </div>
-                                <button onClick={() => setShowParticipants(false)} className="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center text-slate-400 hover:text-rose-500 transition-all border border-slate-100">
-                                    <i className="fas fa-times" />
-                                </button>
+                                <div className="flex items-center gap-3 w-full sm:w-auto">
+                                    {selectedMemberIds.length > 0 && (
+                                        <div className="flex gap-2 animate-fade-in flex-1 sm:flex-none">
+                                            <button onClick={() => handleBulkAttendance(selectedEventId, false)} className="flex-1 sm:flex-none px-5 py-3 bg-slate-50 text-slate-500 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-100 transition-all border border-slate-200 active:scale-95">
+                                                Mark Absent
+                                            </button>
+                                            <button onClick={() => handleBulkAttendance(selectedEventId, true)} className="flex-1 sm:flex-none px-5 py-3 bg-emerald-50 text-emerald-600 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-600 hover:text-white transition-all border border-emerald-100 shadow-sm active:scale-95">
+                                                Mark Present
+                                            </button>
+                                        </div>
+                                    )}
+                                    <button onClick={() => { setShowParticipants(false); setSelectedMemberIds([]); }} className="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center text-slate-400 hover:text-rose-500 transition-all border border-slate-100 shadow-sm hover:rotate-90">
+                                        <i className="fas fa-times" />
+                                    </button>
+                                </div>
                             </div>
 
                             <div className="flex-1 overflow-y-auto p-10 custom-scrollbar">
@@ -2280,8 +2599,14 @@ function AdminPortal() {
                                 ) : (
                                     <div className="space-y-4">
                                         {participants.map((p, i) => (
-                                            <div key={i} className="flex items-center justify-between p-5 bg-white rounded-3xl border border-slate-100 shadow-sm hover:shadow-md transition-all group">
+                                            <div key={i} className={`flex items-center justify-between p-5 rounded-3xl border border-slate-100 shadow-sm hover:shadow-md transition-all group ${selectedMemberIds.includes(p.memberId?._id || p.memberId) ? 'bg-blue-50/50 border-blue-200' : 'bg-white'}`}>
                                                 <div className="flex items-center gap-4">
+                                                    <input 
+                                                        type="checkbox" 
+                                                        checked={selectedMemberIds.includes(p.memberId?._id || p.memberId)}
+                                                        onChange={() => toggleMemberSelection(p.memberId?._id || p.memberId)}
+                                                        className="w-4 h-4 text-[#002147] border-slate-300 rounded focus:ring-blue-500 cursor-pointer" 
+                                                    />
                                                     <div className="w-12 h-12 bg-[#002147] text-white rounded-2xl flex items-center justify-center font-black text-sm uppercase">
                                                         {p.memberId?.name?.charAt(0) || "M"}
                                                     </div>
@@ -2290,9 +2615,22 @@ function AdminPortal() {
                                                         <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">{p.memberId?.member_id}</p>
                                                     </div>
                                                 </div>
-                                                <div className="text-right">
-                                                    <p className="text-xs font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Joined On</p>
-                                                    <p className="text-xs font-bold text-slate-700">{new Date(p.joinedAt).toLocaleDateString()}</p>
+                                                <div className="flex items-center gap-4">
+                                                    <div className="text-right">
+                                                        <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Joined On</p>
+                                                        <p className="text-[10px] font-bold text-slate-700">{new Date(p.joinedAt).toLocaleDateString()}</p>
+                                                    </div>
+                                                    <button 
+                                                        onClick={() => handleToggleAttendance(selectedEventId, p.memberId?._id, p.attended)}
+                                                        className={`px-4 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all flex items-center gap-2 border ${
+                                                            p.attended 
+                                                                ? 'bg-emerald-500 text-white border-emerald-500 shadow-lg shadow-emerald-900/20' 
+                                                                : 'bg-white text-slate-400 border-slate-200 hover:border-emerald-500 hover:text-emerald-600'
+                                                        }`}
+                                                    >
+                                                        {p.attended ? <i className="fas fa-check-circle" /> : <i className="fas fa-circle opacity-20" />}
+                                                        {p.attended ? 'Present' : 'Mark Present'}
+                                                    </button>
                                                 </div>
                                             </div>
                                         ))}
@@ -2370,7 +2708,6 @@ function AdminPortal() {
                         </button>
                     </div>
                 )}
-                {/* Premium Post Announcement Form */}
                 <div className="bg-white border border-slate-200 rounded-[2.5rem] p-6 sm:p-10 shadow-xl relative overflow-hidden group">
                     <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-indigo-700" />
                     <div className="flex items-center gap-4 mb-8">
@@ -2414,7 +2751,6 @@ function AdminPortal() {
                     </form>
                 </div>
 
-                {/* History Section Refined */}
                 <div className="bg-white rounded-[2.5rem] shadow-2xl border border-slate-100/50 overflow-hidden">
                     <div className="p-6 sm:p-10 border-b border-slate-100 bg-slate-50/30">
                         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
@@ -2439,7 +2775,6 @@ function AdminPortal() {
                     </div>
 
                     <div className="p-4 sm:p-10">
-                        {/* Mobile Redesign - Card Style */}
                         <div className="sm:hidden space-y-5">
                             {filtered.length === 0 ? (
                                 <div className="text-center py-20 bg-slate-50 rounded-[2rem] border-2 border-dashed border-slate-100">
@@ -2478,7 +2813,6 @@ function AdminPortal() {
                             ))}
                         </div>
 
-                        {/* Desktop Table Registry */}
                         <div className="hidden sm:block overflow-x-auto rounded-[2rem] border border-slate-100 shadow-sm">
                             <table className="w-full text-sm">
                                 <thead>
@@ -2621,7 +2955,6 @@ function AdminPortal() {
                     </div>
                     
                     <div className="p-1 sm:p-0">
-                        {/* Mobile List View */}
                         <div className="sm:hidden space-y-4 px-4 py-2">
                             {logs.length === 0 && !loadingLogs ? (
                                 <div className="text-center py-16 bg-slate-50/50 border-2 border-dashed border-slate-100 rounded-3xl">
@@ -2670,7 +3003,6 @@ function AdminPortal() {
                             })}
                         </div>
                     
-                        {/* Desktop Table View */}
                         <div className="hidden sm:block overflow-x-auto">
                             <table className="w-full text-left text-sm">
                                 <thead>
@@ -2900,7 +3232,6 @@ function AdminPortal() {
 
         return (
             <div className="space-y-6 animate-fade-up relative">
-                {/* Registration Form */}
                 <div className="bg-white border border-slate-200 rounded-2xl sm:rounded-3xl p-5 sm:p-8 shadow-sm">
                     <h3 className="text-lg font-black text-slate-800 mb-6 flex items-center gap-3 uppercase tracking-tight">
                         <div className="w-9 h-9 sm:w-10 sm:h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center text-sm shadow-inner"><i className="fas fa-user-plus" /></div>
@@ -2943,7 +3274,6 @@ function AdminPortal() {
                     </form>
                 </div>
 
-                {/* Edit Modal (Overlay) */}
                 {editing && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-slate-900/40 backdrop-blur-sm animate-fade-in">
                         <div className="bg-white w-full max-w-md rounded-[2.5rem] shadow-2xl border border-slate-200 overflow-hidden relative animate-zoom-in">
@@ -2978,13 +3308,11 @@ function AdminPortal() {
                     </div>
                 )}
 
-                {/* Personnel Management Section */}
                 <div className="space-y-4">
                     <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
                         <i className="fas fa-users-gear text-slate-400" /> Official Personnel
                     </h2>
                     
-                    {/* Mobile Admin Card List */}
                     <div className="sm:hidden space-y-4">
                         {adminList.filter(m => m.role !== 'Superuser').length === 0 ? (
                             <div className="text-center py-20 bg-white rounded-[2rem] border-2 border-dashed border-slate-100">
@@ -3037,7 +3365,6 @@ function AdminPortal() {
                         ))}
                     </div>
 
-                    {/* Desktop Admin Table View */}
                     <div className="hidden sm:block bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
                         <table className="w-full text-sm">
                             <thead>
@@ -3091,283 +3418,6 @@ function AdminPortal() {
                             </tbody>
                         </table>
                     </div>
-                </div>
-            </div>
-        );
-    };
-
-    // ── Batches Tab ──────────────────────────────────────────
-    const BatchesTab = () => {
-        const [selectedBatch, setSelectedBatch] = useState(null);
-        const [detailView, setDetailView] = useState(null);
-        const [batchSearch, setBatchSearch] = useState("");
-
-        // Group members by their joining date using the Sep 1st boundary
-        const calculateBatch = (dateStr) => {
-            if (!dateStr) return new Date().getFullYear();
-            const date = new Date(dateStr);
-            if (isNaN(date.getTime())) return new Date().getFullYear();
-            const year = date.getFullYear();
-            const month = date.getMonth(); // 0 is Jan, 8 is Sept
-            return month >= 8 ? year : year - 1;
-        };
-
-        const batchData = (members || []).filter(m => m && m.role !== 'Admin' && m.role !== 'Superuser').reduce((acc, m) => {
-            const batchYear = calculateBatch(m.createdAt);
-            if (!acc[batchYear]) acc[batchYear] = [];
-            acc[batchYear].push(m);
-            return acc;
-        }, {});
-
-        const sortedBatchYears = Object.keys(batchData).sort((a, b) => b - a);
-
-        if (selectedBatch) {
-            const batchMembers = (batchData[selectedBatch] || []).filter(m => 
-                m.name?.toLowerCase().includes(batchSearch.toLowerCase()) || 
-                m.member_id?.toLowerCase().includes(batchSearch.toLowerCase())
-            );
-
-            return (
-                <div className="space-y-8 animate-fade-up">
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
-                        <button onClick={() => { setSelectedBatch(null); setBatchSearch(""); }} className="flex items-center gap-2 text-slate-400 hover:text-[#002147] transition-colors text-xs font-black uppercase tracking-widest leading-none bg-transparent border-none cursor-pointer">
-                            <i className="fas fa-arrow-left" /> Back to Overview
-                        </button>
-                        
-                        <div className="flex-1 max-w-md w-full relative">
-                            <i className="fas fa-search absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 text-xs" />
-                            <input 
-                                type="text" 
-                                placeholder={`Search in Batch ${selectedBatch}...`} 
-                                value={batchSearch}
-                                onChange={(e) => setBatchSearch(e.target.value)}
-                                className="w-full bg-white border border-slate-200 rounded-2xl pl-12 pr-6 py-3.5 text-sm font-bold text-slate-800 placeholder:text-slate-300 focus:ring-8 focus:ring-[#002147]/5 focus:border-[#002147] outline-none transition-all shadow-sm"
-                            />
-                        </div>
-
-                        <div className="text-left sm:text-right">
-                            <h2 className="text-2xl font-black text-slate-800 tracking-tight leading-none mb-2">Batch {selectedBatch} Directory</h2>
-                            <p className="text-[#003366] text-xs font-black uppercase tracking-[0.2em]">{batchMembers.length} Members Found</p>
-                        </div>
-                    </div>
-
-                    {/* Mobile Batch Member Cards */}
-                    <div className="sm:hidden space-y-4">
-                        {batchMembers.length === 0 ? (
-                            <div className="text-center py-20 bg-white rounded-[2rem] border-2 border-dashed border-slate-100">
-                                <i className="fas fa-search-minus text-4xl text-slate-100 mb-4 block" />
-                                <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest leading-none">No matching records</p>
-                            </div>
-                        ) : batchMembers.map(m => (
-                            <div key={m._id} className="p-6 bg-white rounded-[2rem] border border-slate-200 shadow-sm space-y-4 relative overflow-hidden active:scale-[0.98] transition-all">
-                                <div className="flex justify-between items-start">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-10 h-10 bg-[#002147]/5 text-[#002147] rounded-xl flex items-center justify-center font-black text-xs shadow-inner">
-                                            {m.name.charAt(0)}
-                                        </div>
-                                        <div>
-                                            <h4 className="font-black text-slate-800 leading-none mb-1 text-sm">{m.name}</h4>
-                                            <p className="text-[10px] font-bold text-[#003366] uppercase tracking-widest">{m.member_id || 'PENDING'}</p>
-                                        </div>
-                                    </div>
-                                    <div className="text-right">
-                                        <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-0.5">Joined</span>
-                                        <span className="text-[10px] font-bold text-slate-600 block">{m.createdAt ? new Date(m.createdAt).toLocaleDateString() : 'N/A'}</span>
-                                    </div>
-                                </div>
-                                
-                                <button onClick={() => setDetailView(m)} className="w-full bg-[#002147] text-white py-3.5 rounded-xl font-black uppercase tracking-[0.2em] text-[10px] shadow-lg shadow-blue-900/10">
-                                    <i className="fas fa-eye mr-2" /> View Dossier
-                                </button>
-                            </div>
-                        ))}
-                    </div>
-
-                    {/* Desktop Batch Member Table */}
-                    <div className="hidden sm:block bg-white rounded-[2.5rem] border border-slate-100 shadow-2xl overflow-hidden">
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-left">
-                                <thead>
-                                    <tr className="bg-slate-50/50 border-b border-slate-100">
-                                        <th className="px-8 py-5 text-xs font-black uppercase tracking-widest text-slate-400">Identity</th>
-                                        <th className="px-8 py-5 text-xs font-black uppercase tracking-widest text-slate-400">Joining Date</th>
-                                        <th className="px-8 py-5 text-xs font-black uppercase tracking-widest text-slate-400 text-right">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-50 text-[13px]">
-                                    {batchMembers.map(m => (
-                                        <tr key={m._id} className="hover:bg-slate-50/30 transition-colors">
-                                            <td className="px-8 py-5">
-                                                <div className="flex flex-col">
-                                                    <span className="font-bold text-slate-800 tracking-tight leading-none mb-1.5">{m.name}</span>
-                                                    <span className="text-xs font-bold text-[#003366] uppercase tracking-widest">{m.member_id || 'PENDING'}</span>
-                                                </div>
-                                            </td>
-                                            <td className="px-8 py-5 font-bold text-slate-500">
-                                                {m.createdAt ? new Date(m.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : 'N/A'}
-                                            </td>
-                                            <td className="px-8 py-5 text-right">
-                                                <button onClick={() => setDetailView(m)} className="text-xs bg-slate-900 shadow-lg shadow-black/10 text-white px-5 py-2.5 rounded-xl hover:bg-slate-800 transition-all font-black uppercase tracking-widest leading-none">
-                                                    <i className="fas fa-eye mr-2" /> View Detail
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-
-                    {/* Member Detail Preview Modal */}
-                    {detailView && (
-                        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 md:p-10 bg-slate-900/80 backdrop-blur-xl animate-fade-in">
-                            <div className="bg-white w-[95%] max-w-2xl rounded-[3rem] shadow-2xl border border-white/20 overflow-hidden relative animate-zoom-in max-h-[90vh] flex flex-col">
-                                
-                                {/* Refined Premium Header */}
-                                <div className="bg-[#002147] pt-12 pb-10 px-10 text-white flex-shrink-0 relative">
-                                    <button onClick={() => setDetailView(null)} className="absolute top-6 right-8 w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center hover:bg-rose-500 hover:text-white transition-all shadow-xl active:scale-95 z-20 group">
-                                        <i className="fas fa-times text-xl group-hover:rotate-90 transition-transform duration-500" />
-                                    </button>
-
-                                    <div className="flex flex-col items-center text-center gap-5 relative z-10">
-                                        <div className="w-24 h-24 bg-white/10 rounded-[2.5rem] flex items-center justify-center text-4xl font-black shadow-inner border border-white/10 backdrop-blur-md">
-                                            {(detailView.name || "?")[0].toUpperCase()}
-                                        </div>
-                                        <div className="space-y-2">
-                                            <h3 className="text-3xl font-black tracking-tight leading-tight uppercase italic">{detailView.name || 'Anonymous ID'}</h3>
-                                            <div className="flex items-center justify-center gap-3">
-                                                <span className="bg-white/10 border border-white/10 px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-[0.2em] backdrop-blur-sm">
-                                                    #{detailView.member_id || 'PENDING'}
-                                                </span>
-                                                <span className="bg-blue-400/20 px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest text-blue-200">
-                                                    Batch {calculateBatch(detailView.createdAt)}
-                                                </span>
-                                                {detailView.status === 'blocked' && (
-                                                    <span className="bg-rose-500/20 px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest text-rose-200 border border-rose-500/30">
-                                                        Suspended
-                                                    </span>
-                                                )}
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Detailed Record */}
-                                <div className="flex-1 overflow-y-auto custom-scrollbar p-10 md:p-12 space-y-12 bg-white">
-                                    <section>
-                                        <div className="flex items-center gap-4 mb-8">
-                                            <div className="w-9 h-9 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center text-sm shadow-inner"><i className="fas fa-user-shield" /></div>
-                                            <h4 className="text-xs font-black uppercase tracking-[0.4em] text-slate-400">Personnel Identity</h4>
-                                        </div>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pl-5 border-l-2 border-slate-100">
-                                            <div>
-                                                <p className="text-xs font-black text-[#002147] uppercase tracking-widest mb-1.5 opacity-40">Father's Identification</p>
-                                                <p className="text-sm font-bold text-slate-800 uppercase">{detailView.father_name || 'N/A DATA'}</p>
-                                            </div>
-                                            <div>
-                                                <p className="text-[10px] font-black text-[#002147] uppercase tracking-widest mb-1.5 opacity-40">WhatsApp Connection</p>
-                                                <p className="text-sm font-bold text-slate-800 uppercase">{detailView.whatsapp || 'N/A DATA'}</p>
-                                            </div>
-                                            <div>
-                                                <p className="text-[10px] font-black text-[#002147] uppercase tracking-widest mb-1.5 opacity-40">Official Gmail Record</p>
-                                                <p className="text-sm font-bold text-slate-800 lowercase">{detailView.email || 'N/A'}</p>
-                                            </div>
-                                            <div>
-                                                <p className="text-xs font-black text-[#002147] uppercase tracking-widest mb-1.5 opacity-40">Registration Cycle</p>
-                                                <p className="text-sm font-bold text-slate-800">{detailView.joining_year || 'N/A'}</p>
-                                            </div>
-                                        </div>
-                                    </section>
-
-                                    <section>
-                                        <div className="flex items-center gap-4 mb-8">
-                                            <div className="w-9 h-9 bg-amber-50 text-amber-600 rounded-xl flex items-center justify-center text-sm shadow-inner"><i className="fas fa-graduation-cap" /></div>
-                                            <h4 className="text-xs font-black uppercase tracking-[0.4em] text-slate-400">Academic Matrix</h4>
-                                        </div>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pl-5 border-l-2 border-amber-50">
-                                            <div>
-                                                <p className="text-[10px] font-black text-amber-600 uppercase tracking-widest mb-1.5 opacity-40">Degree Attainment</p>
-                                                <p className="text-sm font-bold text-slate-800 uppercase">{detailView.education_level || 'N/A DATA'}</p>
-                                            </div>
-                                            <div>
-                                                <p className="text-[10px] font-black text-amber-600 uppercase tracking-widest mb-1.5 opacity-40">Field of Study (Program)</p>
-                                                <p className="text-sm font-bold text-slate-800 uppercase">{detailView.program || 'N/A DATA'}</p>
-                                            </div>
-                                            <div className="md:col-span-2">
-                                                <p className="text-[10px] font-black text-amber-600 uppercase tracking-widest mb-1.5 opacity-40">Institution Reference</p>
-                                                <p className="text-sm font-bold text-slate-800 uppercase italic leading-tight">{detailView.university || 'N/A DATA'}</p>
-                                            </div>
-                                        </div>
-                                    </section>
-
-                                    <section>
-                                        <div className="flex items-center gap-4 mb-8">
-                                            <div className="w-9 h-9 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center text-sm shadow-inner"><i className="fas fa-map-location-dot" /></div>
-                                            <h4 className="text-xs font-black uppercase tracking-[0.4em] text-slate-400">Deployment Details</h4>
-                                        </div>
-                                        <div className="space-y-8 pl-5 border-l-2 border-emerald-50">
-                                            <div>
-                                                <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-1.5 opacity-40">Residential Reference</p>
-                                                <p className="text-sm font-bold text-slate-800 uppercase leading-relaxed">{detailView.address || 'N/A DATA'}</p>
-                                            </div>
-                                            <div>
-                                                <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-1.5 opacity-40">City</p>
-                                                <p className="text-sm font-bold text-slate-800 uppercase">{detailView.city || 'N/A DATA'}</p>
-                                            </div>
-                                        </div>
-                                    </section>
-                                </div>
-
-                                <div className="p-8 bg-slate-50 border-t border-slate-100 flex items-center justify-end flex-shrink-0">
-                                    <button onClick={() => setDetailView(null)} className="px-6 py-3 bg-[#002147] text-white text-xs font-black uppercase tracking-widest rounded-xl hover:bg-slate-800 transition-all shadow-lg active:scale-95 flex items-center gap-2">
-                                        <i className="fas fa-arrow-left" /> Back to Directory
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-                </div>
-            );
-        }
-
-        return (
-            <div className="space-y-10 animate-fade-up">
-                <div className="relative p-12 rounded-[3.5rem] overflow-hidden border border-slate-100 bg-white shadow-2xl shadow-slate-200/40">
-                    <div className="absolute top-0 right-0 w-96 h-96 bg-blue-500/5 blur-[120px] -mr-48 -mt-48" />
-                    <div className="relative z-10">
-                        <h2 className="text-4xl font-black text-slate-900 tracking-tight leading-tight">Society Batches</h2>
-                        <p className="text-slate-400 text-[10px] font-bold uppercase tracking-[0.4em] mt-3">Seasonal Grouping (Sep 1st Boundary)</p>
-                    </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-                    {sortedBatchYears.map(year => (
-                        <button 
-                            key={year}
-                            onClick={() => setSelectedBatch(year)}
-                            className="group p-10 bg-white border border-slate-100 rounded-[3rem] shadow-2xl shadow-slate-200/40 hover:-translate-y-3 transition-all text-left relative overflow-hidden active:scale-95"
-                        >
-                            <div className="absolute top-0 right-0 p-8 text-[#002147]/5 group-hover:text-[#002147]/10 transition-colors">
-                                <i className="fas fa-calendar-alt text-8xl rotate-12" />
-                            </div>
-                            <div className="w-16 h-16 bg-blue-50 text-[#003366] rounded-[1.5rem] flex items-center justify-center text-2xl mb-8 shadow-inner group-hover:bg-[#002147] group-hover:text-white transition-all duration-500">
-                                <i className="fas fa-layer-group" />
-                            </div>
-                            <h4 className="text-3xl font-black text-slate-800 mb-2 tracking-tight">Batch {year}</h4>
-                            <p className="text-[#003366] text-xs font-bold uppercase tracking-widest">{batchData[year].length} Registered Members</p>
-                            <div className="mt-8 pt-8 border-t border-slate-50 flex items-center justify-between">
-                                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 group-hover:text-[#002147] transition-colors">Open Directory</span>
-                                <i className="fas fa-arrow-right text-slate-300 group-hover:text-[#002147] transition-all group-hover:translate-x-2" />
-                            </div>
-                        </button>
-                    ))}
-
-                    {sortedBatchYears.length === 0 && (
-                        <div className="col-span-full py-32 text-center bg-slate-50/50 rounded-[4rem] border-4 border-dashed border-slate-100">
-                            <i className="fas fa-ghost text-5xl text-slate-200 mb-6 block" />
-                            <p className="text-slate-400 text-xs font-black uppercase tracking-widest">Initialization... Database records pending.</p>
-                        </div>
-                    )}
                 </div>
             </div>
         );
@@ -3463,8 +3513,8 @@ function AdminPortal() {
                     {activeTab === "events" && <EventsTab />}
                     {activeTab === "announcements" && <AnnouncementsTab />}
                     {activeTab === "certificates" && <CertificatesTab auth={auth} notify={notify} api={api} members={members} events={events} />}
-                    {activeTab === "batches" && <BatchesTab />}
-                    {isSuper && activeTab === "customization" && <CustomizationTabComponent auth={auth} notify={notify} getImgUrl={getImgUrl} inputCls={inputCls} api={api} />}
+                    {activeTab === "batches" && <BatchesTab members={members} issuedCertificates={issuedCertificates} auth={auth} api={api} notify={notify} />}
+                    {isSuper && activeTab === "customization" && <CustomizationTabComponent auth={auth} notify={notify} getImgUrl={getImgUrl} inputCls={inputCls} api={api} members={members} />}
                     {activeTab === "settings" && <SettingsTab />}
                     {isSuper && activeTab === "admins" && <AdminsTab />}
                     {isSuper && activeTab === "logs" && <LogsTab />}

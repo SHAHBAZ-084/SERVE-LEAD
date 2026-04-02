@@ -21,26 +21,10 @@ const isAdmin = asyncHandler(async (req, res, next) => {
     }
 });
 
-// Multer Config
-const uploadDir = path.join(__dirname, '..', 'uploads', 'events');
-if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+const { createUpload, getFileUrl } = require('../utils/storage');
 
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => cb(null, uploadDir),
-    filename: (req, file, cb) => cb(null, `${Date.now()}-${file.originalname.replace(/[^a-zA-Z0-9.]/g, '_')}`)
-});
-
-const upload = multer({ 
-    storage,
-    limits: { fileSize: 2 * 1024 * 1024 }, // 2MB limit
-    fileFilter: (req, file, cb) => {
-        const filetypes = /jpeg|jpg|png|webp/;
-        const extname = filetypes.test(path.extname(file.originalname).toLowerCase());
-        const mimetype = filetypes.test(file.mimetype);
-        if (extname && mimetype) return cb(null, true);
-        cb(new Error('Only images (jpg, png, webp) are allowed'));
-    }
-});
+// Multer Config (Hybrid: Local/Cloud)
+const upload = createUpload('events');
 
 // GET all active events (Member view)
 router.get('/', asyncHandler(async (req, res) => {
@@ -89,7 +73,7 @@ router.post('/:id/join', authMiddleware, asyncHandler(async (req, res) => {
 // POST Create an event (Admin only)
 router.post('/', authMiddleware, isAdmin, upload.single('image'), asyncHandler(async (req, res) => {
     const { title, description, date, endDate, location, is_active, time } = req.body;
-    const image_url = req.file ? `/uploads/events/${req.file.filename}` : '';
+    const image_url = getFileUrl(req.file, 'events');
 
     try {
         let slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
@@ -114,6 +98,48 @@ router.post('/', authMiddleware, isAdmin, upload.single('image'), asyncHandler(a
         }
         throw error; // Let asyncHandler catch other errors
     }
+}));
+
+// PATCH Update participant attendance (Admin only)
+router.patch('/:id/attendance', authMiddleware, isAdmin, asyncHandler(async (req, res) => {
+    const { memberId, attended } = req.body;
+    if (!memberId) return res.status(400).json({ error: 'Member ID is required.' });
+
+    const event = await Event.findById(req.params.id);
+    if (!event) return res.status(404).json({ error: 'Event not found.' });
+
+    const participant = event.participants.find(p => p.memberId.toString() === memberId);
+    if (!participant) return res.status(404).json({ error: 'Member is not registered for this event.' });
+
+    participant.attended = attended === true || attended === 'true';
+    await event.save();
+
+    res.json({ message: 'Attendance updated successfully.', attended: participant.attended });
+}));
+
+// PATCH Bulk Update participant attendance (Admin only)
+router.patch('/:id/attendance/bulk', authMiddleware, isAdmin, asyncHandler(async (req, res) => {
+    const { attended, ids } = req.body;
+    const event = await Event.findById(req.params.id);
+    if (!event) return res.status(404).json({ error: 'Event not found.' });
+
+    if (ids && Array.isArray(ids)) {
+        event.participants.forEach(p => {
+            if (ids.includes(p.memberId.toString())) {
+                p.attended = attended === true || attended === 'true';
+            }
+        });
+    } else {
+        event.participants.forEach(p => {
+            p.attended = attended === true || attended === 'true';
+        });
+    }
+    
+    await event.save();
+    res.json({ 
+        message: `Successfully updated attendance for ${ids ? ids.length : 'all'} participants.`, 
+        count: ids ? ids.length : event.participants.length 
+    });
 }));
 
 // DELETE Event (Admin only)

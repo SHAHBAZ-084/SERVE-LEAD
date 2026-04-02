@@ -68,13 +68,15 @@ router.post('/', authMiddleware, isAdmin, async (req, res) => {
 
     const newCert = new Certificate({
       memberId: member._id,
+      memberName: member.name, 
+      member_id_str: member.member_id,
       eventId: validEventId,
       category,
-      customCategory: category === 'Other' ? customCategory : undefined,
-      title,
-      awardType,
+      customCategory: category === 'Other' ? (customCategory || 'Unspecified') : undefined,
       description,
       chairmanName,
+      title: title || 'CERTIFICATE OF ATTENDANCE',
+      awardType: awardType || 'Official Recognition',
       issuedBy: req.user.memberId
     });
 
@@ -125,6 +127,9 @@ router.post('/bulk', authMiddleware, isAdmin, async (req, res) => {
 
     for (const participant of event.participants) {
       if (!participant.memberId) continue; // Skip if member was deleted
+      
+      // EXCLUSIVE: Only issue to members marked as "Attended"
+      if (participant.attended !== true) continue;
 
       // Prevent duplicates
       const existingCert = await Certificate.findOne({ memberId: participant.memberId._id, eventId });
@@ -132,6 +137,8 @@ router.post('/bulk', authMiddleware, isAdmin, async (req, res) => {
 
       certificates.push({
         memberId: participant.memberId._id,
+        memberName: participant.memberId.name,
+        member_id_str: participant.memberId.member_id,
         eventId,
         category,
         customCategory: category === 'Other' ? customCategory : undefined,
@@ -142,6 +149,10 @@ router.post('/bulk', authMiddleware, isAdmin, async (req, res) => {
         issuedBy: req.user.memberId
       });
       issuedCount++;
+    }
+
+    if (issuedCount === 0 && event.participants.some(p => p.attended !== true)) {
+        return res.status(400).json({ error: 'No certificates issued. Please mark members as "Attended" in the event dashboard before issuing certificates.' });
     }
 
     if (certificates.length > 0) {

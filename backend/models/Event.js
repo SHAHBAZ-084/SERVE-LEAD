@@ -41,6 +41,10 @@ const eventSchema = new mongoose.Schema({
     joinedAt: {
       type: Date,
       default: Date.now
+    },
+    attended: {
+      type: Boolean,
+      default: false
     }
   }],
 }, { timestamps: true });

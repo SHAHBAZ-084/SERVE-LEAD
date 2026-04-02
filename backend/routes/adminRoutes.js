@@ -243,6 +243,36 @@ router.patch('/members/:id/toggle-block', authMiddleware, isAdmin, asyncHandler(
     logActivity(req.user.memberId, 'Toggled Account Status', `Changed status of ${member.name} to ${member.status}`, member._id);
 }));
 
+// PATCH Promote member to Admin (Superuser only)
+router.patch('/members/:id/promote', authMiddleware, isSuperuser, asyncHandler(async (req, res) => {
+    const member = await Member.findById(req.params.id);
+    if (!member) return res.status(404).json({ error: 'Member not found' });
+    
+    if (member.role === 'Admin' || member.role === 'Superuser') {
+        return res.status(400).json({ error: 'User is already an administrator.' });
+    }
+
+    member.role = 'Admin';
+    await member.save();
+    res.json({ message: `${member.name} has been promoted to Admin.`, role: 'Admin' });
+    logActivity(req.user.memberId, 'PROMOTED_ADMIN', `Promoted ${member.name} to Admin role`, member._id);
+}));
+
+// PATCH Demote Admin to General Member (Superuser only)
+router.patch('/members/:id/demote', authMiddleware, isSuperuser, asyncHandler(async (req, res) => {
+    const member = await Member.findById(req.params.id);
+    if (!member) return res.status(404).json({ error: 'Administrator record not found' });
+    
+    if (member.role === 'Superuser') {
+        return res.status(403).json({ error: 'Critical Security: Superuser status cannot be revoked.' });
+    }
+
+    member.role = 'General';
+    await member.save();
+    res.json({ message: `${member.name} access has been revoked.`, role: 'General' });
+    logActivity(req.user.memberId, 'REVOKED_ADMIN', `Demoted ${member.name} back to General member`, member._id);
+}));
+
 // Profile and Logout routes...
 router.get('/profile', authMiddleware, isAdmin, asyncHandler(async (req, res) => {
     const admin = await Member.findById(req.user.memberId).select('-password').lean();

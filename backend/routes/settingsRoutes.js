@@ -6,26 +6,10 @@ const fs = require('fs');
 const SystemSetting = require('../models/SystemSetting');
 const authMiddleware = require('../middlewares/authMiddleware');
 
-// Multer Config for Team Images
-const teamUploadDir = path.join(__dirname, '..', 'uploads', 'team');
-if (!fs.existsSync(teamUploadDir)) {
-  fs.mkdirSync(teamUploadDir, { recursive: true });
-}
+const { createUpload, getFileUrl } = require('../utils/storage');
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, teamUploadDir),
-  filename: (req, file, cb) => cb(null, `team-${Date.now()}${path.extname(file.originalname)}`)
-});
-
-const upload = multer({ 
-  storage,
-  fileFilter: (req, file, cb) => {
-    const filetypes = /jpeg|jpg|png|webp/;
-    const extname = filetypes.test(path.extname(file.originalname).toLowerCase());
-    if (extname) return cb(null, true);
-    cb(new Error('Only images (jpg, png, webp) are allowed'));
-  }
-});
+// Multer Config (Hybrid: Local/Cloud)
+const upload = createUpload('team');
 
 // Middleware to check if user is Superuser
 const isSuperuser = async (req, res, next) => {
@@ -54,7 +38,7 @@ router.get('/', async (req, res) => {
 router.post('/upload', authMiddleware, isSuperuser, upload.single('image'), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: 'No image uploaded' });
-    const imageUrl = `/uploads/team/${req.file.filename}`;
+    const imageUrl = getFileUrl(req.file, 'team');
     res.json({ imageUrl });
   } catch (error) {
     res.status(500).json({ error: 'Upload failed' });

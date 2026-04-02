@@ -1,19 +1,10 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import api from "../api";
+import api, { getImgUrl } from "../api";
 import logo from "../assets/logo.png";
 import sealImg from "../assets/sealcertificate.png";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
-const getImgUrl = (path) => {
-    if (!path) return "";
-    if (path.startsWith('http')) return path;
-    const base = API_BASE_URL.replace(/\/$/, '');
-    const cleanPath = path.startsWith('/') ? path : `/${path}`;
-    return `${base}${cleanPath}`;
-};
 
 // ── Shared Primitives ─────────────────────────────────────
 const inputCls =

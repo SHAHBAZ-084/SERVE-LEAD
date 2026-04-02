@@ -2,6 +2,7 @@ import Navbar from "../components/Navbar";
 import StatsSection from "../components/StatsSection";
 import TeamSection from "../components/TeamSection";
 import Footer from "../components/Footer";
+import bgPhoto from "../assets/Facebook.jpg";
 
 export default function AboutPage() {
   return (
@@ -9,10 +10,11 @@ export default function AboutPage() {
       <Navbar />
 
       {/* About Us Hero Section (Refined Aesthetic) */}
-      <section className="relative pt-24 pb-20 overflow-hidden">
-        {/* Background Layer with Soft Blur & Grain */}
+      <section className="relative pt-16 pb-12 sm:pt-24 sm:pb-20 overflow-hidden">
+        {/* Background Layer with Soft Blur, Grain & Photo */}
         <div className="absolute inset-0 z-0">
-          <div className="absolute inset-0 bg-gradient-to-b from-cyan-50/40 via-white to-white" />
+          <img src={bgPhoto} alt="Background" className="absolute inset-0 w-full h-full object-cover opacity-60 object-center" />
+          <div className="absolute inset-0 bg-gradient-to-b from-white/80 via-white/80 to-white/95 sm:from-white/60 sm:via-white/70" />
           <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-blue-50/50 blur-[120px] rounded-full -mr-64 -mt-64" />
           <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-cyan-50/50 blur-[100px] rounded-full -ml-48 -mb-48" />
         </div>

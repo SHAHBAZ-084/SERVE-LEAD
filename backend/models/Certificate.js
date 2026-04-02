@@ -36,6 +36,14 @@ const certificateSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+  memberName: {
+    type: String,
+    required: false, // For older records, but will be populated for new ones
+  },
+  member_id_str: {
+    type: String,
+    required: false,
+  },
   issuedBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Member', // Admin who issued it
