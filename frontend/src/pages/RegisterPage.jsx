@@ -110,7 +110,7 @@ export default function RegisterPage() {
   };
 
   const StepIndicator = () => (
-    <div className="flex items-center justify-between mb-16 relative px-8">
+    <div className="flex items-center justify-between mb-12 md:mb-16 relative px-4 md:px-8">
       <div className="absolute top-[1.25rem] left-0 w-full h-1 bg-slate-50 -translate-y-1/2 z-0 rounded-full" />
       <div className={`absolute top-[1.25rem] left-0 h-1 bg-[#002147] transition-all duration-700 ease-in-out -translate-y-1/2 z-0 rounded-full`} style={{ width: `${((step - 1) / 2) * 100}%` }} />
       {[1, 2, 3].map((s) => (
@@ -129,13 +129,13 @@ export default function RegisterPage() {
   return (
     <>
       <Navbar />
-      <section className="bg-[#FAFBFD] py-32 min-h-screen flex items-center justify-center px-4 relative overflow-hidden font-sans">
+      <section className="bg-[#FAFBFD] py-16 md:py-32 min-h-screen flex items-center justify-center px-4 relative overflow-hidden font-sans">
         <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-[#002147]/5 rounded-full blur-[150px] -mr-80 -mt-80" />
         <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-blue-100/30 rounded-full blur-[150px] -ml-80 -mb-80" />
         
-        <div className="bg-white p-12 md:p-16 rounded-[4rem] shadow-[0_40px_100px_-20px_rgba(0,0,0,0.08)] w-full max-w-xl border border-slate-100 relative z-10">
-          <div className="text-center mb-14">
-            <h2 className="text-4xl md:text-5xl font-black tracking-tight text-slate-900 mb-4">Member <span className="gradient-text">Registration</span></h2>
+        <div className="bg-white p-8 md:p-16 rounded-[2rem] md:rounded-[4rem] shadow-[0_40px_100px_-20px_rgba(0,0,0,0.08)] w-full max-w-xl border border-slate-100 relative z-10">
+          <div className="text-center mb-10 md:mb-14">
+            <h2 className="text-3xl md:text-5xl font-black tracking-tight text-slate-900 mb-4">Member <span className="gradient-text">Registration</span></h2>
             <div className="flex items-center justify-center gap-2">
               <div className="h-[2px] w-8 bg-[#002147]" />
               <p className="text-slate-400 text-xs font-bold uppercase tracking-[0.3em]">Membership Portal</p>
@@ -175,25 +175,25 @@ export default function RegisterPage() {
               <div className="transition-all duration-700">
                 {step === 1 && (
                   <div className="space-y-7 animate-fade-up">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-7">
-                      <div className="col-span-2 group">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-7">
+                      <div className="md:col-span-2 group">
                         <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 ml-2 group-focus-within:text-[#002147] transition-colors">01. Full Name</label>
-                        <input name="name" placeholder="E.G. MUHAMMAD SHAHBAZ" value={formData.name} onChange={handleChange} className="w-full bg-slate-50 border border-slate-100 rounded-[1.5rem] px-6 py-5 text-sm font-bold text-slate-800 placeholder:text-slate-200 placeholder:font-black focus:ring-8 focus:ring-blue-500/5 focus:border-[#002147] outline-none transition-all shadow-inner" />
+                        <input name="name" placeholder="E.G. MUHAMMAD SHAHBAZ" value={formData.name} onChange={handleChange} className="w-full bg-slate-50 border border-slate-100 rounded-[1.25rem] md:rounded-[1.5rem] px-5 py-4 md:px-6 md:py-5 text-sm font-bold text-slate-800 placeholder:text-slate-200 placeholder:font-black focus:ring-8 focus:ring-blue-500/5 focus:border-[#002147] outline-none transition-all shadow-inner" />
                       </div>
                       <div className="group">
                         <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 ml-2 group-focus-within:text-[#002147] transition-colors">02. Father Name</label>
-                        <input name="father_name" placeholder="FATHER NAME" value={formData.father_name} onChange={handleChange} className="w-full bg-slate-50 border border-slate-100 rounded-[1.5rem] px-6 py-5 text-sm font-bold text-slate-800 placeholder:text-slate-200 placeholder:font-black focus:ring-8 focus:ring-blue-500/5 focus:border-[#002147] outline-none transition-all shadow-inner" />
+                        <input name="father_name" placeholder="FATHER NAME" value={formData.father_name} onChange={handleChange} className="w-full bg-slate-50 border border-slate-100 rounded-[1.25rem] md:rounded-[1.5rem] px-5 py-4 md:px-6 md:py-5 text-sm font-bold text-slate-800 placeholder:text-slate-200 placeholder:font-black focus:ring-8 focus:ring-blue-500/5 focus:border-[#002147] outline-none transition-all shadow-inner" />
                       </div>
                       <div className="group">
                         <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 ml-2 group-focus-within:text-[#002147] transition-colors">03. WhatsApp (11 Digits)</label>
-                        <input name="whatsapp" maxLength="11" placeholder="03XXXXXXXXX" value={formData.whatsapp} onChange={handleChange} className="w-full bg-slate-50 border border-slate-100 rounded-[1.5rem] px-6 py-5 text-sm font-bold text-slate-800 placeholder:text-slate-200 placeholder:font-black focus:ring-8 focus:ring-blue-500/5 focus:border-[#002147] outline-none transition-all shadow-inner" />
+                        <input name="whatsapp" maxLength="11" placeholder="03XXXXXXXXX" value={formData.whatsapp} onChange={handleChange} className="w-full bg-slate-50 border border-slate-100 rounded-[1.25rem] md:rounded-[1.5rem] px-5 py-4 md:px-6 md:py-5 text-sm font-bold text-slate-800 placeholder:text-slate-200 placeholder:font-black focus:ring-8 focus:ring-blue-500/5 focus:border-[#002147] outline-none transition-all shadow-inner" />
                       </div>
-                      <div className="col-span-2 group">
+                      <div className="md:col-span-2 group">
                         <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 ml-2 group-focus-within:text-[#002147] transition-colors">04. Gmail Address</label>
-                        <div className="flex gap-4">
-                          <input type="email" name="email" placeholder="USER@GMAIL.COM" value={formData.email} onChange={(e) => { setOtpSent(false); handleChange(e); }} className="flex-1 bg-slate-50 border border-slate-100 rounded-[1.5rem] px-6 py-5 text-sm font-bold text-slate-800 placeholder:text-slate-200 placeholder:font-black focus:ring-8 focus:ring-blue-500/5 focus:border-[#002147] outline-none transition-all shadow-inner" />
+                        <div className="flex flex-col sm:flex-row gap-4">
+                          <input type="email" name="email" placeholder="USER@GMAIL.COM" value={formData.email} onChange={(e) => { setOtpSent(false); handleChange(e); }} className="flex-1 bg-slate-50 border border-slate-100 rounded-[1.25rem] md:rounded-[1.5rem] px-5 py-4 md:px-6 md:py-5 text-sm font-bold text-slate-800 placeholder:text-slate-200 placeholder:font-black focus:ring-8 focus:ring-blue-500/5 focus:border-[#002147] outline-none transition-all shadow-inner" />
                           {!otpSent && (
-                             <button type="button" onClick={handleSendOtp} disabled={isVerifying} className="bg-[#002147] text-white px-8 rounded-[1.5rem] text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 transition-all shadow-lg active:scale-95 disabled:opacity-50">
+                             <button type="button" onClick={handleSendOtp} disabled={isVerifying} className="bg-[#002147] text-white px-8 py-4 sm:py-0 rounded-[1.25rem] md:rounded-[1.5rem] text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 transition-all shadow-lg active:scale-95 disabled:opacity-50">
                                 {isVerifying ? <i className="fas fa-spinner fa-spin" /> : "Verify Gmail"}
                              </button>
                           )}
@@ -201,18 +201,18 @@ export default function RegisterPage() {
                       </div>
 
                       {otpSent && (
-                        <div className="col-span-2 group animate-fade-up">
+                        <div className="md:col-span-2 group animate-fade-up">
                            <label className="block text-xs font-bold text-emerald-500 uppercase tracking-widest mb-3 ml-2 group-focus-within:text-emerald-600 transition-colors flex items-center gap-2">
                              <i className="fas fa-paper-plane" /> 04B. Enter 6-Digit Code
                            </label>
-                           <input type="text" maxLength="6" name="otp" placeholder="XXXXXX" value={formData.otp} onChange={handleChange} className="w-full bg-emerald-50/50 border-2 border-emerald-100 rounded-[1.5rem] px-6 py-5 text-center text-xl font-black text-emerald-700 tracking-[0.5em] shadow-inner focus:border-emerald-500 outline-none transition-all placeholder:text-emerald-200" />
+                           <input type="text" maxLength="6" name="otp" placeholder="XXXXXX" value={formData.otp} onChange={handleChange} className="w-full bg-emerald-50/50 border-2 border-emerald-100 rounded-[1.25rem] md:rounded-[1.5rem] px-5 py-4 md:px-6 md:py-5 text-center text-xl font-black text-emerald-700 tracking-[0.5em] shadow-inner focus:border-emerald-500 outline-none transition-all placeholder:text-emerald-200" />
                         </div>
                       )}
 
-                      <div className="col-span-2 group">
+                      <div className="md:col-span-2 group">
                         <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 ml-2 group-focus-within:text-[#002147] transition-colors">05. Password (Min 6)</label>
                         <div className="relative">
-                          <input type={showPassword ? "text" : "password"} name="password" value={formData.password} onChange={handleChange} className="w-full bg-slate-50 border border-slate-100 rounded-[1.5rem] px-6 py-5 text-sm font-bold text-slate-800 placeholder:text-slate-200 placeholder:font-black focus:ring-8 focus:ring-blue-500/5 focus:border-[#002147] outline-none transition-all pr-16 shadow-inner" placeholder="••••••••" />
+                          <input type={showPassword ? "text" : "password"} name="password" value={formData.password} onChange={handleChange} className="w-full bg-slate-50 border border-slate-100 rounded-[1.25rem] md:rounded-[1.5rem] px-5 py-4 md:px-6 md:py-5 text-sm font-bold text-slate-800 placeholder:text-slate-200 placeholder:font-black focus:ring-8 focus:ring-blue-500/5 focus:border-[#002147] outline-none transition-all pr-16 shadow-inner" placeholder="••••••••" />
                           <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-6 top-1/2 -translate-y-1/2 text-slate-200 hover:text-[#002147] transition-colors">
                             <i className={`fas ${showPassword ? 'fa-eye-slash' : 'fa-eye'}`} />
                           </button>
@@ -244,11 +244,11 @@ export default function RegisterPage() {
                       </div>
                       <div className="group">
                         <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 ml-2 group-focus-within:text-[#002147] transition-colors">Graduation Year</label>
-                        <input type="number" name="passing_year" value={formData.passing_year} onChange={handleChange} className="w-full bg-slate-50 border border-slate-100 rounded-[1.5rem] px-6 py-5 text-sm font-bold text-slate-800 placeholder:text-slate-200 placeholder:font-black focus:ring-8 focus:ring-blue-500/5 focus:border-[#002147] outline-none transition-all shadow-inner" />
+                        <input type="number" name="passing_year" value={formData.passing_year} onChange={handleChange} className="w-full bg-slate-50 border border-slate-100 rounded-[1.25rem] md:rounded-[1.5rem] px-5 py-4 md:px-6 md:py-5 text-sm font-bold text-slate-800 placeholder:text-slate-200 placeholder:font-black focus:ring-8 focus:ring-blue-500/5 focus:border-[#002147] outline-none transition-all shadow-inner" />
                       </div>
                       <div className="group">
                         <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 ml-2 group-focus-within:text-[#002147] transition-colors">Institution</label>
-                        <select name="university" value={formData.university} onChange={handleChange} className="w-full bg-white border-2 border-slate-100 rounded-[1.5rem] px-6 py-5 text-sm font-black text-slate-800 focus:bg-slate-50 transition-all appearance-none cursor-pointer outline-none focus:border-[#002147]">
+                        <select name="university" value={formData.university} onChange={handleChange} className="w-full bg-white border-2 border-slate-100 rounded-[1.25rem] md:rounded-[1.5rem] px-5 py-4 md:px-6 md:py-5 text-sm font-black text-slate-800 focus:bg-slate-50 transition-all appearance-none cursor-pointer outline-none focus:border-[#002147]">
                           {pakistaniUniversities.map(u => <option key={u} value={u}>{u.toUpperCase()}</option>)}
                         </select>
                       </div>
@@ -264,11 +264,11 @@ export default function RegisterPage() {
                   <div className="space-y-8 animate-fade-up">
                     <div className="group">
                       <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 ml-2 group-focus-within:text-[#002147] transition-colors">Home Address</label>
-                      <input name="address" placeholder="HOUSE, STREET, SECTOR, AREA" value={formData.address} onChange={handleChange} className="w-full bg-slate-50 border border-slate-100 rounded-[1.5rem] px-6 py-5 text-sm font-bold text-slate-800 placeholder:text-slate-200 placeholder:font-black focus:ring-8 focus:ring-blue-500/5 focus:border-[#002147] outline-none transition-all shadow-inner" />
+                      <input name="address" placeholder="HOUSE, STREET, SECTOR, AREA" value={formData.address} onChange={handleChange} className="w-full bg-slate-50 border border-slate-100 rounded-[1.25rem] md:rounded-[1.5rem] px-5 py-4 md:px-6 md:py-5 text-sm font-bold text-slate-800 placeholder:text-slate-200 placeholder:font-black focus:ring-8 focus:ring-blue-500/5 focus:border-[#002147] outline-none transition-all shadow-inner" />
                     </div>
                     <div className="group">
                       <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 ml-2 group-focus-within:text-[#002147] transition-colors">Your City</label>
-                      <input name="city" placeholder="E.G. LAHORE" value={formData.city} onChange={handleChange} className="w-full bg-slate-50 border border-slate-100 rounded-[1.5rem] px-6 py-5 text-sm font-bold text-slate-800 placeholder:text-slate-200 placeholder:font-black focus:ring-8 focus:ring-blue-500/5 focus:border-[#002147] outline-none transition-all shadow-inner" />
+                      <input name="city" placeholder="E.G. LAHORE" value={formData.city} onChange={handleChange} className="w-full bg-slate-50 border border-slate-100 rounded-[1.25rem] md:rounded-[1.5rem] px-5 py-4 md:px-6 md:py-5 text-sm font-bold text-slate-800 placeholder:text-slate-200 placeholder:font-black focus:ring-8 focus:ring-blue-500/5 focus:border-[#002147] outline-none transition-all shadow-inner" />
                     </div>
                     <div className="flex gap-5">
                       <button onClick={prevStep} className="flex-1 bg-slate-50 text-slate-400 py-6 rounded-[2rem] text-xs font-bold uppercase tracking-widest hover:bg-slate-100 transition-all">Back</button>

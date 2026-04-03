@@ -61,8 +61,9 @@ export default function Footer() {
                     <div className="space-y-6 flex flex-col items-center md:items-start">
                         <h3 className="text-xs font-black uppercase tracking-widest text-slate-500">Contact Info</h3>
                         <div className="space-y-4 text-sm font-bold text-slate-400">
-                            <p className="flex items-center gap-3 justify-center md:justify-start"><i className="fas fa-envelope text-cyan-500" /> info@slsuet.com</p>
-                            <p className="flex items-center gap-3 justify-center md:justify-start"><i className="fas fa-location-dot text-cyan-500" /> UET Campus, Lahore</p>
+                            <p className="flex items-center gap-3 justify-center md:justify-start"><i className="fas fa-envelope text-cyan-500" /> serveandleadsociety@gmail.com</p>
+                            <p className="flex items-center gap-3 justify-center md:justify-start"><i className="fas fa-location-dot text-cyan-500" /> Ghoray Shah Road Near UET Lahore</p>
+                            <p className="flex items-center gap-3 justify-center md:justify-start"><i className="fas fa-phone text-cyan-500" /> 0314-1683402</p>
                         </div>
                     </div>
                 </div>
@@ -70,7 +71,7 @@ export default function Footer() {
                 <div className="pt-10 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-8 text-center md:text-left">
                     <div className="flex flex-col">
                         <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest">
-                            © {new Date().getFullYear()} Serve & Lead Society. All rights reserved.
+                            © 2025 Serve & Lead Society. All rights reserved.
                         </p>
                         <p className="text-slate-400 text-[8px] font-black uppercase tracking-[0.4em] mt-3 flex items-center justify-center md:justify-start gap-3 opacity-60 hover:opacity-100 transition-all duration-700">
                             <span className="w-1.5 h-1.5 bg-cyan-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(6,182,212,0.6)]" />
