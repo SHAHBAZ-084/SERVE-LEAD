@@ -1,34 +1,41 @@
 const multer = require('multer');
-const { MulterGoogleCloudStorage } = require('multer-cloud-storage');
+const { S3Client } = require('@aws-sdk/client-s3');
+const multerS3 = require('multer-s3');
 const path = require('path');
 const fs = require('fs');
 
 /**
+ * AWS S3 Client Configuration
+ */
+const s3 = new S3Client({
+    region: process.env.AWS_REGION || 'eu-north-1',
+    credentials: {
+        accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+    }
+});
+
+/**
  * Hybrid Storage Utility
- * Switches between Local Disk Storage and Google Cloud Storage (GCS)
- * based on the presence of GCS_BUCKET_NAME in environment variables.
+ * Switches between Local Disk Storage and AWS S3
+ * based on the presence of AWS_S3_BUCKET_NAME in environment variables.
  */
 
 const getStorage = (subfolder = 'general') => {
-    // Check if GCS is configured
-    const useGCS = process.env.GCS_BUCKET_NAME && process.env.GCS_PROJECT_ID;
+    // Check if AWS S3 is configured
+    const useS3 = process.env.AWS_ACCESS_KEY_ID && process.env.AWS_S3_BUCKET_NAME;
 
-    if (useGCS) {
-        console.log(`☁️ Using Google Cloud Storage for: ${subfolder}`);
-        return new MulterGoogleCloudStorage({
-            bucket: process.env.GCS_BUCKET_NAME,
-            projectId: process.env.GCS_PROJECT_ID,
-            // keyFilename is optional if running on Cloud Run with IAM roles, 
-            // but needed for local development if GOOGLE_APPLICATION_CREDENTIALS is not set globally.
-            keyFilename: process.env.GCP_KEY_FILE || null, 
-            destination: subfolder,
-            filename: (req, file, cb) => {
+    if (useS3) {
+        console.log(`☁️ Using AWS S3 Storage for: ${subfolder}`);
+        return multerS3({
+            s3: s3,
+            bucket: process.env.AWS_S3_BUCKET_NAME,
+            acl: 'public-read', // Ensure files are publicly readable
+            key: (req, file, cb) => {
                 const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
                 const cleanName = file.originalname.replace(/[^a-zA-Z0-9.]/g, '_');
-                cb(null, `${uniqueSuffix}-${cleanName}`);
-            },
-            autoRetry: true,
-            maxRetries: 3
+                cb(null, `${subfolder}/${uniqueSuffix}-${cleanName}`);
+            }
         });
     } else {
         // Fallback to Local Disk Storage
@@ -55,9 +62,9 @@ const getStorage = (subfolder = 'general') => {
 const getFileUrl = (file, subfolder = 'general') => {
     if (!file) return '';
     
-    // If GCS is used, multer-cloud-storage usually provides the link in file.link or file.path
-    if (file.link || (file.path && file.path.startsWith('http'))) {
-        return file.link || file.path;
+    // If S3 is used, multer-s3 provides the link in file.location
+    if (file.location) {
+        return file.location;
     }
     
     // Fallback for Local Storage
