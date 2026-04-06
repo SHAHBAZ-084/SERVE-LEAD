@@ -21,7 +21,7 @@ const isAdmin = asyncHandler(async (req, res, next) => {
     }
 });
 
-const { createUpload, getFileUrl } = require('../utils/storage');
+const { createUpload, getFileUrl, deleteFile } = require('../utils/storage');
 
 // Multer Config (Hybrid: Local/Cloud)
 const upload = createUpload('events');
@@ -144,8 +144,16 @@ router.patch('/:id/attendance/bulk', authMiddleware, isAdmin, asyncHandler(async
 
 // DELETE Event (Admin only)
 router.delete('/:id', authMiddleware, isAdmin, asyncHandler(async (req, res) => {
+    const event = await Event.findById(req.params.id);
+    if (!event) return res.status(404).json({ error: 'Event not found' });
+
+    // Delete associated image from S3/Local Storage
+    if (event.image_url) {
+        await deleteFile(event.image_url);
+    }
+
     await Event.findByIdAndDelete(req.params.id);
-    res.json({ message: 'Event deleted' });
+    res.json({ message: 'Event and associated image deleted' });
 }));
 
 module.exports = router;

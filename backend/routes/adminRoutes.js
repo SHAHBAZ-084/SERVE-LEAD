@@ -15,6 +15,7 @@ const { sendWelcomeEmail, sendInterviewEmail } = require('../utils/emailService'
 const authMiddleware = require('../middlewares/authMiddleware');
 const asyncHandler = require('../middlewares/asyncHandler');
 const logActivity = require('../utils/activityLogger');
+const { deleteFile } = require('../utils/storage');
 
 // ── MIDDLEWARES ───────────────────────────────────────────
 
@@ -53,10 +54,14 @@ router.delete('/members/:id', authMiddleware, isAdmin, asyncHandler(async (req, 
             return res.status(403).json({ error: 'Access Denied: Admins cannot delete other administrative accounts.' });
         }
 
+        // Delete associated files from storage
+        if (member.profile_pic_url) await deleteFile(member.profile_pic_url);
+        if (member.certificate_url) await deleteFile(member.certificate_url);
+
         await Member.deleteOne({ _id: req.params.id });
         await logActivity(req.user.memberId, 'DELETED_MEMBER', `Permanent removal: ${member.name} (${member.email})`, req.params.id);
         
-        res.json({ message: 'Application deleted successfully.' });
+        res.json({ message: 'Application and associated files deleted successfully.' });
     } catch (err) {
         res.status(500).json({ error: 'Failed to process deletion. Please try again.' });
     }
@@ -76,10 +81,18 @@ router.post('/members/bulk-delete', authMiddleware, isAdmin, asyncHandler(async 
         return res.status(400).json({ error: 'No deletable applications found in selection.' });
     }
 
+    // Delete files for all target members
+    for (const m of targetMembers) {
+        if (deletableIds.includes(m._id)) {
+            if (m.profile_pic_url) await deleteFile(m.profile_pic_url);
+            if (m.certificate_url) await deleteFile(m.certificate_url);
+        }
+    }
+
     await Member.deleteMany({ _id: { $in: deletableIds } });
     await logActivity(req.user.memberId, 'BULK_DELETE', `Mass removal of ${deletableIds.length} applications.`);
     
-    res.json({ message: `Successfully removed ${deletableIds.length} records.` });
+    res.json({ message: `Successfully removed ${deletableIds.length} records and associated files.` });
 }));
 
 // Admin Login

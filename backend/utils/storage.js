@@ -1,5 +1,5 @@
 const multer = require('multer');
-const { S3Client } = require('@aws-sdk/client-s3');
+const { S3Client, DeleteObjectCommand } = require('@aws-sdk/client-s3');
 const multerS3 = require('multer-s3');
 const path = require('path');
 const fs = require('fs');
@@ -85,4 +85,47 @@ const createUpload = (subfolder) => {
     });
 };
 
-module.exports = { createUpload, getFileUrl };
+/**
+ * Delete a file from either AWS S3 or Local Storage
+ */
+const deleteFile = async (fileUrl) => {
+    if (!fileUrl) return;
+
+    try {
+        // 1. Detect if it's an S3 URL
+        // Example: https://bucket.s3.region.amazonaws.com/folder/file.jpg
+        const isS3 = fileUrl.includes('.amazonaws.com');
+
+        if (isS3) {
+            // Extract the Key from the full URL
+            // The key starts after the '.com/' part
+            const domainSplit = fileUrl.split('.amazonaws.com/');
+            if (domainSplit.length < 2) return;
+            
+            const key = domainSplit[1];
+            console.log(`🗑️ Deleting from S3 Key: ${key}`);
+
+            const deleteParams = {
+                Bucket: process.env.AWS_S3_BUCKET_NAME,
+                Key: key
+            };
+
+            await s3.send(new DeleteObjectCommand(deleteParams));
+        } else {
+            // 2. Handle Local File Deletion
+            // Expected Relative Path like /uploads/general/filename.jpg
+            const relativePath = fileUrl.startsWith('/') ? fileUrl : `/${fileUrl}`;
+            const absolutePath = path.join(__dirname, '..', ...relativePath.split('/'));
+            
+            if (fs.existsSync(absolutePath)) {
+                console.log(`📁 Deleting Local File: ${absolutePath}`);
+                fs.unlinkSync(absolutePath);
+            }
+        }
+    } catch (error) {
+        console.error(`⚠️ Failed to delete file: ${fileUrl}`, error.message);
+        // We log the error but don't throw, allowing DB deletion to proceed
+    }
+};
+
+module.exports = { createUpload, getFileUrl, deleteFile };
