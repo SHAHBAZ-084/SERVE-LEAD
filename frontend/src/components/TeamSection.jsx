@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import useScrollReveal from "../hooks/useScrollReveal";
 import api from "../api";
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+const API_BASE = 'https://api.serveandlead.org';
 const getImgUrl = (path) => path?.startsWith('http') ? path : `${API_BASE}${path}`;
 
 export default function TeamSection({ memberData = "none", hide = false }) {

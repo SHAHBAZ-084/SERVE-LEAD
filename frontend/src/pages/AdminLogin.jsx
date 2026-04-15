@@ -168,7 +168,7 @@ export default function AdminLogin() {
                                 </>
                             ) : (
                                 <>
-                                    Login <i className="fas fa-arrow-right" />
+                                    SECURE LOGIN <i className="fas fa-arrow-right" />
                                 </>
                             )}
                         </button>

@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import api from '../api';
 import defaultImg from '../assets/welcome.jpg';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+const API_BASE_URL = 'https://api.serveandlead.org';
 const getImgUrl = (path) => {
     if (!path) return "";
     if (path.startsWith('http')) return path;
