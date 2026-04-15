@@ -76,6 +76,7 @@ router.post('/', authMiddleware, isAdmin, upload.single('image'), asyncHandler(a
     const image_url = getFileUrl(req.file, 'events');
 
     try {
+        if (!title) return res.status(400).json({ error: 'Event title is required.' });
         let slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
         
         // Ensure slug uniqueness before saving

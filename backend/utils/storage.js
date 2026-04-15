@@ -30,7 +30,7 @@ const getStorage = (subfolder = 'general') => {
         return multerS3({
             s3: s3,
             bucket: process.env.AWS_S3_BUCKET_NAME,
-            acl: 'public-read', // Ensure files are publicly readable
+            // acl: 'public-read', // Removed to avoid 403/500 errors on buckets with "Block Public Access" enabled
             key: (req, file, cb) => {
                 const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
                 const cleanName = file.originalname.replace(/[^a-zA-Z0-9.]/g, '_');
