@@ -79,8 +79,8 @@ const createUpload = (subfolder) => {
             const filetypes = /jpeg|jpg|png|webp/;
             const extname = filetypes.test(path.extname(file.originalname).toLowerCase());
             const mimetype = filetypes.test(file.mimetype);
-            if (extname && mimetype) return cb(null, true);
-            cb(new Error('Only images (jpg, png, webp) are allowed'));
+            if (extname || mimetype) return cb(null, true);
+            cb(new Error(`Only images (jpg, png, webp) are allowed. Detected: Ext=${path.extname(file.originalname)}, Type=${file.mimetype}`));
         }
     });
 };

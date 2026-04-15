@@ -74,7 +74,7 @@ app.get('/', (req, res) => res.json({ status: 'active', env: process.env.NODE_EN
 app.use((err, req, res, next) => {
     logger.error(`${err.status || 500} - ${err.message} - ${req.originalUrl} - ${req.method} - ${req.ip}`);
     res.status(err.status || 500).json({
-        error: process.env.NODE_ENV === 'production' ? 'Internal Server Error' : err.message
+        error: err.message || 'Internal Server Error'
     });
 });
 
