@@ -1,25 +1,21 @@
 const nodemailer = require('nodemailer');
 
-// Pre-check environment variables
-const checkCredentials = () => {
+const createTransporter = () => {
   if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
-    console.error('CRITICAL: EMAIL_USER or EMAIL_PASS environment variables are missing!');
-    return false;
+      throw new Error('EMAIL_USER or EMAIL_PASS environment variables are missing');
   }
-  return true;
+  return nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASS,
+    },
+  });
 };
 
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
-});
-
 const sendWelcomeEmail = async (email, name, memberId) => {
-  if (!checkCredentials()) return { success: false, error: 'Server authentication credentials missing' };
   try {
+    const transporter = createTransporter();
     const mailOptions = {
       from: `"Serve & Lead Society" <${process.env.EMAIL_USER}>`,
       to: email,
@@ -57,7 +53,6 @@ const sendWelcomeEmail = async (email, name, memberId) => {
         </div>
       `,
     };
-
     await transporter.sendMail(mailOptions);
     return { success: true };
   } catch (error) {
@@ -67,8 +62,8 @@ const sendWelcomeEmail = async (email, name, memberId) => {
 };
 
 const sendResetPasswordEmail = async (email, name, resetUrl) => {
-  if (!checkCredentials()) return { success: false, error: 'Server authentication credentials missing' };
   try {
+    const transporter = createTransporter();
     const mailOptions = {
       from: `"SLS Security" <${process.env.EMAIL_USER}>`,
       to: email,
@@ -106,7 +101,6 @@ const sendResetPasswordEmail = async (email, name, resetUrl) => {
         </div>
       `,
     };
-
     await transporter.sendMail(mailOptions);
     return { success: true };
   } catch (error) {
@@ -116,8 +110,8 @@ const sendResetPasswordEmail = async (email, name, resetUrl) => {
 };
 
 const sendContactEmail = async (name, email, message) => {
-  if (!checkCredentials()) return { success: false, error: 'Server authentication credentials missing' };
   try {
+    const transporter = createTransporter();
     const mailOptions = {
       from: `"SLS Portal Notification" <${process.env.EMAIL_USER}>`,
       to: 'shahbazyounas636@gmail.com',
@@ -148,7 +142,6 @@ const sendContactEmail = async (name, email, message) => {
         </div>
       `,
     };
-
     await transporter.sendMail(mailOptions);
     return { success: true };
   } catch (error) {
@@ -158,8 +151,8 @@ const sendContactEmail = async (name, email, message) => {
 };
 
 const sendInterviewEmail = async (email, name, venue, message) => {
-  if (!checkCredentials()) return { success: false, error: 'Server authentication credentials missing' };
   try {
+    const transporter = createTransporter();
     const mailOptions = {
       from: `"SLS Recruitment" <${process.env.EMAIL_USER}>`,
       to: email,
@@ -203,7 +196,6 @@ const sendInterviewEmail = async (email, name, venue, message) => {
         </div>
       `,
     };
-
     await transporter.sendMail(mailOptions);
     return { success: true };
   } catch (error) {
@@ -213,8 +205,8 @@ const sendInterviewEmail = async (email, name, venue, message) => {
 };
 
 const sendOTPEmail = async (email, otp) => {
-  if (!checkCredentials()) return { success: false, error: 'Server authentication credentials missing' };
   try {
+    const transporter = createTransporter();
     const mailOptions = {
         from: `"SLS Security" <${process.env.EMAIL_USER}>`,
         to: email,
@@ -244,7 +236,6 @@ const sendOTPEmail = async (email, otp) => {
         </div>
         `,
     };
-
     await transporter.sendMail(mailOptions);
     return { success: true };
   } catch (error) {
