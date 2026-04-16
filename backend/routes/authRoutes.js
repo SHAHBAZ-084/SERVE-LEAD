@@ -36,15 +36,9 @@ router.post('/check-email', asyncHandler(async (req, res) => {
         return res.status(400).json({ error: 'This Gmail is already registered.' });
     }
 
-    // 3. DNS Domain Verification (Ensures domain is real and has mail servers)
-    try {
-        const domain = email.split('@')[1];
-        const mx = await dns.resolveMx(domain);
-        if (!mx || mx.length === 0) {
-            return res.status(400).json({ error: 'This email domain does not appear to exist.' });
-        }
-    } catch (e) {
-        return res.status(400).json({ error: 'Email domain verification failed.' });
+    // 3. Simple email format validation is enough since we only permit gmail.com
+    if (!email.toLowerCase().endsWith('@gmail.com')) {
+        return res.status(400).json({ error: 'Only official @gmail.com accounts are permitted.' });
     }
 
     res.status(200).json({ message: 'Email is available' });
@@ -130,6 +124,10 @@ router.post('/reset-password/:token', asyncHandler(async (req, res) => {
         return res.status(400).json({ error: 'Invalid or expired reset token.' });
     }
 
+    if (password.length < 6) {
+        return res.status(400).json({ error: 'Password must be at least 6 characters long.' });
+    }
+
     const isSameAsOld = await bcrypt.compare(password, member.password);
     if (isSameAsOld) {
         return res.status(400).json({ error: 'Security Conflict: New password cannot be the same as your current password.' });
@@ -161,8 +159,8 @@ router.post('/register', asyncHandler(async (req, res) => {
         return res.status(400).json({ error: 'Invalid or expired verification code.' });
     }
 
-    if (password.length < 8) {
-        return res.status(400).json({ error: 'Password must be at least 8 characters long.' });
+    if (password.length < 6) {
+        return res.status(400).json({ error: 'Password must be at least 6 characters long.' });
     }
 
     const existing = await Member.findOne({ email: email.toLowerCase() });
@@ -269,6 +267,9 @@ router.put('/profile', authMiddleware, asyncHandler(async (req, res) => {
         member.email = email.toLowerCase();
     }
     if (password) {
+        if (password.length < 6) {
+            return res.status(400).json({ error: 'Password must be at least 6 characters long.' });
+        }
         const isSameAsOld = await bcrypt.compare(password, member.password);
         if (isSameAsOld) return res.status(400).json({ error: 'New password cannot be the same as your current password.' });
         member.password = await bcrypt.hash(password, 12);
