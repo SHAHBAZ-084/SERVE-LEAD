@@ -44,48 +44,38 @@ router.post('/check-email', asyncHandler(async (req, res) => {
     res.status(200).json({ message: 'Email is available' });
 }));
 
-// Send Registration OTP
+// Send Registration OTP - Minimal Version
 router.post('/send-otp', async (req, res) => {
     try {
         const { email } = req.body;
         if (!email) return res.status(400).json({ error: 'Email is required.' });
 
-        // 1. Basic Regex for Gmail
-        const gmailRegex = /^[a-zA-Z0-9._%+-]+@gmail\.com$/;
-        if (!gmailRegex.test(email)) {
-            return res.status(400).json({ error: 'Only official @gmail.com accounts are permitted.' });
+        console.log(`Starting OTP requested for: ${email}`);
+
+        // 1. Database Checks - Wrap in sub-try to identify DB vs Email errors
+        let otpCode;
+        try {
+            const existing = await Member.findOne({ email: email.toLowerCase() });
+            if (existing) return res.status(400).json({ error: 'Email already registered.' });
+
+            otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+            await OTP.deleteMany({ email: email.toLowerCase() });
+            await OTP.create({ email: email.toLowerCase(), code: otpCode });
+        } catch (dbErr) {
+            console.error('Database Error in OTP:', dbErr);
+            return res.status(500).json({ error: 'Database Error', details: dbErr.message });
         }
 
-        // 2. Check Database Availability
-        const existing = await Member.findOne({ email: email.toLowerCase() });
-        if (existing) {
-            return res.status(400).json({ error: 'Account already exists for this Gmail.' });
-        }
-
-        // 3. Generate 6-digit OTP
-        const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
-
-        // 4. Save to DB (overwrite if already exists for this email)
-        await OTP.deleteMany({ email: email.toLowerCase() });
-        await OTP.create({ email: email.toLowerCase(), code: otpCode });
-
-        // 5. Send Email
+        // 2. Email Dispatch
         const result = await sendOTPEmail(email, otpCode);
         if (!result.success) {
-            return res.status(500).json({ 
-                error: 'The email service failed to dispatch the code.',
-                details: result.error 
-            });
+            return res.status(500).json({ error: 'Mail Service Error', details: result.error });
         }
 
-        res.status(200).json({ message: 'Verification code sent to your Gmail.' });
-    } catch (err) {
-        console.error('Registration OTP Error:', err);
-        res.status(500).json({ 
-            error: 'Internal Server Error during OTP generation.',
-            details: err.message,
-            stack: process.env.NODE_ENV === 'production' ? null : err.stack
-        });
+        res.status(200).json({ message: 'Verification code sent!' });
+    } catch (globalErr) {
+        console.error('Global OTP Crash:', globalErr);
+        res.status(500).json({ error: 'Critical Server Failure', details: globalErr.toString() });
     }
 });
 
