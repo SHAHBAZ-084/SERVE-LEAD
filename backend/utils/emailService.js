@@ -1,19 +1,24 @@
 const nodemailer = require('nodemailer');
 
+// Pre-check environment variables
+const checkCredentials = () => {
+  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+    console.error('CRITICAL: EMAIL_USER or EMAIL_PASS environment variables are missing!');
+    return false;
+  }
+  return true;
+};
+
 const transporter = nodemailer.createTransport({
-  host: 'smtp.gmail.com',
-  port: 587,
-  secure: false, // Use STARTTLS
+  service: 'gmail',
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS,
   },
-  tls: {
-    rejectUnauthorized: false
-  }
 });
 
 const sendWelcomeEmail = async (email, name, memberId) => {
+  if (!checkCredentials()) return { success: false, error: 'Server authentication credentials missing' };
   try {
     const mailOptions = {
       from: `"Serve & Lead Society" <${process.env.EMAIL_USER}>`,
@@ -62,6 +67,7 @@ const sendWelcomeEmail = async (email, name, memberId) => {
 };
 
 const sendResetPasswordEmail = async (email, name, resetUrl) => {
+  if (!checkCredentials()) return { success: false, error: 'Server authentication credentials missing' };
   try {
     const mailOptions = {
       from: `"SLS Security" <${process.env.EMAIL_USER}>`,
@@ -110,6 +116,7 @@ const sendResetPasswordEmail = async (email, name, resetUrl) => {
 };
 
 const sendContactEmail = async (name, email, message) => {
+  if (!checkCredentials()) return { success: false, error: 'Server authentication credentials missing' };
   try {
     const mailOptions = {
       from: `"SLS Portal Notification" <${process.env.EMAIL_USER}>`,
@@ -151,6 +158,7 @@ const sendContactEmail = async (name, email, message) => {
 };
 
 const sendInterviewEmail = async (email, name, venue, message) => {
+  if (!checkCredentials()) return { success: false, error: 'Server authentication credentials missing' };
   try {
     const mailOptions = {
       from: `"SLS Recruitment" <${process.env.EMAIL_USER}>`,
@@ -205,6 +213,7 @@ const sendInterviewEmail = async (email, name, venue, message) => {
 };
 
 const sendOTPEmail = async (email, otp) => {
+  if (!checkCredentials()) return { success: false, error: 'Server authentication credentials missing' };
   try {
     const mailOptions = {
         from: `"SLS Security" <${process.env.EMAIL_USER}>`,
