@@ -44,38 +44,45 @@ router.post('/check-email', asyncHandler(async (req, res) => {
     res.status(200).json({ message: 'Email is available' });
 }));
 
-// Send Registration OTP - Minimal Version
+// Send Registration OTP - Diagnostic Trace Version
 router.post('/send-otp', async (req, res) => {
+    let progress = 'Request Received';
     try {
         const { email } = req.body;
-        if (!email) return res.status(400).json({ error: 'Email is required.' });
+        if (!email) return res.status(400).json({ error: 'Email missing' });
 
-        console.log(`Starting OTP requested for: ${email}`);
-
-        // 1. Database Checks - Wrap in sub-try to identify DB vs Email errors
-        let otpCode;
+        progress = 'Checking Database';
         try {
             const existing = await Member.findOne({ email: email.toLowerCase() });
-            if (existing) return res.status(400).json({ error: 'Email already registered.' });
+            if (existing) return res.status(400).json({ error: 'Already registered' });
+        } catch (dbErr) {
+            return res.status(500).json({ stage: 'Database Check', message: dbErr.message });
+        }
 
-            otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+        progress = 'Generating OTP';
+        const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+
+        progress = 'Saving OTP to DB';
+        try {
             await OTP.deleteMany({ email: email.toLowerCase() });
             await OTP.create({ email: email.toLowerCase(), code: otpCode });
-        } catch (dbErr) {
-            console.error('Database Error in OTP:', dbErr);
-            return res.status(500).json({ error: 'Database Error', details: dbErr.message });
+        } catch (otpDbErr) {
+            return res.status(500).json({ stage: 'OTP Saving', message: otpDbErr.message });
         }
 
-        // 2. Email Dispatch
+        progress = 'Attempting to Dispatch Email';
         const result = await sendOTPEmail(email, otpCode);
         if (!result.success) {
-            return res.status(500).json({ error: 'Mail Service Error', details: result.error });
+            return res.status(500).json({ stage: 'Email Dispatch', message: result.error });
         }
 
-        res.status(200).json({ message: 'Verification code sent!' });
+        res.status(200).json({ message: 'Success' });
     } catch (globalErr) {
-        console.error('Global OTP Crash:', globalErr);
-        res.status(500).json({ error: 'Critical Server Failure', details: globalErr.toString() });
+        res.status(500).json({ 
+            error: 'Fatal Crash', 
+            stage: progress, 
+            message: globalErr.toString() 
+        });
     }
 });
 
