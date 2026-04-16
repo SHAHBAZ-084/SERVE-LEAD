@@ -45,37 +45,46 @@ router.post('/check-email', asyncHandler(async (req, res) => {
 }));
 
 // Send Registration OTP
-router.post('/send-otp', asyncHandler(async (req, res) => {
-    const { email } = req.body;
-    if (!email) return res.status(400).json({ error: 'Email is required.' });
+router.post('/send-otp', async (req, res) => {
+    try {
+        const { email } = req.body;
+        if (!email) return res.status(400).json({ error: 'Email is required.' });
 
-    // 1. Basic Regex for Gmail
-    const gmailRegex = /^[a-zA-Z0-9._%+-]+@gmail\.com$/;
-    if (!gmailRegex.test(email)) {
-        return res.status(400).json({ error: 'Only official @gmail.com accounts are permitted.' });
+        // 1. Basic Regex for Gmail
+        const gmailRegex = /^[a-zA-Z0-9._%+-]+@gmail\.com$/;
+        if (!gmailRegex.test(email)) {
+            return res.status(400).json({ error: 'Only official @gmail.com accounts are permitted.' });
+        }
+
+        // 2. Check Database Availability
+        const existing = await Member.findOne({ email: email.toLowerCase() });
+        if (existing) {
+            return res.status(400).json({ error: 'Account already exists for this Gmail.' });
+        }
+
+        // 3. Generate 6-digit OTP
+        const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+
+        // 4. Save to DB (overwrite if already exists for this email)
+        await OTP.deleteMany({ email: email.toLowerCase() });
+        await OTP.create({ email: email.toLowerCase(), code: otpCode });
+
+        // 5. Send Email
+        const success = await sendOTPEmail(email, otpCode);
+        if (!success) {
+            return res.status(500).json({ error: 'The email service failed to dispatch the code. Please verify the server SMTP settings.' });
+        }
+
+        res.status(200).json({ message: 'Verification code sent to your Gmail.' });
+    } catch (err) {
+        console.error('Registration OTP Error:', err);
+        res.status(500).json({ 
+            error: 'Internal Server Error during OTP generation.',
+            details: err.message,
+            stack: process.env.NODE_ENV === 'production' ? null : err.stack
+        });
     }
-
-    // 2. Check Database Availability
-    const existing = await Member.findOne({ email: email.toLowerCase() });
-    if (existing) {
-        return res.status(400).json({ error: 'Account already exists for this Gmail.' });
-    }
-
-    // 3. Generate 6-digit OTP
-    const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
-
-    // 4. Save to DB (overwrite if already exists for this email)
-    await OTP.deleteMany({ email: email.toLowerCase() });
-    await OTP.create({ email: email.toLowerCase(), code: otpCode });
-
-    // 5. Send Email
-    const success = await sendOTPEmail(email, otpCode);
-    if (!success) {
-        return res.status(500).json({ error: 'Failed to send verification code. Please check your internet connection.' });
-    }
-
-    res.status(200).json({ message: 'Verification code sent to your Gmail.' });
-}));
+});
 
 // Request Password Reset
 router.post('/forgot-password', asyncHandler(async (req, res) => {
