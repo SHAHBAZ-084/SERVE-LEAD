@@ -1,17 +1,11 @@
 const nodemailer = require('nodemailer');
 
 const transporter = nodemailer.createTransport({
-  host: 'smtp.gmail.com',
-  port: 465,
-  secure: true, // Use SSL/TLS
+  service: 'gmail',
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS,
   },
-  tls: {
-    // Do not fail on invalid certificates (optional, but can help with some network issues)
-    rejectUnauthorized: false
-  }
 });
 
 const sendWelcomeEmail = async (email, name, memberId) => {
@@ -19,7 +13,7 @@ const sendWelcomeEmail = async (email, name, memberId) => {
     const mailOptions = {
       from: `"Serve & Lead Society" <${process.env.EMAIL_USER}>`,
       to: email,
-      subject: '✨ Membership Approved: Welcome to SLS Society!',
+      subject: 'Welcome to SLS Society: Membership Approved',
       html: `
         <div style="font-family: 'Segoe UI', Arial, sans-serif; padding: 40px; color: #1e293b; line-height: 1.6; background-color: #f8fafc;">
           <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 24px; overflow: hidden; box-shadow: 0 20px 50px rgba(0,33,71,0.1); border: 1px solid #e2e8f0;">
@@ -54,11 +48,10 @@ const sendWelcomeEmail = async (email, name, memberId) => {
       `,
     };
 
-    const info = await transporter.sendMail(mailOptions);
-    console.log('Welcome email sent: ' + info.response);
+    await transporter.sendMail(mailOptions);
     return true;
   } catch (error) {
-    console.error('Error sending welcome email (check SMTP credentials in .env):', error);
+    console.error('Email Service Error:', error);
     return false;
   }
 };
@@ -68,7 +61,7 @@ const sendResetPasswordEmail = async (email, name, resetUrl) => {
     const mailOptions = {
       from: `"SLS Security" <${process.env.EMAIL_USER}>`,
       to: email,
-      subject: '🔒 Reset Your SLS Society Password',
+      subject: 'Reset Your SLS Society Password',
       html: `
         <div style="font-family: 'Segoe UI', Arial, sans-serif; padding: 40px; color: #1e293b; line-height: 1.6; background-color: #f1f5f9;">
           <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 24px; overflow: hidden; box-shadow: 0 15px 40px rgba(0,0,0,0.05); border: 1px solid #e2e8f0;">
@@ -86,7 +79,7 @@ const sendResetPasswordEmail = async (email, name, resetUrl) => {
               
               <div style="background-color: #fff9f0; border: 1px solid #ffedd5; border-radius: 12px; padding: 15px 20px; margin-bottom: 30px;">
                 <p style="font-size: 13px; color: #9a3412; margin: 0; font-weight: 600;">
-                  ⚠️ This link will expire in <strong>10 minutes</strong> for your security.
+                  Please note: This link will expire in 10 minutes for your security.
                 </p>
               </div>
               
@@ -103,11 +96,10 @@ const sendResetPasswordEmail = async (email, name, resetUrl) => {
       `,
     };
 
-    const info = await transporter.sendMail(mailOptions);
-    console.log('Reset email sent: ' + info.response);
+    await transporter.sendMail(mailOptions);
     return true;
   } catch (error) {
-    console.error('Error sending reset email:', error);
+    console.error('Email Service Error:', error);
     return false;
   }
 };
@@ -117,7 +109,7 @@ const sendContactEmail = async (name, email, message) => {
     const mailOptions = {
       from: `"SLS Portal Notification" <${process.env.EMAIL_USER}>`,
       to: 'shahbazyounas636@gmail.com',
-      subject: `📧 New Inquiry: ${name}`,
+      subject: `New Inquiry from ${name}`,
       html: `
         <div style="font-family: 'Segoe UI', Arial, sans-serif; padding: 40px; color: #1e293b; line-height: 1.6; background-color: #f8fafc;">
           <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 25px rgba(0,0,0,0.06); border: 1px solid #e2e8f0;">
@@ -145,11 +137,10 @@ const sendContactEmail = async (name, email, message) => {
       `,
     };
 
-    const info = await transporter.sendMail(mailOptions);
-    console.log('Contact email sent: ' + info.response);
+    await transporter.sendMail(mailOptions);
     return true;
   } catch (error) {
-    console.error('Error sending contact email:', error);
+    console.error('Email Service Error:', error);
     return false;
   }
 };
@@ -159,12 +150,11 @@ const sendInterviewEmail = async (email, name, venue, message) => {
     const mailOptions = {
       from: `"SLS Recruitment" <${process.env.EMAIL_USER}>`,
       to: email,
-      subject: '🎯 Interview Invitation: SLS Society Recruitment',
+      subject: 'Interview Invitation: SLS Society Recruitment',
       html: `
         <div style="font-family: 'Segoe UI', Arial, sans-serif; padding: 40px; color: #1e293b; line-height: 1.6; background-color: #f1f5f9;">
           <div style="max-width: 650px; margin: 0 auto; background-color: #ffffff; border-radius: 32px; overflow: hidden; box-shadow: 0 40px 100px -20px rgba(0,33,71,0.15); border: 1px solid #e2e8f0;">
-            <div style="background: linear-gradient(135deg, #002147 0%, #001a38 100%); padding: 60px 40px; text-align: center; position: relative;">
-              <div style="position: absolute; top: 0; right: 0; opacity: 0.1; font-size: 200px; color: #ffffff; pointer-events: none;">🎯</div>
+            <div style="background: linear-gradient(135deg, #002147 0%, #001a38 100%); padding: 60px 40px; text-align: center, position: relative;">
               <h1 style="color: #ffffff; margin: 0; font-size: 32px; font-weight: 900; letter-spacing: -0.02em;">Interview Invitation</h1>
               <p style="color: #475569; margin-top: 15px; font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.2em; color: rgba(255,255,255,0.7);">Official Recruitment Drive 2026</p>
             </div>
@@ -185,7 +175,7 @@ const sendInterviewEmail = async (email, name, venue, message) => {
               
               <div style="background-color: #eff6ff; border-radius: 16px; padding: 25px; border-left: 4px solid #3b82f6; margin-bottom: 40px;">
                 <p style="font-size: 14px; color: #1e40af; margin: 0; font-weight: 600;">
-                  📌 <strong>Preparation:</strong> Please arrive 15 minutes early. Dress code is Business Formal.
+                  📌 Preparation: Please arrive 15 minutes early. Dress code is Business Formal.
                 </p>
               </div>
               
@@ -201,11 +191,10 @@ const sendInterviewEmail = async (email, name, venue, message) => {
       `,
     };
 
-    const info = await transporter.sendMail(mailOptions);
-    console.log('Interview email sent: ' + info.response);
+    await transporter.sendMail(mailOptions);
     return true;
   } catch (error) {
-    console.error('Error sending interview email:', error);
+    console.error('Email Service Error:', error);
     return false;
   }
 };
@@ -215,7 +204,7 @@ const sendOTPEmail = async (email, otp) => {
     const mailOptions = {
         from: `"SLS Security" <${process.env.EMAIL_USER}>`,
         to: email,
-        subject: '🔑 SLS Verification Code: ' + otp,
+        subject: 'SLS Verification Code: ' + otp,
         html: `
         <div style="font-family: 'Segoe UI', Arial, sans-serif; padding: 40px; color: #1e293b; line-height: 1.6; background-color: #f8fafc;">
             <div style="max-width: 500px; margin: 0 auto; background-color: #ffffff; border-radius: 32px; overflow: hidden; box-shadow: 0 30px 60px -12px rgba(0,0,0,0.1); border: 1px solid #e2e8f0;">
@@ -230,7 +219,7 @@ const sendOTPEmail = async (email, otp) => {
                     </div>
                     
                     <p style="font-size: 13px; color: #94a3b8; text-align: center; margin-top: 40px; font-weight: 600;">
-                        Code expires in <span style="color: #ef4444;">10 minutes</span>.
+                        Code expires in 10 minutes.
                     </p>
                     
                     <p style="font-size: 11px; color: #cbd5e1; text-align: center; margin-top: 20px;">
@@ -242,11 +231,10 @@ const sendOTPEmail = async (email, otp) => {
         `,
     };
 
-    const info = await transporter.sendMail(mailOptions);
-    console.log('OTP email sent: ' + info.response);
+    await transporter.sendMail(mailOptions);
     return true;
   } catch (error) {
-    console.error('OTP Email Error:', error);
+    console.error('Email Service Error:', error);
     return false;
   }
 };
