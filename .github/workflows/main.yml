@@ -98,7 +98,10 @@ jobs:
           port: 22
           script: |
             cd /home/ubuntu/SERVE-LEAD
-            git pull origin main
+            # Use GITHUB_TOKEN for authentication during pull
+            git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+            git fetch origin
+            git reset --hard origin/main
             cd backend
             npm install --production
             pm2 restart all
