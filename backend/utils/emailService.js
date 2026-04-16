@@ -6,8 +6,10 @@ const createTransporter = () => {
   }
   return nodemailer.createTransport({
     host: 'smtp.gmail.com',
-    port: 465,
-    secure: true, // Use SSL
+    port: 587,
+    secure: false, // Use STARTTLS
+    debug: true,   // Show debug output
+    logger: true,  // Log the connection conversation
     auth: {
       user: process.env.EMAIL_USER,
       pass: process.env.EMAIL_PASS,
