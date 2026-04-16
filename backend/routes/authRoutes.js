@@ -70,9 +70,12 @@ router.post('/send-otp', async (req, res) => {
         await OTP.create({ email: email.toLowerCase(), code: otpCode });
 
         // 5. Send Email
-        const success = await sendOTPEmail(email, otpCode);
-        if (!success) {
-            return res.status(500).json({ error: 'The email service failed to dispatch the code. Please verify the server SMTP settings.' });
+        const result = await sendOTPEmail(email, otpCode);
+        if (!result.success) {
+            return res.status(500).json({ 
+                error: 'The email service failed to dispatch the code.',
+                details: result.error 
+            });
         }
 
         res.status(200).json({ message: 'Verification code sent to your Gmail.' });

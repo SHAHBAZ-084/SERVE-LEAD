@@ -1,11 +1,16 @@
 const nodemailer = require('nodemailer');
 
 const transporter = nodemailer.createTransport({
-  service: 'gmail',
+  host: 'smtp.gmail.com',
+  port: 587,
+  secure: false, // Use STARTTLS
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS,
   },
+  tls: {
+    rejectUnauthorized: false
+  }
 });
 
 const sendWelcomeEmail = async (email, name, memberId) => {
@@ -49,10 +54,10 @@ const sendWelcomeEmail = async (email, name, memberId) => {
     };
 
     await transporter.sendMail(mailOptions);
-    return true;
+    return { success: true };
   } catch (error) {
     console.error('Email Service Error:', error);
-    return false;
+    return { success: false, error: error.message };
   }
 };
 
@@ -97,10 +102,10 @@ const sendResetPasswordEmail = async (email, name, resetUrl) => {
     };
 
     await transporter.sendMail(mailOptions);
-    return true;
+    return { success: true };
   } catch (error) {
     console.error('Email Service Error:', error);
-    return false;
+    return { success: false, error: error.message };
   }
 };
 
@@ -138,10 +143,10 @@ const sendContactEmail = async (name, email, message) => {
     };
 
     await transporter.sendMail(mailOptions);
-    return true;
+    return { success: true };
   } catch (error) {
     console.error('Email Service Error:', error);
-    return false;
+    return { success: false, error: error.message };
   }
 };
 
@@ -154,7 +159,7 @@ const sendInterviewEmail = async (email, name, venue, message) => {
       html: `
         <div style="font-family: 'Segoe UI', Arial, sans-serif; padding: 40px; color: #1e293b; line-height: 1.6; background-color: #f1f5f9;">
           <div style="max-width: 650px; margin: 0 auto; background-color: #ffffff; border-radius: 32px; overflow: hidden; box-shadow: 0 40px 100px -20px rgba(0,33,71,0.15); border: 1px solid #e2e8f0;">
-            <div style="background: linear-gradient(135deg, #002147 0%, #001a38 100%); padding: 60px 40px; text-align: center, position: relative;">
+            <div style="background: linear-gradient(135deg, #002147 0%, #001a38 100%); padding: 60px 40px; text-align: center; position: relative;">
               <h1 style="color: #ffffff; margin: 0; font-size: 32px; font-weight: 900; letter-spacing: -0.02em;">Interview Invitation</h1>
               <p style="color: #475569; margin-top: 15px; font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.2em; color: rgba(255,255,255,0.7);">Official Recruitment Drive 2026</p>
             </div>
@@ -192,10 +197,10 @@ const sendInterviewEmail = async (email, name, venue, message) => {
     };
 
     await transporter.sendMail(mailOptions);
-    return true;
+    return { success: true };
   } catch (error) {
     console.error('Email Service Error:', error);
-    return false;
+    return { success: false, error: error.message };
   }
 };
 
@@ -232,10 +237,10 @@ const sendOTPEmail = async (email, otp) => {
     };
 
     await transporter.sendMail(mailOptions);
-    return true;
+    return { success: true };
   } catch (error) {
     console.error('Email Service Error:', error);
-    return false;
+    return { success: false, error: error.message };
   }
 };
 
