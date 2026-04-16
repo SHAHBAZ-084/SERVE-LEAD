@@ -44,45 +44,27 @@ router.post('/check-email', asyncHandler(async (req, res) => {
     res.status(200).json({ message: 'Email is available' });
 }));
 
-// Send Registration OTP - Diagnostic Trace Version
+// Send Registration OTP - ISOLATION TEST (No DB)
 router.post('/send-otp', async (req, res) => {
-    let progress = 'Request Received';
     try {
         const { email } = req.body;
-        if (!email) return res.status(400).json({ error: 'Email missing' });
+        // Hardcoded OTP for isolation test
+        const otpCode = "999888"; 
+        
+        console.log(`Isolation Test: Dispatching email to ${email}`);
 
-        progress = 'Checking Database';
-        try {
-            const existing = await Member.findOne({ email: email.toLowerCase() });
-            if (existing) return res.status(400).json({ error: 'Already registered' });
-        } catch (dbErr) {
-            return res.status(500).json({ stage: 'Database Check', message: dbErr.message });
-        }
-
-        progress = 'Generating OTP';
-        const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
-
-        progress = 'Saving OTP to DB';
-        try {
-            await OTP.deleteMany({ email: email.toLowerCase() });
-            await OTP.create({ email: email.toLowerCase(), code: otpCode });
-        } catch (otpDbErr) {
-            return res.status(500).json({ stage: 'OTP Saving', message: otpDbErr.message });
-        }
-
-        progress = 'Attempting to Dispatch Email';
+        // 2. Email Dispatch Only
         const result = await sendOTPEmail(email, otpCode);
         if (!result.success) {
-            return res.status(500).json({ stage: 'Email Dispatch', message: result.error });
+            return res.status(500).json({ 
+                error: 'Isolation Test Failed: Email Service Issue', 
+                details: result.error 
+            });
         }
 
-        res.status(200).json({ message: 'Success' });
+        res.status(200).json({ message: 'Isolation Test Success: Email Sent (DB Skipped)' });
     } catch (globalErr) {
-        res.status(500).json({ 
-            error: 'Fatal Crash', 
-            stage: progress, 
-            message: globalErr.toString() 
-        });
+        res.status(500).json({ error: 'Isolation test critical crash', details: globalErr.toString() });
     }
 });
 
