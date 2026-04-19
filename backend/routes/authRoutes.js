@@ -11,9 +11,18 @@ const authMiddleware = require('../middlewares/authMiddleware');
 
 // Current Member Profile
 router.get('/me', authMiddleware, asyncHandler(async (req, res) => {
-    const member = await Member.findById(req.user.memberId).select('-password');
+    // using .lean() properly cleans up the mongodb objectid types to pure json objects
+    const member = await Member.findById(req.user.memberId || req.user.id).select('-password').lean();
     if (!member) return res.status(404).json({ error: 'User not found' });
-    res.json(member);
+    
+    // Explicitly send both _id and id properties to satisfy front-end parsers
+    res.json({
+        ...member,
+        _id: member._id.toString(),
+        id: member._id.toString(),
+        member_id: member.member_id || "Awaiting Approval",
+        dbId: member._id.toString()
+    });
 }));
 
 // Update Profile

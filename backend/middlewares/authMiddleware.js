@@ -10,7 +10,10 @@ module.exports = function (req, res, next) {
 
     try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        req.user = decoded; // { memberId, role, status }
+        req.user = {
+            ...decoded,
+            memberId: decoded.memberId || decoded.id || decoded._id
+        };
         next();
     } catch (err) {
         console.error('Auth Middleware Error:', err.message);
