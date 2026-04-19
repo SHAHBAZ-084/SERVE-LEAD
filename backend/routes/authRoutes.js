@@ -110,6 +110,48 @@ router.post('/register', asyncHandler(async (req, res) => {
     });
 }));
 
+// Member Login
+router.post('/login', asyncHandler(async (req, res) => {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+        return res.status(400).json({ error: 'Please provide both email and password.' });
+    }
+
+    const member = await Member.findOne({ email: email.toLowerCase() });
+    
+    if (!member) {
+        return res.status(401).json({ error: 'Invalid credentials.' });
+    }
+
+    // Check if password matches plaintext (older signups) or hashed (resets)
+    let isMatch = false;
+    if (member.password === password) {
+        isMatch = true;
+    } else {
+        isMatch = await bcrypt.compare(password, member.password).catch(() => false);
+    }
+
+    if (!isMatch) {
+        return res.status(401).json({ error: 'Invalid credentials.' });
+    }
+
+    const token = jwt.sign({ memberId: member._id, role: member.role }, process.env.JWT_SECRET, { expiresIn: '30d' });
+
+    res.status(200).json({
+        token,
+        member: {
+            id: member._id,
+            member_id: member.member_id,
+            name: member.name,
+            email: member.email,
+            status: member.status,
+            role: member.role,
+            joining_year: member.joining_year
+        }
+    });
+}));
+
 // Forgot Password
 router.post('/forgot-password', asyncHandler(async (req, res) => {
     const { email } = req.body;
