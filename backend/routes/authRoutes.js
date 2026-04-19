@@ -1,10 +1,12 @@
 const express = require('express');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
+const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
 const Member = require('../models/Member');
 const OTP = require('../models/OTP');
-const { sendOTPEmail } = require('../utils/emailService');
-const asyncHandler = require('express-async-handler');
+const { sendOTPEmail, sendResetPasswordEmail } = require('../utils/emailService');
+const asyncHandler = require('../middlewares/asyncHandler');
 
 // Verify Email availability
 router.post('/check-email', asyncHandler(async (req, res) => {
@@ -87,19 +89,19 @@ router.post('/verify-otp', asyncHandler(async (req, res) => {
 
 // Final Registration
 router.post('/register', asyncHandler(async (req, res) => {
-    const { personalInfo, educationInfo, locationInfo, password } = req.body;
-    const email = personalInfo.email.toLowerCase();
+    // The frontend sends a flat formData object, not nested
+    const formData = req.body;
+    const email = formData.email?.toLowerCase();
+
+    if (!email) return res.status(400).json({ error: 'Email is required' });
 
     const member = await Member.create({
-        ...personalInfo,
-        ...educationInfo,
-        ...locationInfo,
+        ...formData,
         email,
-        password,
         status: 'pending'
     });
 
-    const token = jwt.sign({ id: member._id }, process.env.JWT_SECRET, { expiresIn: '30d' });
+    const token = jwt.sign({ memberId: member._id, role: member.role }, process.env.JWT_SECRET, { expiresIn: '30d' });
     res.status(201).json({
         _id: member._id,
         name: member.name,
@@ -108,4 +110,51 @@ router.post('/register', asyncHandler(async (req, res) => {
     });
 }));
 
+// Forgot Password
+router.post('/forgot-password', asyncHandler(async (req, res) => {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ error: 'Please provide a valid email.' });
+
+    const member = await Member.findOne({ email: email.toLowerCase() });
+    if (!member) return res.status(404).json({ error: 'No account found with that email.' });
+
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    member.resetPasswordToken = resetToken;
+    member.resetPasswordExpire = Date.now() + 10 * 60 * 1000; // 10 minutes
+    await member.save();
+
+    const resetUrl = `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
+    const mailResult = await sendResetPasswordEmail(member.email, member.name, resetUrl);
+
+    if (!mailResult.success) {
+        member.resetPasswordToken = undefined;
+        member.resetPasswordExpire = undefined;
+        await member.save();
+        return res.status(500).json({ error: 'Email could not be sent. Please try again later.' });
+    }
+
+    res.status(200).json({ message: 'Reset link sent to your email.' });
+}));
+
+// Reset Password
+router.post('/reset-password', asyncHandler(async (req, res) => {
+    const { token, newPassword } = req.body;
+    if (!token || !newPassword) return res.status(400).json({ error: 'Invalid request.' });
+
+    const member = await Member.findOne({
+        resetPasswordToken: token,
+        resetPasswordExpire: { $gt: Date.now() }
+    });
+
+    if (!member) return res.status(400).json({ error: 'Invalid or expired reset token.' });
+
+    member.password = await bcrypt.hash(newPassword, 12);
+    member.resetPasswordToken = undefined;
+    member.resetPasswordExpire = undefined;
+    await member.save();
+
+    res.status(200).json({ message: 'Password has been reset successfully.' });
+}));
+
 module.exports = router;
+
