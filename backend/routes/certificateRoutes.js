@@ -173,9 +173,18 @@ router.get('/member/me', authMiddleware, async (req, res) => {
         const certificates = await Certificate.find({ memberId: req.user.memberId })
             .populate('eventId', 'title date location') // Bring in event details
             .populate('memberId', 'name member_id role') 
-            .sort({ createdAt: -1 });
+            .sort({ createdAt: -1 })
+            .lean();
 
-        res.json(certificates);
+        // Enforce strict strict String conversion for everything interacting with the dashboard
+        const mappedCertificates = certificates.map(c => ({
+            ...c,
+            _id: c._id.toString(),
+            eventId: c.eventId ? { ...c.eventId, _id: c.eventId._id.toString() } : null,
+            memberId: c.memberId ? { ...c.memberId, _id: c.memberId._id.toString() } : null
+        }));
+
+        res.json(mappedCertificates);
     } catch (error) {
         console.error('Fetch My Certificates Error:', error);
         res.status(500).json({ error: 'Server Error fetching certificates.' });

@@ -29,7 +29,18 @@ const upload = createUpload('events');
 // GET all active events (Member view)
 router.get('/', asyncHandler(async (req, res) => {
     const events = await Event.find({ is_active: true }).sort({ date: -1 }).lean();
-    res.json(events);
+    
+    // Explicitly stringify all ObjectIds so React matches them flawlessly
+    const mappedEvents = events.map(e => ({
+        ...e,
+        _id: e._id.toString(),
+        participants: e.participants ? e.participants.map(p => ({
+            ...p,
+            memberId: p.memberId ? p.memberId.toString() : null
+        })) : []
+    }));
+    
+    res.json(mappedEvents);
 }));
 
 // GET all events (Admin view)
