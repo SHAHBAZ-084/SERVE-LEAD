@@ -7,6 +7,29 @@ const Member = require('../models/Member');
 const OTP = require('../models/OTP');
 const { sendOTPEmail, sendResetPasswordEmail } = require('../utils/emailService');
 const asyncHandler = require('../middlewares/asyncHandler');
+const authMiddleware = require('../middlewares/authMiddleware');
+
+// Current Member Profile
+router.get('/me', authMiddleware, asyncHandler(async (req, res) => {
+    const member = await Member.findById(req.user.memberId).select('-password');
+    if (!member) return res.status(404).json({ error: 'User not found' });
+    res.json(member);
+}));
+
+// Update Profile
+router.put('/profile', authMiddleware, asyncHandler(async (req, res) => {
+    const { name, email, password } = req.body;
+    const updateData = {};
+    if (name) updateData.name = name;
+    if (email) updateData.email = email;
+    
+    if (password) {
+        updateData.password = await bcrypt.hash(password, 12);
+    }
+    
+    const member = await Member.findByIdAndUpdate(req.user.memberId, updateData, { new: true }).select('-password');
+    res.json(member);
+}));
 
 // Verify Email availability
 router.post('/check-email', asyncHandler(async (req, res) => {
