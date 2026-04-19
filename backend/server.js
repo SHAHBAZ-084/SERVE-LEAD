@@ -13,10 +13,11 @@ require('dotenv').config({ path: __dirname + '/.env' });
 
 const path = require('path');
 const app = express();
+app.set('trust proxy', 1); // Trust first proxy (useful for Vercel/Render)
 
 // 1. Production Config
 if (process.env.NODE_ENV === 'production') {
-    app.set('trust proxy', 1); // Trust first proxy (useful for Vercel/Render)
+    // Moved trust proxy outside to handle all environments behind Nginx
 }
 
 // 2. Middlewares
@@ -44,7 +45,7 @@ app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev', {
 // Global Rate Limiter
 const limiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: process.env.NODE_ENV === 'production' ? 100 : 10000, // Developer bypass
+    max: 5000, // Developer bypass and relaxed limit for production debugging
     message: { error: 'Too many requests from this IP.' }
 });
 app.use('/api/', limiter);

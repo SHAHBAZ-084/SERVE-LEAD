@@ -32,7 +32,7 @@ function useCountUp(target, duration = 1200) {
         };
         raf.current = requestAnimationFrame(tick);
         return () => {
-             if (raf.current) cancelAnimationFrame(raf.current);
+            if (raf.current) cancelAnimationFrame(raf.current);
         };
     }, [target, duration]);
     return count;
@@ -181,7 +181,7 @@ const MemberDashboard = () => {
     const downloadPDF = async (certData) => {
         setExportData(certData);
         setExporting(true);
-        
+
         try {
             // 1. Create a hidden iframe sandbox
             const iframe = document.createElement('iframe');
@@ -196,7 +196,7 @@ const MemberDashboard = () => {
             document.body.appendChild(iframe);
 
             const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
-            
+
             // 2. Inject barebones HTML with ONLY the necessary fonts (NO TAILWIND)
             iframeDoc.open();
             iframeDoc.write(`
@@ -224,12 +224,12 @@ const MemberDashboard = () => {
             // 4. Clone the purified certificate node into the sandbox
             const sourceElement = document.getElementById('cert-export-node');
             if (!sourceElement) throw new Error("Export engine not found in DOM");
-            
+
             const clonedNode = sourceElement.cloneNode(true);
             clonedNode.style.opacity = '1';
             clonedNode.style.visibility = 'visible';
             clonedNode.style.display = 'block';
-            
+
             iframeDoc.getElementById('sandbox-root').appendChild(clonedNode);
 
             // 5. High-Resolution Capture from the Sandbox
@@ -254,7 +254,7 @@ const MemberDashboard = () => {
 
             pdf.addImage(imgData, 'PNG', 0, 0, 210, 297, undefined, 'FAST');
             pdf.save(`SLS_Official_${user.name?.replace(/\s+/g, '_') || 'Award'}.pdf`);
-            
+
             // Final Cleanup
             document.body.removeChild(iframe);
         } catch (err) {
@@ -281,7 +281,7 @@ const MemberDashboard = () => {
                 </h1>
                 <div style={{ textAlign: 'center', fontFamily: 'sans-serif', paddingLeft: '40px', paddingRight: '40px', lineHeight: 1.6, fontSize: '15px', color: '#475569' }}>
                     <p>
-                        This is to certify that the individual named below has been duly granted <br/>
+                        This is to certify that the individual named below has been duly granted <br />
                         <strong style={{ fontWeight: 'bold', color: '#002147' }}>{data.awardType || "Official Membership"}</strong> in the Serve & Lead Society (SLS-UET).
                     </p>
                 </div>
@@ -290,15 +290,15 @@ const MemberDashboard = () => {
             {/* Name Section with Yellow Lines - Professional Upgrade */}
             <div style={{ marginTop: '48px', marginBottom: '40px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', paddingLeft: '40px', paddingRight: '40px' }}>
                 <div style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                   <div style={{ height: '2px', width: '48px', borderRadius: '9999px', position: 'relative', flexShrink: 0, backgroundColor: '#FFD700', marginRight: '24px', marginTop: '10px' }}>
-                      <div style={{ position: 'absolute', left: '-4px', top: '-4px', width: '8px', height: '8px', transform: 'rotate(45deg)', backgroundColor: '#FFD700' }} />
-                   </div>
-                   <h2 style={{ fontFamily: '"Playfair Display", serif', fontSize: '52px', lineHeight: 1.1, color: '#1a1a1a', fontWeight: 'bold', textAlign: 'center', textTransform: 'uppercase', letterSpacing: '-0.025em', whiteSpace: 'nowrap' }}>
-                       {data.memberId?.name || "Member Name"}
-                   </h2>
-                   <div style={{ height: '2px', width: '48px', borderRadius: '9999px', position: 'relative', flexShrink: 0, backgroundColor: '#FFD700', marginLeft: '24px', marginTop: '10px' }}>
-                      <div style={{ position: 'absolute', right: '-4px', top: '-4px', width: '8px', height: '8px', transform: 'rotate(45deg)', backgroundColor: '#FFD700' }} />
-                   </div>
+                    <div style={{ height: '2px', width: '48px', borderRadius: '9999px', position: 'relative', flexShrink: 0, backgroundColor: '#FFD700', marginRight: '24px', marginTop: '10px' }}>
+                        <div style={{ position: 'absolute', left: '-4px', top: '-4px', width: '8px', height: '8px', transform: 'rotate(45deg)', backgroundColor: '#FFD700' }} />
+                    </div>
+                    <h2 style={{ fontFamily: '"Playfair Display", serif', fontSize: '52px', lineHeight: 1.1, color: '#1a1a1a', fontWeight: 'bold', textAlign: 'center', textTransform: 'uppercase', letterSpacing: '-0.025em', whiteSpace: 'nowrap' }}>
+                        {data.memberId?.name || "Member Name"}
+                    </h2>
+                    <div style={{ height: '2px', width: '48px', borderRadius: '9999px', position: 'relative', flexShrink: 0, backgroundColor: '#FFD700', marginLeft: '24px', marginTop: '10px' }}>
+                        <div style={{ position: 'absolute', right: '-4px', top: '-4px', width: '8px', height: '8px', transform: 'rotate(45deg)', backgroundColor: '#FFD700' }} />
+                    </div>
                 </div>
             </div>
 
@@ -311,12 +311,12 @@ const MemberDashboard = () => {
                     <div style={{ display: 'grid', gridTemplateColumns: '180px 1fr', rowGap: '12px', fontSize: '15px' }}>
                         <span style={{ fontWeight: 'bold', color: '#002147' }}>Membership ID:</span>
                         <span style={{ fontWeight: 'bold', color: '#0f172a' }}>{data.memberId?.member_id || "2025-SLS-UET1"}</span>
-                        
+
                         <span style={{ fontWeight: 'bold', color: '#002147' }}>Joining Date:</span>
                         <span style={{ fontWeight: '500', color: '#334155' }}>
-                           {new Date(data.memberId?.createdAt || Date.now()).toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' })}
+                            {new Date(data.memberId?.createdAt || Date.now()).toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' })}
                         </span>
-                        
+
                         <span style={{ fontWeight: 'bold', color: '#002147' }}>Status:</span>
                         <span style={{ fontWeight: '500', color: '#334155' }}>Member from UET Lahore</span>
                     </div>
@@ -328,7 +328,7 @@ const MemberDashboard = () => {
                 <p>
                     {data.description || "The bearer of this certificate is entitled to all privileges and responsibilities associated with the General Membership."}
                 </p>
-                
+
                 <div style={{ marginTop: '24px', fontSize: '12px', fontStyle: 'italic', color: '#64748b' }}>
                     <p>
                         Valid from {new Date(data.createdAt || Date.now()).toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' })} until {new Date(new Date(data.createdAt || Date.now()).setFullYear(new Date(data.createdAt || Date.now()).getFullYear() + 1)).toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' })}
@@ -353,13 +353,13 @@ const MemberDashboard = () => {
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', paddingRight: '20px' }}>
                     <div style={{ position: 'relative', marginBottom: 0, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                         <p style={{ fontSize: '42px', lineHeight: 1, marginBottom: '4px', fontFamily: '"Dancing Script", cursive', color: '#1e293b', opacity: 0.85, fontWeight: 'normal', margin: 0 }}>
-                             {data.chairmanName || "Farooq Baloch"}
+                            {data.chairmanName || "Farooq Baloch"}
                         </p>
                         <div style={{ width: '200px', height: '1px', backgroundColor: '#1e293b' }} />
                     </div>
                     <div style={{ marginTop: '12px' }}>
-                         <p style={{ fontWeight: '900', fontSize: '16px', letterSpacing: '-0.025em', textDecoration: 'underline', textUnderlineOffset: '4px', color: '#1a1a1a', margin: 0 }}>{data.chairmanName || "Muhammad Farooq Ahmad"}</p>
-                         <p style={{ fontSize: '12px', fontWeight: '900', textTransform: 'uppercase', letterSpacing: '0.2em', marginTop: '4px', color: '#94a3b8', margin: 0 }}>Chairman - SLS</p>
+                        <p style={{ fontWeight: '900', fontSize: '16px', letterSpacing: '-0.025em', textDecoration: 'underline', textUnderlineOffset: '4px', color: '#1a1a1a', margin: 0 }}>{data.chairmanName || "Muhammad Farooq Ahmad"}</p>
+                        <p style={{ fontSize: '12px', fontWeight: '900', textTransform: 'uppercase', letterSpacing: '0.2em', marginTop: '4px', color: '#94a3b8', margin: 0 }}>Chairman - SLS</p>
                     </div>
                 </div>
             </div>
@@ -384,15 +384,15 @@ const MemberDashboard = () => {
                     <div className="absolute top-0 right-0 w-96 h-96 bg-[#002147]/5 blur-[120px] -mr-48 -mt-48 transition-transform duration-1000" />
                     <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-8">
                         <div>
-                            <h2 className="text-5xl font-bold text-slate-900 leading-tight tracking-tight text-shadow-sm">Welcome back, <span className="text-[#002147]">{user.name}</span> <span className="inline-block animate-bounce shadow-xl">👋</span></h2>
+                            <h2 className="text-5xl font-bold text-slate-900 leading-tight tracking-tight text-shadow-sm">Welcome back, <span className="text-[#002147]">{user.name === "System Admin" ? "Member" : user.name}</span> <span className="inline-block animate-bounce shadow-xl">👋</span></h2>
                             <p className="text-slate-400 text-[10px] font-semibold uppercase tracking-[0.4em] mt-3">SLS Society Member Portal</p>
                         </div>
                         <div className="flex -space-x-4">
-                           {["S", "L", "S", "+"].map((char, i) => (
-                               <div key={i} className="w-14 h-14 rounded-3xl border-4 border-white bg-slate-50 flex items-center justify-center text-[11px] font-bold text-[#002147] shadow-xl hover:-translate-y-2 transition-all cursor-default">
-                                   {char}
-                               </div>
-                           ))}
+                            {["S", "L", "S", "+"].map((char, i) => (
+                                <div key={i} className="w-14 h-14 rounded-3xl border-4 border-white bg-slate-50 flex items-center justify-center text-[11px] font-bold text-[#002147] shadow-xl hover:-translate-y-2 transition-all cursor-default">
+                                    {char}
+                                </div>
+                            ))}
                         </div>
                     </div>
                 </div>
@@ -621,7 +621,7 @@ const MemberDashboard = () => {
                     {events.map((event, index) => {
                         const hasEnded = Date.now() > new Date(`${event.endDate || event.date}T23:59:59`).getTime();
                         const isJoined = event.participants?.some(p => p.memberId === user.dbId || p.memberId?._id === user.dbId);
-                        
+
                         return (
                             <div key={index} className="bg-white rounded-[2.5rem] overflow-hidden shadow-2xl shadow-slate-200/50 border border-slate-100 hover:-translate-y-2 transition-all duration-500 group relative flex flex-col">
                                 <div className="relative h-64 overflow-hidden">
@@ -631,7 +631,7 @@ const MemberDashboard = () => {
                                         className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000"
                                     />
                                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-60" />
-                                    
+
                                     {/* Date Badge */}
                                     <div className="absolute top-6 left-6 backdrop-blur-md bg-white/90 px-4 py-3 rounded-2xl shadow-2xl border border-white/50 text-center min-w-[64px]">
                                         <p className="text-xl font-bold text-[#002147] leading-none">
@@ -644,9 +644,8 @@ const MemberDashboard = () => {
 
                                     {/* Status Badge */}
                                     <div className="absolute top-6 right-6">
-                                        <span className={`px-4 py-2 rounded-xl text-[9px] font-bold uppercase tracking-widest shadow-xl border backdrop-blur-md ${
-                                            hasEnded ? "bg-slate-900/80 text-slate-300 border-white/10" : "bg-emerald-500/90 text-white border-emerald-400/30"
-                                        }`}>
+                                        <span className={`px-4 py-2 rounded-xl text-[9px] font-bold uppercase tracking-widest shadow-xl border backdrop-blur-md ${hasEnded ? "bg-slate-900/80 text-slate-300 border-white/10" : "bg-emerald-500/90 text-white border-emerald-400/30"
+                                            }`}>
                                             {hasEnded ? "Event Ended" : "Upcoming Event"}
                                         </span>
                                     </div>
@@ -657,32 +656,31 @@ const MemberDashboard = () => {
                                         <i className="fas fa-location-dot text-[#002147] text-xs" />
                                         {event.location || "Society Venue"}
                                     </div>
-                                    
+
                                     <h3 className="font-bold text-2xl text-slate-800 mb-4 group-hover:text-[#002147] transition-colors leading-tight">
                                         {event.title}
                                     </h3>
-                                    
+
                                     <p className="text-slate-500 text-xs font-medium leading-relaxed mb-8 line-clamp-3">
                                         {event.description?.substring(0, 160)}...
                                     </p>
 
                                     <div className="mt-auto flex gap-4">
-                                        <button 
+                                        <button
                                             onClick={() => setSelectedEvent(event)}
                                             className="flex-1 px-6 py-4 rounded-2xl bg-slate-100 text-slate-600 text-[10px] font-bold uppercase tracking-widest hover:bg-slate-200 transition-all border border-slate-200"
                                         >
                                             View Details
                                         </button>
-                                        
+
                                         {!hasEnded && (
-                                            <button 
+                                            <button
                                                 disabled={isJoined || joining}
                                                 onClick={() => handleJoinEvent(event._id)}
-                                                className={`flex-1 px-6 py-4 rounded-2xl text-[10px] font-bold uppercase tracking-widest transition-all shadow-xl ${
-                                                    isJoined 
-                                                    ? "bg-emerald-50 text-emerald-600 border border-emerald-100 shadow-emerald-900/5 cursor-default" 
-                                                    : "bg-[#002147] text-white hover:bg-slate-800 shadow-blue-900/20"
-                                                }`}
+                                                className={`flex-1 px-6 py-4 rounded-2xl text-[10px] font-bold uppercase tracking-widest transition-all shadow-xl ${isJoined
+                                                        ? "bg-emerald-50 text-emerald-600 border border-emerald-100 shadow-emerald-900/5 cursor-default"
+                                                        : "bg-[#002147] text-white hover:bg-slate-800 shadow-blue-900/20"
+                                                    }`}
                                             >
                                                 {joining ? "Registering..." : isJoined ? "Registered" : "Register Now"}
                                             </button>
@@ -716,7 +714,7 @@ const MemberDashboard = () => {
                             </div>
 
                             <h2 className="text-3xl font-bold text-slate-800 mb-6 tracking-tight leading-tight">{selectedEvent.title}</h2>
-                            
+
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
                                 <div className="flex items-start gap-4 p-4 bg-slate-50 rounded-3xl border border-slate-100/50">
                                     <div className="w-10 h-10 bg-white rounded-xl shadow-sm flex items-center justify-center text-[#002147] shrink-0"><i className="fas fa-calendar" /></div>
@@ -742,7 +740,7 @@ const MemberDashboard = () => {
                         <div className="p-8 bg-slate-50 border-t border-slate-100 flex justify-end gap-4">
                             <button onClick={() => setSelectedEvent(null)} className="px-8 py-3.5 text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:text-slate-600 transition-colors">Dismiss</button>
                             {!(Date.now() > new Date(`${selectedEvent.endDate || selectedEvent.date}T23:59:59`).getTime()) && !selectedEvent.participants?.some(p => p.memberId === user.dbId || p.memberId?._id === user.dbId) && (
-                                <button 
+                                <button
                                     onClick={() => handleJoinEvent(selectedEvent._id)}
                                     className="px-10 py-4 bg-[#002147] text-white rounded-2xl text-[10px] font-bold uppercase tracking-widest shadow-xl shadow-blue-900/20 hover:scale-105 transition-all"
                                 >
@@ -772,16 +770,14 @@ const MemberDashboard = () => {
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
                     {announcements.map((ann, idx) => (
                         <div key={idx} className="bg-white rounded-[3rem] p-12 shadow-2xl shadow-slate-200/50 border border-slate-100 hover:-translate-y-2 transition-all duration-500 relative overflow-hidden group">
-                            <div className={`absolute top-0 left-0 w-full h-2 ${
-                                ann.type === 'Urgent' ? 'bg-rose-500' : 
-                                ann.type === 'Success' ? 'bg-emerald-500' : 'bg-[#002147]'
-                            }`} />
-                            
+                            <div className={`absolute top-0 left-0 w-full h-2 ${ann.type === 'Urgent' ? 'bg-rose-500' :
+                                    ann.type === 'Success' ? 'bg-emerald-500' : 'bg-[#002147]'
+                                }`} />
+
                             <div className="flex items-center justify-between mb-10">
-                                <span className={`px-5 py-2 rounded-xl text-[10px] font-bold uppercase tracking-[0.2em] shadow-sm border ${
-                                    ann.type === 'Urgent' ? 'bg-rose-50 text-rose-600 border-rose-100' : 
-                                    ann.type === 'Success' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-slate-50 text-[#002147] border-slate-100'
-                                }`}>
+                                <span className={`px-5 py-2 rounded-xl text-[10px] font-bold uppercase tracking-[0.2em] shadow-sm border ${ann.type === 'Urgent' ? 'bg-rose-50 text-rose-600 border-rose-100' :
+                                        ann.type === 'Success' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-slate-50 text-[#002147] border-slate-100'
+                                    }`}>
                                     {ann.type} Notice
                                 </span>
                                 <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
@@ -796,10 +792,10 @@ const MemberDashboard = () => {
                             <p className="text-slate-600 font-medium leading-relaxed mb-8 whitespace-pre-wrap text-[15px]">
                                 {ann.content}
                             </p>
-                            
+
                             <div className="flex items-center gap-4 pt-8 border-t border-slate-50">
                                 <div className="w-10 h-10 rounded-2xl bg-[#002147]/5 flex items-center justify-center text-[#002147] text-sm shadow-inner group-hover:bg-[#002147] group-hover:text-white transition-all duration-500">
-                                   <i className="fas fa-shield-check" />
+                                    <i className="fas fa-shield-check" />
                                 </div>
                                 <div>
                                     <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 leading-none mb-1">Official Update</p>
@@ -882,7 +878,7 @@ const MemberDashboard = () => {
                                 {isInterviewed ? "Interview Scheduled" : "Approval Pending"}
                             </h2>
                             <p className="text-slate-500 font-medium leading-relaxed mb-10 text-sm">
-                                {isInterviewed 
+                                {isInterviewed
                                     ? "Great news! You have been shortlisted for an interview. Please check your registered Gmail for the venue and time details sent by our administration."
                                     : "Welcome to the society. Your membership details are currently being verified by our administration team. You will receive an email confirmation once your access is ready."
                                 }
@@ -967,12 +963,7 @@ const MemberDashboard = () => {
                         </div>
                     </div>
                     <div className="flex items-center gap-2 sm:gap-3">
-                        {(user.role.includes("Admin") || user.role.includes("Superuser")) && (
-                            <button onClick={() => navigate("/admin")}
-                                className="text-xs font-bold text-white w-10 h-10 sm:w-auto sm:h-auto sm:px-4 sm:py-2 bg-[#002147] hover:bg-slate-800 rounded-xl flex items-center justify-center sm:justify-start gap-2 transition-all border border-transparent shadow-md">
-                                <i className="fas fa-shield-halved text-[14px] sm:text-xs" /> <span className="hidden sm:inline">Admin Portal</span>
-                            </button>
-                        )}
+                        {/* Admin Portal Button safely removed per user request */}
                         <button onClick={() => setActiveTab("settings")}
                             className="text-xs font-bold text-slate-500 hover:text-[#002147] w-10 h-10 sm:w-auto sm:h-auto sm:px-4 sm:py-2 hover:bg-slate-50 rounded-xl flex items-center justify-center sm:justify-start gap-2 transition-all border border-transparent hover:border-slate-100">
                             <i className="fas fa-cog text-[14px] sm:text-xs" /> <span className="hidden sm:inline">Settings</span>
