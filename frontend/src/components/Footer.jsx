@@ -88,6 +88,9 @@ export default function Footer() {
                         <a href="https://www.linkedin.com/company/serve-lead-society/" target="_blank" rel="noopener noreferrer" className="w-11 h-11 rounded-2xl bg-white/5 flex items-center justify-center text-slate-400 hover:bg-cyan-500 hover:text-white transition-all shadow-xl">
                             <i className="fab fa-linkedin-in" />
                         </a>
+                        <a href="https://chat.whatsapp.com/YOUR_GROUP_LINK_HERE" target="_blank" rel="noopener noreferrer" className="w-11 h-11 rounded-2xl bg-white/5 flex items-center justify-center text-slate-400 hover:bg-[#25D366] hover:text-white transition-all shadow-xl">
+                            <i className="fab fa-whatsapp" />
+                        </a>
                     </div>
                 </div>
             </div>

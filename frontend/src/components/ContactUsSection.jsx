@@ -93,6 +93,19 @@ export default function ContactUsSection() {
                             )}
                         </button>
                     </form>
+
+                    <div className="mt-8 pt-8 border-t border-slate-200/60 text-center flex flex-col items-center">
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Or join us directly</p>
+                        <a 
+                            href="https://chat.whatsapp.com/YOUR_GROUP_LINK_HERE" 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-3 px-8 py-4 bg-[#25D366] text-white rounded-2xl font-black uppercase text-[10px] md:text-xs tracking-widest hover:bg-[#128C7E] hover:scale-105 transition-all shadow-xl shadow-emerald-900/10"
+                        >
+                            <i className="fab fa-whatsapp text-lg" />
+                            Join WhatsApp Community
+                        </a>
+                    </div>
                 </div>
             </div>
 
