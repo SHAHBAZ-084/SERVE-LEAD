@@ -273,6 +273,13 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
     const [channels, setChannels] = useState([]);
     const [teamStructure, setTeamStructure] = useState([]);
     const [leadership, setLeadership] = useState({ name: "", role: "", program: "", desc: "", img: "" });
+    const [vision, setVision] = useState({
+        badgeSubtitle: "Chairman Vision",
+        badgeName: "Farooq Baloch",
+        mainTitle: "Empowering student leaders for a better Pakistan.",
+        quote: "As Chairman of Serve and Lead Society Lahore (SLS), my vision is to empower students by creating elite opportunities for leadership and career excellence. We strive to build a strong community where financial challenges never become a barrier to excellence.",
+        img: ""
+    });
     const [submitting, setSubmitting] = useState(false);
     
     // Admin Promotion State
@@ -299,6 +306,17 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
             if (r.data.team_leadership) {
                 try { setLeadership(JSON.parse(r.data.team_leadership)); } catch { setLeadership({ name: "", role: "", program: "", desc: "", img: "" }); }
             }
+            if (r.data.vision_section) {
+                try { setVision(JSON.parse(r.data.vision_section)); } catch { 
+                    setVision({
+                        badgeSubtitle: "Chairman Vision",
+                        badgeName: "Farooq Baloch",
+                        mainTitle: "Empowering student leaders for a better Pakistan.",
+                        quote: "As Chairman of Serve and Lead Society Lahore (SLS), my vision is to empower students by creating elite opportunities for leadership and career excellence. We strive to build a strong community where financial challenges never become a barrier to excellence.",
+                        img: ""
+                    });
+                }
+            }
         });
     }, [api]);
 
@@ -322,7 +340,8 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
             await api.put("settings", {
                 donation_channels: JSON.stringify(channels),
                 team_structure: JSON.stringify(teamStructure),
-                team_leadership: JSON.stringify(leadership)
+                team_leadership: JSON.stringify(leadership),
+                vision_section: JSON.stringify(vision)
             }, auth);
             notify("System customization updated successfully!");
         } catch { notify("Failed to update settings", "error"); }
@@ -390,8 +409,9 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
         try {
             const r = await api.post('settings/upload', formData, auth);
             if (catId === 'leadership') setLeadership({ ...leadership, img: r.data.imageUrl });
+            else if (catId === 'vision') setVision({ ...vision, img: r.data.imageUrl });
             else updateMember(catId, memberId, 'img', r.data.imageUrl);
-            notify("Member photo uploaded!");
+            notify("Photo uploaded successfully!");
         } catch { notify("Photo upload failed", "error"); }
     };
 
@@ -403,6 +423,9 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
                 </button>
                 <button onClick={() => setActiveSubTab("team")} className={`py-2.5 px-6 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all ${activeSubTab === "team" ? "bg-white text-purple-600 shadow-sm" : "text-slate-500 hover:text-slate-800"}`}>
                     <i className="fas fa-users-gear mr-2"></i> Team Management
+                </button>
+                <button onClick={() => setActiveSubTab("vision")} className={`py-2.5 px-6 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all ${activeSubTab === "vision" ? "bg-white text-emerald-600 shadow-sm" : "text-slate-500 hover:text-slate-800"}`}>
+                    <i className="fas fa-eye mr-2"></i> Vision Section
                 </button>
                 {auth.is_superuser && (
                     <button onClick={() => setActiveSubTab("admins")} className={`py-2.5 px-6 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all ${activeSubTab === "admins" ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500 hover:text-slate-800"}`}>
@@ -584,6 +607,71 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
                     </div>
                 </div>
             )}
+
+            {activeSubTab === "vision" && (
+                <div className="space-y-8 animate-fade-in">
+                    <div className="bg-white border border-slate-200 rounded-[2.5rem] shadow-xl overflow-hidden relative">
+                        <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-emerald-500 to-teal-600" />
+                        <div className="p-8 md:p-10">
+                            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center text-xl shadow-inner">
+                                        <i className="fas fa-eye" />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-2xl font-black text-slate-800 tracking-tight uppercase">Home Page Vision</h3>
+                                        <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mt-1">Chairman Vision Section Customization</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="space-y-8">
+                                {/* Image & Badge Section */}
+                                <div className="p-6 bg-slate-50/50 rounded-3xl border border-slate-100 flex flex-col md:flex-row gap-8 items-center">
+                                    <div className="w-48 h-60 rounded-2xl bg-white border border-slate-200 overflow-hidden relative group flex-shrink-0 animate-fade-up">
+                                        {vision.img ? <img src={getImgUrl(vision.img)} className="w-full h-full object-cover" /> :
+                                            <div className="w-full h-full flex flex-col items-center justify-center text-slate-300 bg-slate-50">
+                                                <i className="fas fa-image text-3xl mb-2" />
+                                                <span className="text-[10px] font-black uppercase tracking-widest">No Custom Image</span>
+                                            </div>}
+                                        <label className="absolute inset-0 bg-slate-900/60 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center cursor-pointer transition-all duration-300 backdrop-blur-[2px]">
+                                            <i className="fas fa-camera text-white text-xl mb-2" />
+                                            <span className="text-[9px] text-white font-black uppercase tracking-widest">Update Photo</span>
+                                            <input type="file" className="hidden" accept="image/*" onChange={e => uploadPhoto('vision', null, e.target.files[0])} />
+                                        </label>
+                                    </div>
+                                    <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-4 w-full">
+                                        <div className="col-span-1">
+                                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Badge Subtitle (e.g. Chairman Vision)</label>
+                                            <input type="text" value={vision.badgeSubtitle} onChange={e => setVision({ ...vision, badgeSubtitle: e.target.value })} className={inputCls} placeholder="Chairman Vision" />
+                                        </div>
+                                        <div className="col-span-1">
+                                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Badge Name (e.g. Farooq Baloch)</label>
+                                            <input type="text" value={vision.badgeName} onChange={e => setVision({ ...vision, badgeName: e.target.value })} className={inputCls} placeholder="Farooq Baloch" />
+                                        </div>
+                                        <div className="col-span-1 sm:col-span-2">
+                                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Vision Section Main Title</label>
+                                            <input type="text" value={vision.mainTitle} onChange={e => setVision({ ...vision, mainTitle: e.target.value })} className={inputCls} placeholder="Empowering student leaders..." />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Quote Section */}
+                                <div className="p-6 bg-white border border-slate-100 rounded-3xl shadow-sm">
+                                    <label className="text-[9px] font-black text-[#002147] uppercase tracking-widest mb-3 flex items-center gap-2">
+                                        <i className="fas fa-quote-left text-emerald-500" /> 
+                                        Vision Quote Content
+                                    </label>
+                                    <textarea rows={4} value={vision.quote} onChange={e => setVision({ ...vision, quote: e.target.value })} className={`${inputCls} font-medium text-slate-600 italic leading-relaxed`} placeholder="Enter the chairman's vision statement..." />
+                                    <div className="mt-3 flex items-center gap-2 text-[9px] text-slate-400 font-bold uppercase tracking-widest">
+                                        <i className="fas fa-info-circle" />
+                                        This text appears in the prominent quote block next to the image.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
             {/* Global Actions */}
             <div className="flex justify-end pt-4 pb-2">
