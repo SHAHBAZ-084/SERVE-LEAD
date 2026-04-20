@@ -1531,9 +1531,18 @@ function AdminPortal() {
         try { const r = await api.get("certificates/admin/all", auth); setIssuedCertificates(r.data); } catch { }
     };
 
-    const logout = () => {
+    const logout = async () => {
+        try {
+            await api.post("admin/logout", {}, auth);
+        } catch (err) {
+            console.error("Admin logout error:", err);
+        }
         localStorage.removeItem("adminToken");
         localStorage.removeItem("adminUser");
+        localStorage.removeItem("adminIsSuper");
+        // Also clear member tokens to prevent stale session overlap
+        localStorage.removeItem("token");
+        localStorage.removeItem("userName");
         navigate("/admin-login");
     };
 
@@ -3490,6 +3499,10 @@ function AdminPortal() {
                         <button onClick={() => navigate("/")}
                             className="text-xs font-bold text-[#002147] w-10 h-10 sm:w-auto sm:h-auto sm:px-4 sm:py-2 bg-blue-50 hover:bg-blue-100 rounded-xl flex items-center justify-center sm:justify-start gap-2 transition-all border border-transparent">
                             <i className="fas fa-home text-[14px] sm:text-xs" /> <span className="hidden sm:inline">Site Overview</span>
+                        </button>
+                        <button onClick={logout}
+                            className="text-xs font-bold text-rose-600 w-10 h-10 sm:w-auto sm:h-auto sm:px-4 sm:py-2 bg-rose-50 hover:bg-rose-100 rounded-xl flex items-center justify-center sm:justify-start gap-2 transition-all border border-transparent">
+                            <i className="fas fa-power-off text-[14px] sm:text-xs" /> <span className="hidden sm:inline">Logout</span>
                         </button>
                     </div>
                 </header>

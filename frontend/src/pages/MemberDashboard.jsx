@@ -84,7 +84,12 @@ const MemberDashboard = () => {
         headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
     }), []);
 
-    const handleLogout = useCallback(() => {
+    const handleLogout = useCallback(async () => {
+        try {
+            await api.post("auth/logout");
+        } catch (err) {
+            console.error("Logout error:", err);
+        }
         localStorage.clear();
         navigate("/");
     }, [navigate]);

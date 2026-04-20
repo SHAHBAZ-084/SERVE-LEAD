@@ -177,6 +177,13 @@ router.post('/login', asyncHandler(async (req, res) => {
 
     const token = jwt.sign({ memberId: member._id, role: member.role }, process.env.JWT_SECRET, { expiresIn: '30d' });
 
+    res.cookie('jwt', token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
+    });
+
     res.status(200).json({
         token,
         member: {
@@ -189,7 +196,13 @@ router.post('/login', asyncHandler(async (req, res) => {
             joining_year: member.joining_year
         }
     });
-}));
+});
+
+// Member Logout
+router.post('/logout', (req, res) => {
+    res.cookie('jwt', '', { maxAge: 1 });
+    res.status(200).json({ message: 'Logged out successfully.' });
+});
 
 // Forgot Password
 router.post('/forgot-password', asyncHandler(async (req, res) => {
