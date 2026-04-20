@@ -223,7 +223,7 @@ const sendOTPEmail = async (email, otp) => {
         to: email,
         replyTo: "support@serveandlead.org",
         subject: 'SLS Verification Code: ' + otp,
-        text: `Your SLS verification code is: ${otp}. It expires in 10 minutes.`,
+        text: `Your SLS verification code is: ${otp}. It expires in 1 minute.`,
         html: `
         <div style="font-family: 'Segoe UI', Arial, sans-serif; padding: 20px 10px; color: #1e293b; line-height: 1.6; background-color: #f8fafc;">
             <div style="width: 100%; max-width: 500px; margin: 0 auto; background-color: #ffffff; border-radius: 32px; overflow: hidden; box-shadow: 0 30px 60px -12px rgba(0,0,0,0.1); border: 1px solid #e2e8f0;">
@@ -238,7 +238,7 @@ const sendOTPEmail = async (email, otp) => {
                     </div>
                     
                     <p style="font-size: 13px; color: #94a3b8; text-align: center; margin-top: 40px; font-weight: 600;">
-                        Code expires in 10 minutes.
+                        Code expires in 1 minute.
                     </p>
                     
                     <p style="font-size: 11px; color: #cbd5e1; text-align: center; margin-top: 20px;">
