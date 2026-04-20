@@ -17,11 +17,13 @@ async function seedAdmin() {
 
         if (existingAdmin) {
             console.log(`⚠️ Found existing Superuser: ${existingAdmin.email}`);
+            const hashedPassword = await bcrypt.hash(ADMIN_PASSWORD, 12);
             existingAdmin.email = ADMIN_EMAIL;
-            // Only update password if needed, or leave it as is if they already changed it.
-            // For now, we just update the email as requested.
+            existingAdmin.password = hashedPassword;
             await existingAdmin.save();
-            console.log(`✅ Superuser email updated to: ${ADMIN_EMAIL}`);
+            console.log(`✅ Superuser credentials updated successfully!`);
+            console.log(`📧 New Email: ${ADMIN_EMAIL}`);
+            console.log(`🔑 New Password: ${ADMIN_PASSWORD}`);
         } else {
             const hashedPassword = await bcrypt.hash(ADMIN_PASSWORD, 12);
             await Member.create({
