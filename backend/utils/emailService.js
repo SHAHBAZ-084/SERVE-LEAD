@@ -25,9 +25,9 @@ const sendWelcomeEmail = async (email, name, memberId) => {
       subject: 'Welcome to SLS Society: Membership Approved',
       text: `Welcome to Serve & Lead Society, ${name}! Your membership has been approved. Your Member ID is: ${memberId}. Login at: ${process.env.FRONTEND_URL || 'https://serveandlead.org'}/login`,
       html: `
-        <div style="font-family: 'Segoe UI', Arial, sans-serif; padding: 40px; color: #1e293b; line-height: 1.6; background-color: #f8fafc;">
-          <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 24px; overflow: hidden; box-shadow: 0 20px 50px rgba(0,33,71,0.1); border: 1px solid #e2e8f0;">
-            <div style="background: linear-gradient(135deg, #002147 0%, #004080 100%); padding: 50px 40px; text-align: center;">
+        <div style="font-family: 'Segoe UI', Arial, sans-serif; padding: 20px 10px; color: #1e293b; line-height: 1.6; background-color: #f8fafc;">
+          <div style="width: 100%; max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 24px; overflow: hidden; box-shadow: 0 20px 50px rgba(0,33,71,0.1); border: 1px solid #e2e8f0;">
+            <div style="background: linear-gradient(135deg, #002147 0%, #004080 100%); padding: 40px 20px; text-align: center;">
               <h1 style="color: #ffffff; margin: 0; font-size: 32px; font-weight: 800; letter-spacing: -0.025em; text-shadow: 0 2px 4px rgba(0,0,0,0.1);">Welcome to the Society</h1>
               <p style="color: #94a3b8; margin-top: 15px; font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em;">Official Acceptance Notification</p>
             </div>
@@ -35,7 +35,7 @@ const sendWelcomeEmail = async (email, name, memberId) => {
               <h2 style="color: #0f172a; margin-top: 0; font-size: 24px; font-weight: 700;">Dear ${name},</h2>
               <p style="font-size: 17px; color: #475569;">We are thrilled to inform you that your membership application has been <strong>officially approved</strong> by the SLS Board.</p>
               
-              <div style="margin: 40px 0; background: linear-gradient(to right, #f1f5f9, #ffffff); border-radius: 20px; padding: 35px; border-left: 6px solid #002147;">
+              <div style="margin: 30px 0; background: linear-gradient(to right, #f1f5f9, #ffffff); border-radius: 20px; padding: 25px; border-left: 6px solid #002147;">
                 <p style="text-transform: uppercase; font-size: 11px; font-weight: 800; color: #64748b; letter-spacing: 0.15em; margin-bottom: 10px;">Your Official Membership ID</p>
                 <p style="margin: 0; font-size: 32px; color: #002147; font-weight: 900; letter-spacing: 1px;">${memberId}</p>
               </div>
@@ -76,9 +76,9 @@ const sendResetPasswordEmail = async (email, name, resetUrl) => {
       subject: 'Reset Your SLS Society Password',
       text: `Hello ${name}, we received a request to reset your password. Use this link: ${resetUrl}. Links expires in 10 minutes.`,
       html: `
-        <div style="font-family: 'Segoe UI', Arial, sans-serif; padding: 40px; color: #1e293b; line-height: 1.6; background-color: #f1f5f9;">
-          <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 24px; overflow: hidden; box-shadow: 0 15px 40px rgba(0,0,0,0.05); border: 1px solid #e2e8f0;">
-            <div style="background-color: #0f172a; padding: 40px; text-align: center;">
+        <div style="font-family: 'Segoe UI', Arial, sans-serif; padding: 20px 10px; color: #1e293b; line-height: 1.6; background-color: #f1f5f9;">
+          <div style="width: 100%; max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 24px; overflow: hidden; box-shadow: 0 15px 40px rgba(0,0,0,0.05); border: 1px solid #e2e8f0;">
+            <div style="background-color: #0f172a; padding: 30px 20px; text-align: center;">
               <h1 style="color: #ffffff; margin: 0; font-size: 26px; font-weight: 800; tracking: -0.01em;">Password Reset</h1>
             </div>
             <div style="padding: 50px 40px;">
@@ -126,12 +126,12 @@ const sendContactEmail = async (name, email, message) => {
       subject: `New Inquiry from ${name}`,
       text: `New Website Inquiry from ${name} (${email}): ${message}`,
       html: `
-        <div style="font-family: 'Segoe UI', Arial, sans-serif; padding: 40px; color: #1e293b; line-height: 1.6; background-color: #f8fafc;">
-          <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 25px rgba(0,0,0,0.06); border: 1px solid #e2e8f0;">
-            <div style="background-color: #0f172a; padding: 25px 40px; border-bottom: 4px solid #3b82f6;">
+        <div style="font-family: 'Segoe UI', Arial, sans-serif; padding: 20px 10px; color: #1e293b; line-height: 1.6; background-color: #f8fafc;">
+          <div style="width: 100%; max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 25px rgba(0,0,0,0.06); border: 1px solid #e2e8f0;">
+            <div style="background-color: #0f172a; padding: 20px; border-bottom: 4px solid #3b82f6;">
               <h1 style="color: #ffffff; margin: 0; font-size: 18px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em;">New Website Inquiry</h1>
             </div>
-            <div style="padding: 40px;">
+            <div style="padding: 20px;">
               <div style="margin-bottom: 35px; background-color: #f1f5f9; padding: 20px; border-radius: 12px;">
                 <p style="text-transform: uppercase; font-size: 10px; font-weight: 800; color: #64748b; letter-spacing: 1px; margin-bottom: 8px;">Contact Information</p>
                 <p style="margin: 0; font-size: 17px; color: #0f172a; font-weight: 700;">${name}</p>
@@ -169,17 +169,17 @@ const sendInterviewEmail = async (email, name, venue, message) => {
       subject: 'Interview Invitation: SLS Society Recruitment',
       text: `Dear ${name}, you are invited for an interview at ${venue}. Message: ${message}`,
       html: `
-        <div style="font-family: 'Segoe UI', Arial, sans-serif; padding: 40px; color: #1e293b; line-height: 1.6; background-color: #f1f5f9;">
-          <div style="max-width: 650px; margin: 0 auto; background-color: #ffffff; border-radius: 32px; overflow: hidden; box-shadow: 0 40px 100px -20px rgba(0,33,71,0.15); border: 1px solid #e2e8f0;">
-            <div style="background: linear-gradient(135deg, #002147 0%, #001a38 100%); padding: 60px 40px; text-align: center; position: relative;">
+        <div style="font-family: 'Segoe UI', Arial, sans-serif; padding: 20px 10px; color: #1e293b; line-height: 1.6; background-color: #f1f5f9;">
+          <div style="width: 100%; max-width: 650px; margin: 0 auto; background-color: #ffffff; border-radius: 32px; overflow: hidden; box-shadow: 0 40px 100px -20px rgba(0,33,71,0.15); border: 1px solid #e2e8f0;">
+            <div style="background: linear-gradient(135deg, #002147 0%, #001a38 100%); padding: 40px 20px; text-align: center; position: relative;">
               <h1 style="color: #ffffff; margin: 0; font-size: 32px; font-weight: 900; letter-spacing: -0.02em;">Interview Invitation</h1>
               <p style="color: #475569; margin-top: 15px; font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.2em; color: rgba(255,255,255,0.7);">Official Recruitment Drive 2026</p>
             </div>
-            <div style="padding: 60px 50px;">
+            <div style="padding: 30px 20px;">
               <h2 style="color: #0f172a; margin-top: 0; font-size: 26px; font-weight: 800;">Dear ${name},</h2>
               <p style="font-size: 17px; color: #475569; margin-bottom: 40px;">Based on your application, we are pleased to invite you for a formal interview to assess your potential alignment with the <strong>Serve & Lead Society (SLS)</strong>.</p>
               
-              <div style="margin: 40px 0; background-color: #f8fafc; border-radius: 24px; padding: 40px; border: 1px solid #e2e8f0; box-shadow: inset 0 2px 10px rgba(0,0,0,0.02);">
+              <div style="margin: 30px 0; background-color: #f8fafc; border-radius: 24px; padding: 25px; border: 1px solid #e2e8f0; box-shadow: inset 0 2px 10px rgba(0,0,0,0.02);">
                 <div style="margin-bottom: 30px;">
                   <p style="text-transform: uppercase; font-size: 11px; font-weight: 900; color: #3b82f6; letter-spacing: 0.15em; margin-bottom: 10px;">Scheduled Venue</p>
                   <p style="margin: 0; font-size: 20px; color: #002147; font-weight: 800;">📍 ${venue}</p>
@@ -225,15 +225,15 @@ const sendOTPEmail = async (email, otp) => {
         subject: 'SLS Verification Code: ' + otp,
         text: `Your SLS verification code is: ${otp}. It expires in 10 minutes.`,
         html: `
-        <div style="font-family: 'Segoe UI', Arial, sans-serif; padding: 40px; color: #1e293b; line-height: 1.6; background-color: #f8fafc;">
-            <div style="max-width: 500px; margin: 0 auto; background-color: #ffffff; border-radius: 32px; overflow: hidden; box-shadow: 0 30px 60px -12px rgba(0,0,0,0.1); border: 1px solid #e2e8f0;">
-                <div style="background-color: #002147; padding: 50px 40px; text-align: center;">
+        <div style="font-family: 'Segoe UI', Arial, sans-serif; padding: 20px 10px; color: #1e293b; line-height: 1.6; background-color: #f8fafc;">
+            <div style="width: 100%; max-width: 500px; margin: 0 auto; background-color: #ffffff; border-radius: 32px; overflow: hidden; box-shadow: 0 30px 60px -12px rgba(0,0,0,0.1); border: 1px solid #e2e8f0;">
+                <div style="background-color: #002147; padding: 30px 20px; text-align: center;">
                     <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: 900; letter-spacing: -0.03em;">Verify Your Identity</h1>
                 </div>
-                <div style="padding: 50px 40px;">
+                <div style="padding: 30px 20px;">
                     <p style="font-size: 16px; color: #475569; text-align: center; margin-bottom: 40px;">To ensure this Gmail address is active and secure, please use the verification code below to complete your registration:</p>
                     
-                    <div style="background: linear-gradient(to bottom, #f8fafc, #f1f5f9); border-radius: 20px; padding: 40px; text-align: center; border: 2px dashed #cbd5e1; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);">
+                    <div style="background: linear-gradient(to bottom, #f8fafc, #f1f5f9); border-radius: 20px; padding: 30px 20px; text-align: center; border: 2px dashed #cbd5e1; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);">
                         <span style="font-size: 48px; font-weight: 900; color: #002147; letter-spacing: 0.3em; font-family: 'Courier New', Courier, monospace; text-shadow: 0 1px 0 #fff;">${otp}</span>
                     </div>
                     

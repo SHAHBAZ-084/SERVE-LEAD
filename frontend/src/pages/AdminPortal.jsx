@@ -1276,7 +1276,7 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
                     <div className="p-20 text-center text-slate-400 italic text-sm">Loading history...</div>
                 ) : (
                     <div className="p-4 sm:p-0">
-                        <div className="sm:hidden space-y-4">
+                        <div className="sm:hidden space-y-2">
                             {issuedCertificates.filter(c => 
                                 (c.memberId?.name || c.memberName || "").toLowerCase().includes(searchCert.toLowerCase()) || 
                                 (c.memberId?.member_id || c.member_id_str || "").toLowerCase().includes(searchCert.toLowerCase()) ||
@@ -1293,42 +1293,35 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
                                 (c.eventId?.title || "").toLowerCase().includes(searchCert.toLowerCase()) ||
                                 (c.category || "").toLowerCase().includes(searchCert.toLowerCase())
                             ).map((cert) => (
-                                <div key={cert._id} className="bg-white rounded-[2rem] border border-slate-100 shadow-sm p-6 relative overflow-hidden group active:scale-[0.98] transition-all">
-                                    {selectMode && (
-                                        <div className="absolute top-4 left-4 z-10">
-                                            <input type="checkbox" checked={selectedCertIds.includes(cert._id)} onChange={() => toggleCertSelect(cert._id)} className="w-5 h-5 text-[#002147] border-slate-300 rounded-lg focus:ring-[#002147]" />
+                                <div key={cert._id} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-3 relative overflow-hidden transition-all space-y-3">
+                                    <div className="flex justify-between items-center gap-3">
+                                        <div className={`flex items-center gap-2 ${selectMode ? 'ml-8' : ''}`}>
+                                            {selectMode && (
+                                                <div className="absolute top-3 left-3 z-10">
+                                                    <input type="checkbox" checked={selectedCertIds.includes(cert._id)} onChange={() => toggleCertSelect(cert._id)} className="w-4 h-4 text-[#002147] border-slate-300 rounded focus:ring-[#002147]" />
+                                                </div>
+                                            )}
+                                            <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600 shrink-0">
+                                                 <i className="fas fa-certificate text-[10px]" />
+                                            </div>
+                                            <div>
+                                                <h4 className="font-bold text-slate-800 text-xs leading-none mb-1">{cert.memberId?.name || cert.memberName}</h4>
+                                                <p className="text-[9px] font-bold text-[#002147] uppercase tracking-widest leading-none">{cert.memberId?.member_id}</p>
+                                            </div>
                                         </div>
-                                    )}
-                                    <div className="flex justify-between items-start mb-4">
-                                        <div className={`${selectMode ? 'ml-10' : ''}`}>
-                                            <h4 className="font-black text-slate-800 text-sm leading-tight mb-1">{cert.memberId?.name}</h4>
-                                            <p className="text-[10px] font-bold text-[#002147] uppercase tracking-widest">{cert.memberId?.member_id}</p>
+                                        <div className="flex flex-col items-end text-right">
+                                            <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">{new Date(cert.createdAt).toLocaleDateString()}</span>
+                                            <span className="px-2 py-0.5 rounded-md bg-slate-50 border border-slate-100 text-[8px] font-bold text-slate-600 mt-1 truncate max-w-[80px]">
+                                                {cert.category === 'Other' ? cert.customCategory : cert.category}
+                                            </span>
                                         </div>
-                                        <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest text-right">
-                                            Issued: {new Date(cert.createdAt).toLocaleDateString()}
-                                        </span>
                                     </div>
                                     
-                                    <div className="grid grid-cols-2 gap-3 mb-4">
-                                        <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100">
-                                            <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Award Type</p>
-                                            <p className="text-[10px] font-bold text-slate-700 leading-tight">
-                                                {cert.category === 'Other' ? cert.customCategory : cert.category}
-                                            </p>
-                                        </div>
-                                        <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100">
-                                            <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Event Context</p>
-                                            <p className="text-[10px] font-bold text-slate-700 leading-tight truncate">
-                                                {cert.eventId?.title || "Society Member"}
-                                            </p>
-                                        </div>
-                                    </div>
-
-                                    <div className="grid grid-cols-2 gap-2">
-                                        <button onClick={() => downloadPDF(cert)} className="flex-1 bg-blue-50 text-blue-600 border border-blue-100 py-3 rounded-xl text-[9px] font-black uppercase tracking-widest flex items-center justify-center gap-2">
-                                            <i className="fas fa-file-pdf" /> PDF File
+                                    <div className="flex gap-2 pt-1 border-t border-slate-50">
+                                        <button onClick={() => downloadPDF(cert)} className="flex-1 bg-blue-50 text-blue-600 border border-blue-100 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest flex items-center justify-center gap-1.5 hover:bg-blue-600 hover:text-white transition-all">
+                                            <i className="fas fa-file-pdf" /> PDF
                                         </button>
-                                        <button onClick={() => revokeCertificate(cert._id)} className="flex-1 bg-rose-50 text-rose-500 border border-rose-100 py-3 rounded-xl text-[9px] font-black uppercase tracking-widest flex items-center justify-center gap-2">
+                                        <button onClick={() => revokeCertificate(cert._id)} className="flex-1 bg-rose-50 text-rose-500 border border-rose-100 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest flex items-center justify-center gap-1.5 hover:bg-rose-500 hover:text-white transition-all">
                                             <i className="fas fa-trash-alt" /> Revoke
                                         </button>
                                     </div>
@@ -1722,52 +1715,47 @@ function AdminPortal() {
 
                 {loading ? <Spinner /> : (
                     <>
-                        <div className="sm:hidden space-y-4">
+                        <div className="sm:hidden space-y-2">
                             {generalMembers.length === 0 ? (
                                 <div className="text-center py-20 text-slate-300 bg-white rounded-[2rem] border-2 border-dashed border-slate-100">
                                     <i className="fas fa-id-badge text-5xl mb-4 block opacity-10" /> 
                                     <p className="text-[10px] font-black uppercase tracking-widest">No records matched</p>
                                 </div>
                             ) : generalMembers.map((m) => (
-                                <div key={m.member_id} className="p-6 bg-white rounded-[2rem] border border-slate-200 shadow-sm space-y-4 relative overflow-hidden group active:scale-[0.98] transition-all">
-                                    <div className="flex items-center justify-between">
+                                <div key={m.member_id} className="p-3 bg-white rounded-2xl border border-slate-100 shadow-sm space-y-3 relative overflow-hidden transition-all">
+                                    <div className="flex items-center justify-between gap-3">
                                         <div className="flex items-center gap-3">
-                                            <div className="w-10 h-10 bg-[#002147] text-white rounded-xl flex items-center justify-center font-black text-xs uppercase shadow-lg shadow-blue-900/10">
+                                            <div className="w-8 h-8 bg-[#002147] text-white rounded-lg flex items-center justify-center font-black text-[10px] uppercase shadow-md">
                                                 {m.name.charAt(0)}
                                             </div>
                                             <div>
-                                                <h4 className="font-black text-slate-800 leading-none mb-1 text-sm">{m.name}</h4>
-                                                <p className="text-[10px] font-bold text-[#002147] uppercase tracking-widest">{m.member_id}</p>
+                                                <h4 className="font-bold text-slate-800 leading-none mb-1 text-xs">{m.name}</h4>
+                                                <p className="text-[9px] font-bold text-[#002147]/60 uppercase tracking-widest">{m.member_id}</p>
                                             </div>
                                         </div>
-                                        <span className={`text-[9px] font-black px-3 py-1 rounded-full uppercase tracking-wider ${m.status === 'blocked' ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"}`}>
-                                            {m.status === 'blocked' ? "Suspended" : "Active"}
-                                        </span>
-                                    </div>
-                                    
-                                    <div className="pl-1 space-y-2 border-l-2 border-slate-100 ml-5 py-1">
-                                        <div className="flex items-center gap-2 text-slate-500">
-                                            <i className="fas fa-envelope text-[10px] w-4" />
-                                            <span className="text-[11px] font-medium truncate">{m.email}</span>
-                                        </div>
-                                        <div className="flex items-center gap-2 text-slate-500">
-                                            <i className="fas fa-user-tag text-[10px] w-4" />
-                                            <span className="text-[11px] font-bold uppercase tracking-widest">{m.role || "General"} Member</span>
+                                        <div className="flex flex-col items-end gap-1">
+                                            <span className={`text-[8px] font-black px-2 py-0.5 rounded-md uppercase tracking-wider ${m.status === 'blocked' ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"}`}>
+                                                {m.status === 'blocked' ? "Suspended" : "Active"}
+                                            </span>
+                                            <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">{m.role || "General"}</span>
                                         </div>
                                     </div>
 
-                                    <div className="flex gap-2 pt-2 border-t border-slate-50">
+                                    <div className="flex gap-2">
                                         {m.role !== 'Superuser' && m.member_id !== adminUser && (
                                             <>
                                                 <button onClick={() => toggleSuspend(m._id)}
-                                                    className={`flex-1 text-[10px] font-black uppercase tracking-widest py-3 rounded-xl transition-all border ${m.status === 'blocked' ? "bg-emerald-50 text-emerald-600 border-emerald-100" : "bg-amber-50 text-amber-600 border-amber-100"}`}>
-                                                    {m.status === 'blocked' ? "Reactivate" : "Suspend"}
+                                                    className={`flex-1 text-[9px] font-black uppercase tracking-widest py-2 rounded-lg transition-all border ${m.status === 'blocked' ? "bg-emerald-50 text-emerald-600 border-emerald-100" : "bg-amber-50 text-amber-600 border-amber-100"}`}>
+                                                    {m.status === 'blocked' ? "Active" : "Suspend"}
                                                 </button>
                                                 <button onClick={() => deleteSingle(m._id, m.name)}
-                                                    className="flex-1 text-[10px] font-black uppercase tracking-widest bg-rose-50 text-rose-500 border border-rose-100 py-3 rounded-xl">
+                                                    className="flex-1 text-[9px] font-black uppercase tracking-widest bg-rose-50 text-rose-500 border border-rose-100 py-2 rounded-lg">
                                                     Delete
                                                 </button>
                                             </>
+                                        )}
+                                        {m.member_id === adminUser && (
+                                            <div className="flex-1 text-center py-2 text-[9px] font-bold uppercase tracking-widest text-slate-300 italic bg-slate-50 rounded-lg">Primary Admin (Owner)</div>
                                         )}
                                     </div>
                                 </div>
@@ -1975,49 +1963,45 @@ function AdminPortal() {
 
                 {loading ? <Spinner /> : (
                     <>
-                         <div className="sm:hidden space-y-4">
+                         <div className="sm:hidden space-y-2">
                             {filtered.length === 0 ? (
                                 <div className="text-center py-20 text-slate-300 bg-white rounded-[2rem] border-2 border-dashed border-slate-100">
                                     <i className="fas fa-check-circle text-4xl mb-3 block opacity-20" />
                                     <p className="text-[10px] font-black uppercase tracking-widest">Queue is empty</p>
                                 </div>
                             ) : filtered.map((m) => (
-                                <div key={m._id} className="p-6 bg-white rounded-[2rem] border border-slate-200 shadow-sm space-y-4 relative overflow-hidden group active:scale-[0.98] transition-all">
-                                    <div className="flex justify-between items-start">
+                                <div key={m._id} className="p-3 bg-white rounded-2xl border border-slate-100 shadow-sm space-y-3 relative overflow-hidden transition-all">
+                                    <div className="flex justify-between items-center gap-3">
                                         <div className="flex items-center gap-3">
-                                            <div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center font-black text-xs uppercase shadow-inner">
+                                            <div className="w-8 h-8 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center font-black text-[10px] uppercase shadow-inner">
                                                 {m.name.charAt(0)}
                                             </div>
                                             <div>
-                                                <h4 className="font-black text-slate-800 leading-none mb-1 text-sm">{m.name}</h4>
-                                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none mt-1">Applied: {m.joining_year}</p>
+                                                <h4 className="font-bold text-slate-800 leading-none mb-1 text-xs">{m.name}</h4>
+                                                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest leading-none">Class {m.joining_year}</p>
                                             </div>
                                         </div>
                                         {m.interview_called ? (
-                                            <span className="text-[9px] font-black text-emerald-500 uppercase tracking-widest bg-emerald-50 px-2 py-1 rounded-lg border border-emerald-100">Called</span>
+                                            <span className="text-[8px] font-black text-emerald-600 uppercase tracking-widest bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100">Called</span>
                                         ) : (
-                                            <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest bg-slate-50 px-2 py-1 rounded-lg border border-slate-100">Pending</span>
+                                            <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest bg-slate-50 px-2 py-0.5 rounded-md border border-slate-100">Pending</span>
                                         )}
                                     </div>
 
-                                    <div className="px-1 text-[11px] font-medium text-slate-500 truncate">
-                                        <i className="fas fa-envelope mr-2 opacity-50" /> {m.email}
-                                    </div>
-
-                                    <div className="grid grid-cols-2 gap-2 pt-2">
+                                    <div className="flex gap-2">
                                         <button onClick={() => setInterviewTarget(m)}
-                                            className={`text-[9px] py-3 rounded-xl font-black uppercase tracking-widest border transition-all ${
+                                            className={`flex-1 text-[9px] py-2 rounded-lg font-black uppercase tracking-widest border transition-all ${
                                                 m.interview_called ? "bg-amber-50 text-amber-600 border-amber-100" : "bg-blue-50 text-blue-600 border-blue-100"
                                             }`}>
                                             Interview
                                         </button>
                                         <button onClick={() => approveSingle(m._id)} disabled={isProcessing}
-                                            className="text-[9px] bg-emerald-50 text-emerald-600 border border-emerald-100 py-3 rounded-xl font-black uppercase tracking-widest disabled:opacity-50">
+                                            className="flex-1 text-[9px] bg-emerald-50 text-emerald-600 border border-emerald-100 py-2 rounded-lg font-black uppercase tracking-widest disabled:opacity-50">
                                             Approve
                                         </button>
                                         <button onClick={() => deleteSingle(m._id, m.name)} disabled={isProcessing}
-                                            className="col-span-2 text-[9px] bg-rose-500 text-white py-3 rounded-xl font-black uppercase tracking-widest shadow-lg shadow-rose-900/10">
-                                            Delete Application
+                                            className="w-10 text-[9px] bg-rose-50 text-rose-500 border border-rose-100 py-2 rounded-lg font-black flex items-center justify-center transition-all hover:bg-rose-500 hover:text-white">
+                                            <i className="fas fa-trash-alt" />
                                         </button>
                                     </div>
                                 </div>
@@ -2464,7 +2448,7 @@ function AdminPortal() {
                             </div>
                         </div>
 
-                        <div className="sm:hidden space-y-4">
+                        <div className="sm:hidden space-y-2">
                             {filteredEvents.length === 0 ? (
                                 <div className="text-center py-24 bg-white rounded-[2rem] border border-slate-100 shadow-sm">
                                     <i className="fas fa-calendar-xmark text-4xl mb-4 block text-slate-100" />
@@ -2473,51 +2457,39 @@ function AdminPortal() {
                             ) : filteredEvents.map((ev) => {
                                 const hasEnded = Date.now() > new Date(`${ev.endDate || ev.date}T23:59:59`).getTime();
                                 return (
-                                    <div key={ev._id} className="bg-white rounded-[2rem] border border-slate-200 shadow-sm overflow-hidden relative group active:scale-[0.98] transition-all">
-                                        <div className="relative h-32 bg-slate-100">
-                                            {ev.image_url ? (
-                                                <img src={getImgUrl(ev.image_url)} className="w-full h-full object-cover" />
-                                            ) : (
-                                                <div className="w-full h-full flex items-center justify-center">
-                                                    <i className="fas fa-calendar-alt text-3xl text-slate-200" />
+                                    <div key={ev._id} className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden relative transition-all p-3 space-y-3">
+                                        <div className="flex items-center justify-between gap-3">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-10 h-10 bg-slate-100 rounded-lg overflow-hidden shrink-0">
+                                                    {ev.image_url ? (
+                                                        <img src={getImgUrl(ev.image_url)} className="w-full h-full object-cover" />
+                                                    ) : (
+                                                        <div className="w-full h-full flex items-center justify-center">
+                                                            <i className="fas fa-calendar-alt text-lg text-slate-200" />
+                                                        </div>
+                                                    )}
                                                 </div>
-                                            )}
-                                            <div className="absolute top-4 right-4">
-                                                <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest shadow-lg ${
-                                                    hasEnded ? "bg-slate-900/60 text-white backdrop-blur-md" : "bg-emerald-50 text-white shadow-emerald-500/20"
-                                                }`}>
-                                                    {hasEnded ? "Ended" : "Live Now"}
-                                                </span>
+                                                <div>
+                                                    <h4 className="font-bold text-slate-800 text-xs leading-tight mb-1">{ev.title}</h4>
+                                                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1">
+                                                        <i className="fas fa-users text-blue-500" /> {ev.participants?.length || 0} Joined
+                                                    </p>
+                                                </div>
                                             </div>
+                                            <span className={`px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-widest ${
+                                                hasEnded ? "bg-slate-100 text-slate-500" : "bg-emerald-50 text-emerald-600 border border-emerald-100"
+                                            }`}>
+                                                {hasEnded ? "Ended" : "Live"}
+                                            </span>
                                         </div>
                                         
-                                        <div className="p-6 space-y-4">
-                                            <div>
-                                                <h4 className="font-black text-slate-800 text-lg leading-tight mb-1">{ev.title}</h4>
-                                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
-                                                    <i className="fas fa-location-dot text-blue-500" /> {ev.location || "TBA"}
-                                                </p>
-                                            </div>
-
-                                            <div className="grid grid-cols-2 gap-3 py-3 border-y border-slate-100">
-                                                <div className="flex flex-col">
-                                                    <span className="text-[8px] font-black uppercase tracking-widest text-slate-400">Schedule</span>
-                                                    <span className="text-[10px] font-bold text-slate-700">{new Date(ev.date).toLocaleDateString()}</span>
-                                                </div>
-                                                <div className="flex flex-col text-right">
-                                                    <span className="text-[8px] font-black uppercase tracking-widest text-slate-400">Records</span>
-                                                    <span className="text-[10px] font-bold text-[#002147]">{ev.participants?.length || 0} Members</span>
-                                                </div>
-                                            </div>
-
-                                            <div className="flex gap-2">
-                                                <button onClick={() => viewParticipants(ev)} className="flex-1 bg-[#002147] text-white py-3 rounded-xl text-[9px] font-black uppercase tracking-[0.2em] shadow-lg shadow-blue-900/20">
-                                                    Participants
-                                                </button>
-                                                <button onClick={() => deleteSingle(ev._id)} className="w-12 bg-rose-50 text-rose-500 rounded-xl flex items-center justify-center border border-rose-100">
-                                                    <i className="fas fa-trash-alt" />
-                                                </button>
-                                            </div>
+                                        <div className="flex gap-2">
+                                            <button onClick={() => viewParticipants(ev)} className="flex-1 bg-[#002147] text-white py-2 rounded-lg text-[9px] font-black uppercase tracking-widest">
+                                                Participants
+                                            </button>
+                                            <button onClick={() => deleteSingle(ev._id)} className="w-10 bg-rose-50 text-rose-500 rounded-lg flex items-center justify-center border border-rose-100">
+                                                <i className="fas fa-trash-alt" />
+                                            </button>
                                         </div>
                                     </div>
                                 );
@@ -2817,39 +2789,32 @@ function AdminPortal() {
                     </div>
 
                     <div className="p-4 sm:p-10">
-                        <div className="sm:hidden space-y-5">
+                        <div className="sm:hidden space-y-2">
                             {filtered.length === 0 ? (
                                 <div className="text-center py-20 bg-slate-50 rounded-[2rem] border-2 border-dashed border-slate-100">
                                     <i className="fas fa-comment-slash text-4xl mb-4 block text-slate-100" />
                                     <p className="text-[10px] font-black uppercase tracking-widest text-slate-300">Archive is empty</p>
                                 </div>
                             ) : filtered.map((ann) => (
-                                <div key={ann._id} className="relative group overflow-hidden bg-white rounded-[2rem] border border-slate-100 shadow-sm transition-all active:scale-[0.98]">
-                                    <div className="p-6 bg-slate-50/50 border-b border-slate-100">
-                                        <div className="flex justify-between items-start mb-4">
-                                            <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest shadow-sm ${
-                                                ann.type === 'Urgent' ? 'bg-rose-500 text-white shadow-rose-900/10' : 
-                                                ann.type === 'Success' ? 'bg-emerald-500 text-white shadow-emerald-900/10' : 
-                                                'bg-[#002147] text-white'
-                                            }`}>
-                                                {ann.type}
-                                            </span>
-                                            <button onClick={() => deleteSingle(ann._id)} className="w-9 h-9 flex items-center justify-center bg-white text-rose-500 rounded-xl border border-slate-100 shadow-sm active:scale-90 transition-all">
-                                                <i className="fas fa-trash-alt text-xs" />
-                                            </button>
+                                <div key={ann._id} className="relative group overflow-hidden bg-white rounded-2xl border border-slate-100 shadow-sm transition-all space-y-2 p-3">
+                                    <div className="flex justify-between items-start gap-3">
+                                        <div className="flex-1">
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <span className={`px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-widest ${
+                                                    ann.type === 'Urgent' ? 'bg-rose-500 text-white' : 
+                                                    ann.type === 'Success' ? 'bg-emerald-500 text-white' : 
+                                                    'bg-[#002147] text-white'
+                                                }`}>
+                                                    {ann.type}
+                                                </span>
+                                                <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">{new Date(ann.createdAt).toLocaleDateString()}</span>
+                                            </div>
+                                            <h4 className="font-bold text-slate-800 text-xs leading-none mb-1.5">{ann.title}</h4>
+                                            <p className="text-[10px] text-slate-500 font-medium line-clamp-1 italic">"{ann.content}"</p>
                                         </div>
-                                        <h4 className="font-black text-slate-800 text-lg leading-tight">{ann.title}</h4>
-                                        <div className="flex items-center gap-2 mt-2 opacity-50">
-                                            <i className="fas fa-clock text-[9px]" />
-                                            <span className="text-[9px] font-black uppercase tracking-widest">{new Date(ann.createdAt).toLocaleDateString()}</span>
-                                        </div>
-                                    </div>
-                                    <div className="p-6 bg-white">
-                                        <div className="bg-slate-50/80 p-4 rounded-3xl border border-slate-100/50">
-                                            <p className="text-[11px] font-medium text-slate-600 leading-relaxed italic line-clamp-3">
-                                                "{ann.content}"
-                                            </p>
-                                        </div>
+                                        <button onClick={() => deleteSingle(ann._id)} className="w-8 h-8 flex items-center justify-center bg-rose-50 text-rose-500 rounded-lg hover:bg-rose-500 hover:text-white transition-all shrink-0">
+                                            <i className="fas fa-trash-alt text-[10px]" />
+                                        </button>
                                     </div>
                                 </div>
                             ))}
@@ -2997,7 +2962,7 @@ function AdminPortal() {
                     </div>
                     
                     <div className="p-1 sm:p-0">
-                        <div className="sm:hidden space-y-4 px-4 py-2">
+                        <div className="sm:hidden space-y-2 px-4 py-2">
                             {logs.length === 0 && !loadingLogs ? (
                                 <div className="text-center py-16 bg-slate-50/50 border-2 border-dashed border-slate-100 rounded-3xl">
                                     <i className="fas fa-inbox text-4xl mb-3 opacity-20 block text-slate-400" />
@@ -3006,39 +2971,35 @@ function AdminPortal() {
                             ) : logs.map((log) => {
                                 const actionText = log.action || '';
                                 return (
-                                    <div key={log._id} className="bg-white rounded-[2rem] p-6 shadow-sm border border-slate-100 relative overflow-hidden group">
-                                        <div className="flex justify-between items-start mb-4">
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-10 h-10 rounded-xl bg-slate-50 text-slate-600 flex items-center justify-center text-sm font-black uppercase shadow-inner border border-slate-100">
+                                    <div key={log._id} className="bg-white rounded-2xl p-3 shadow-sm border border-slate-100 relative overflow-hidden space-y-2">
+                                        <div className="flex justify-between items-center gap-3">
+                                            <div className="flex items-center gap-2">
+                                                <div className="w-8 h-8 rounded-lg bg-slate-50 text-slate-600 flex items-center justify-center text-xs font-black uppercase shrink-0 border border-slate-100">
                                                     {log.admin_name?.charAt(0) || <i className="fas fa-robot text-slate-400" />}
                                                 </div>
                                                 <div className="flex flex-col">
-                                                    <span className="font-bold text-slate-800 text-sm leading-none mb-1">
+                                                    <span className="font-bold text-slate-800 text-xs leading-none mb-1 text-wrap">
                                                         {log.admin_name || "System/Unknown"}
                                                     </span>
-                                                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none">
+                                                    <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none">
                                                         {new Date(log.createdAt).toLocaleString()}
                                                     </span>
                                                 </div>
                                             </div>
-                                        </div>
-                                        <div className="mb-4">
-                                            <span className={`inline-block px-3 py-1.5 text-[9px] font-black uppercase tracking-widest rounded-lg shadow-sm border ${
-                                                actionText.includes('LOGIN') ? 'bg-blue-50 text-blue-600 border-blue-100' :
-                                                actionText.includes('CREATE') || actionText.includes('APPROVE') || actionText.includes('Add') ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
-                                                actionText.includes('BLOCK') || actionText.includes('DELETE') ? 'bg-rose-50 text-rose-600 border-rose-100' :
-                                                'bg-slate-50 text-slate-600 border-slate-200'
+                                            <span className={`px-2 py-0.5 text-[8px] font-black uppercase tracking-widest rounded-md shrink-0 text-center ${
+                                                actionText.includes('LOGIN') ? 'bg-blue-50 text-blue-600' :
+                                                actionText.includes('CREATE') || actionText.includes('APPROVE') || actionText.includes('Add') ? 'bg-emerald-50 text-emerald-600' :
+                                                actionText.includes('BLOCK') || actionText.includes('DELETE') ? 'bg-rose-50 text-rose-600' :
+                                                'bg-slate-50 text-slate-600'
                                             }`}>
                                                 {actionText}
                                             </span>
                                         </div>
-                                        <div className="bg-slate-50 p-4 rounded-xl border border-slate-100/50">
-                                            <p className="text-xs text-slate-600 font-medium">
-                                                {log.details}
-                                                {log.target_id && (
-                                                    <span className="block mt-2 text-[#002147] font-bold text-[10px] uppercase tracking-widest">Target ID: {log.target_id.name || log.target_id.email || log.target_id._id || log.target_id}</span>
-                                                )}
-                                            </p>
+                                        <div className="bg-slate-50/50 px-2.5 py-2 rounded-xl text-[10px] text-slate-600 font-medium">
+                                            {log.details}
+                                            {log.target_id && (
+                                                <span className="block mt-1 text-[#002147] font-bold text-[8px] uppercase tracking-widest leading-none">ID: {log.target_id.name || log.target_id.email || log.target_id._id || log.target_id}</span>
+                                            )}
                                         </div>
                                     </div>
                                 );
@@ -3355,52 +3316,50 @@ function AdminPortal() {
                         <i className="fas fa-users-gear text-slate-400" /> Official Personnel
                     </h2>
                     
-                    <div className="sm:hidden space-y-4">
+                    <div className="sm:hidden space-y-2">
                         {adminList.filter(m => m.role !== 'Superuser').length === 0 ? (
                             <div className="text-center py-20 bg-white rounded-[2rem] border-2 border-dashed border-slate-100">
                                 <i className="fas fa-user-shield text-4xl mb-4 opacity-10" />
                                 <p className="text-[10px] font-black uppercase tracking-widest text-slate-300">No admins found</p>
                             </div>
                         ) : adminList.filter(m => m.role !== 'Superuser').map((m) => (
-                            <div key={m.member_id} className={`p-6 bg-white rounded-[2rem] border border-slate-200 shadow-sm space-y-4 relative overflow-hidden active:scale-[0.98] transition-all ${m.status === 'blocked' ? "opacity-75" : ""}`}>
-                                <div className="flex justify-between items-start">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center font-black text-xs shadow-inner">
-                                            {m.name.charAt(0)}
+                            <div key={m.member_id} className={`p-3 bg-white rounded-2xl border border-slate-100 shadow-sm relative overflow-hidden transition-all space-y-3 ${m.status === 'blocked' ? "opacity-75" : ""}`}>
+                                <div className="flex justify-between items-center gap-3">
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-600 shrink-0">
+                                            <span className="font-bold text-[10px] uppercase">{m.name.charAt(0)}</span>
                                         </div>
                                         <div>
-                                            <h4 className="font-black text-slate-800 leading-none mb-1 text-sm">{m.name}</h4>
-                                            <p className="text-[10px] font-bold text-indigo-600 uppercase tracking-widest">{m.member_id}</p>
+                                            <h4 className="font-bold text-slate-800 text-xs leading-none mb-1">{m.name}</h4>
+                                            <p className="text-[9px] font-bold text-indigo-600 uppercase tracking-widest leading-none">{m.member_id}</p>
                                         </div>
                                     </div>
-                                    <span className={`text-[9px] font-black px-2 py-1 rounded-lg uppercase tracking-widest ${m.status === 'blocked' ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"}`}>
-                                        {m.status === 'blocked' ? "Blocked" : "Active"}
-                                    </span>
-                                </div>
-                                
-                                <div className="flex items-center gap-2 bg-slate-50 px-3 py-2 rounded-xl">
-                                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Privilege:</span>
-                                    <span className="text-[9px] font-black text-purple-600 uppercase tracking-widest bg-purple-50 px-1.5 py-0.5 rounded border border-purple-100">{m.role}</span>
+                                    <div className="flex flex-col items-end text-right">
+                                        <span className={`text-[8px] font-black px-2 py-0.5 rounded-md uppercase tracking-widest ${m.status === 'blocked' ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"}`}>
+                                            {m.status === 'blocked' ? "Blocked" : "Active"}
+                                        </span>
+                                        <span className="text-[8px] font-black text-purple-600 uppercase tracking-widest bg-purple-50 px-1.5 py-0.5 rounded border border-purple-100 mt-1">{m.role}</span>
+                                    </div>
                                 </div>
 
-                                <div className="flex gap-2 pt-2 border-t border-slate-50">
+                                <div className="flex gap-2 pt-1 border-t border-slate-50">
                                     {m.member_id !== adminUser ? (
                                         <>
                                             <button onClick={() => toggleBlock(m._id)}
-                                                className={`flex-1 text-[9px] py-3 rounded-xl font-black uppercase tracking-widest border transition-all ${m.status === 'blocked' ? "bg-emerald-50 text-emerald-600 border-emerald-100" : "bg-amber-50 text-amber-600 border-amber-100"}`}>
+                                                className={`flex-1 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${m.status === 'blocked' ? "bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white" : "bg-amber-50 text-amber-600 hover:bg-amber-500 hover:text-white"}`}>
                                                 {m.status === 'blocked' ? "Unblock" : "Block"}
                                             </button>
                                             <button onClick={() => { setEditing(m.member_id); setEditForm({ name: m.name, password: "" }); }}
-                                                className="flex-1 text-[9px] bg-slate-50 text-slate-600 border border-slate-100 py-3 rounded-xl font-black uppercase tracking-widest">
+                                                className="flex-1 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest bg-slate-50 text-slate-600 hover:bg-[#002147] hover:text-white transition-all">
                                                 Edit
                                             </button>
                                             <button onClick={() => del(m.member_id)}
-                                                className="w-10 bg-rose-50 text-rose-500 rounded-xl flex items-center justify-center border border-rose-100">
-                                                <i className="fas fa-trash-alt" />
+                                                className="w-8 h-8 rounded-lg bg-rose-50 text-rose-500 flex items-center justify-center hover:bg-rose-500 hover:text-white transition-all">
+                                                <i className="fas fa-trash-alt text-[10px]" />
                                             </button>
                                         </>
                                     ) : (
-                                        <div className="w-full text-center py-2 text-[10px] font-black uppercase tracking-[0.3em] text-blue-400 opacity-50 bg-blue-50/50 rounded-xl">Account Owner</div>
+                                        <div className="w-full text-center py-2 text-[9px] font-black uppercase tracking-[0.2em] text-blue-400 opacity-50 bg-blue-50/50 rounded-lg">Account Owner</div>
                                     )}
                                 </div>
                             </div>

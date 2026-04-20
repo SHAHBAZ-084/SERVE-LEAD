@@ -60,9 +60,9 @@ export default function ChairmanHomeSection() {
                             />
 
                             {/* Floating title badge */}
-                            <div className="absolute bottom-6 -right-4 md:bottom-10 md:-right-10 glass-dark text-white p-4 md:p-6 shadow-2xl z-20 animate-float border-l-[3px] border-cyan-500">
+                            <div className="absolute bottom-6 right-0 md:bottom-10 md:-right-10 glass-dark text-white p-4 md:p-6 shadow-2xl z-20 animate-float border-l-[3px] border-cyan-500">
                                 <p className="text-[9px] font-black uppercase tracking-widest text-cyan-400 mb-1">{vision.badgeSubtitle}</p>
-                                <p className="text-sm md:text-base font-bold tracking-tight">{vision.badgeName}</p>
+                                <p className="text-xs md:text-base font-bold tracking-tight">{vision.badgeName}</p>
                             </div>
                         </div>
                     </div>
@@ -70,7 +70,7 @@ export default function ChairmanHomeSection() {
                     {/* Chairman Content Section */}
                     <div className="w-full lg:w-1/2 flex flex-col items-center lg:items-start pt-8 lg:pt-0">
                         <div className="w-12 h-1 bg-cyan-500 mb-6 lg:mb-8 rounded-full" />
-                        <h2 className="text-3xl md:text-6xl font-black text-slate-900 leading-[1.1] mb-8 text-center lg:text-left tracking-tighter">
+                        <h2 className="text-2xl sm:text-3xl md:text-6xl font-black text-slate-900 leading-[1.1] mb-8 text-center lg:text-left tracking-tighter">
                             {renderTitle()}
                         </h2>
                         

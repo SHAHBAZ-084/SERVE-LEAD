@@ -385,16 +385,16 @@ const MemberDashboard = () => {
         return (
             <div className="animate-fade-up space-y-8">
                 {/* Modern Welcome Banner (Professional Weight) */}
-                <div className="relative p-12 rounded-[3.5rem] overflow-hidden border border-slate-100 bg-white shadow-2xl shadow-slate-200/40">
-                    <div className="absolute top-0 right-0 w-96 h-96 bg-[#002147]/5 blur-[120px] -mr-48 -mt-48 transition-transform duration-1000" />
-                    <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-8">
+                <div className="relative p-8 sm:p-12 rounded-3xl sm:rounded-[3.5rem] overflow-hidden border border-slate-100 bg-white shadow-2xl shadow-slate-200/40">
+                    <div className="absolute top-0 right-0 w-64 h-64 sm:w-96 sm:h-96 bg-[#002147]/5 blur-[80px] sm:blur-[120px] -mr-32 -mt-32 sm:-mr-48 sm:-mt-48 transition-transform duration-1000" />
+                    <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-6 sm:gap-8">
                         <div>
-                            <h2 className="text-5xl font-bold text-slate-900 leading-tight tracking-tight text-shadow-sm">Welcome back, <span className="text-[#002147]">{user.name === "System Admin" ? "Member" : user.name}</span> <span className="inline-block animate-bounce shadow-xl">👋</span></h2>
-                            <p className="text-slate-400 text-[10px] font-semibold uppercase tracking-[0.4em] mt-3">SLS Society Member Portal</p>
+                            <h2 className="text-3xl sm:text-5xl font-bold text-slate-900 leading-tight tracking-tight text-shadow-sm">Welcome back, <span className="text-[#002147]">{user.name === "System Admin" ? "Member" : user.name}</span> <span className="inline-block animate-bounce shadow-xl">👋</span></h2>
+                            <p className="text-slate-400 text-[9px] sm:text-[10px] font-semibold uppercase tracking-[0.4em] mt-2 sm:mt-3">SLS Society Member Portal</p>
                         </div>
-                        <div className="flex -space-x-4">
+                        <div className="flex -space-x-3 sm:-space-x-4">
                             {["S", "L", "S", "+"].map((char, i) => (
-                                <div key={i} className="w-14 h-14 rounded-3xl border-4 border-white bg-slate-50 flex items-center justify-center text-[11px] font-bold text-[#002147] shadow-xl hover:-translate-y-2 transition-all cursor-default">
+                                <div key={i} className="w-10 h-10 sm:w-14 sm:h-14 rounded-2xl sm:rounded-3xl border-2 sm:border-4 border-white bg-slate-50 flex items-center justify-center text-[9px] sm:text-[11px] font-bold text-[#002147] shadow-xl hover:-translate-y-1 sm:hover:-translate-y-2 transition-all cursor-default">
                                     {char}
                                 </div>
                             ))}
@@ -403,7 +403,7 @@ const MemberDashboard = () => {
                 </div>
 
                 {/* Statistics Grid (Professional Icons & Weights) */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+                <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-8">
                     <StatCard icon="fa-medal" label="Certificates Earned" value={certificates.length} color="emerald" />
                     <StatCard icon="fa-calendar-check" label="Events Joined" value={joinedEventsCount} color="sky" />
                     <StatCard icon="fa-bullhorn" label="New Updates" value={announcements.length} color="indigo" />
@@ -411,24 +411,30 @@ const MemberDashboard = () => {
                 </div>
 
                 {/* Direct Action Hub (Professional Styling) */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-8 pt-6">
-                    <button onClick={() => setActiveTab("events")} className="group p-10 bg-white border border-slate-100 rounded-[3rem] shadow-2xl shadow-slate-200/40 hover:-translate-y-3 transition-all text-left relative overflow-hidden">
-                        <div className="absolute top-0 right-0 p-8 text-slate-50 group-hover:text-[#002147]/10 transition-colors"><i className="fas fa-calendar-alt text-7xl" /></div>
-                        <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-[1.5rem] flex items-center justify-center text-2xl mb-8 shadow-inner group-hover:bg-[#002147] group-hover:text-white transition-all duration-500"><i className="fas fa-calendar-star" /></div>
-                        <h4 className="text-2xl font-bold text-slate-800 mb-3 tracking-tight">Explore Events</h4>
-                        <p className="text-slate-400 text-[11px] font-medium uppercase tracking-[0.2em] leading-relaxed">Browse upcoming events & registers</p>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-8 pt-2 sm:pt-6">
+                    <button onClick={() => setActiveTab("events")} className="group p-5 sm:p-10 bg-white border border-slate-100 rounded-[2rem] sm:rounded-[3rem] shadow-xl shadow-slate-200/40 hover:-translate-y-1 sm:hover:-translate-y-3 transition-all text-left relative overflow-hidden flex items-center sm:block gap-4 sm:gap-8">
+                        <div className="absolute top-0 right-0 p-8 text-slate-50 group-hover:text-[#002147]/10 transition-colors hidden sm:block"><i className="fas fa-calendar-alt text-7xl" /></div>
+                        <div className="w-12 h-12 sm:w-16 sm:h-16 shrink-0 bg-blue-50 text-blue-600 rounded-xl sm:rounded-[1.5rem] flex items-center justify-center text-xl sm:text-2xl sm:mb-8 shadow-inner group-hover:bg-[#002147] group-hover:text-white transition-all duration-500"><i className="fas fa-calendar-star" /></div>
+                        <div>
+                            <h4 className="text-base sm:text-2xl font-bold text-slate-800 mb-1 sm:mb-3 tracking-tight">Explore Events</h4>
+                            <p className="text-slate-400 text-[9px] sm:text-[11px] font-medium uppercase tracking-[0.2em] leading-relaxed hidden sm:block">Browse upcoming events & registers</p>
+                        </div>
                     </button>
-                    <button onClick={() => setActiveTab("certificates")} className="group p-10 bg-white border border-slate-100 rounded-[3rem] shadow-2xl shadow-slate-200/40 hover:-translate-y-3 transition-all text-left relative overflow-hidden">
-                        <div className="absolute top-0 right-0 p-8 text-slate-50 group-hover:text-emerald-500/10 transition-colors"><i className="fas fa-certificate text-7xl" /></div>
-                        <div className="w-16 h-16 bg-emerald-50 text-emerald-600 rounded-[1.5rem] flex items-center justify-center text-2xl mb-8 shadow-inner group-hover:bg-[#002147] group-hover:text-white transition-all duration-500"><i className="fas fa-award-simple" /></div>
-                        <h4 className="text-2xl font-bold text-slate-800 mb-3 tracking-tight">My Portfolio</h4>
-                        <p className="text-slate-400 text-[11px] font-medium uppercase tracking-[0.2em] leading-relaxed">Access your official society credentials</p>
+                    <button onClick={() => setActiveTab("certificates")} className="group p-5 sm:p-10 bg-white border border-slate-100 rounded-[2rem] sm:rounded-[3rem] shadow-xl shadow-slate-200/40 hover:-translate-y-1 sm:hover:-translate-y-3 transition-all text-left relative overflow-hidden flex items-center sm:block gap-4 sm:gap-8">
+                        <div className="absolute top-0 right-0 p-8 text-slate-50 group-hover:text-emerald-500/10 transition-colors hidden sm:block"><i className="fas fa-certificate text-7xl" /></div>
+                        <div className="w-12 h-12 sm:w-16 sm:h-16 shrink-0 bg-emerald-50 text-emerald-600 rounded-xl sm:rounded-[1.5rem] flex items-center justify-center text-xl sm:text-2xl sm:mb-8 shadow-inner group-hover:bg-[#002147] group-hover:text-white transition-all duration-500"><i className="fas fa-award-simple" /></div>
+                        <div>
+                            <h4 className="text-base sm:text-2xl font-bold text-slate-800 mb-1 sm:mb-3 tracking-tight">My Portfolio</h4>
+                            <p className="text-slate-400 text-[9px] sm:text-[11px] font-medium uppercase tracking-[0.2em] leading-relaxed hidden sm:block">Access your official society credentials</p>
+                        </div>
                     </button>
-                    <button onClick={() => setActiveTab("announcements")} className="group p-10 bg-white border border-slate-100 rounded-[3rem] shadow-2xl shadow-slate-200/40 hover:-translate-y-3 transition-all text-left relative overflow-hidden">
-                        <div className="absolute top-0 right-0 p-8 text-slate-50 group-hover:text-indigo-500/10 transition-colors"><i className="fas fa-bell text-7xl" /></div>
-                        <div className="w-16 h-16 bg-indigo-50 text-indigo-600 rounded-[1.5rem] flex items-center justify-center text-2xl mb-8 shadow-inner group-hover:bg-[#002147] group-hover:text-white transition-all duration-500"><i className="fas fa-bullhorn" /></div>
-                        <h4 className="text-2xl font-bold text-slate-800 mb-3 tracking-tight">Society News</h4>
-                        <p className="text-slate-400 text-[11px] font-medium uppercase tracking-[0.2em] leading-relaxed">Stay updated with the latest news</p>
+                    <button onClick={() => setActiveTab("announcements")} className="group p-5 sm:p-10 bg-white border border-slate-100 rounded-[2rem] sm:rounded-[3rem] shadow-xl shadow-slate-200/40 hover:-translate-y-1 sm:hover:-translate-y-3 transition-all text-left relative overflow-hidden flex items-center sm:block gap-4 sm:gap-8">
+                        <div className="absolute top-0 right-0 p-8 text-slate-50 group-hover:text-indigo-500/10 transition-colors hidden sm:block"><i className="fas fa-bell text-7xl" /></div>
+                        <div className="w-12 h-12 sm:w-16 sm:h-16 shrink-0 bg-indigo-50 text-indigo-600 rounded-xl sm:rounded-[1.5rem] flex items-center justify-center text-xl sm:text-2xl sm:mb-8 shadow-inner group-hover:bg-[#002147] group-hover:text-white transition-all duration-500"><i className="fas fa-bullhorn" /></div>
+                        <div>
+                            <h4 className="text-base sm:text-2xl font-bold text-slate-800 mb-1 sm:mb-3 tracking-tight">Society News</h4>
+                            <p className="text-slate-400 text-[9px] sm:text-[11px] font-medium uppercase tracking-[0.2em] leading-relaxed hidden sm:block">Stay updated with the latest news</p>
+                        </div>
                     </button>
                 </div>
 
@@ -449,7 +455,7 @@ const MemberDashboard = () => {
 
                     <div className="p-1 sm:p-0">
                         {/* Mobile Participation Card List */}
-                        <div className="sm:hidden space-y-4">
+                        <div className="sm:hidden space-y-2">
                             {events.filter(e => e.participants?.some(p => p.memberId === user.dbId || p.memberId?._id === user.dbId)).length === 0 ? (
                                 <div className="text-center py-16 bg-slate-50/50 border-2 border-dashed border-slate-100 rounded-3xl">
                                     <i className="fas fa-ghost text-3xl mb-3 opacity-20 block text-slate-400" />
@@ -458,31 +464,29 @@ const MemberDashboard = () => {
                             ) : events.filter(e => e.participants?.some(p => p.memberId === user.dbId || p.memberId?._id === user.dbId)).map(event => {
                                 const earnedCert = certificates.find(cert => cert.eventId?._id === event._id || cert.eventId === event._id);
                                 return (
-                                    <div key={event._id} className="bg-white rounded-3xl border border-slate-100 p-6 shadow-sm relative overflow-hidden group">
-                                        <div className="flex justify-between items-start mb-4">
-                                            <h4 className="font-bold text-slate-800 text-sm leading-tight max-w-[70%]">{event.title}</h4>
-                                            {earnedCert ? (
-                                                <span className="inline-flex items-center gap-1.5 px-2 py-1 bg-emerald-50 text-emerald-600 rounded-md text-[8px] font-black uppercase tracking-widest border border-emerald-100 whitespace-nowrap">
-                                                    <i className="fas fa-medal" /> Earned
-                                                </span>
-                                            ) : (
-                                                <span className="inline-flex items-center gap-1.5 px-2 py-1 bg-amber-50 text-amber-600 rounded-md text-[8px] font-black uppercase tracking-widest border border-amber-100 whitespace-nowrap">
-                                                    <i className="fas fa-hourglass-half" /> Pending
-                                                </span>
-                                            )}
-                                        </div>
-                                        <div className="grid grid-cols-2 gap-3 mb-2">
-                                            <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100/50">
-                                                <i className="far fa-calendar-alt text-slate-400 mb-1 block text-xs" />
-                                                <p className="text-[10px] font-bold text-slate-600">
-                                                    {new Date(event.date).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}
-                                                </p>
+                                    <div key={event._id} className="bg-white rounded-2xl border border-slate-100 shadow-sm relative overflow-hidden p-3 flex flex-col gap-2">
+                                        <div className="flex justify-between items-start gap-3">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                                                    <i className="fas fa-calendar-alt text-[10px]" />
+                                                </div>
+                                                <div>
+                                                    <h4 className="font-bold text-slate-800 text-xs leading-none mb-1.5">{event.title}</h4>
+                                                    <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest leading-none">
+                                                        {new Date(event.date).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })} • {event.location || "TBA"}
+                                                    </p>
+                                                </div>
                                             </div>
-                                            <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100/50">
-                                                <i className="fas fa-location-dot text-slate-400 mb-1 block text-xs" />
-                                                <p className="text-[10px] font-bold text-slate-600 truncate">
-                                                    {event.location || "TBA"}
-                                                </p>
+                                            <div className="shrink-0 pt-0.5">
+                                                {earnedCert ? (
+                                                    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-emerald-50 text-emerald-600 rounded-md text-[8px] font-black uppercase tracking-widest border border-emerald-100 whitespace-nowrap">
+                                                        <i className="fas fa-medal" /> Earned
+                                                    </span>
+                                                ) : (
+                                                    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-amber-50 text-amber-600 rounded-md text-[8px] font-black uppercase tracking-widest border border-amber-100 whitespace-nowrap">
+                                                        <i className="fas fa-hourglass-half" /> Pending
+                                                    </span>
+                                                )}
                                             </div>
                                         </div>
                                     </div>
