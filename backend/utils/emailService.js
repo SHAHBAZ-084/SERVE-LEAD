@@ -121,7 +121,7 @@ const sendContactEmail = async (name, email, message) => {
     const transporter = createTransporter();
     const mailOptions = {
       from: `"Serve & Lead Portal" <${process.env.EMAIL_USER}>`,
-      to: 'shahbazyounas636@gmail.com',
+      to: process.env.CONTACT_EMAIL || 'serveandleadsociety@gmail.com',
       replyTo: email, // Allow reply directly to the person who contacted
       subject: `New Inquiry from ${name}`,
       text: `New Website Inquiry from ${name} (${email}): ${message}`,
