@@ -672,6 +672,7 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
                         </div>
                     </div>
                 </div>
+            )}
 
             {/* Global Actions */}
             <div className="flex justify-end pt-4 pb-2">
