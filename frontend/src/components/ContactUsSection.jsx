@@ -65,7 +65,7 @@ export default function ContactUsSection() {
                                     value={form.email}
                                     onChange={(e) => setForm({ ...form, email: e.target.value })}
                                     className="w-full bg-white border border-slate-200 rounded-2xl px-6 py-4 md:py-5 focus:ring-2 focus:ring-cyan-500 outline-none transition-all placeholder:text-slate-300 shadow-sm text-sm"
-                                    placeholder="farooq@slsuet.com"
+                                    placeholder=""
                                     required
                                 />
                             </div>

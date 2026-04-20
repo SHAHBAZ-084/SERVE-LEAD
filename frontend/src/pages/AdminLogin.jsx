@@ -113,7 +113,7 @@ export default function AdminLogin() {
                                     value={credentials.email}
                                     onChange={handleChange}
                                     className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-11 pr-4 py-4 text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-cyan-500 focus:border-transparent outline-none transition-all shadow-sm font-medium"
-                                    placeholder="admin@slsuet.com"
+                                    placeholder=""
                                     required
                                 />
                             </div>
@@ -223,7 +223,7 @@ export default function AdminLogin() {
                                         value={forgotEmail}
                                         onChange={(e) => setForgotEmail(e.target.value)}
                                         className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-6 py-5 text-sm focus:ring-2 focus:ring-cyan-500 outline-none transition-all placeholder:text-slate-300 shadow-sm font-medium"
-                                        placeholder="admin@slsuet.com"
+                                        placeholder=""
                                         required
                                     />
                                 </div>
