@@ -292,6 +292,32 @@ router.get('/profile', authMiddleware, isAdmin, asyncHandler(async (req, res) =>
     res.json(admin);
 }));
 
+router.put('/profile', authMiddleware, isAdmin, asyncHandler(async (req, res) => {
+    const { name, oldPassword, newPassword } = req.body;
+    const admin = await Member.findById(req.user.memberId);
+    if (!admin) return res.status(404).json({ error: 'Administrator record not found.' });
+
+    if (name) admin.name = name;
+    
+    // Security check: must provide current password to set a new one
+    if (newPassword) {
+        if (!oldPassword) {
+            return res.status(400).json({ error: 'Current password is required to authorize a security change.' });
+        }
+        
+        const isMatch = await bcrypt.compare(oldPassword, admin.password);
+        if (!isMatch) {
+            return res.status(401).json({ error: 'Authentication failed: Incorrect current password.' });
+        }
+        
+        admin.password = await bcrypt.hash(newPassword, 12);
+    }
+
+    await admin.save();
+    res.json({ message: 'Security credentials updated successfully.', name: admin.name });
+    logActivity(req.user.memberId, 'ADMIN_PROFILE_UPDATE', `Updated profile security settings for ${admin.name}`);
+}));
+
 router.post('/logout', (req, res) => {
     res.cookie('jwt', '', { maxAge: 1 });
     res.json({ message: 'Logged out' });

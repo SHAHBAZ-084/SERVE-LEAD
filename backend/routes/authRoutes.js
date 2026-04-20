@@ -28,16 +28,25 @@ router.get('/me', authMiddleware, asyncHandler(async (req, res) => {
 // Update Profile
 router.put('/profile', authMiddleware, asyncHandler(async (req, res) => {
     const { name, email, password } = req.body;
-    const updateData = {};
-    if (name) updateData.name = name;
-    if (email) updateData.email = email;
-    
-    if (password) {
-        updateData.password = await bcrypt.hash(password, 12);
+    const member = await Member.findById(req.user.memberId);
+    if (!member) return res.status(404).json({ error: 'Account record not found.' });
+
+    if (name) member.name = name;
+    if (email && email.toLowerCase() !== member.email) {
+        const existing = await Member.findOne({ email: email.toLowerCase() });
+        if (existing) return res.status(400).json({ error: 'This email is already linked to another account.' });
+        member.email = email.toLowerCase();
     }
     
-    const member = await Member.findByIdAndUpdate(req.user.memberId, updateData, { new: true }).select('-password');
-    res.json(member);
+    if (password) {
+        member.password = await bcrypt.hash(password, 12);
+    }
+    
+    await member.save();
+    res.json({ 
+        message: 'Profile security updated successfully.', 
+        member: { id: member._id, name: member.name, email: member.email } 
+    });
 }));
 
 // Verify Email availability
