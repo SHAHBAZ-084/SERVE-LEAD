@@ -11,6 +11,7 @@ import Donate from './pages/Donate';
 import RegisterPage from './pages/RegisterPage';
 import MemberLogin from './pages/MemberLogin';
 import ResetPassword from './pages/ResetPassword';
+import FloatingWhatsApp from './components/FloatingWhatsApp';
 
 function App() {
 
@@ -32,6 +33,7 @@ function App() {
           </AdminRoute>
         } />
       </Routes>
+      <FloatingWhatsApp />
     </Router>
   )
 }

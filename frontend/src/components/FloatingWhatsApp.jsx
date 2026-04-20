@@ -1,0 +1,28 @@
+import React from 'react';
+
+export default function FloatingWhatsApp() {
+    return (
+        <a 
+            href="https://chat.whatsapp.com/YOUR_GROUP_LINK_HERE" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="fixed bottom-8 right-8 z-[9999] group"
+            aria-label="Join WhatsApp Community"
+        >
+            <div className="relative">
+                {/* Ping Animation */}
+                <span className="absolute inset-0 rounded-full bg-[#25D366] animate-ping opacity-20 group-hover:hidden" />
+                
+                {/* Main Icon Circle */}
+                <div className="w-14 h-14 md:w-16 md:h-16 bg-[#25D366] rounded-full flex items-center justify-center shadow-2xl transition-all duration-300 group-hover:scale-110 group-hover:rotate-[360deg] active:scale-95">
+                    <i className="fab fa-whatsapp text-white text-3xl md:text-4xl" />
+                </div>
+                
+                {/* Label Overlay (Optional, but helps UX) */}
+                <div className="absolute right-full mr-4 top-1/2 -translate-y-1/2 bg-white px-4 py-2 rounded-xl border border-slate-100 shadow-xl opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none whitespace-nowrap">
+                    <p className="text-[10px] font-black text-slate-800 uppercase tracking-widest">Join Society Community</p>
+                </div>
+            </div>
+        </a>
+    );
+}

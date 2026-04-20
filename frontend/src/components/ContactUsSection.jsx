@@ -94,16 +94,16 @@ export default function ContactUsSection() {
                         </button>
                     </form>
 
-                    <div className="mt-8 pt-8 border-t border-slate-200/60 text-center flex flex-col items-center">
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Or join us directly</p>
+                    <div className="mt-10 pt-10 border-t border-slate-200/60 text-center flex flex-col items-center">
+                        <p className="text-[11px] font-black text-[#5e6d8a] uppercase tracking-[0.2em] mb-6">Or join us directly</p>
                         <a 
                             href="https://chat.whatsapp.com/YOUR_GROUP_LINK_HERE" 
                             target="_blank" 
                             rel="noopener noreferrer"
-                            className="inline-flex items-center gap-3 px-8 py-4 bg-[#25D366] text-white rounded-2xl font-black uppercase text-[10px] md:text-xs tracking-widest hover:bg-[#128C7E] hover:scale-105 transition-all shadow-xl shadow-emerald-900/10"
+                            className="group inline-flex items-center gap-4 px-10 py-5 bg-[#25D366] text-white rounded-full font-black uppercase text-xs md:text-sm tracking-widest hover:bg-[#20ba59] hover:-translate-y-1 active:translate-y-0 transition-all duration-300 shadow-[0_15px_30px_-5px_rgba(37,211,102,0.3)] hover:shadow-[0_20px_40px_-5px_rgba(37,211,102,0.4)]"
                         >
-                            <i className="fab fa-whatsapp text-lg" />
-                            Join WhatsApp Community
+                            <i className="fab fa-whatsapp text-xl md:text-2xl" />
+                            <span>Join WhatsApp Community</span>
                         </a>
                     </div>
                 </div>
