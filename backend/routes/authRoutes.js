@@ -196,7 +196,7 @@ router.post('/login', asyncHandler(async (req, res) => {
             joining_year: member.joining_year
         }
     });
-});
+}));
 
 // Member Logout
 router.post('/logout', (req, res) => {
