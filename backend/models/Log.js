@@ -23,11 +23,11 @@ const LogSchema = new mongoose.Schema({
         ref: 'Member',
         default: null
     },
-    // TTL Index: Auto-delete logs after 3 days (3 * 24 * 60 * 60 seconds)
+    // TTL Index: Auto-delete logs after 1 day (24 * 60 * 60 seconds)
     createdAt: {
         type: Date,
         default: Date.now,
-        expires: 259200
+        expires: 86400
     }
 }, { timestamps: true });
 
