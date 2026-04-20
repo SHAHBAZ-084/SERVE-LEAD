@@ -21,7 +21,7 @@ const sendWelcomeEmail = async (email, name, memberId) => {
     const mailOptions = {
       from: `"Serve & Lead Society" <${process.env.EMAIL_USER}>`,
       to: email,
-      replyTo: "support@serveandlead.org",
+      replyTo: "serveandlead@serveandlead.org",
       subject: 'Welcome to SLS Society: Membership Approved',
       text: `Welcome to Serve & Lead Society, ${name}! Your membership has been approved. Your Member ID is: ${memberId}. Login at: ${process.env.FRONTEND_URL || 'https://serveandlead.org'}/login`,
       html: `
@@ -72,7 +72,7 @@ const sendResetPasswordEmail = async (email, name, resetUrl) => {
     const mailOptions = {
       from: `"Serve & Lead Security" <${process.env.EMAIL_USER}>`,
       to: email,
-      replyTo: "support@serveandlead.org",
+      replyTo: "serveandlead@serveandlead.org",
       subject: 'Reset Your SLS Society Password',
       text: `Hello ${name}, we received a request to reset your password. Use this link: ${resetUrl}. Links expires in 10 minutes.`,
       html: `
@@ -121,7 +121,7 @@ const sendContactEmail = async (name, email, message) => {
     const transporter = createTransporter();
     const mailOptions = {
       from: `"Serve & Lead Portal" <${process.env.EMAIL_USER}>`,
-      to: process.env.CONTACT_EMAIL || 'support@serveandlead.org',
+      to: process.env.CONTACT_EMAIL || 'serveandlead@serveandlead.org',
       replyTo: email, // Allow reply directly to the person who contacted
       subject: `New Inquiry from ${name}`,
       text: `New Website Inquiry from ${name} (${email}): ${message}`,
@@ -165,7 +165,7 @@ const sendInterviewEmail = async (email, name, venue, message) => {
     const mailOptions = {
       from: `"Serve & Lead Recruitment" <${process.env.EMAIL_USER}>`,
       to: email,
-      replyTo: "support@serveandlead.org",
+      replyTo: "serveandlead@serveandlead.org",
       subject: 'Interview Invitation: SLS Society Recruitment',
       text: `Dear ${name}, you are invited for an interview at ${venue}. Message: ${message}`,
       html: `
@@ -221,7 +221,7 @@ const sendOTPEmail = async (email, otp) => {
     const mailOptions = {
         from: `"Serve & Lead Security" <${process.env.EMAIL_USER}>`,
         to: email,
-        replyTo: "support@serveandlead.org",
+        replyTo: "serveandlead@serveandlead.org",
         subject: 'SLS Verification Code: ' + otp,
         text: `Your SLS verification code is: ${otp}. It expires in 1 minute.`,
         html: `

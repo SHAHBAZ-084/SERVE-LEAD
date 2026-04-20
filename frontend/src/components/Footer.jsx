@@ -61,7 +61,7 @@ export default function Footer() {
                     <div className="space-y-6 flex flex-col items-center md:items-start">
                         <h3 className="text-xs font-black uppercase tracking-widest text-slate-500">Contact Info</h3>
                         <div className="space-y-4 text-sm font-bold text-slate-400">
-                            <p className="flex items-center gap-3 justify-center md:justify-start"><i className="fas fa-envelope text-cyan-500" /> serveandleadsociety@gmail.com</p>
+                            <p className="flex items-center gap-3 justify-center md:justify-start"><i className="fas fa-envelope text-cyan-500" /> serveandlead@serveandlead.org</p>
                             <p className="flex items-center gap-3 justify-center md:justify-start"><i className="fas fa-location-dot text-cyan-500" /> Ghoray Shah Road Near UET Lahore</p>
                             <p className="flex items-center gap-3 justify-center md:justify-start"><i className="fas fa-phone text-cyan-500" /> 0314-1683402</p>
                         </div>
