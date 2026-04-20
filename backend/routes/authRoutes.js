@@ -156,6 +156,13 @@ router.post('/login', asyncHandler(async (req, res) => {
         return res.status(401).json({ error: 'Invalid credentials.' });
     }
 
+    // Role-based Access Control: Prevent Admins/Superusers from logging into Member Portal
+    if (member.role === 'Admin' || member.role === 'Superuser') {
+        return res.status(403).json({ 
+            error: 'Administrative accounts must login through the Admin Portal.' 
+        });
+    }
+
     // Check if password matches plaintext (older signups) or hashed (resets)
     let isMatch = false;
     if (member.password === password) {
