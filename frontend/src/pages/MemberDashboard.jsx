@@ -977,10 +977,6 @@ const MemberDashboard = () => {
                             className="text-xs font-bold text-slate-500 hover:text-[#002147] w-10 h-10 sm:w-auto sm:h-auto sm:px-4 sm:py-2 hover:bg-slate-50 rounded-xl flex items-center justify-center sm:justify-start gap-2 transition-all border border-transparent hover:border-slate-100">
                             <i className="fas fa-cog text-[14px] sm:text-xs" /> <span className="hidden sm:inline">Settings</span>
                         </button>
-                        <button onClick={() => navigate("/")}
-                            className="text-xs font-bold text-[#002147] w-10 h-10 sm:w-auto sm:h-auto sm:px-4 sm:py-2 bg-blue-50 hover:bg-blue-100 rounded-xl flex items-center justify-center sm:justify-start gap-2 transition-all border border-transparent">
-                            <i className="fas fa-home text-[14px] sm:text-xs" /> <span className="hidden sm:inline">Site Overview</span>
-                        </button>
                     </div>
                 </header>
 
