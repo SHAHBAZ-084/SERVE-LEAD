@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import api, { getImgUrl } from "../api";
 import logo from "../assets/logo.png";
 import sealImg from "../assets/sealcertificate.png";
+import CountdownTimer from "../components/common/CountdownTimer";
 const Spinner = () => (
     <div className="flex justify-center py-16">
         <div className="w-8 h-8 border-3 border-[#002147] border-t-transparent rounded-full animate-spin" style={{ borderWidth: "3px" }} />
@@ -685,6 +686,17 @@ const MemberDashboard = () => {
                                     <p className="text-slate-500 text-xs font-medium leading-relaxed mb-8 line-clamp-3">
                                         {event.description?.substring(0, 160)}...
                                     </p>
+
+                                    {/* Real-time Countdown Hub */}
+                                    <div className="mb-8 p-5 bg-slate-50 rounded-3xl border border-slate-100 flex items-center justify-between">
+                                        <div className="flex flex-col">
+                                            <span className="text-[8px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2">Time Remaining</span>
+                                            <CountdownTimer targetDate={`${event.endDate || event.date}T${event.time || "23:59"}:00`} />
+                                        </div>
+                                        <div className="w-10 h-10 bg-white rounded-xl shadow-sm flex items-center justify-center text-[#002147] animate-pulse">
+                                            <i className="fas fa-hourglass-start text-xs" />
+                                        </div>
+                                    </div>
 
                                     <div className="mt-auto flex gap-4">
                                         <button

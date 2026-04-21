@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import api, { getImgUrl, API_BASE as API_BASE_URL } from "../api";
+import CountdownTimer from "../components/common/CountdownTimer";
 import logo from "../assets/logo.png";
 import sealImg from "../assets/sealcertificate.png";
 import jsPDF from "jspdf";
@@ -2534,10 +2535,9 @@ function AdminPortal() {
                                                         </button>
                                                     </td>
                                                     <td className="px-8 py-6">
-                                                        <span className={`px-4 py-1.5 rounded-lg text-xs font-black uppercase tracking-widest shadow-sm ${hasEnded ? "bg-slate-100 text-slate-400" : "bg-emerald-50 text-emerald-600 border border-emerald-100"
-                                                            }`}>
-                                                            {hasEnded ? "Ended" : "Running"}
-                                                        </span>
+                                                        <div className="flex flex-col gap-1.5">
+                                                            <CountdownTimer targetDate={`${ev.endDate || ev.date}T${ev.time || "23:59"}:00`} />
+                                                        </div>
                                                     </td>
                                                     <td className="px-8 py-6 text-right">
                                                         <button onClick={() => deleteSingle(ev._id)} className="text-rose-400 hover:text-rose-600 p-3 hover:bg-rose-50 rounded-xl transition-all">

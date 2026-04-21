@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import api from '../api';
 import defaultImg from '../assets/welcome.jpg';
+import CountdownTimer from './common/CountdownTimer';
 
 const API_BASE_URL = 'https://api.serveandlead.org';
 const getImgUrl = (path) => {
@@ -109,9 +110,20 @@ export default function EventsSection() {
                                         <p className="text-slate-500 text-sm line-clamp-3 mb-8 leading-relaxed">
                                             {event.description}
                                         </p>
-                                        <div className="mt-auto flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-slate-400 border-t border-slate-50 pt-6">
-                                            <span className="flex items-center gap-2"><i className="fas fa-map-marker-alt text-cyan-500" /> {event.location || "TBA"}</span>
-                                            <span className="flex items-center gap-2"><i className="fas fa-clock text-cyan-500" /> {event.time || "TBA"}</span>
+                                        <div className="mt-auto space-y-6">
+                                            <div className="flex items-center justify-between bg-slate-50/50 rounded-2xl p-4 border border-slate-100/50">
+                                                <div className="flex flex-col">
+                                                    <span className="text-[8px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">Time Remaining</span>
+                                                    <CountdownTimer targetDate={`${event.endDate || event.date}T${event.time || "23:59"}:00`} />
+                                                </div>
+                                                <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center text-cyan-600 shadow-sm">
+                                                    <i className="fas fa-hourglass-start animate-spin-slow" />
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-slate-400 border-t border-slate-50 pt-6">
+                                                <span className="flex items-center gap-2"><i className="fas fa-map-marker-alt text-cyan-500" /> {event.location || "TBA"}</span>
+                                                <span className="flex items-center gap-2"><i className="fas fa-clock text-cyan-500" /> {event.time || "TBA"}</span>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>

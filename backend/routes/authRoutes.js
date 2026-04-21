@@ -165,6 +165,19 @@ router.post('/login', asyncHandler(async (req, res) => {
         return res.status(401).json({ error: 'Invalid credentials.' });
     }
 
+    // Check for pending or restricted application status
+    if (member.status === 'pending' && !member.interview_called) {
+        return res.status(403).json({ 
+            error: 'Your application is under processing. Access will be granted once your membership is approved.' 
+        });
+    }
+
+    if (member.status === 'blocked') {
+        return res.status(403).json({ 
+            error: 'Your account access has been restricted. Please contact support.' 
+        });
+    }
+
     // Role-based Access Control: Prevent Admins/Superusers from logging into Member Portal
     if (member.role === 'Admin' || member.role === 'Superuser') {
         return res.status(403).json({ 

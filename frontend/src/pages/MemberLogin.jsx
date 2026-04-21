@@ -51,7 +51,7 @@ export default function MemberLogin() {
       let msg = err.response?.data?.error || "Invalid Credentials. Please try again.";
       
       if (status === 403) {
-        msg = `Access Denied: ${msg}`;
+        msg = msg;
       } else if (status === 401) {
         msg = "Incorrect email or password. Please verify and try again.";
       }
