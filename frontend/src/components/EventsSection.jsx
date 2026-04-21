@@ -116,13 +116,10 @@ export default function EventsSection() {
                                                 {event.description}
                                             </p>
                                             <div className="mt-auto space-y-6">
-                                                <div className="flex items-center justify-between bg-slate-50/50 rounded-2xl p-4 border border-slate-100/50">
-                                                    <div className="flex flex-col">
-                                                        <span className="text-[8px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">Time Remaining</span>
+                                                <div className="flex flex-col gap-2">
+                                                    <span className="text-[8px] font-black text-slate-400 uppercase tracking-[0.2em]">Time Remaining</span>
+                                                    <div className="bg-slate-50/50 rounded-3xl px-6 py-4 border border-slate-100/50 inline-block w-full">
                                                         <CountdownTimer targetDate={targetDate} />
-                                                    </div>
-                                                    <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center text-cyan-600 shadow-sm">
-                                                        <i className="fas fa-hourglass-start animate-spin-slow" />
                                                     </div>
                                                 </div>
                                                 <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-slate-400 border-t border-slate-50 pt-6">

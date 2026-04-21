@@ -692,14 +692,9 @@ const MemberDashboard = () => {
                                     </p>
 
                                     {/* Real-time Countdown Hub */}
-                                    <div className="mb-8 p-5 bg-slate-50 rounded-3xl border border-slate-100 flex items-center justify-between">
-                                        <div className="flex flex-col">
-                                            <span className="text-[8px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2">Time Remaining</span>
-                                            <CountdownTimer targetDate={targetDate} />
-                                        </div>
-                                        <div className="w-10 h-10 bg-white rounded-xl shadow-sm flex items-center justify-center text-[#002147] animate-pulse">
-                                            <i className="fas fa-hourglass-start text-xs" />
-                                        </div>
+                                    <div className="mb-8 p-6 bg-slate-50 rounded-[2rem] border border-slate-100 flex flex-col gap-3">
+                                        <span className="text-[8px] font-black text-slate-400 uppercase tracking-[0.2em]">Time Remaining</span>
+                                        <CountdownTimer targetDate={targetDate} />
                                     </div>
 
                                     <div className="mt-auto flex gap-4">
