@@ -1,6 +1,22 @@
 import React from 'react';
+import { useLocation } from 'react-router-dom';
 
 export default function FloatingWhatsApp() {
+    const location = useLocation();
+    
+    // Check for tokens
+    const isMemberLoggedIn = !!localStorage.getItem("token");
+    const isAdminLoggedIn = !!localStorage.getItem("adminToken");
+    
+    // Check for protected paths
+    const isDashboard = location.pathname.includes("/dashboard");
+    const isAdminPortal = location.pathname.includes("/admin-portal");
+
+    // Hide if logged in OR on dashboard/admin pages
+    if (isMemberLoggedIn || isAdminLoggedIn || isDashboard || isAdminPortal) {
+        return null;
+    }
+
     return (
         <a 
             href="https://wa.me/923141683402?text=Hello%20SLS!%20I%20have%20a%20query%20regarding%20the%20society." 
