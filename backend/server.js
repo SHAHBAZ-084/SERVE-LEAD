@@ -88,17 +88,14 @@ app.use('/api/tasks', require('./routes/taskRoutes'));
 // Root
 app.get('/', (req, res) => res.json({ status: 'active', env: process.env.NODE_ENV }));
 
-// Global Error Handler (Security Hardened)
+// Global Error Handler (DEBUG MODE - TEMPORARY)
 app.use((err, req, res, next) => {
     const statusCode = err.status || 500;
-    const isProduction = process.env.NODE_ENV === 'production';
-    
     logger.error(`${statusCode} - ${err.message} - ${req.originalUrl} - ${req.method} - ${req.ip}`);
     
     res.status(statusCode).json({
-        error: isProduction && statusCode === 500 
-            ? 'Internal Server Error' 
-            : err.message || 'An unexpected error occurred'
+        error: err.message,
+        stack: err.stack // Temporary for debugging
     });
 });
 
