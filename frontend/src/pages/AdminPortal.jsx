@@ -651,7 +651,12 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
         setLoading(true);
         try {
             const r = await api.get("certificates/admin/all", auth);
-            setIssuedCertificates(r.data);
+            // Filter out certificates issued to Admins or Superusers
+            const nonAdminCerts = r.data.filter(c => {
+                const role = c.memberId?.role;
+                return role !== 'Admin' && role !== 'Superuser';
+            });
+            setIssuedCertificates(nonAdminCerts);
         } catch (err) {
             console.error(err);
         } finally {
@@ -852,8 +857,10 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
     };
 
     const filteredMembers = members.filter(m =>
-        m.name.toLowerCase().includes(searchMember.toLowerCase()) ||
-        m.member_id.toLowerCase().includes(searchMember.toLowerCase())
+        (m.role !== 'Admin' && m.role !== 'Superuser') && (
+            m.name.toLowerCase().includes(searchMember.toLowerCase()) ||
+            m.member_id.toLowerCase().includes(searchMember.toLowerCase())
+        )
     );
 
     const selectedMember = members.find(m => m._id === form.memberId);
@@ -2574,7 +2581,12 @@ function AdminPortal() {
             setLoading(true);
             try {
                 const res = await api.get(`events/${eventId}/participants?limit=1000`, auth);
-                setParticipants(res.data);
+                // Filter out Admins and Superusers from attendance
+                const nonAdminParticipants = res.data.filter(p => {
+                    const role = p.memberId?.role;
+                    return role !== 'Admin' && role !== 'Superuser';
+                });
+                setParticipants(nonAdminParticipants);
             } catch (err) {
                 notify("Failed to load participants", "error");
             } finally {
