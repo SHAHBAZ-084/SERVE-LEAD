@@ -46,7 +46,7 @@ export default function MemberVerification() {
               <ShieldCheck className="text-cyan-500 w-5 h-5" />
               <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Official Verification System</span>
             </motion.div>
-            <h1 className="text-4xl md:text-5xl font-black text-slate-900 uppercase tracking-tight mb-4">
+            <h1 className="text-3xl md:text-5xl font-black text-slate-900 uppercase tracking-tight mb-4">
               Verify <span className="text-cyan-500">Membership</span>
             </h1>
             <p className="text-slate-500 max-w-md mx-auto font-medium">
@@ -58,7 +58,7 @@ export default function MemberVerification() {
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-[2.5rem] shadow-2xl shadow-slate-200/50 p-8 md:p-12 border border-white"
+            className="bg-white rounded-[2rem] md:rounded-[2.5rem] shadow-2xl shadow-slate-200/50 p-6 md:p-12 border border-white"
           >
             <form onSubmit={handleVerify} className="space-y-8">
               <div className="relative">
@@ -71,7 +71,7 @@ export default function MemberVerification() {
                     value={memberId}
                     onChange={(e) => setMemberId(e.target.value)}
                     placeholder="e.g. 2026-SLS-0001"
-                    className="w-full bg-slate-50 border-2 border-slate-100 rounded-3xl px-8 py-6 text-xl text-slate-900 placeholder:text-slate-300 focus:border-cyan-500 focus:bg-white outline-none transition-all pr-20 font-bold tracking-wider"
+                    className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl md:rounded-3xl px-5 py-4 md:px-8 md:py-6 text-base md:text-xl text-slate-900 placeholder:text-slate-300 focus:border-cyan-500 focus:bg-white outline-none transition-all pr-14 md:pr-20 font-bold tracking-wider"
                   />
                   <div className="absolute right-6 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-cyan-500 transition-colors">
                     <Search size={28} />
@@ -82,7 +82,7 @@ export default function MemberVerification() {
               <button
                 type="submit"
                 disabled={loading || !memberId.trim()}
-                className="w-full bg-slate-900 text-white py-6 rounded-3xl font-black uppercase tracking-widest hover:bg-cyan-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-xl shadow-slate-900/10 flex items-center justify-center gap-3 text-lg"
+                className="w-full bg-slate-900 text-white py-4 md:py-6 rounded-2xl md:rounded-3xl font-black uppercase tracking-widest hover:bg-cyan-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-xl shadow-slate-900/10 flex items-center justify-center gap-3 text-base md:text-lg"
               >
                 {loading ? (
                   <>
@@ -102,14 +102,14 @@ export default function MemberVerification() {
                   <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="bg-emerald-50 border-2 border-emerald-100 rounded-[2rem] p-8"
+                    className="bg-emerald-50 border-2 border-emerald-100 rounded-3xl md:rounded-[2rem] p-6 md:p-8"
                   >
                     <div className="flex flex-col md:flex-row items-center gap-8 text-center md:text-left">
                       <div className="relative shrink-0">
                         <img
                           src={getImgUrl(result.profile_pic_url) || "https://ui-avatars.com/api/?name=" + result.name + "&size=256&background=10b981&color=fff"}
                           alt={result.name}
-                          className="w-32 h-32 rounded-3xl object-cover border-4 border-white shadow-md"
+                          className="w-24 h-24 md:w-32 md:h-32 rounded-2xl md:rounded-3xl object-cover border-4 border-white shadow-md"
                         />
                         <div className="absolute -bottom-2 -right-2 bg-emerald-500 text-white rounded-full p-2 border-4 border-white shadow-sm">
                           <CheckCircle2 size={24} />
