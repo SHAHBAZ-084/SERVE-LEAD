@@ -1415,112 +1415,112 @@ const DossierView = ({ memberId, members, onBack }) => {
     };
 
     return (
-        <div className="max-w-4xl mx-auto bg-white min-h-screen p-6 sm:p-12 animate-fade-in shadow-2xl rounded-[3rem] border border-slate-100 mt-4 mb-20">
+        <div className="max-w-4xl mx-auto bg-white min-h-screen p-4 sm:p-10 md:p-12 lg:p-16 animate-fade-in shadow-2xl rounded-[2rem] sm:rounded-[3.5rem] border border-slate-100 mt-2 sm:mt-6 mb-20 overflow-hidden">
             {/* Document Header */}
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 mb-12 border-b border-slate-100 pb-12">
-                <button onClick={onBack} className="flex items-center gap-2 text-slate-400 hover:text-slate-900 transition-colors text-xs font-black uppercase tracking-widest">
-                    <i className="fas fa-arrow-left" /> Return to Batches
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 mb-8 sm:mb-12 border-b border-slate-100 pb-8 sm:pb-12">
+                <button onClick={onBack} className="flex items-center gap-2 text-slate-400 hover:text-slate-900 transition-colors text-[10px] sm:text-xs font-black uppercase tracking-widest">
+                    <i className="fas fa-arrow-left" /> Return
                 </button>
-                <div className="text-right">
-                    <h2 className="text-3xl font-black text-[#002147] uppercase italic tracking-tighter">Member Dossier</h2>
-                    <p className="text-slate-400 text-[10px] font-black uppercase tracking-[0.3em] mt-1">Official Personnel Record</p>
+                <div className="text-left sm:text-right w-full sm:w-auto">
+                    <h2 className="text-xl sm:text-3xl font-black text-[#002147] uppercase italic tracking-tighter">Member Dossier</h2>
+                    <p className="text-slate-400 text-[8px] sm:text-[10px] font-black uppercase tracking-[0.3em] mt-1">Official Personnel Record</p>
                 </div>
             </div>
 
             {/* Profile Section */}
-            <div className="flex flex-col md:flex-row gap-12 mb-16">
-                <div className="w-32 h-32 bg-slate-900 text-white rounded-[2rem] flex items-center justify-center text-5xl font-black shadow-2xl shrink-0">
+            <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 sm:gap-12 mb-12 sm:mb-16 text-center sm:text-left">
+                <div className="w-24 h-24 sm:w-32 sm:h-32 bg-slate-900 text-white rounded-2xl sm:rounded-[2.5rem] flex items-center justify-center text-3xl sm:text-5xl font-black shadow-2xl shrink-0">
                     {member.name[0].toUpperCase()}
                 </div>
-                <div className="flex-1 space-y-4">
-                    <h1 className="text-4xl font-black text-slate-900 uppercase tracking-tight">{member.name}</h1>
-                    <div className="flex flex-wrap gap-3">
-                        <span className="bg-slate-100 px-4 py-1.5 rounded-full text-xs font-black text-slate-600 uppercase tracking-widest">ID: {member.member_id}</span>
-                        <span className="bg-blue-50 px-4 py-1.5 rounded-full text-xs font-black text-[#002147] uppercase tracking-widest">Batch {calculateBatch(member.createdAt)}</span>
-                        <span className={`px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest ${member.status === 'blocked' ? 'bg-rose-50 text-rose-600' : 'bg-emerald-50 text-emerald-600'}`}>{member.status}</span>
+                <div className="flex-1 space-y-3 sm:space-y-4">
+                    <h1 className="text-2xl sm:text-4xl font-black text-slate-900 uppercase tracking-tight leading-tight">{member.name}</h1>
+                    <div className="flex flex-wrap justify-center sm:justify-start gap-2 sm:gap-3">
+                        <span className="bg-slate-100 px-3 py-1 sm:px-4 sm:py-1.5 rounded-full text-[9px] sm:text-xs font-black text-slate-600 uppercase tracking-widest border border-slate-200/50">#{member.member_id}</span>
+                        <span className="bg-blue-50 px-3 py-1 sm:px-4 sm:py-1.5 rounded-full text-[9px] sm:text-xs font-black text-[#002147] uppercase tracking-widest border border-blue-100/50">Batch {calculateBatch(member.createdAt)}</span>
+                        <span className={`px-3 py-1 sm:px-4 sm:py-1.5 rounded-full text-[9px] sm:text-xs font-black uppercase tracking-widest border ${member.status === 'blocked' ? 'bg-rose-50 text-rose-600 border-rose-100/50' : 'bg-emerald-50 text-emerald-600 border-emerald-100/50'}`}>{member.status}</span>
                     </div>
                 </div>
             </div>
 
             {/* Information Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-y-12 gap-x-16">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-y-10 sm:gap-y-12 md:gap-x-16">
                 {/* Personal Information */}
-                <div className="space-y-8">
-                    <h3 className="text-xs font-black text-slate-300 uppercase tracking-[0.4em] border-b border-slate-50 pb-4">Personal Information</h3>
-                    <div className="space-y-6">
+                <div className="space-y-6 sm:space-y-8">
+                    <h3 className="text-[10px] sm:text-xs font-black text-slate-300 uppercase tracking-[0.4em] border-b border-slate-50 pb-3 sm:pb-4">Personal Information</h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-1 gap-6">
                         <div>
-                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Full Name</p>
-                            <p className="text-sm font-bold text-slate-800">{member.name}</p>
+                            <p className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Full Name</p>
+                            <p className="text-xs sm:text-sm font-bold text-slate-800 uppercase">{member.name}</p>
                         </div>
                         <div>
-                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Father's Name</p>
-                            <p className="text-sm font-bold text-slate-800">{member.father_name || 'N/A'}</p>
+                            <p className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Father's Name</p>
+                            <p className="text-xs sm:text-sm font-bold text-slate-800 uppercase">{member.father_name || 'N/A'}</p>
                         </div>
                         <div>
-                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Official Email</p>
-                            <p className="text-sm font-bold text-slate-800">{member.email}</p>
+                            <p className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Official Email</p>
+                            <p className="text-xs sm:text-sm font-bold text-slate-800 break-all">{member.email}</p>
                         </div>
                         <div>
-                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Contact Number</p>
-                            <p className="text-sm font-bold text-slate-800">{member.whatsapp || member.phone || 'N/A'}</p>
+                            <p className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Contact Number</p>
+                            <p className="text-xs sm:text-sm font-bold text-slate-800 uppercase">{member.whatsapp || member.phone || 'N/A'}</p>
                         </div>
-                        <div>
-                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Residential Address</p>
-                            <p className="text-sm font-bold text-slate-800 leading-relaxed">{member.address ? `${member.address}, ${member.city || ''}` : 'N/A'}</p>
+                        <div className="sm:col-span-2 md:col-span-1">
+                            <p className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Residential Address</p>
+                            <p className="text-xs sm:text-sm font-bold text-slate-800 leading-relaxed uppercase">{member.address ? `${member.address}, ${member.city || ''}` : 'N/A'}</p>
                         </div>
                     </div>
                 </div>
 
                 {/* Academic Profile */}
-                <div className="space-y-8">
-                    <h3 className="text-xs font-black text-slate-300 uppercase tracking-[0.4em] border-b border-slate-50 pb-4">Academic Profile</h3>
-                    <div className="space-y-6">
+                <div className="space-y-6 sm:space-y-8 pt-6 md:pt-0">
+                    <h3 className="text-[10px] sm:text-xs font-black text-slate-300 uppercase tracking-[0.4em] border-b border-slate-50 pb-3 sm:pb-4">Academic Profile</h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-1 gap-6">
                         <div>
-                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Education Level</p>
-                            <p className="text-sm font-bold text-slate-800">{member.education_level || 'N/A'}</p>
+                            <p className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Education Level</p>
+                            <p className="text-xs sm:text-sm font-bold text-slate-800 uppercase">{member.education_level || 'N/A'}</p>
                         </div>
                         <div>
-                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Degree Program</p>
-                            <p className="text-sm font-bold text-slate-800">{member.program || 'N/A'}</p>
+                            <p className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Degree Program</p>
+                            <p className="text-xs sm:text-sm font-bold text-slate-800 uppercase">{member.program || 'N/A'}</p>
                         </div>
                         <div>
-                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">University / Institution</p>
-                            <p className="text-sm font-bold text-slate-800">{member.university || 'N/A'}</p>
+                            <p className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">University / Institution</p>
+                            <p className="text-xs sm:text-sm font-bold text-slate-800 uppercase">{member.university || 'N/A'}</p>
                         </div>
                         <div>
-                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Passing Year</p>
-                            <p className="text-sm font-bold text-slate-800">{member.passing_year || 'N/A'}</p>
+                            <p className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Passing Year</p>
+                            <p className="text-xs sm:text-sm font-bold text-slate-800 uppercase">{member.passing_year || 'N/A'}</p>
                         </div>
                     </div>
                 </div>
 
                 {/* System Record */}
-                <div className="md:col-span-2 space-y-8 pt-8">
-                    <h3 className="text-xs font-black text-slate-300 uppercase tracking-[0.4em] border-b border-slate-50 pb-4">System Record</h3>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-                        <div>
-                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Assigned Role</p>
-                            <p className="text-sm font-bold text-[#002147] uppercase">{member.role || 'General'}</p>
+                <div className="md:col-span-2 space-y-6 sm:space-y-8 pt-8">
+                    <h3 className="text-[10px] sm:text-xs font-black text-slate-300 uppercase tracking-[0.4em] border-b border-slate-50 pb-3 sm:pb-4">System Record</h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
+                        <div className="bg-slate-50/50 p-4 rounded-xl border border-slate-100">
+                            <p className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Assigned Role</p>
+                            <p className="text-xs sm:text-sm font-bold text-[#002147] uppercase tracking-tighter">{member.role || 'General'}</p>
                         </div>
-                        <div>
-                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Account Status</p>
-                            <p className="text-sm font-bold text-slate-800 uppercase">{member.status}</p>
+                        <div className="bg-slate-50/50 p-4 rounded-xl border border-slate-100">
+                            <p className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Account Status</p>
+                            <p className="text-xs sm:text-sm font-bold text-slate-800 uppercase">{member.status}</p>
                         </div>
-                        <div>
-                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Registration Date</p>
-                            <p className="text-sm font-bold text-slate-800">{new Date(member.createdAt).toLocaleDateString()}</p>
+                        <div className="bg-slate-50/50 p-4 rounded-xl border border-slate-100">
+                            <p className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Registration Date</p>
+                            <p className="text-xs sm:text-sm font-bold text-slate-800">{new Date(member.createdAt).toLocaleDateString()}</p>
                         </div>
-                        <div>
-                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Database ID</p>
-                            <p className="text-[10px] font-mono text-slate-400 truncate">{member._id}</p>
+                        <div className="bg-slate-50/50 p-4 rounded-xl border border-slate-100">
+                            <p className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Internal Reference</p>
+                            <p className="text-[9px] sm:text-[10px] font-mono text-slate-400 truncate">{member._id}</p>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <div className="mt-24 pt-12 border-t border-slate-50 flex flex-col items-center">
-                <div className="w-16 h-1 bg-slate-900 mb-6" />
-                <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.5em]">End of Official Record</p>
+            <div className="mt-16 sm:mt-24 pt-12 border-t border-slate-50 flex flex-col items-center opacity-60">
+                <div className="w-12 h-0.5 sm:w-16 sm:h-1 bg-slate-900 mb-6" />
+                <p className="text-[8px] sm:text-[9px] font-black text-slate-400 uppercase tracking-[0.5em] text-center">End of Official Document</p>
             </div>
         </div>
     );
