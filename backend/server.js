@@ -27,7 +27,7 @@ app.use(helmet({
 app.use(compression()); // Gzip compression
 app.use(express.json({ limit: '10kb' })); 
 app.use(express.urlencoded({ extended: true, limit: '10kb' }));
-// app.use(mongoSanitize()); // Disabled due to Express 5 req.query getter issue
+app.use(mongoSanitize()); // Re-enabled for injection protection
 app.use(cookieParser());
 app.use(cors({
     origin: process.env.NODE_ENV === 'production' 
@@ -49,6 +49,15 @@ const limiter = rateLimit({
     message: { error: 'Too many requests from this IP. Please wait a minute.' }
 });
 app.use('/api/', limiter);
+
+// 3. Auth-Specific Rate Limiting (Brute Force Protection)
+const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 20, // 20 attempts
+    message: { error: 'Too many attempts. Please try again after 15 minutes.' }
+});
+app.use('/api/auth/login', authLimiter);
+app.use('/api/auth/verify-otp', authLimiter);
 
 // Prevent Caching for API Routes (Security)
 app.use('/api/', (req, res, next) => {
@@ -79,11 +88,17 @@ app.use('/api/tasks', require('./routes/taskRoutes'));
 // Root
 app.get('/', (req, res) => res.json({ status: 'active', env: process.env.NODE_ENV }));
 
-// Global Error Handler
+// Global Error Handler (Security Hardened)
 app.use((err, req, res, next) => {
-    logger.error(`${err.status || 500} - ${err.message} - ${req.originalUrl} - ${req.method} - ${req.ip}`);
-    res.status(err.status || 500).json({
-        error: err.message || 'Internal Server Error'
+    const statusCode = err.status || 500;
+    const isProduction = process.env.NODE_ENV === 'production';
+    
+    logger.error(`${statusCode} - ${err.message} - ${req.originalUrl} - ${req.method} - ${req.ip}`);
+    
+    res.status(statusCode).json({
+        error: isProduction && statusCode === 500 
+            ? 'Internal Server Error' 
+            : err.message || 'An unexpected error occurred'
     });
 });
 

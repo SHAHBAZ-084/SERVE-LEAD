@@ -32,11 +32,13 @@ const memberSchema = new mongoose.Schema({
     type: String,
     enum: ['General', 'Executive', 'Admin', 'Superuser'],
     default: 'General',
+    index: true,
   },
   status: {
     type: String,
     enum: ['pending', 'approved', 'blocked'],
     default: 'pending',
+    index: true,
   },
   interview_called: {
     type: Boolean,
