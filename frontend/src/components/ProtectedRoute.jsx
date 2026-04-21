@@ -30,12 +30,25 @@ export default function ProtectedRoute({ children, role = "Member" }) {
                 setIsAuthenticated(true);
             } catch (err) {
                 console.error(`Verification failed for ${role}:`, err);
-                setIsAuthenticated(false);
-                // Clear stale tokens if verification fails
-                if (role === "Admin") {
-                    localStorage.removeItem("adminToken");
+                
+                // ONLY invalidate session if it's a 401 Unauthorized error
+                // This prevents logging out on network errors or aborted requests (e.g. clicking 'back' while loading)
+                if (err.response && err.response.status === 401) {
+                    setIsAuthenticated(false);
+                    if (role === "Admin") {
+                        localStorage.removeItem("adminToken");
+                    } else {
+                        localStorage.removeItem("token");
+                    }
                 } else {
-                    localStorage.removeItem("token");
+                    // For other errors (network, 500, etc.), we might still want to let them in if we have a token
+                    // but for safety, let's just not clear the token and keep the current state if possible
+                    // or better yet, assume they are authenticated if the token exists but the server is down
+                    if (token) {
+                        setIsAuthenticated(true);
+                    } else {
+                        setIsAuthenticated(false);
+                    }
                 }
             } finally {
                 setIsVerifying(false);

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import api, { getImgUrl, API_BASE as API_BASE_URL } from "../api";
 import logo from "../assets/logo.png";
 import sealImg from "../assets/sealcertificate.png";
@@ -1493,7 +1493,9 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
 
 function AdminPortal() {
     const navigate = useNavigate();
-    const [activeTab, setActiveTab] = useState("dashboard");
+    const [searchParams, setSearchParams] = useSearchParams();
+    const activeTab = searchParams.get("tab") || "dashboard";
+    const setActiveTab = (tab) => setSearchParams({ tab });
     const [stats, setStats] = useState(null);
     const [members, setMembers] = useState([]);
     const [pendingMembers, setPendingMembers] = useState([]);

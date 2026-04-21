@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import api, { getImgUrl } from "../api";
 import logo from "../assets/logo.png";
 import sealImg from "../assets/sealcertificate.png";
@@ -66,7 +66,9 @@ const StatCard = ({ icon, label, value, color }) => {
 };
 
 const MemberDashboard = () => {
-    const [activeTab, setActiveTab] = useState("dashboard");
+    const [searchParams, setSearchParams] = useSearchParams();
+    const activeTab = searchParams.get("tab") || "dashboard";
+    const setActiveTab = (tab) => setSearchParams({ tab });
     const [certificates, setCertificates] = useState([]);
     const [events, setEvents] = useState([]);
     const [announcements, setAnnouncements] = useState([]);

@@ -20,11 +20,14 @@ function App() {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/reset-password/:token" element={<ResetPassword />} />
-        <Route path="/register" element={<RegisterPage />} />
-        <Route path="/login" element={<MemberLogin />} />
         <Route path="/about" element={<AboutPage />} />
         <Route path='/verification' element={<Verification />} />
         
+        {/* Guest Only Routes (Redirect if already logged in) */}
+        <Route path="/register" element={<RegisterPage />} />
+        <Route path="/login" element={<MemberLogin />} />
+        <Route path="/admin-login" element={<AdminLogin />} />
+
         {/* Protected Member Routes */}
         <Route path="/dashboard" element={
           <ProtectedRoute role="Member">
@@ -33,7 +36,6 @@ function App() {
         } />
         
         <Route path="/donate" element={<Donate />} />
-        <Route path="/admin-login" element={<AdminLogin />} />
         
         {/* Protected Admin Routes */}
         <Route path="/admin-portal" element={
