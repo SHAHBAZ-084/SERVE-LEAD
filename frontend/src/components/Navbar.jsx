@@ -18,6 +18,7 @@ export default function Navbar() {
     { name: "Events", path: "/#events" },
     { name: "Contact", path: "/#contact" },
     { name: "Donate", path: "/donate" },
+    { name: "Verify", path: "verify" },
   ];
 
   useEffect(() => {
@@ -70,6 +71,12 @@ export default function Navbar() {
         return;
       }
     }
+
+    if (path === "verify") {
+      setIsVerifyOpen(true);
+      return;
+    }
+
     navigate(path);
     if (path.includes('#')) {
       const anchor = path.substring(path.indexOf('#'));
@@ -97,6 +104,8 @@ export default function Navbar() {
     const sectionId = path.split("#")[1];
     if (location.pathname === "/" && activeSection === sectionId) return true;
     if (location.hash === `#${sectionId}`) return true;
+    
+    if (path === "verify") return false;
     
     return false;
   };
@@ -132,15 +141,6 @@ export default function Navbar() {
               {link.name}
             </button>
           ))}
-
-          {/* Verify Button */}
-          <button
-            onClick={() => setIsVerifyOpen(true)}
-            className="flex items-center gap-2 px-5 py-2.5 text-sm rounded-full border-2 border-cyan-500 text-cyan-600 font-black uppercase tracking-widest hover:bg-cyan-50 transition-all duration-300 ml-2 shadow-sm"
-          >
-            <ShieldCheck size={16} className="text-cyan-500" />
-            Verify
-          </button>
 
           {/* Login/Dashboard Button */}
           {isLoggedIn ? (
@@ -221,22 +221,13 @@ export default function Navbar() {
           </div>
         </div>
 
-        <div className="lg:hidden mt-4 px-8 pb-6 border-t border-slate-50 pt-6">
-          <button
-            onClick={() => { setIsOpen(false); setIsVerifyOpen(true); }}
-            className="w-full flex items-center justify-center gap-3 bg-cyan-50 text-cyan-600 py-4 rounded-3xl text-xs font-black uppercase tracking-widest border border-cyan-100"
-          >
-            <ShieldCheck size={18} />
-            Verify Membership
-          </button>
-        </div>
-
-        {/* Global Verification Modal */}
-        <VerificationModal 
-          isOpen={isVerifyOpen} 
-          onClose={() => setIsVerifyOpen(false)} 
-        />
       </div>
+
+      {/* Global Verification Modal */}
+      <VerificationModal 
+        isOpen={isVerifyOpen} 
+        onClose={() => setIsVerifyOpen(false)} 
+      />
     </nav>
   );
 }
