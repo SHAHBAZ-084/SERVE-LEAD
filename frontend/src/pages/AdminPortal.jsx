@@ -2198,11 +2198,6 @@ function AdminPortal() {
         const [creating, setCreating] = useState(false);
         const [file, setFile] = useState(null);
         const [preview, setPreview] = useState(null);
-        const [participants, setParticipants] = useState([]);
-        const [showParticipants, setShowParticipants] = useState(false);
-        const [selectedEventName, setSelectedEventName] = useState("");
-        const [selectedEventId, setSelectedEventId] = useState(null);
-        const [selectedMemberIds, setSelectedMemberIds] = useState([]);
         const [searchTerm, setSearchTerm] = useState("");
         const [statusFilter, setStatusFilter] = useState("All");
         const [selectedIds, setSelectedIds] = useState([]);
@@ -2309,61 +2304,10 @@ function AdminPortal() {
             setIsProcessing(false);
         };
 
-        const viewParticipants = async (event) => {
-            setSelectedEventName(event.title);
-            setSelectedEventId(event._id);
-            try {
-                const res = await api.get(`events/${event._id}/participants`, auth);
-                setParticipants(res.data);
-                setShowParticipants(true);
-            } catch (err) {
-                notify("Failed to load participants", "error");
-            }
+        const viewParticipants = (event) => {
+            setSearchParams({ tab: 'events', eventId: event._id });
         };
 
-        const handleToggleAttendance = async (eventId, memberId, currentStatus) => {
-            try {
-                await api.patch(`events/${eventId}/attendance`, { memberId, attended: !currentStatus }, auth);
-                setParticipants(prev => prev.map(p => {
-                    const mId = p.memberId?._id || p.memberId;
-                    return mId === memberId ? { ...p, attended: !currentStatus } : p;
-                }));
-                fetchEvents();
-                notify(`Attendance updated!`);
-            } catch (err) {
-                notify("Failed to update attendance", "error");
-            }
-        };
-
-        const handleBulkAttendance = async (eventId, status) => {
-            const idsToUpdate = selectedMemberIds.length > 0 ? selectedMemberIds : null;
-            const targetCount = idsToUpdate ? idsToUpdate.length : participants.length;
-
-            if (!window.confirm(`Mark ${targetCount} selected participants as ${status ? 'PRESENT' : 'ABSENT'}?`)) return;
-
-            setIsProcessing(true);
-            try {
-                await api.patch(`events/${eventId}/attendance/bulk`, { attended: status, ids: idsToUpdate }, auth);
-                setParticipants(prev => prev.map(p => {
-                    const mId = p.memberId?._id || p.memberId;
-                    if (!idsToUpdate || idsToUpdate.includes(mId)) {
-                        return { ...p, attended: status };
-                    }
-                    return p;
-                }));
-                fetchEvents();
-                notify(`Attendance updated for ${targetCount} members!`);
-                setSelectedMemberIds([]);
-            } catch (err) {
-                notify("Bulk update failed", "error");
-            } finally {
-                setIsProcessing(false);
-            }
-        };
-
-        const toggleMemberSelection = (id) => {
-            setSelectedMemberIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
-        };
 
         return (
             <div className="space-y-6 animate-fade-up">
@@ -2610,102 +2554,213 @@ function AdminPortal() {
                     </div>
                 )}
 
-                {showParticipants && (
-                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 backdrop-blur-md bg-slate-900/40 animate-fade-in overflow-y-auto">
-                        <div className="bg-white w-full max-w-4xl rounded-[2rem] sm:rounded-[3rem] shadow-2xl border border-slate-100 overflow-hidden relative my-8 animate-zoom-in flex flex-col">
-                            <div className="p-6 sm:p-10 border-b border-slate-50 bg-white sticky top-0 z-[60] flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
-                                <div className="flex items-center gap-5">
-                                    <div className="relative group">
-                                        <input
-                                            type="checkbox"
-                                            id="selectAllParticipants"
-                                            checked={selectedMemberIds.length === participants.length && participants.length > 0}
-                                            onChange={() => {
-                                                if (selectedMemberIds.length === participants.length) setSelectedMemberIds([]);
-                                                else setSelectedMemberIds(participants.map(p => p.memberId?._id || p.memberId));
-                                            }}
-                                            className="w-6 h-6 text-[#002147] border-2 border-slate-200 rounded-lg focus:ring-blue-500 cursor-pointer transition-all hover:border-[#002147]"
-                                        />
-                                    </div>
-                                    <div>
-                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">Attendance Registry</p>
-                                        <h2 className="text-xl font-black text-slate-800 tracking-tight">{selectedEventName}</h2>
-                                    </div>
-                                </div>
-                                <div className="flex items-center gap-3 w-full sm:w-auto">
-                                    {selectedMemberIds.length > 0 && (
-                                        <div className="flex gap-2 animate-fade-in flex-1 sm:flex-none">
-                                            <button onClick={() => handleBulkAttendance(selectedEventId, false)} className="flex-1 sm:flex-none px-5 py-3 bg-slate-50 text-slate-500 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-100 transition-all border border-slate-200 active:scale-95">
-                                                Mark Absent
-                                            </button>
-                                            <button onClick={() => handleBulkAttendance(selectedEventId, true)} className="flex-1 sm:flex-none px-5 py-3 bg-emerald-50 text-emerald-600 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-600 hover:text-white transition-all border border-emerald-100 shadow-sm active:scale-95">
-                                                Mark Present
-                                            </button>
-                                        </div>
-                                    )}
-                                    <button onClick={() => { setShowParticipants(false); setSelectedMemberIds([]); }} className="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center text-slate-400 hover:text-rose-500 transition-all border border-slate-100 shadow-sm hover:rotate-90">
-                                        <i className="fas fa-times" />
-                                    </button>
-                                </div>
-                            </div>
+            </div>
+        );
+    };
 
-                            <div className="flex-1 overflow-y-auto p-10 custom-scrollbar">
-                                {participants.length === 0 ? (
-                                    <div className="text-center py-20 bg-slate-50 rounded-[2.5rem] border border-dashed border-slate-200">
-                                        <i className="fas fa-user-slash text-slate-200 text-5xl mb-4" />
-                                        <p className="text-slate-400 text-xs font-black uppercase tracking-widest">No members registered yet.</p>
-                                    </div>
-                                ) : (
-                                    <div className="space-y-4">
-                                        {participants.map((p, i) => {
-                                            const mId = p.memberId?._id || p.memberId;
-                                            const isSelected = selectedMemberIds.includes(mId);
-                                            return (
-                                                <div key={i} className={`flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 sm:p-5 rounded-2xl sm:rounded-3xl border border-slate-100 shadow-sm hover:shadow-md transition-all group gap-4 ${isSelected ? 'bg-blue-50/50 border-blue-200' : 'bg-white'}`}>
-                                                    <div className="flex items-center gap-3 sm:gap-4 w-full sm:w-auto">
-                                                        <input
-                                                            type="checkbox"
-                                                            checked={isSelected}
-                                                            onChange={() => toggleMemberSelection(mId)}
-                                                            className="w-4 h-4 text-[#002147] border-slate-300 rounded focus:ring-blue-500 cursor-pointer"
-                                                        />
-                                                        <div className="w-10 h-10 sm:w-12 sm:h-12 bg-[#002147] text-white rounded-xl sm:rounded-2xl flex items-center justify-center font-black text-xs sm:text-sm uppercase shrink-0">
-                                                            {p.memberId?.name?.charAt(0) || "M"}
-                                                        </div>
-                                                        <div className="min-w-0">
-                                                            <p className="font-black text-slate-800 leading-none mb-1 text-sm sm:text-base truncate">{p.memberId?.name}</p>
-                                                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest truncate">{p.memberId?.member_id}</p>
-                                                        </div>
-                                                    </div>
-                                                    <div className="flex items-center justify-between sm:justify-end gap-4 w-full sm:w-auto border-t sm:border-t-0 pt-3 sm:pt-0 border-slate-50">
-                                                        <div className="text-left sm:text-right">
-                                                            <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Joined On</p>
-                                                            <p className="text-[10px] font-bold text-slate-700">{new Date(p.joinedAt).toLocaleDateString()}</p>
-                                                        </div>
-                                                        <button
-                                                            onClick={() => handleToggleAttendance(selectedEventId, mId, p.attended)}
-                                                            className={`px-4 py-2 sm:py-2.5 rounded-lg sm:rounded-xl text-[9px] font-black uppercase tracking-widest transition-all flex items-center gap-2 border ${p.attended
-                                                                    ? 'bg-emerald-500 text-white border-emerald-500 shadow-lg shadow-emerald-900/20'
-                                                                    : 'bg-white text-slate-400 border-slate-200 hover:border-emerald-500 hover:text-emerald-600'
-                                                                }`}
-                                                        >
-                                                            {p.attended ? <i className="fas fa-check-circle" /> : <i className="fas fa-circle opacity-20" />}
-                                                            <span className="inline">{p.attended ? 'Present' : 'Absent'}</span>
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                )}
-                            </div>
+    // ── Participants Static View ──────────────────────────────
+    const ParticipantsView = ({ eventId, events, onBack, auth, api, notify, fetchEvents }) => {
+        const [participants, setParticipants] = useState([]);
+        const [loading, setLoading] = useState(true);
+        const [searchTerm, setSearchTerm] = useState("");
+        const [selectedMemberIds, setSelectedMemberIds] = useState([]);
+        const [isProcessing, setIsProcessing] = useState(false);
 
-                            <div className="p-8 bg-slate-50/50 border-t border-slate-100 text-center text-xs font-black text-slate-400 uppercase tracking-widest">
-                                Registered Participants: {participants.length} Official Members
-                            </div>
+        const event = events.find(e => e._id === eventId);
+        const eventName = event?.title || "Event Records";
+
+        const loadParticipants = async () => {
+            setLoading(true);
+            try {
+                const res = await api.get(`events/${eventId}/participants?limit=1000`, auth);
+                setParticipants(res.data);
+            } catch (err) {
+                notify("Failed to load participants", "error");
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        useEffect(() => {
+            loadParticipants();
+        }, [eventId]);
+
+        const handleToggleAttendance = async (memberId, currentStatus) => {
+            try {
+                const mIdStr = String(memberId);
+                await api.patch(`events/${eventId}/attendance`, { memberId: mIdStr, attended: !currentStatus }, auth);
+                
+                setParticipants(prev => prev.map(p => {
+                    const pMId = p.memberId?._id || p.memberId;
+                    return String(pMId) === mIdStr ? { ...p, attended: !currentStatus } : p;
+                }));
+                
+                fetchEvents();
+                notify(`Status updated!`);
+            } catch (err) {
+                notify("Attendance update failed", "error");
+            }
+        };
+
+        const handleBulkAttendance = async (status) => {
+            const idsToUpdate = selectedMemberIds.length > 0 ? selectedMemberIds : null;
+            const targetCount = idsToUpdate ? idsToUpdate.length : participants.length;
+
+            if (!window.confirm(`Mark ${targetCount} selected as ${status ? 'PRESENT' : 'ABSENT'}?`)) return;
+
+            setIsProcessing(true);
+            try {
+                await api.patch(`events/${eventId}/attendance/bulk`, { attended: status, ids: idsToUpdate }, auth);
+                setParticipants(prev => prev.map(p => {
+                    const pMId = p.memberId?._id || p.memberId;
+                    if (!idsToUpdate || idsToUpdate.includes(String(pMId))) {
+                        return { ...p, attended: status };
+                    }
+                    return p;
+                }));
+                fetchEvents();
+                notify(`Updated ${targetCount} records!`);
+                setSelectedMemberIds([]);
+            } catch (err) {
+                notify("Bulk action failed", "error");
+            } finally {
+                setIsProcessing(false);
+            }
+        };
+
+        const filteredParticipants = participants.filter(p => 
+            p.memberId?.name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+            p.memberId?.member_id?.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+
+        const toggleMemberSelection = (id) => {
+            const idStr = String(id);
+            setSelectedMemberIds(prev => prev.includes(idStr) ? prev.filter(i => i !== idStr) : [...prev, idStr]);
+        };
+
+        return (
+            <div className="max-w-6xl mx-auto bg-white min-h-screen p-4 sm:p-8 lg:p-12 animate-fade-in shadow-2xl rounded-[2rem] sm:rounded-[3.5rem] border border-slate-100 mt-2 sm:mt-6 mb-20 overflow-hidden">
+                {/* Header Section */}
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 mb-10 border-b border-slate-50 pb-8 sm:pb-10">
+                    <div className="space-y-4 w-full sm:w-auto">
+                        <button onClick={onBack} className="flex items-center gap-2 text-slate-400 hover:text-slate-900 transition-all text-[10px] sm:text-xs font-black uppercase tracking-widest group">
+                            <i className="fas fa-arrow-left group-hover:-translate-x-1 transition-transform" /> Back to Registry
+                        </button>
+                        <div>
+                            <h2 className="text-xl sm:text-3xl font-black text-[#002147] uppercase italic tracking-tighter leading-none">{eventName}</h2>
+                            <p className="text-slate-400 text-[8px] sm:text-[10px] font-black uppercase tracking-[0.3em] mt-2">Official Attendance & Participation Log</p>
                         </div>
                     </div>
+
+                    <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+                        {selectedMemberIds.length > 0 && (
+                            <div className="flex gap-2 animate-fade-up">
+                                <button onClick={() => handleBulkAttendance(false)} disabled={isProcessing} className="flex-1 sm:flex-none px-4 py-2.5 bg-slate-50 text-slate-500 rounded-xl text-[9px] font-black uppercase tracking-widest border border-slate-200 hover:bg-slate-100 transition-all">
+                                    Absent
+                                </button>
+                                <button onClick={() => handleBulkAttendance(true)} disabled={isProcessing} className="flex-1 sm:flex-none px-4 py-2.5 bg-emerald-50 text-emerald-600 rounded-xl text-[9px] font-black uppercase tracking-widest border border-emerald-100 hover:bg-emerald-600 hover:text-white transition-all shadow-sm">
+                                    Present
+                                </button>
+                            </div>
+                        )}
+                        <div className="relative flex-1 sm:w-64">
+                            <i className="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 text-xs" />
+                            <input 
+                                type="text" 
+                                placeholder="Filter participants..." 
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="w-full bg-slate-50 border border-slate-100 rounded-xl pl-10 pr-4 py-2.5 text-xs font-bold text-slate-800 placeholder:text-slate-300 focus:bg-white focus:ring-4 focus:ring-blue-500/5 transition-all outline-none"
+                            />
+                        </div>
+                    </div>
+                </div>
+
+                {/* Content Area */}
+                {loading ? (
+                    <div className="py-32 text-center">
+                        <div className="w-10 h-10 border-4 border-slate-100 border-t-[#002147] rounded-full animate-spin mx-auto mb-4" />
+                        <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest">Retrieving Registry...</p>
+                    </div>
+                ) : filteredParticipants.length === 0 ? (
+                    <div className="py-24 text-center bg-slate-50/50 rounded-[2.5rem] border-2 border-dashed border-slate-100">
+                        <i className="fas fa-user-slash text-slate-200 text-5xl mb-4" />
+                        <p className="text-slate-400 text-xs font-black uppercase tracking-widest">No matching records found</p>
+                    </div>
+                ) : (
+                    <div className="space-y-3 sm:space-y-4">
+                        {/* List Header - Hidden on Mobile */}
+                        <div className="hidden sm:flex items-center px-6 py-4 bg-slate-50 rounded-2xl border border-slate-100 mb-4">
+                            <div className="w-10 flex justify-center">
+                                <input 
+                                    type="checkbox" 
+                                    checked={selectedMemberIds.length === participants.length && participants.length > 0}
+                                    onChange={() => {
+                                        if (selectedMemberIds.length === participants.length) setSelectedMemberIds([]);
+                                        else setSelectedMemberIds(participants.map(p => String(p.memberId?._id || p.memberId)));
+                                    }}
+                                    className="w-4 h-4 rounded border-slate-300 text-[#002147] focus:ring-[#002147]"
+                                />
+                            </div>
+                            <div className="flex-1 ml-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Participant Details</div>
+                            <div className="w-32 text-[10px] font-black text-slate-400 uppercase tracking-widest">Joining Date</div>
+                            <div className="w-40 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Attendance Status</div>
+                        </div>
+
+                        {filteredParticipants.map((p, idx) => {
+                            const mId = p.memberId?._id || p.memberId;
+                            const mIdStr = String(mId);
+                            const isSelected = selectedMemberIds.includes(mIdStr);
+                            
+                            return (
+                                <div key={idx} className={`flex flex-col sm:flex-row items-start sm:items-center p-4 sm:p-5 rounded-[1.5rem] sm:rounded-3xl border transition-all duration-300 group hover:shadow-xl hover:shadow-slate-200/40 ${isSelected ? 'bg-blue-50/50 border-blue-200 shadow-lg shadow-blue-900/5' : 'bg-white border-slate-100 shadow-sm'}`}>
+                                    <div className="flex items-center w-full sm:w-auto mb-4 sm:mb-0">
+                                        <div className="w-8 sm:w-10 flex justify-center shrink-0">
+                                            <input 
+                                                type="checkbox" 
+                                                checked={isSelected}
+                                                onChange={() => toggleMemberSelection(mIdStr)}
+                                                className="w-4 h-4 rounded border-slate-300 text-[#002147] focus:ring-[#002147] cursor-pointer"
+                                            />
+                                        </div>
+                                        <div className="flex-1 sm:flex-none flex items-center gap-4 ml-2 sm:ml-4 min-w-0">
+                                            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-slate-900 text-white rounded-xl sm:rounded-2xl flex items-center justify-center font-black text-sm uppercase shrink-0 shadow-lg group-hover:scale-105 transition-transform">
+                                                {p.memberId?.name?.charAt(0) || "M"}
+                                            </div>
+                                            <div className="min-w-0">
+                                                <p className="font-black text-slate-800 leading-none mb-1 text-sm sm:text-base truncate group-hover:text-[#002147] transition-colors">{p.memberId?.name}</p>
+                                                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest truncate">{p.memberId?.member_id}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex items-center justify-between sm:justify-end gap-6 w-full sm:w-auto sm:ml-auto border-t sm:border-t-0 pt-4 sm:pt-0 border-slate-50">
+                                        <div className="text-left sm:text-right sm:w-32">
+                                            <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Registered</p>
+                                            <p className="text-[10px] font-bold text-slate-700">{new Date(p.joinedAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
+                                        </div>
+
+                                        <button 
+                                            onClick={() => handleToggleAttendance(mIdStr, p.attended)}
+                                            className={`sm:w-36 px-5 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-2 border-2 ${p.attended 
+                                                ? 'bg-emerald-500 text-white border-emerald-500 shadow-lg shadow-emerald-200' 
+                                                : 'bg-white text-slate-400 border-slate-100 hover:border-emerald-500 hover:text-emerald-600'
+                                            }`}
+                                        >
+                                            {p.attended ? <i className="fas fa-check-circle" /> : <i className="fas fa-circle-notch opacity-20" />}
+                                            {p.attended ? 'Present' : 'Mark Present'}
+                                        </button>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
                 )}
+
+                <div className="mt-16 sm:mt-24 pt-12 border-t border-slate-50 flex flex-col items-center opacity-40">
+                    <div className="w-12 h-0.5 sm:w-16 sm:h-1 bg-slate-900 mb-4" />
+                    <p className="text-[8px] sm:text-[9px] font-black text-slate-400 uppercase tracking-[0.5em] text-center">Security Verification: {participants.length} Active Participants</p>
+                </div>
             </div>
         );
     };
@@ -3550,7 +3605,18 @@ function AdminPortal() {
                     {activeTab === "dashboard" && <DashboardTab />}
                     {activeTab === "members" && <MembersTab />}
                     {activeTab === "approvals" && <ApprovalsTab />}
-                    {activeTab === "events" && <EventsTab />}
+                    {activeTab === "events" && !searchParams.get("eventId") && <EventsTab />}
+                    {activeTab === "events" && searchParams.get("eventId") && (
+                        <ParticipantsView 
+                            eventId={searchParams.get("eventId")} 
+                            events={events}
+                            onBack={() => setSearchParams({ tab: 'events' })} 
+                            auth={auth} 
+                            api={api} 
+                            notify={notify} 
+                            fetchEvents={fetchEvents} 
+                        />
+                    )}
                     {activeTab === "announcements" && <AnnouncementsTab />}
                     {activeTab === "certificates" && <CertificatesTab auth={auth} notify={notify} api={api} members={members} events={events} />}
                     {activeTab === "batches" && !searchParams.get("dossier") && <BatchesTab members={members} issuedCertificates={issuedCertificates} auth={auth} api={api} notify={notify} setSearchParams={setSearchParams} />}
