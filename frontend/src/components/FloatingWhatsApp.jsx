@@ -4,16 +4,12 @@ import { useLocation } from 'react-router-dom';
 export default function FloatingWhatsApp() {
     const location = useLocation();
     
-    // Check for tokens
-    const isMemberLoggedIn = !!localStorage.getItem("token");
-    const isAdminLoggedIn = !!localStorage.getItem("adminToken");
-    
     // Check for protected paths
     const isDashboard = location.pathname.includes("/dashboard");
     const isAdminPortal = location.pathname.includes("/admin-portal");
 
-    // Hide if logged in OR on dashboard/admin pages
-    if (isMemberLoggedIn || isAdminLoggedIn || isDashboard || isAdminPortal) {
+    // Hide ONLY on dashboard/admin portal pages
+    if (isDashboard || isAdminPortal) {
         return null;
     }
 
