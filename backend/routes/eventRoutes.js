@@ -120,7 +120,10 @@ router.patch('/:id/attendance', authMiddleware, isAdmin, asyncHandler(async (req
     const event = await Event.findById(req.params.id);
     if (!event) return res.status(404).json({ error: 'Event not found.' });
 
-    const participant = event.participants.find(p => p.memberId.toString() === memberId);
+    const participant = event.participants.find(p => {
+        const id = p.memberId._id ? p.memberId._id.toString() : p.memberId.toString();
+        return id === memberId;
+    });
     if (!participant) return res.status(404).json({ error: 'Member is not registered for this event.' });
 
     participant.attended = attended === true || attended === 'true';

@@ -155,26 +155,26 @@ const BatchesTab = ({ members, issuedCertificates, auth, api, notify }) => {
                 </div>
 
                  {detailView && (
-                    <div className="fixed inset-0 z-[200] flex items-center justify-center p-3 sm:p-6 md:p-10 bg-slate-900/80 backdrop-blur-xl animate-fade-in">
-                        <div className="bg-white w-[98%] sm:w-[95%] max-w-2xl rounded-[2rem] sm:rounded-[3rem] shadow-2xl border border-white/20 overflow-hidden relative animate-zoom-in max-h-[95vh] sm:max-h-[90vh] flex flex-col">
-                            <div className="bg-[#002147] pt-10 pb-8 px-6 sm:px-10 text-white flex-shrink-0 relative">
-                                <button onClick={() => setDetailView(null)} className="absolute top-6 right-8 w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center hover:bg-rose-500 hover:text-white transition-all shadow-xl active:scale-95 z-20 group">
-                                    <i className="fas fa-times text-xl group-hover:rotate-90 transition-transform duration-500" />
+                    <div className="fixed inset-0 z-[200] flex items-center justify-center p-2 sm:p-6 bg-slate-900/80 backdrop-blur-xl animate-fade-in overflow-y-auto">
+                        <div className="bg-white w-full max-w-2xl rounded-[1.5rem] sm:rounded-[3rem] shadow-2xl border border-white/20 overflow-hidden relative animate-zoom-in my-8">
+                            <div className="bg-[#002147] pt-8 pb-6 px-5 sm:px-10 text-white relative">
+                                <button onClick={() => setDetailView(null)} className="absolute top-4 right-4 sm:top-6 sm:right-8 w-10 h-10 sm:w-12 sm:h-12 bg-white/10 rounded-xl sm:rounded-2xl flex items-center justify-center hover:bg-rose-500 hover:text-white transition-all shadow-xl active:scale-95 z-20 group">
+                                    <i className="fas fa-times text-base sm:text-xl group-hover:rotate-90 transition-transform duration-500" />
                                 </button>
-                                <div className="flex flex-col items-center text-center gap-3 sm:gap-5 relative z-10">
-                                    <div className="w-20 h-20 sm:w-24 sm:h-24 bg-white/10 rounded-[2rem] sm:rounded-[2.5rem] flex items-center justify-center text-3xl sm:text-4xl font-black shadow-inner border border-white/10 backdrop-blur-md">
+                                <div className="flex flex-col items-center text-center gap-2 sm:gap-5 relative z-10">
+                                    <div className="w-16 h-16 sm:w-24 sm:h-24 bg-white/10 rounded-2xl sm:rounded-[2.5rem] flex items-center justify-center text-2xl sm:text-4xl font-black shadow-inner border border-white/10 backdrop-blur-md">
                                         {(detailView.name || "?")[0].toUpperCase()}
                                     </div>
-                                    <div className="space-y-1.5 sm:space-y-2">
-                                        <h3 className="text-xl sm:text-2xl md:text-3xl font-black tracking-tight leading-tight uppercase italic">{detailView.name || 'Anonymous ID'}</h3>
-                                        <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3">
-                                            <span className="bg-white/10 border border-white/10 px-3 py-1 sm:px-4 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-black uppercase tracking-widest sm:tracking-[0.2em] backdrop-blur-sm">#{detailView.member_id}</span>
-                                            <span className="bg-blue-400/20 px-3 py-1 sm:px-4 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-black uppercase tracking-widest text-blue-200">Batch {calculateBatch(detailView.createdAt)}</span>
+                                    <div className="space-y-1 sm:space-y-2">
+                                        <h3 className="text-lg sm:text-2xl md:text-3xl font-black tracking-tight leading-tight uppercase italic">{detailView.name || 'Anonymous ID'}</h3>
+                                        <div className="flex flex-wrap items-center justify-center gap-1.5 sm:gap-3">
+                                            <span className="bg-white/10 border border-white/10 px-2.5 py-0.5 sm:px-4 sm:py-1.5 rounded-full text-[9px] sm:text-xs font-black uppercase tracking-widest sm:tracking-[0.2em] backdrop-blur-sm">#{detailView.member_id}</span>
+                                            <span className="bg-blue-400/20 px-2.5 py-0.5 sm:px-4 sm:py-1.5 rounded-full text-[9px] sm:text-xs font-black uppercase tracking-widest text-blue-200">Batch {calculateBatch(detailView.createdAt)}</span>
                                         </div>
                                     </div>
                                 </div>
                             </div>
-                            <div className="p-6 sm:p-10 overflow-y-auto custom-scrollbar flex-1 bg-white">
+                            <div className="p-5 sm:p-10 bg-white">
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 text-left">
                                     <div className="bg-slate-50 p-5 rounded-2xl border border-slate-100">
                                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 flex items-center gap-2"><i className="fas fa-envelope text-slate-300" /> Email</p>
@@ -234,8 +234,8 @@ const BatchesTab = ({ members, issuedCertificates, auth, api, notify }) => {
                                     </div>
                                 </div>
                             </div>
-                            <div className="p-8 bg-slate-50 border-t border-slate-100 flex items-center justify-end">
-                                <button onClick={() => setDetailView(null)} className="px-6 py-3 bg-[#002147] text-white text-xs font-black uppercase tracking-widest rounded-xl hover:bg-slate-800 transition-all">Close</button>
+                            <div className="p-6 sm:p-8 bg-slate-50 border-t border-slate-100 flex items-center justify-center sm:justify-end">
+                                <button onClick={() => setDetailView(null)} className="w-full sm:w-auto px-8 py-3.5 bg-[#002147] text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-slate-800 transition-all shadow-lg active:scale-95">Close Dossier</button>
                             </div>
                         </div>
                     </div>
@@ -2289,9 +2289,10 @@ function AdminPortal() {
         const handleToggleAttendance = async (eventId, memberId, currentStatus) => {
             try {
                 await api.patch(`events/${eventId}/attendance`, { memberId, attended: !currentStatus }, auth);
-                setParticipants(prev => prev.map(p => 
-                    p.memberId?._id === memberId || p.memberId === memberId ? { ...p, attended: !currentStatus } : p
-                ));
+                setParticipants(prev => prev.map(p => {
+                    const mId = p.memberId?._id || p.memberId;
+                    return mId === memberId ? { ...p, attended: !currentStatus } : p;
+                }));
                 fetchEvents();
                 notify(`Attendance updated!`);
             } catch (err) {
@@ -2577,9 +2578,9 @@ function AdminPortal() {
                 )}
 
                 {showParticipants && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center p-6 backdrop-blur-md bg-slate-900/40 animate-fade-in">
-                        <div className="bg-white w-full max-w-2xl rounded-[3rem] shadow-2xl border border-slate-100 overflow-hidden relative max-h-[85vh] flex flex-col">
-                            <div className="p-8 sm:p-10 border-b border-slate-50 bg-white sticky top-0 z-[60] flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 backdrop-blur-md bg-slate-900/40 animate-fade-in overflow-y-auto">
+                        <div className="bg-white w-full max-w-4xl rounded-[2rem] sm:rounded-[3rem] shadow-2xl border border-slate-100 overflow-hidden relative my-8 animate-zoom-in flex flex-col">
+                            <div className="p-6 sm:p-10 border-b border-slate-50 bg-white sticky top-0 z-[60] flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
                                 <div className="flex items-center gap-5">
                                     <div className="relative group">
                                         <input 
@@ -2623,45 +2624,49 @@ function AdminPortal() {
                                     </div>
                                 ) : (
                                     <div className="space-y-4">
-                                        {participants.map((p, i) => (
-                                            <div key={i} className={`flex items-center justify-between p-5 rounded-3xl border border-slate-100 shadow-sm hover:shadow-md transition-all group ${selectedMemberIds.includes(p.memberId?._id || p.memberId) ? 'bg-blue-50/50 border-blue-200' : 'bg-white'}`}>
-                                                <div className="flex items-center gap-4">
-                                                    <input 
-                                                        type="checkbox" 
-                                                        checked={selectedMemberIds.includes(p.memberId?._id || p.memberId)}
-                                                        onChange={() => toggleMemberSelection(p.memberId?._id || p.memberId)}
-                                                        className="w-4 h-4 text-[#002147] border-slate-300 rounded focus:ring-blue-500 cursor-pointer" 
-                                                    />
-                                                    <div className="w-12 h-12 bg-[#002147] text-white rounded-2xl flex items-center justify-center font-black text-sm uppercase">
-                                                        {p.memberId?.name?.charAt(0) || "M"}
-                                                    </div>
-                                                    <div>
-                                                        <p className="font-black text-slate-800 leading-none mb-1">{p.memberId?.name}</p>
-                                                        <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">{p.memberId?.member_id}</p>
-                                                    </div>
-                                                </div>
-                                                <div className="flex items-center gap-4">
-                                                    <div className="text-right">
-                                                        <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Joined On</p>
-                                                        <p className="text-[10px] font-bold text-slate-700">{new Date(p.joinedAt).toLocaleDateString()}</p>
-                                                    </div>
-                                                    <button 
-                                                        onClick={() => handleToggleAttendance(selectedEventId, p.memberId?._id, p.attended)}
-                                                        className={`px-4 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all flex items-center gap-2 border ${
-                                                            p.attended 
-                                                                ? 'bg-emerald-500 text-white border-emerald-500 shadow-lg shadow-emerald-900/20' 
-                                                                : 'bg-white text-slate-400 border-slate-200 hover:border-emerald-500 hover:text-emerald-600'
-                                                        }`}
-                                                    >
-                                                        {p.attended ? <i className="fas fa-check-circle" /> : <i className="fas fa-circle opacity-20" />}
-                                                        {p.attended ? 'Present' : 'Mark Present'}
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
+                                         {participants.map((p, i) => {
+                                             const mId = p.memberId?._id || p.memberId;
+                                             const isSelected = selectedMemberIds.includes(mId);
+                                             return (
+                                                 <div key={i} className={`flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 sm:p-5 rounded-2xl sm:rounded-3xl border border-slate-100 shadow-sm hover:shadow-md transition-all group gap-4 ${isSelected ? 'bg-blue-50/50 border-blue-200' : 'bg-white'}`}>
+                                                     <div className="flex items-center gap-3 sm:gap-4 w-full sm:w-auto">
+                                                         <input 
+                                                             type="checkbox" 
+                                                             checked={isSelected}
+                                                             onChange={() => toggleMemberSelection(mId)}
+                                                             className="w-4 h-4 text-[#002147] border-slate-300 rounded focus:ring-blue-500 cursor-pointer" 
+                                                         />
+                                                         <div className="w-10 h-10 sm:w-12 sm:h-12 bg-[#002147] text-white rounded-xl sm:rounded-2xl flex items-center justify-center font-black text-xs sm:text-sm uppercase shrink-0">
+                                                             {p.memberId?.name?.charAt(0) || "M"}
+                                                         </div>
+                                                         <div className="min-w-0">
+                                                             <p className="font-black text-slate-800 leading-none mb-1 text-sm sm:text-base truncate">{p.memberId?.name}</p>
+                                                             <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest truncate">{p.memberId?.member_id}</p>
+                                                         </div>
+                                                     </div>
+                                                     <div className="flex items-center justify-between sm:justify-end gap-4 w-full sm:w-auto border-t sm:border-t-0 pt-3 sm:pt-0 border-slate-50">
+                                                         <div className="text-left sm:text-right">
+                                                             <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Joined On</p>
+                                                             <p className="text-[10px] font-bold text-slate-700">{new Date(p.joinedAt).toLocaleDateString()}</p>
+                                                         </div>
+                                                         <button 
+                                                             onClick={() => handleToggleAttendance(selectedEventId, mId, p.attended)}
+                                                             className={`px-4 py-2 sm:py-2.5 rounded-lg sm:rounded-xl text-[9px] font-black uppercase tracking-widest transition-all flex items-center gap-2 border ${
+                                                                 p.attended 
+                                                                     ? 'bg-emerald-500 text-white border-emerald-500 shadow-lg shadow-emerald-900/20' 
+                                                                     : 'bg-white text-slate-400 border-slate-200 hover:border-emerald-500 hover:text-emerald-600'
+                                                             }`}
+                                                         >
+                                                             {p.attended ? <i className="fas fa-check-circle" /> : <i className="fas fa-circle opacity-20" />}
+                                                             <span className="inline">{p.attended ? 'Present' : 'Absent'}</span>
+                                                         </button>
+                                                     </div>
+                                                 </div>
+                                             );
+                                         })}
+                                     </div>
+                                 )}
+                             </div>
 
                             <div className="p-8 bg-slate-50/50 border-t border-slate-100 text-center text-xs font-black text-slate-400 uppercase tracking-widest">
                                 Registered Participants: {participants.length} Official Members
