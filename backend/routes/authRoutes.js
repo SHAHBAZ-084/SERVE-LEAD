@@ -277,5 +277,31 @@ router.post('/reset-password', asyncHandler(async (req, res) => {
     res.status(200).json({ message: 'Password has been reset successfully.' });
 }));
 
+// Public Membership Verification
+router.get('/verify/:member_id', asyncHandler(async (req, res) => {
+    const { member_id } = req.params;
+    
+    // Find approved members only
+    const member = await Member.findOne({ 
+        member_id: member_id.trim().toUpperCase(), // Ensure uppercase matching
+        status: 'approved'
+    }).select('name joining_year role profile_pic_url');
+
+    if (!member) {
+        return res.status(404).json({ error: 'Invalid ID. No official member found with this ID.' });
+    }
+
+    res.json({
+        success: true,
+        message: `${member.name} is an official member of Serve & Lead Society.`,
+        member: {
+            name: member.name,
+            joining_year: member.joining_year,
+            role: member.role,
+            profile_pic_url: member.profile_pic_url
+        }
+    });
+}));
+
 module.exports = router;
 

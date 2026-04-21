@@ -1,14 +1,16 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import logo from "../assets/logo.png";
+import VerificationModal from "./common/VerificationModal";
+import { ShieldCheck } from "lucide-react";
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const [activeSection, setActiveSection] = useState("");
   const navigate = useNavigate();
   const location = useLocation();
-
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isVerifyOpen, setIsVerifyOpen] = useState(false);
 
   const navLinks = [
     { name: "Home", path: "/" },
@@ -131,6 +133,15 @@ export default function Navbar() {
             </button>
           ))}
 
+          {/* Verify Button */}
+          <button
+            onClick={() => setIsVerifyOpen(true)}
+            className="flex items-center gap-2 px-5 py-2.5 text-sm rounded-full border-2 border-cyan-500 text-cyan-600 font-black uppercase tracking-widest hover:bg-cyan-50 transition-all duration-300 ml-2 shadow-sm"
+          >
+            <ShieldCheck size={16} className="text-cyan-500" />
+            Verify
+          </button>
+
           {/* Login/Dashboard Button */}
           {isLoggedIn ? (
             <button
@@ -209,6 +220,22 @@ export default function Navbar() {
             )}
           </div>
         </div>
+
+        <div className="lg:hidden mt-4 px-8 pb-6 border-t border-slate-50 pt-6">
+          <button
+            onClick={() => { setIsOpen(false); setIsVerifyOpen(true); }}
+            className="w-full flex items-center justify-center gap-3 bg-cyan-50 text-cyan-600 py-4 rounded-3xl text-xs font-black uppercase tracking-widest border border-cyan-100"
+          >
+            <ShieldCheck size={18} />
+            Verify Membership
+          </button>
+        </div>
+
+        {/* Global Verification Modal */}
+        <VerificationModal 
+          isOpen={isVerifyOpen} 
+          onClose={() => setIsVerifyOpen(false)} 
+        />
       </div>
     </nav>
   );
