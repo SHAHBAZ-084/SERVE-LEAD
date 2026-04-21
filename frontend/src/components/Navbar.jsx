@@ -18,7 +18,7 @@ export default function Navbar() {
     { name: "Events", path: "/#events" },
     { name: "Contact", path: "/#contact" },
     { name: "Donate", path: "/donate" },
-    { name: "Verify", path: "verify" },
+    { name: "Verify", path: "/verify" },
   ];
 
   useEffect(() => {
@@ -71,12 +71,6 @@ export default function Navbar() {
         return;
       }
     }
-
-    if (path === "verify") {
-      setIsVerifyOpen(true);
-      return;
-    }
-
     navigate(path);
     if (path.includes('#')) {
       const anchor = path.substring(path.indexOf('#'));
@@ -222,12 +216,6 @@ export default function Navbar() {
         </div>
 
       </div>
-
-      {/* Global Verification Modal */}
-      <VerificationModal 
-        isOpen={isVerifyOpen} 
-        onClose={() => setIsVerifyOpen(false)} 
-      />
     </nav>
   );
 }

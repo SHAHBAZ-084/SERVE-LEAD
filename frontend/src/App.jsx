@@ -12,6 +12,7 @@ import Donate from './pages/Donate';
 import RegisterPage from './pages/RegisterPage';
 import MemberLogin from './pages/MemberLogin';
 import ResetPassword from './pages/ResetPassword';
+import MemberVerification from './pages/MemberVerification';
 import FloatingWhatsApp from './components/FloatingWhatsApp';
 
 function App() {
@@ -23,6 +24,7 @@ function App() {
         <Route path="/reset-password/:token" element={<ResetPassword />} />
         <Route path="/about" element={<AboutPage />} />
         <Route path='/verification' element={<Verification />} />
+        <Route path='/verify' element={<MemberVerification />} />
         
         {/* Guest Only Routes (Redirect if already logged in) */}
         <Route path="/register" element={
