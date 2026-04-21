@@ -9,9 +9,8 @@ import html2canvas from "html2canvas";
 import { inputCls, useCountUp, StatCard, Spinner } from "../components/common/AdminUiComponents";
 
 // ── Batches Tab (Refactored Standalone) ───────────────────
-const BatchesTab = ({ members, issuedCertificates, auth, api, notify }) => {
+const BatchesTab = ({ members, issuedCertificates, auth, api, notify, setSearchParams }) => {
     const [selectedBatch, setSelectedBatch] = useState(null);
-    const [detailView, setDetailView] = useState(null);
     const [batchSearch, setBatchSearch] = useState("");
 
     // Group members by their joining date using the Sep 1st boundary
@@ -110,7 +109,7 @@ const BatchesTab = ({ members, issuedCertificates, auth, api, notify }) => {
                                     <span className="text-[10px] font-bold text-slate-600 block">{m.createdAt ? new Date(m.createdAt).toLocaleDateString() : 'N/A'}</span>
                                 </div>
                             </div>
-                            <button onClick={() => setDetailView(m)} className="w-full bg-[#002147] text-white py-3.5 rounded-xl font-black uppercase tracking-[0.2em] text-[10px] shadow-lg shadow-blue-900/10">
+                            <button onClick={() => setSearchParams({ tab: 'batches', dossier: m._id })} className="w-full bg-[#002147] text-white py-3.5 rounded-xl font-black uppercase tracking-[0.2em] text-[10px] shadow-lg shadow-blue-900/10">
                                 <i className="fas fa-eye mr-2" /> View Dossier
                             </button>
                         </div>
@@ -143,7 +142,7 @@ const BatchesTab = ({ members, issuedCertificates, auth, api, notify }) => {
                                             {m.createdAt ? new Date(m.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : 'N/A'}
                                         </td>
                                         <td className="px-8 py-5 text-right">
-                                            <button onClick={() => setDetailView(m)} className="text-xs bg-slate-900 shadow-lg shadow-black/10 text-white px-5 py-2.5 rounded-xl hover:bg-slate-800 transition-all font-black uppercase tracking-widest leading-none">
+                                            <button onClick={() => setSearchParams({ tab: 'batches', dossier: m._id })} className="text-xs bg-slate-900 shadow-lg shadow-black/10 text-white px-5 py-2.5 rounded-xl hover:bg-slate-800 transition-all font-black uppercase tracking-widest leading-none">
                                                 <i className="fas fa-eye mr-2" /> View Detail
                                             </button>
                                         </td>
@@ -153,93 +152,6 @@ const BatchesTab = ({ members, issuedCertificates, auth, api, notify }) => {
                         </table>
                     </div>
                 </div>
-
-                 {detailView && (
-                    <div className="fixed inset-0 z-[200] flex items-center justify-center p-2 sm:p-6 bg-slate-900/80 backdrop-blur-xl animate-fade-in overflow-y-auto">
-                        <div className="bg-white w-full max-w-2xl rounded-[1.5rem] sm:rounded-[3rem] shadow-2xl border border-white/20 overflow-hidden relative animate-zoom-in my-8">
-                            <div className="bg-[#002147] pt-8 pb-6 px-5 sm:px-10 text-white relative">
-                                <button onClick={() => setDetailView(null)} className="absolute top-4 right-4 sm:top-6 sm:right-8 w-10 h-10 sm:w-12 sm:h-12 bg-white/10 rounded-xl sm:rounded-2xl flex items-center justify-center hover:bg-rose-500 hover:text-white transition-all shadow-xl active:scale-95 z-20 group">
-                                    <i className="fas fa-times text-base sm:text-xl group-hover:rotate-90 transition-transform duration-500" />
-                                </button>
-                                <div className="flex flex-col items-center text-center gap-2 sm:gap-5 relative z-10">
-                                    <div className="w-16 h-16 sm:w-24 sm:h-24 bg-white/10 rounded-2xl sm:rounded-[2.5rem] flex items-center justify-center text-2xl sm:text-4xl font-black shadow-inner border border-white/10 backdrop-blur-md">
-                                        {(detailView.name || "?")[0].toUpperCase()}
-                                    </div>
-                                    <div className="space-y-1 sm:space-y-2">
-                                        <h3 className="text-lg sm:text-2xl md:text-3xl font-black tracking-tight leading-tight uppercase italic">{detailView.name || 'Anonymous ID'}</h3>
-                                        <div className="flex flex-wrap items-center justify-center gap-1.5 sm:gap-3">
-                                            <span className="bg-white/10 border border-white/10 px-2.5 py-0.5 sm:px-4 sm:py-1.5 rounded-full text-[9px] sm:text-xs font-black uppercase tracking-widest sm:tracking-[0.2em] backdrop-blur-sm">#{detailView.member_id}</span>
-                                            <span className="bg-blue-400/20 px-2.5 py-0.5 sm:px-4 sm:py-1.5 rounded-full text-[9px] sm:text-xs font-black uppercase tracking-widest text-blue-200">Batch {calculateBatch(detailView.createdAt)}</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="p-5 sm:p-10 bg-white">
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 text-left">
-                                    <div className="bg-slate-50 p-5 rounded-2xl border border-slate-100">
-                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 flex items-center gap-2"><i className="fas fa-envelope text-slate-300" /> Email</p>
-                                        <p className="text-sm font-bold text-slate-800 break-all">{detailView.email || 'N/A'}</p>
-                                    </div>
-                                    <div className="bg-slate-50 p-5 rounded-2xl border border-slate-100">
-                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 flex items-center gap-2"><i className="fas fa-phone text-slate-300" /> Contact</p>
-                                        <p className="text-sm font-bold text-slate-800">{detailView.whatsapp || detailView.phone || 'N/A'}</p>
-                                    </div>
-                                    <div className="bg-slate-50 p-5 rounded-2xl border border-slate-100">
-                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 flex items-center gap-2"><i className="fas fa-user-tie text-slate-300" /> Father's Name</p>
-                                        <p className="text-sm font-bold text-slate-800">{detailView.father_name || 'N/A'}</p>
-                                    </div>
-                                    <div className="bg-slate-50 p-5 rounded-2xl border border-slate-100">
-                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 flex items-center gap-2"><i className="fas fa-map-marker-alt text-slate-300" /> Residence</p>
-                                        <p className="text-sm font-bold text-slate-800">{detailView.city ? `${detailView.address || ''}, ${detailView.city}`.replace(/^, /, '') : (detailView.address || 'N/A')}</p>
-                                    </div>
-
-                                    {/* Academic Background */}
-                                    <div className="sm:col-span-2 mt-4 flex items-center gap-3">
-                                        <div className="h-px bg-slate-200 flex-1" />
-                                        <span className="text-[10px] font-black text-[#002147] uppercase tracking-widest bg-blue-50 px-4 py-1.5 rounded-full border border-blue-100"><i className="fas fa-graduation-cap mr-2" /> Academic Profile</span>
-                                        <div className="h-px bg-slate-200 flex-1" />
-                                    </div>
-
-                                    <div className="bg-indigo-50/50 p-5 rounded-2xl border border-indigo-100/50">
-                                        <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-1.5">Education Level</p>
-                                        <p className="text-sm font-bold text-indigo-900">{detailView.education_level || 'N/A'}</p>
-                                    </div>
-                                    <div className="bg-indigo-50/50 p-5 rounded-2xl border border-indigo-100/50">
-                                        <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-1.5">Degree / Program</p>
-                                        <p className="text-sm font-bold text-indigo-900">{detailView.program || 'N/A'}</p>
-                                    </div>
-                                    <div className="bg-indigo-50/50 p-5 rounded-2xl border border-indigo-100/50">
-                                        <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-1.5">Institution / University</p>
-                                        <p className="text-sm font-bold text-indigo-900">{detailView.university || 'N/A'}</p>
-                                    </div>
-                                    <div className="bg-indigo-50/50 p-5 rounded-2xl border border-indigo-100/50">
-                                        <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-1.5">Passing Year</p>
-                                        <p className="text-sm font-bold text-indigo-900">{detailView.passing_year || 'N/A'}</p>
-                                    </div>
-                                    
-                                    {/* Administrative Info */}
-                                    <div className="sm:col-span-2 mt-4 flex items-center gap-3">
-                                        <div className="h-px bg-slate-200 flex-1" />
-                                        <span className="text-[10px] font-black text-[#002147] uppercase tracking-widest bg-blue-50 px-4 py-1.5 rounded-full border border-blue-100"><i className="fas fa-sitemap mr-2" /> System Status</span>
-                                        <div className="h-px bg-slate-200 flex-1" />
-                                    </div>
-                                    
-                                    <div className="bg-slate-50 p-5 rounded-2xl border border-slate-100">
-                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Assigned Role</p>
-                                        <p className="text-sm font-bold text-[#002147] tracking-widest uppercase">{detailView.role || 'N/A'}</p>
-                                    </div>
-                                    <div className="bg-slate-50 p-5 rounded-2xl border border-slate-100">
-                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Account Status</p>
-                                        <p className={`text-sm font-bold uppercase tracking-widest ${detailView.status === 'blocked' ? 'text-rose-600' : 'text-emerald-600'}`}>{detailView.status || 'N/A'}</p>
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="p-6 sm:p-8 bg-slate-50 border-t border-slate-100 flex items-center justify-center sm:justify-end">
-                                <button onClick={() => setDetailView(null)} className="w-full sm:w-auto px-8 py-3.5 bg-[#002147] text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-slate-800 transition-all shadow-lg active:scale-95">Close Dossier</button>
-                            </div>
-                        </div>
-                    </div>
-                )}
             </div>
         );
     }
@@ -281,7 +193,7 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
         img: ""
     });
     const [submitting, setSubmitting] = useState(false);
-    
+
     // Admin Promotion State
     const [adminSearch, setAdminSearch] = useState("");
     const [foundMembers, setFoundMembers] = useState([]);
@@ -307,7 +219,7 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
                 try { setLeadership(JSON.parse(r.data.team_leadership)); } catch { setLeadership({ name: "", role: "", program: "", desc: "", img: "" }); }
             }
             if (r.data.vision_section) {
-                try { setVision(JSON.parse(r.data.vision_section)); } catch { 
+                try { setVision(JSON.parse(r.data.vision_section)); } catch {
                     setVision({
                         badgeSubtitle: "Chairman Vision",
                         badgeName: "Farooq Baloch",
@@ -659,7 +571,7 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
                                 {/* Quote Section */}
                                 <div className="p-6 bg-white border border-slate-100 rounded-3xl shadow-sm">
                                     <label className="text-[9px] font-black text-[#002147] uppercase tracking-widest mb-3 flex items-center gap-2">
-                                        <i className="fas fa-quote-left text-emerald-500" /> 
+                                        <i className="fas fa-quote-left text-emerald-500" />
                                         Vision Quote Content
                                     </label>
                                     <textarea rows={4} value={vision.quote} onChange={e => setVision({ ...vision, quote: e.target.value })} className={`${inputCls} font-medium text-slate-600 italic leading-relaxed`} placeholder="Enter the chairman's vision statement..." />
@@ -717,7 +629,7 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
 
     useEffect(() => {
         fetchCertificates();
-        
+
         // Pre-load assets into Base64 to bypass CORS/Taint issues during capture
         const loadToDataURL = async (url, key) => {
             try {
@@ -801,7 +713,7 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
     const downloadPDF = async (certData) => {
         setExportData(certData);
         notify("Preparing Isolated Sandbox for high-resolution document...");
-        
+
         try {
             // 1. Create a hidden iframe sandbox
             const iframe = document.createElement('iframe');
@@ -816,7 +728,7 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
             document.body.appendChild(iframe);
 
             const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
-            
+
             // 2. Inject barebones HTML with ONLY the necessary fonts (NO TAILWIND)
             iframeDoc.open();
             iframeDoc.write(`
@@ -844,12 +756,12 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
             // 4. Clone the purified certificate node into the sandbox
             const sourceElement = document.getElementById('cert-export-node');
             if (!sourceElement) throw new Error("Export engine not found in DOM");
-            
+
             const clonedNode = sourceElement.cloneNode(true);
             clonedNode.style.opacity = '1';
             clonedNode.style.visibility = 'visible';
             clonedNode.style.display = 'block';
-            
+
             iframeDoc.getElementById('sandbox-root').appendChild(clonedNode);
 
             // 5. High-Resolution Capture from the Sandbox
@@ -874,7 +786,7 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
 
             pdf.addImage(imgData, 'PNG', 0, 0, 210, 297, undefined, 'FAST');
             pdf.save(`SLS_Official_${certData.memberId?.name?.replace(/\s+/g, '_') || 'Award'}.pdf`);
-            
+
             // Final Cleanup
             document.body.removeChild(iframe);
             notify("PDF Generated Successfully!");
@@ -905,10 +817,10 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
         setIsRevoking(true);
         let count = 0;
         await Promise.all(selectedCertIds.map(async id => {
-            try { 
-                await api.delete(`certificates/${id}`, auth); 
-                count++; 
-            } catch(e) {}
+            try {
+                await api.delete(`certificates/${id}`, auth);
+                count++;
+            } catch (e) { }
         }));
         notify(`Successfully revoked ${count} certificates`);
         fetchCertificates();
@@ -919,7 +831,7 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
     const handleBulkDownload = async () => {
         setIsDownloading(true);
         notify(`Starting batch download for ${selectedCertIds.length} items...`);
-        
+
         for (const id of selectedCertIds) {
             const cert = issuedCertificates.find(c => c._id === id);
             if (cert) {
@@ -932,7 +844,7 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
                 }
             }
         }
-        
+
         notify("Batch export completed!");
         setSelectedCertIds([]);
         setIsDownloading(false);
@@ -971,7 +883,7 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
                 </h1>
                 <div style={{ textAlign: 'center', fontFamily: 'sans-serif', paddingLeft: '40px', paddingRight: '40px', lineHeight: 1.6, fontSize: '15px', color: '#475569' }}>
                     <p>
-                        This is to certify that the individual named below has been duly granted <br/>
+                        This is to certify that the individual named below has been duly granted <br />
                         <strong style={{ fontWeight: 'bold', color: '#002147' }}>{data.awardType || "Official Membership"}</strong> in the Serve & Lead Society (SLS-UET).
                     </p>
                 </div>
@@ -980,15 +892,15 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
             {/* Name Section with Yellow Lines - Professional Upgrade */}
             <div style={{ marginTop: '48px', marginBottom: '40px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', paddingLeft: '40px', paddingRight: '40px' }}>
                 <div style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                   <div style={{ height: '2px', width: '48px', borderRadius: '9999px', position: 'relative', flexShrink: 0, backgroundColor: '#FFD700', marginRight: '24px', marginTop: '10px' }}>
-                      <div style={{ position: 'absolute', left: '-4px', top: '-4px', width: '8px', height: '8px', transform: 'rotate(45deg)', backgroundColor: '#FFD700' }} />
-                   </div>
-                   <h2 style={{ fontFamily: '"Playfair Display", serif', fontSize: '52px', lineHeight: 1.1, color: '#1a1a1a', fontWeight: 'bold', textAlign: 'center', textTransform: 'uppercase', letterSpacing: '-0.025em', whiteSpace: 'nowrap' }}>
-                       {data.memberId?.name || "Member Name"}
-                   </h2>
-                   <div style={{ height: '2px', width: '48px', borderRadius: '9999px', position: 'relative', flexShrink: 0, backgroundColor: '#FFD700', marginLeft: '24px', marginTop: '10px' }}>
-                      <div style={{ position: 'absolute', right: '-4px', top: '-4px', width: '8px', height: '8px', transform: 'rotate(45deg)', backgroundColor: '#FFD700' }} />
-                   </div>
+                    <div style={{ height: '2px', width: '48px', borderRadius: '9999px', position: 'relative', flexShrink: 0, backgroundColor: '#FFD700', marginRight: '24px', marginTop: '10px' }}>
+                        <div style={{ position: 'absolute', left: '-4px', top: '-4px', width: '8px', height: '8px', transform: 'rotate(45deg)', backgroundColor: '#FFD700' }} />
+                    </div>
+                    <h2 style={{ fontFamily: '"Playfair Display", serif', fontSize: '52px', lineHeight: 1.1, color: '#1a1a1a', fontWeight: 'bold', textAlign: 'center', textTransform: 'uppercase', letterSpacing: '-0.025em', whiteSpace: 'nowrap' }}>
+                        {data.memberId?.name || "Member Name"}
+                    </h2>
+                    <div style={{ height: '2px', width: '48px', borderRadius: '9999px', position: 'relative', flexShrink: 0, backgroundColor: '#FFD700', marginLeft: '24px', marginTop: '10px' }}>
+                        <div style={{ position: 'absolute', right: '-4px', top: '-4px', width: '8px', height: '8px', transform: 'rotate(45deg)', backgroundColor: '#FFD700' }} />
+                    </div>
                 </div>
             </div>
 
@@ -1001,12 +913,12 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
                     <div style={{ display: 'grid', gridTemplateColumns: '180px 1fr', rowGap: '12px', fontSize: '15px' }}>
                         <span style={{ fontWeight: 'bold', color: '#002147' }}>Membership ID:</span>
                         <span style={{ fontWeight: 'bold', color: '#0f172a' }}>{data.memberId?.member_id || "2025-SLS-UET1"}</span>
-                        
+
                         <span style={{ fontWeight: 'bold', color: '#002147' }}>Joining Date:</span>
                         <span style={{ fontWeight: '500', color: '#334155' }}>
-                           {new Date(data.memberId?.createdAt || Date.now()).toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' })}
+                            {new Date(data.memberId?.createdAt || Date.now()).toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' })}
                         </span>
-                        
+
                         <span style={{ fontWeight: 'bold', color: '#002147' }}>Status:</span>
                         <span style={{ fontWeight: '500', color: '#334155' }}>Member from UET Lahore</span>
                     </div>
@@ -1018,13 +930,13 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
                 <p>
                     {data.description || "The bearer of this certificate is entitled to all privileges and responsibilities associated with the General Membership."}
                 </p>
-                
+
                 <div style={{ marginTop: '24px', fontSize: '12px', fontStyle: 'italic', color: '#64748b' }}>
                     <p>
                         Valid from {new Date(data.createdAt || Date.now()).toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' })} until {new Date(new Date(data.createdAt || Date.now()).setFullYear(new Date(data.createdAt || Date.now()).getFullYear() + 1)).toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' })}
                     </p>
                 </div>
-                
+
                 <div style={{ marginTop: '24px' }}>
                     <p style={{ textDecoration: 'underline', textUnderlineOffset: '4px', fontWeight: 'bold', color: '#1e293b' }}>
                         Issued on: {new Date(data.createdAt || Date.now()).toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' })}
@@ -1043,13 +955,13 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', paddingRight: '20px' }}>
                     <div style={{ position: 'relative', marginBottom: 0, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                         <p style={{ fontSize: '42px', lineHeight: 1, marginBottom: '4px', fontFamily: '"Dancing Script", cursive', color: '#1e293b', opacity: 0.85, fontWeight: 'normal', margin: 0 }}>
-                             {data.chairmanName || "Farooq Baloch"}
+                            {data.chairmanName || "Farooq Baloch"}
                         </p>
                         <div style={{ width: '200px', height: '1px', backgroundColor: '#1e293b' }} />
                     </div>
                     <div style={{ marginTop: '12px' }}>
-                         <p style={{ fontWeight: '900', fontSize: '16px', letterSpacing: '-0.025em', textDecoration: 'underline', textUnderlineOffset: '4px', color: '#1a1a1a', margin: 0 }}>{data.chairmanName || "Muhammad Farooq Ahmad"}</p>
-                         <p style={{ fontSize: '12px', fontWeight: '900', textTransform: 'uppercase', letterSpacing: '0.2em', marginTop: '4px', color: '#94a3b8', margin: 0 }}>Chairman - SLS</p>
+                        <p style={{ fontWeight: '900', fontSize: '16px', letterSpacing: '-0.025em', textDecoration: 'underline', textUnderlineOffset: '4px', color: '#1a1a1a', margin: 0 }}>{data.chairmanName || "Muhammad Farooq Ahmad"}</p>
+                        <p style={{ fontSize: '12px', fontWeight: '900', textTransform: 'uppercase', letterSpacing: '0.2em', marginTop: '4px', color: '#94a3b8', margin: 0 }}>Chairman - SLS</p>
                     </div>
                 </div>
             </div>
@@ -1087,8 +999,8 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
                                 <h3 className="text-sm font-black uppercase tracking-widest text-[#002147]">
                                     {isBulkMode ? 'Bulk Issue Event Certificates' : 'Issue New Certificate'}
                                 </h3>
-                                <button 
-                                    onClick={() => { setIsBulkMode(!isBulkMode); setForm({...form, memberId: "", eventId: ""}); setSearchMember(""); }}
+                                <button
+                                    onClick={() => { setIsBulkMode(!isBulkMode); setForm({ ...form, memberId: "", eventId: "" }); setSearchMember(""); }}
                                     className="px-4 py-1.5 rounded-lg text-[10px] font-bold border border-slate-200 text-slate-500 hover:bg-slate-50 transition-colors"
                                 >
                                     Switch to {isBulkMode ? 'Single Issue' : 'Bulk Issue'}
@@ -1097,41 +1009,41 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
 
                             {!isBulkMode && (
                                 <div className="relative">
-                                <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">1. Select Recipient Member</label>
-                                <input
-                                    type="text"
-                                    placeholder="Search by name or member ID..."
-                                    value={searchMember}
-                                    onChange={(e) => setSearchMember(e.target.value)}
-                                    className={inputCls}
-                                />
-                                {searchMember && !form.memberId && (
-                                    <div className="absolute z-10 w-full mt-1 bg-white border border-slate-200 rounded-xl shadow-xl max-h-48 overflow-y-auto">
-                                        {filteredMembers.map(m => (
-                                            <button
-                                                key={m._id}
-                                                onClick={() => { 
-                                                    setForm({ ...form, memberId: m._id }); 
-                                                    setSearchMember(m.name); 
-                                                }}
-                                                className="w-full px-4 py-3 text-left hover:bg-slate-50 border-b border-slate-100 last:border-0 flex justify-between items-center group"
-                                            >
-                                                <span className="text-xs font-bold text-slate-700 group-hover:text-[#002147] transition-colors">{m.name}</span>
-                                                <span className="text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full font-bold group-hover:bg-[#002147]/10 group-hover:text-[#002147] transition-colors">{m.member_id}</span>
-                                            </button>
-                                        ))}
-                                    </div>
-                                )}
-                                {form.memberId && (
-                                    <div className="mt-2 flex items-center justify-between p-3 bg-emerald-50 rounded-xl border border-emerald-100">
-                                        <div className="flex items-center gap-2">
-                                            <i className="fas fa-check-circle text-emerald-500" />
-                                            <span className="text-xs font-bold text-emerald-700">{selectedMember?.name} ({selectedMember?.member_id})</span>
+                                    <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">1. Select Recipient Member</label>
+                                    <input
+                                        type="text"
+                                        placeholder="Search by name or member ID..."
+                                        value={searchMember}
+                                        onChange={(e) => setSearchMember(e.target.value)}
+                                        className={inputCls}
+                                    />
+                                    {searchMember && !form.memberId && (
+                                        <div className="absolute z-10 w-full mt-1 bg-white border border-slate-200 rounded-xl shadow-xl max-h-48 overflow-y-auto">
+                                            {filteredMembers.map(m => (
+                                                <button
+                                                    key={m._id}
+                                                    onClick={() => {
+                                                        setForm({ ...form, memberId: m._id });
+                                                        setSearchMember(m.name);
+                                                    }}
+                                                    className="w-full px-4 py-3 text-left hover:bg-slate-50 border-b border-slate-100 last:border-0 flex justify-between items-center group"
+                                                >
+                                                    <span className="text-xs font-bold text-slate-700 group-hover:text-[#002147] transition-colors">{m.name}</span>
+                                                    <span className="text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full font-bold group-hover:bg-[#002147]/10 group-hover:text-[#002147] transition-colors">{m.member_id}</span>
+                                                </button>
+                                            ))}
                                         </div>
-                                        <button onClick={() => { setForm({ ...form, memberId: "" }); setSearchMember(""); }} className="text-emerald-700 hover:text-emerald-900"><i className="fas fa-times" /></button>
-                                    </div>
-                                )}
-                            </div>
+                                    )}
+                                    {form.memberId && (
+                                        <div className="mt-2 flex items-center justify-between p-3 bg-emerald-50 rounded-xl border border-emerald-100">
+                                            <div className="flex items-center gap-2">
+                                                <i className="fas fa-check-circle text-emerald-500" />
+                                                <span className="text-xs font-bold text-emerald-700">{selectedMember?.name} ({selectedMember?.member_id})</span>
+                                            </div>
+                                            <button onClick={() => { setForm({ ...form, memberId: "" }); setSearchMember(""); }} className="text-emerald-700 hover:text-emerald-900"><i className="fas fa-times" /></button>
+                                        </div>
+                                    )}
+                                </div>
                             )}
 
                             <div className="grid grid-cols-2 gap-4">
@@ -1212,7 +1124,7 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
                         </div>
 
                         <div className="flex flex-col sm:flex-row gap-4 pt-4 border-t border-slate-100">
-                             <button
+                            <button
                                 type="button"
                                 onClick={() => setShowPreview(true)}
                                 disabled={(!isBulkMode && !form.memberId) || (isBulkMode && !form.eventId) || submitting}
@@ -1258,9 +1170,9 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
                     <div className="flex gap-3 w-full sm:w-auto">
                         <div className="relative flex-1 sm:flex-none">
                             <i className="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-xs" />
-                            <input 
-                                type="text" 
-                                placeholder="Filter records..." 
+                            <input
+                                type="text"
+                                placeholder="Filter records..."
                                 value={searchCert}
                                 onChange={(e) => setSearchCert(e.target.value)}
                                 className="w-full sm:w-56 bg-slate-50 border border-slate-100 rounded-xl pl-10 pr-4 py-2.5 text-xs focus:ring-2 focus:ring-[#002147]/10 outline-none transition-all placeholder:text-slate-300 shadow-inner"
@@ -1277,8 +1189,8 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
                 ) : (
                     <div className="p-4 sm:p-0">
                         <div className="sm:hidden space-y-2">
-                            {issuedCertificates.filter(c => 
-                                (c.memberId?.name || c.memberName || "").toLowerCase().includes(searchCert.toLowerCase()) || 
+                            {issuedCertificates.filter(c =>
+                                (c.memberId?.name || c.memberName || "").toLowerCase().includes(searchCert.toLowerCase()) ||
                                 (c.memberId?.member_id || c.member_id_str || "").toLowerCase().includes(searchCert.toLowerCase()) ||
                                 (c.eventId?.title || "").toLowerCase().includes(searchCert.toLowerCase()) ||
                                 (c.category || "").toLowerCase().includes(searchCert.toLowerCase())
@@ -1287,8 +1199,8 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
                                     <i className="fas fa-file-circle-exclamation text-4xl mb-3 block opacity-10" />
                                     <p className="text-[10px] font-black uppercase tracking-widest">No matching history</p>
                                 </div>
-                            ) : issuedCertificates.filter(c => 
-                                (c.memberId?.name || c.memberName || "").toLowerCase().includes(searchCert.toLowerCase()) || 
+                            ) : issuedCertificates.filter(c =>
+                                (c.memberId?.name || c.memberName || "").toLowerCase().includes(searchCert.toLowerCase()) ||
                                 (c.memberId?.member_id || c.member_id_str || "").toLowerCase().includes(searchCert.toLowerCase()) ||
                                 (c.eventId?.title || "").toLowerCase().includes(searchCert.toLowerCase()) ||
                                 (c.category || "").toLowerCase().includes(searchCert.toLowerCase())
@@ -1302,7 +1214,7 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
                                                 </div>
                                             )}
                                             <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600 shrink-0">
-                                                 <i className="fas fa-certificate text-[10px]" />
+                                                <i className="fas fa-certificate text-[10px]" />
                                             </div>
                                             <div>
                                                 <h4 className="font-bold text-slate-800 text-xs leading-none mb-1">{cert.memberId?.name || cert.memberName}</h4>
@@ -1316,7 +1228,7 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
                                             </span>
                                         </div>
                                     </div>
-                                    
+
                                     <div className="flex gap-2 pt-1 border-t border-slate-50">
                                         <button onClick={() => downloadPDF(cert)} className="flex-1 bg-blue-50 text-blue-600 border border-blue-100 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest flex items-center justify-center gap-1.5 hover:bg-blue-600 hover:text-white transition-all">
                                             <i className="fas fa-file-pdf" /> PDF
@@ -1346,8 +1258,8 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-50">
-                                    {issuedCertificates.filter(c => 
-                                        (c.memberId?.name || c.memberName || "").toLowerCase().includes(searchCert.toLowerCase()) || 
+                                    {issuedCertificates.filter(c =>
+                                        (c.memberId?.name || c.memberName || "").toLowerCase().includes(searchCert.toLowerCase()) ||
                                         (c.memberId?.member_id || c.member_id_str || "").toLowerCase().includes(searchCert.toLowerCase()) ||
                                         (c.eventId?.title || "").toLowerCase().includes(searchCert.toLowerCase()) ||
                                         (c.category || "").toLowerCase().includes(searchCert.toLowerCase())
@@ -1359,8 +1271,8 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
                                             </td>
                                         </tr>
                                     ) : (
-                                        issuedCertificates.filter(c => 
-                                            (c.memberId?.name || c.memberName || "").toLowerCase().includes(searchCert.toLowerCase()) || 
+                                        issuedCertificates.filter(c =>
+                                            (c.memberId?.name || c.memberName || "").toLowerCase().includes(searchCert.toLowerCase()) ||
                                             (c.memberId?.member_id || c.member_id_str || "").toLowerCase().includes(searchCert.toLowerCase()) ||
                                             (c.eventId?.title || "").toLowerCase().includes(searchCert.toLowerCase()) ||
                                             (c.category || "").toLowerCase().includes(searchCert.toLowerCase())
@@ -1414,7 +1326,7 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
             {showPreview && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
                     <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setShowPreview(false)} />
-                    
+
                     <div className="relative bg-white rounded-[32px] shadow-2xl flex flex-col max-h-[96vh] w-full max-w-5xl overflow-hidden animate-in fade-in zoom-in duration-200">
                         <div className="flex justify-between items-center px-8 py-5 border-b border-slate-100 bg-white">
                             <div className="flex items-center gap-3">
@@ -1432,11 +1344,11 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
                         </div>
 
                         <div className="flex-1 overflow-auto p-8 sm:p-14 bg-slate-50/50 custom-scrollbar">
-                           <div className="flex justify-center min-h-[1150px] w-full">
-                               <div className="transform scale-[0.65] sm:scale-[0.8] lg:scale-[0.65] xl:scale-[0.75] origin-top h-fit shadow-[0_20px_50px_rgba(0,33,71,0.15)] ring-1 ring-slate-200 rounded-sm overflow-hidden">
-                                     <div id="cert-template-preview">
-                                        <CertificateTemplate 
-                                            data={{ ...form, memberId: selectedMember, eventId: selectedEvent }} 
+                            <div className="flex justify-center min-h-[1150px] w-full">
+                                <div className="transform scale-[0.65] sm:scale-[0.8] lg:scale-[0.65] xl:scale-[0.75] origin-top h-fit shadow-[0_20px_50px_rgba(0,33,71,0.15)] ring-1 ring-slate-200 rounded-sm overflow-hidden">
+                                    <div id="cert-template-preview">
+                                        <CertificateTemplate
+                                            data={{ ...form, memberId: selectedMember, eventId: selectedEvent }}
                                         />
                                     </div>
                                 </div>
@@ -1448,25 +1360,25 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
                                 <i className="fas fa-shield-check text-emerald-500" />
                                 Prepared for generation
                             </div>
-                            
+
                             <div className="flex items-center gap-3 w-full sm:w-auto">
-                                <button 
+                                <button
                                     onClick={() => setShowPreview(false)}
                                     className="flex-1 sm:flex-none px-6 py-3.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all"
                                 >
                                     Cancel
                                 </button>
-                                
-                                <button 
-                                    onClick={() => downloadPDF({ ...form, memberId: selectedMember, eventId: selectedEvent })} 
+
+                                <button
+                                    onClick={() => downloadPDF({ ...form, memberId: selectedMember, eventId: selectedEvent })}
                                     className="flex-1 sm:flex-none px-6 py-3.5 bg-white hover:bg-slate-50 text-[#002147] border-2 border-slate-200 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2"
                                 >
                                     <i className="fas fa-download" />
                                     Download Proof
                                 </button>
-                                
-                                <button 
-                                    onClick={() => { setShowPreview(false); isBulkMode ? handleBulkIssue() : handleIssue(); }} 
+
+                                <button
+                                    onClick={() => { setShowPreview(false); isBulkMode ? handleBulkIssue() : handleIssue(); }}
                                     className="flex-1 sm:flex-none px-10 py-3.5 bg-[#002147] text-white hover:bg-slate-800 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-900/20"
                                 >
                                     <i className="fas fa-paper-plane" />
@@ -1484,6 +1396,131 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
                         <CertificateTemplate data={exportData} />
                     </div>
                 )}
+            </div>
+        </div>
+    );
+};
+
+// ── Dossier Static View ──────────────────────────────────
+const DossierView = ({ memberId, members, onBack }) => {
+    const member = members.find(m => m._id === memberId);
+    if (!member) return <div className="p-10 text-center text-slate-400">Record not found.</div>;
+
+    const calculateBatch = (dateStr) => {
+        if (!dateStr) return new Date().getFullYear();
+        const date = new Date(dateStr);
+        const year = date.getFullYear();
+        const month = date.getMonth();
+        return month >= 8 ? year : year - 1;
+    };
+
+    return (
+        <div className="max-w-4xl mx-auto bg-white min-h-screen p-6 sm:p-12 animate-fade-in shadow-2xl rounded-[3rem] border border-slate-100 mt-4 mb-20">
+            {/* Document Header */}
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 mb-12 border-b border-slate-100 pb-12">
+                <button onClick={onBack} className="flex items-center gap-2 text-slate-400 hover:text-slate-900 transition-colors text-xs font-black uppercase tracking-widest">
+                    <i className="fas fa-arrow-left" /> Return to Batches
+                </button>
+                <div className="text-right">
+                    <h2 className="text-3xl font-black text-[#002147] uppercase italic tracking-tighter">Member Dossier</h2>
+                    <p className="text-slate-400 text-[10px] font-black uppercase tracking-[0.3em] mt-1">Official Personnel Record</p>
+                </div>
+            </div>
+
+            {/* Profile Section */}
+            <div className="flex flex-col md:flex-row gap-12 mb-16">
+                <div className="w-32 h-32 bg-slate-900 text-white rounded-[2rem] flex items-center justify-center text-5xl font-black shadow-2xl shrink-0">
+                    {member.name[0].toUpperCase()}
+                </div>
+                <div className="flex-1 space-y-4">
+                    <h1 className="text-4xl font-black text-slate-900 uppercase tracking-tight">{member.name}</h1>
+                    <div className="flex flex-wrap gap-3">
+                        <span className="bg-slate-100 px-4 py-1.5 rounded-full text-xs font-black text-slate-600 uppercase tracking-widest">ID: {member.member_id}</span>
+                        <span className="bg-blue-50 px-4 py-1.5 rounded-full text-xs font-black text-[#002147] uppercase tracking-widest">Batch {calculateBatch(member.createdAt)}</span>
+                        <span className={`px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest ${member.status === 'blocked' ? 'bg-rose-50 text-rose-600' : 'bg-emerald-50 text-emerald-600'}`}>{member.status}</span>
+                    </div>
+                </div>
+            </div>
+
+            {/* Information Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-y-12 gap-x-16">
+                {/* Personal Information */}
+                <div className="space-y-8">
+                    <h3 className="text-xs font-black text-slate-300 uppercase tracking-[0.4em] border-b border-slate-50 pb-4">Personal Information</h3>
+                    <div className="space-y-6">
+                        <div>
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Full Name</p>
+                            <p className="text-sm font-bold text-slate-800">{member.name}</p>
+                        </div>
+                        <div>
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Father's Name</p>
+                            <p className="text-sm font-bold text-slate-800">{member.father_name || 'N/A'}</p>
+                        </div>
+                        <div>
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Official Email</p>
+                            <p className="text-sm font-bold text-slate-800">{member.email}</p>
+                        </div>
+                        <div>
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Contact Number</p>
+                            <p className="text-sm font-bold text-slate-800">{member.whatsapp || member.phone || 'N/A'}</p>
+                        </div>
+                        <div>
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Residential Address</p>
+                            <p className="text-sm font-bold text-slate-800 leading-relaxed">{member.address ? `${member.address}, ${member.city || ''}` : 'N/A'}</p>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Academic Profile */}
+                <div className="space-y-8">
+                    <h3 className="text-xs font-black text-slate-300 uppercase tracking-[0.4em] border-b border-slate-50 pb-4">Academic Profile</h3>
+                    <div className="space-y-6">
+                        <div>
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Education Level</p>
+                            <p className="text-sm font-bold text-slate-800">{member.education_level || 'N/A'}</p>
+                        </div>
+                        <div>
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Degree Program</p>
+                            <p className="text-sm font-bold text-slate-800">{member.program || 'N/A'}</p>
+                        </div>
+                        <div>
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">University / Institution</p>
+                            <p className="text-sm font-bold text-slate-800">{member.university || 'N/A'}</p>
+                        </div>
+                        <div>
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Passing Year</p>
+                            <p className="text-sm font-bold text-slate-800">{member.passing_year || 'N/A'}</p>
+                        </div>
+                    </div>
+                </div>
+
+                {/* System Record */}
+                <div className="md:col-span-2 space-y-8 pt-8">
+                    <h3 className="text-xs font-black text-slate-300 uppercase tracking-[0.4em] border-b border-slate-50 pb-4">System Record</h3>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+                        <div>
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Assigned Role</p>
+                            <p className="text-sm font-bold text-[#002147] uppercase">{member.role || 'General'}</p>
+                        </div>
+                        <div>
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Account Status</p>
+                            <p className="text-sm font-bold text-slate-800 uppercase">{member.status}</p>
+                        </div>
+                        <div>
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Registration Date</p>
+                            <p className="text-sm font-bold text-slate-800">{new Date(member.createdAt).toLocaleDateString()}</p>
+                        </div>
+                        <div>
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Database ID</p>
+                            <p className="text-[10px] font-mono text-slate-400 truncate">{member._id}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div className="mt-24 pt-12 border-t border-slate-50 flex flex-col items-center">
+                <div className="w-16 h-1 bg-slate-900 mb-6" />
+                <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.5em]">End of Official Record</p>
             </div>
         </div>
     );
@@ -1531,7 +1568,7 @@ function AdminPortal() {
     useEffect(() => {
         // Push a state so there's something to go back from
         window.history.pushState(null, null, window.location.pathname + window.location.search);
-        
+
         const handlePopState = (e) => {
             // If they try to go back, force them forward again
             window.history.go(1);
@@ -1729,7 +1766,7 @@ function AdminPortal() {
                         <div className="sm:hidden space-y-2">
                             {generalMembers.length === 0 ? (
                                 <div className="text-center py-20 text-slate-300 bg-white rounded-[2rem] border-2 border-dashed border-slate-100">
-                                    <i className="fas fa-id-badge text-5xl mb-4 block opacity-10" /> 
+                                    <i className="fas fa-id-badge text-5xl mb-4 block opacity-10" />
                                     <p className="text-[10px] font-black uppercase tracking-widest">No records matched</p>
                                 </div>
                             ) : generalMembers.map((m) => (
@@ -1806,9 +1843,9 @@ function AdminPortal() {
                                                 <td className="px-6 py-5 text-slate-500 text-xs">{m.email}</td>
                                                 <td className="px-6 py-5">
                                                     <span className={`text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider ${m.role === 'Executive' ? "bg-purple-100 text-purple-700" :
-                                                            m.role === 'Admin' ? "bg-amber-100 text-amber-800" :
-                                                                m.role === 'Superuser' ? "bg-rose-100 text-rose-800" :
-                                                                    "bg-blue-50 text-blue-700"
+                                                        m.role === 'Admin' ? "bg-amber-100 text-amber-800" :
+                                                            m.role === 'Superuser' ? "bg-rose-100 text-rose-800" :
+                                                                "bg-blue-50 text-blue-700"
                                                         }`}>
                                                         {m.role || "General"}
                                                     </span>
@@ -1857,12 +1894,12 @@ function AdminPortal() {
         const [selectedIds, setSelectedIds] = useState([]);
         const [isProcessing, setIsProcessing] = useState(false);
         const [bulkMode, setBulkMode] = useState(false);
-        
+
         const [interviewTarget, setInterviewTarget] = useState(null);
         const [interviewForm, setInterviewForm] = useState({ venue: "SLS Society HQ, Campus Block B", message: "" });
         const [sendingCall, setSendingCall] = useState(false);
 
-        const filtered = pendingMembers.filter(m => 
+        const filtered = pendingMembers.filter(m =>
             m.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
             m.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
             m.joining_year?.toString().includes(searchTerm)
@@ -1949,7 +1986,7 @@ function AdminPortal() {
                         </button>
                         <div className="hidden sm:block w-px h-4 bg-white/20" />
                         <button onClick={handleBulkDelete} disabled={isProcessing} className="text-rose-400 hover:text-rose-300 text-[10px] sm:text-xs font-black uppercase tracking-widest transition-colors flex items-center gap-2">
-                             <i className="fas fa-trash-alt" /> Delete
+                            <i className="fas fa-trash-alt" /> Delete
                         </button>
                     </div>
                 )}
@@ -1965,16 +2002,16 @@ function AdminPortal() {
                         </button>
                         <div className="relative w-full sm:w-72">
                             <i className="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm" />
-                        <input type="text" placeholder="Filter applicants..." value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            className="w-full bg-white border border-slate-200 rounded-xl pl-11 pr-4 py-2.5 text-slate-800 focus:ring-2 focus:ring-[#002147]/10 focus:border-[#002147] outline-none text-sm shadow-sm" />
+                            <input type="text" placeholder="Filter applicants..." value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="w-full bg-white border border-slate-200 rounded-xl pl-11 pr-4 py-2.5 text-slate-800 focus:ring-2 focus:ring-[#002147]/10 focus:border-[#002147] outline-none text-sm shadow-sm" />
                         </div>
                     </div>
                 </div>
 
                 {loading ? <Spinner /> : (
                     <>
-                         <div className="sm:hidden space-y-2">
+                        <div className="sm:hidden space-y-2">
                             {filtered.length === 0 ? (
                                 <div className="text-center py-20 text-slate-300 bg-white rounded-[2rem] border-2 border-dashed border-slate-100">
                                     <i className="fas fa-check-circle text-4xl mb-3 block opacity-20" />
@@ -2001,9 +2038,8 @@ function AdminPortal() {
 
                                     <div className="flex gap-2">
                                         <button onClick={() => setInterviewTarget(m)}
-                                            className={`flex-1 text-[9px] py-2 rounded-lg font-black uppercase tracking-widest border transition-all ${
-                                                m.interview_called ? "bg-amber-50 text-amber-600 border-amber-100" : "bg-blue-50 text-blue-600 border-blue-100"
-                                            }`}>
+                                            className={`flex-1 text-[9px] py-2 rounded-lg font-black uppercase tracking-widest border transition-all ${m.interview_called ? "bg-amber-50 text-amber-600 border-amber-100" : "bg-blue-50 text-blue-600 border-blue-100"
+                                                }`}>
                                             Interview
                                         </button>
                                         <button onClick={() => approveSingle(m._id)} disabled={isProcessing}
@@ -2017,7 +2053,7 @@ function AdminPortal() {
                                     </div>
                                 </div>
                             ))}
-                         </div>
+                        </div>
 
                         <div className="hidden sm:block bg-white rounded-2xl sm:rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
                             <div className="overflow-x-auto custom-scrollbar-horizontal">
@@ -2063,12 +2099,11 @@ function AdminPortal() {
                                                 <td className="px-5 py-3.5 font-bold text-slate-400 font-mono tracking-tighter">{m.joining_year}</td>
                                                 <td className="px-5 py-3.5 text-right flex justify-end gap-2">
                                                     <button onClick={() => setInterviewTarget(m)}
-                                                        className={`text-xs px-4 py-2 rounded-xl transition-all font-bold uppercase tracking-widest flex items-center gap-1.5 shadow-sm border ${
-                                                            m.interview_called 
-                                                            ? "bg-amber-50 text-amber-600 border-amber-200 hover:bg-amber-100" 
-                                                            : "bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100"
-                                                        }`}>
-                                                        <i className={m.interview_called ? "fas fa-sync-alt" : "fas fa-microphone-alt"} /> 
+                                                        className={`text-xs px-4 py-2 rounded-xl transition-all font-bold uppercase tracking-widest flex items-center gap-1.5 shadow-sm border ${m.interview_called
+                                                                ? "bg-amber-50 text-amber-600 border-amber-200 hover:bg-amber-100"
+                                                                : "bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100"
+                                                            }`}>
+                                                        <i className={m.interview_called ? "fas fa-sync-alt" : "fas fa-microphone-alt"} />
                                                         {m.interview_called ? "Call Again" : "Interview Call"}
                                                     </button>
                                                     <button onClick={() => approveSingle(m._id)} disabled={isProcessing}
@@ -2108,8 +2143,8 @@ function AdminPortal() {
                                     <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 ml-1 group-focus-within:text-[#002147] transition-colors">Interview Venue / Location</label>
                                     <div className="relative">
                                         <i className="fas fa-location-dot absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-[#002147] transition-colors" />
-                                        <input 
-                                            type="text" 
+                                        <input
+                                            type="text"
                                             required
                                             value={interviewForm.venue}
                                             onChange={e => setInterviewForm({ ...interviewForm, venue: e.target.value })}
@@ -2121,7 +2156,7 @@ function AdminPortal() {
 
                                 <div className="group">
                                     <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 ml-1 group-focus-within:text-[#002147] transition-colors">Interview Description / Details</label>
-                                    <textarea 
+                                    <textarea
                                         rows="4"
                                         required
                                         value={interviewForm.message}
@@ -2132,14 +2167,14 @@ function AdminPortal() {
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-4 pt-2 pb-2">
-                                    <button 
+                                    <button
                                         type="button"
                                         onClick={() => setInterviewTarget(null)}
                                         className="px-6 py-4 bg-slate-100 text-slate-500 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-200 transition-all border border-slate-100 shadow-sm"
                                     >
                                         Cancel
                                     </button>
-                                    <button 
+                                    <button
                                         type="submit"
                                         disabled={sendingCall}
                                         className="px-6 py-4 bg-[#002147] text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 transition-all shadow-xl shadow-blue-900/20 flex items-center justify-center gap-2 disabled:opacity-50 active:scale-95"
@@ -2196,8 +2231,8 @@ function AdminPortal() {
         };
 
         const create = async (e) => {
-            e.preventDefault(); 
-            
+            e.preventDefault();
+
             const now = new Date();
             const isToday = form.date === todayStr;
 
@@ -2217,7 +2252,7 @@ function AdminPortal() {
                     console.error("Date validation error:", e);
                 }
             }
-            
+
             if (form.date < todayStr) {
                 notify("Event date cannot be in the past", "error");
                 return;
@@ -2266,7 +2301,7 @@ function AdminPortal() {
             setIsProcessing(true);
             let count = 0;
             await Promise.all(selectedIds.map(async id => {
-                try { await api.delete(`events/${id}`, auth); count++; } catch(e) {}
+                try { await api.delete(`events/${id}`, auth); count++; } catch (e) { }
             }));
             notify(`Removed ${count} out of ${selectedIds.length} events`);
             fetchEvents();
@@ -2303,9 +2338,9 @@ function AdminPortal() {
         const handleBulkAttendance = async (eventId, status) => {
             const idsToUpdate = selectedMemberIds.length > 0 ? selectedMemberIds : null;
             const targetCount = idsToUpdate ? idsToUpdate.length : participants.length;
-            
+
             if (!window.confirm(`Mark ${targetCount} selected participants as ${status ? 'PRESENT' : 'ABSENT'}?`)) return;
-            
+
             setIsProcessing(true);
             try {
                 await api.patch(`events/${eventId}/attendance/bulk`, { attended: status, ids: idsToUpdate }, auth);
@@ -2318,7 +2353,7 @@ function AdminPortal() {
                 }));
                 fetchEvents();
                 notify(`Attendance updated for ${targetCount} members!`);
-                setSelectedMemberIds([]); 
+                setSelectedMemberIds([]);
             } catch (err) {
                 notify("Bulk update failed", "error");
             } finally {
@@ -2333,13 +2368,13 @@ function AdminPortal() {
         return (
             <div className="space-y-6 animate-fade-up">
                 <div className="flex gap-4 p-2 bg-slate-100 rounded-2xl w-fit">
-                    <button 
+                    <button
                         onClick={() => setActiveSubTab("view")}
                         className={`py-2 px-6 text-xs font-black uppercase tracking-widest rounded-xl transition-all ${activeSubTab === "view" ? "bg-white text-[#002147] shadow-sm" : "text-slate-500 hover:text-slate-800"}`}
                     >
                         <i className="fas fa-list-ul mr-2"></i> View Events
                     </button>
-                    <button 
+                    <button
                         onClick={() => setActiveSubTab("create")}
                         className={`py-2 px-6 text-xs font-black uppercase tracking-widest rounded-xl transition-all ${activeSubTab === "create" ? "bg-white text-[#002147] shadow-sm" : "text-slate-500 hover:text-slate-800"}`}
                     >
@@ -2488,13 +2523,12 @@ function AdminPortal() {
                                                     </p>
                                                 </div>
                                             </div>
-                                            <span className={`px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-widest ${
-                                                hasEnded ? "bg-slate-100 text-slate-500" : "bg-emerald-50 text-emerald-600 border border-emerald-100"
-                                            }`}>
+                                            <span className={`px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-widest ${hasEnded ? "bg-slate-100 text-slate-500" : "bg-emerald-50 text-emerald-600 border border-emerald-100"
+                                                }`}>
                                                 {hasEnded ? "Ended" : "Live"}
                                             </span>
                                         </div>
-                                        
+
                                         <div className="flex gap-2">
                                             <button onClick={() => viewParticipants(ev)} className="flex-1 bg-[#002147] text-white py-2 rounded-lg text-[9px] font-black uppercase tracking-widest">
                                                 Participants
@@ -2556,9 +2590,8 @@ function AdminPortal() {
                                                         </button>
                                                     </td>
                                                     <td className="px-8 py-6">
-                                                        <span className={`px-4 py-1.5 rounded-lg text-xs font-black uppercase tracking-widest shadow-sm ${
-                                                            hasEnded ? "bg-slate-100 text-slate-400" : "bg-emerald-50 text-emerald-600 border border-emerald-100"
-                                                        }`}>
+                                                        <span className={`px-4 py-1.5 rounded-lg text-xs font-black uppercase tracking-widest shadow-sm ${hasEnded ? "bg-slate-100 text-slate-400" : "bg-emerald-50 text-emerald-600 border border-emerald-100"
+                                                            }`}>
                                                             {hasEnded ? "Ended" : "Running"}
                                                         </span>
                                                     </td>
@@ -2583,15 +2616,15 @@ function AdminPortal() {
                             <div className="p-6 sm:p-10 border-b border-slate-50 bg-white sticky top-0 z-[60] flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
                                 <div className="flex items-center gap-5">
                                     <div className="relative group">
-                                        <input 
-                                            type="checkbox" 
+                                        <input
+                                            type="checkbox"
                                             id="selectAllParticipants"
                                             checked={selectedMemberIds.length === participants.length && participants.length > 0}
                                             onChange={() => {
                                                 if (selectedMemberIds.length === participants.length) setSelectedMemberIds([]);
                                                 else setSelectedMemberIds(participants.map(p => p.memberId?._id || p.memberId));
                                             }}
-                                            className="w-6 h-6 text-[#002147] border-2 border-slate-200 rounded-lg focus:ring-blue-500 cursor-pointer transition-all hover:border-[#002147]" 
+                                            className="w-6 h-6 text-[#002147] border-2 border-slate-200 rounded-lg focus:ring-blue-500 cursor-pointer transition-all hover:border-[#002147]"
                                         />
                                     </div>
                                     <div>
@@ -2624,49 +2657,48 @@ function AdminPortal() {
                                     </div>
                                 ) : (
                                     <div className="space-y-4">
-                                         {participants.map((p, i) => {
-                                             const mId = p.memberId?._id || p.memberId;
-                                             const isSelected = selectedMemberIds.includes(mId);
-                                             return (
-                                                 <div key={i} className={`flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 sm:p-5 rounded-2xl sm:rounded-3xl border border-slate-100 shadow-sm hover:shadow-md transition-all group gap-4 ${isSelected ? 'bg-blue-50/50 border-blue-200' : 'bg-white'}`}>
-                                                     <div className="flex items-center gap-3 sm:gap-4 w-full sm:w-auto">
-                                                         <input 
-                                                             type="checkbox" 
-                                                             checked={isSelected}
-                                                             onChange={() => toggleMemberSelection(mId)}
-                                                             className="w-4 h-4 text-[#002147] border-slate-300 rounded focus:ring-blue-500 cursor-pointer" 
-                                                         />
-                                                         <div className="w-10 h-10 sm:w-12 sm:h-12 bg-[#002147] text-white rounded-xl sm:rounded-2xl flex items-center justify-center font-black text-xs sm:text-sm uppercase shrink-0">
-                                                             {p.memberId?.name?.charAt(0) || "M"}
-                                                         </div>
-                                                         <div className="min-w-0">
-                                                             <p className="font-black text-slate-800 leading-none mb-1 text-sm sm:text-base truncate">{p.memberId?.name}</p>
-                                                             <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest truncate">{p.memberId?.member_id}</p>
-                                                         </div>
-                                                     </div>
-                                                     <div className="flex items-center justify-between sm:justify-end gap-4 w-full sm:w-auto border-t sm:border-t-0 pt-3 sm:pt-0 border-slate-50">
-                                                         <div className="text-left sm:text-right">
-                                                             <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Joined On</p>
-                                                             <p className="text-[10px] font-bold text-slate-700">{new Date(p.joinedAt).toLocaleDateString()}</p>
-                                                         </div>
-                                                         <button 
-                                                             onClick={() => handleToggleAttendance(selectedEventId, mId, p.attended)}
-                                                             className={`px-4 py-2 sm:py-2.5 rounded-lg sm:rounded-xl text-[9px] font-black uppercase tracking-widest transition-all flex items-center gap-2 border ${
-                                                                 p.attended 
-                                                                     ? 'bg-emerald-500 text-white border-emerald-500 shadow-lg shadow-emerald-900/20' 
-                                                                     : 'bg-white text-slate-400 border-slate-200 hover:border-emerald-500 hover:text-emerald-600'
-                                                             }`}
-                                                         >
-                                                             {p.attended ? <i className="fas fa-check-circle" /> : <i className="fas fa-circle opacity-20" />}
-                                                             <span className="inline">{p.attended ? 'Present' : 'Absent'}</span>
-                                                         </button>
-                                                     </div>
-                                                 </div>
-                                             );
-                                         })}
-                                     </div>
-                                 )}
-                             </div>
+                                        {participants.map((p, i) => {
+                                            const mId = p.memberId?._id || p.memberId;
+                                            const isSelected = selectedMemberIds.includes(mId);
+                                            return (
+                                                <div key={i} className={`flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 sm:p-5 rounded-2xl sm:rounded-3xl border border-slate-100 shadow-sm hover:shadow-md transition-all group gap-4 ${isSelected ? 'bg-blue-50/50 border-blue-200' : 'bg-white'}`}>
+                                                    <div className="flex items-center gap-3 sm:gap-4 w-full sm:w-auto">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={isSelected}
+                                                            onChange={() => toggleMemberSelection(mId)}
+                                                            className="w-4 h-4 text-[#002147] border-slate-300 rounded focus:ring-blue-500 cursor-pointer"
+                                                        />
+                                                        <div className="w-10 h-10 sm:w-12 sm:h-12 bg-[#002147] text-white rounded-xl sm:rounded-2xl flex items-center justify-center font-black text-xs sm:text-sm uppercase shrink-0">
+                                                            {p.memberId?.name?.charAt(0) || "M"}
+                                                        </div>
+                                                        <div className="min-w-0">
+                                                            <p className="font-black text-slate-800 leading-none mb-1 text-sm sm:text-base truncate">{p.memberId?.name}</p>
+                                                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest truncate">{p.memberId?.member_id}</p>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex items-center justify-between sm:justify-end gap-4 w-full sm:w-auto border-t sm:border-t-0 pt-3 sm:pt-0 border-slate-50">
+                                                        <div className="text-left sm:text-right">
+                                                            <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Joined On</p>
+                                                            <p className="text-[10px] font-bold text-slate-700">{new Date(p.joinedAt).toLocaleDateString()}</p>
+                                                        </div>
+                                                        <button
+                                                            onClick={() => handleToggleAttendance(selectedEventId, mId, p.attended)}
+                                                            className={`px-4 py-2 sm:py-2.5 rounded-lg sm:rounded-xl text-[9px] font-black uppercase tracking-widest transition-all flex items-center gap-2 border ${p.attended
+                                                                    ? 'bg-emerald-500 text-white border-emerald-500 shadow-lg shadow-emerald-900/20'
+                                                                    : 'bg-white text-slate-400 border-slate-200 hover:border-emerald-500 hover:text-emerald-600'
+                                                                }`}
+                                                        >
+                                                            {p.attended ? <i className="fas fa-check-circle" /> : <i className="fas fa-circle opacity-20" />}
+                                                            <span className="inline">{p.attended ? 'Present' : 'Absent'}</span>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </div>
 
                             <div className="p-8 bg-slate-50/50 border-t border-slate-100 text-center text-xs font-black text-slate-400 uppercase tracking-widest">
                                 Registered Participants: {participants.length} Official Members
@@ -2719,7 +2751,7 @@ function AdminPortal() {
             setIsProcessing(true);
             let count = 0;
             await Promise.all(selectedIds.map(async id => {
-                try { await api.delete(`announcements/${id}`, auth); count++; } catch(e){}
+                try { await api.delete(`announcements/${id}`, auth); count++; } catch (e) { }
             }));
             notify(`Deleted ${count} announcements`);
             fetchAnnouncements();
@@ -2770,10 +2802,9 @@ function AdminPortal() {
                             <textarea placeholder="Type your announcement content here..." value={form.content} onChange={(e) => setForm({ ...form, content: e.target.value })} rows={4} className={`${inputCls} resize-none !py-4`} required />
                         </div>
                         <div className="flex justify-end pt-2">
-                            <button type="submit" disabled={submitting} 
-                                className={`w-full sm:w-auto px-10 py-4 rounded-2xl text-xs font-black uppercase tracking-[0.3em] transition-all flex items-center justify-center gap-3 ${
-                                    submitting ? "bg-slate-100 text-slate-400 cursor-not-allowed" : "bg-indigo-600 text-white hover:bg-[#002147] shadow-xl shadow-indigo-900/10 active:scale-[0.98]"
-                                }`}>
+                            <button type="submit" disabled={submitting}
+                                className={`w-full sm:w-auto px-10 py-4 rounded-2xl text-xs font-black uppercase tracking-[0.3em] transition-all flex items-center justify-center gap-3 ${submitting ? "bg-slate-100 text-slate-400 cursor-not-allowed" : "bg-indigo-600 text-white hover:bg-[#002147] shadow-xl shadow-indigo-900/10 active:scale-[0.98]"
+                                    }`}>
                                 {submitting ? <i className="fas fa-spinner fa-spin" /> : <i className="fas fa-paper-plane" />}
                                 {submitting ? "BROADCASTING..." : "RELEASE UPDATE"}
                             </button>
@@ -2788,16 +2819,15 @@ function AdminPortal() {
                                 <p className="text-[10px] font-black text-indigo-500 uppercase tracking-[0.3em] mb-2 pl-1">Historical Archive</p>
                                 <h4 className="text-2xl font-black text-slate-800 tracking-tight">System Broadcasts</h4>
                             </div>
-                            
+
                             <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
                                 <div className="relative flex-1 sm:w-72">
                                     <i className="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-xs" />
                                     <input type="text" placeholder="Search broadcasts..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full bg-white border border-slate-200 rounded-2xl pl-11 pr-4 py-3 text-sm font-bold text-slate-800 placeholder:text-slate-300 focus:border-indigo-500 outline-none transition-all" />
                                 </div>
-                                <button onClick={() => { setBulkMode(!bulkMode); setSelectedIds([]); }} 
-                                    className={`px-6 py-3 rounded-2xl text-xs font-black uppercase tracking-widest transition-all border ${
-                                        bulkMode ? 'bg-[#002147] text-white border-[#002147]' : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'
-                                    }`}>
+                                <button onClick={() => { setBulkMode(!bulkMode); setSelectedIds([]); }}
+                                    className={`px-6 py-3 rounded-2xl text-xs font-black uppercase tracking-widest transition-all border ${bulkMode ? 'bg-[#002147] text-white border-[#002147]' : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'
+                                        }`}>
                                     {bulkMode ? "CANCEL" : "SELECT RECORDS"}
                                 </button>
                             </div>
@@ -2816,11 +2846,10 @@ function AdminPortal() {
                                     <div className="flex justify-between items-start gap-3">
                                         <div className="flex-1">
                                             <div className="flex items-center gap-2 mb-1">
-                                                <span className={`px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-widest ${
-                                                    ann.type === 'Urgent' ? 'bg-rose-500 text-white' : 
-                                                    ann.type === 'Success' ? 'bg-emerald-500 text-white' : 
-                                                    'bg-[#002147] text-white'
-                                                }`}>
+                                                <span className={`px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-widest ${ann.type === 'Urgent' ? 'bg-rose-500 text-white' :
+                                                        ann.type === 'Success' ? 'bg-emerald-500 text-white' :
+                                                            'bg-[#002147] text-white'
+                                                    }`}>
                                                     {ann.type}
                                                 </span>
                                                 <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">{new Date(ann.createdAt).toLocaleDateString()}</span>
@@ -2862,10 +2891,9 @@ function AdminPortal() {
                                             </td>)}
                                             <td className="px-8 py-6">
                                                 <p className="font-black text-slate-800 leading-tight mb-2">{ann.title}</p>
-                                                <span className={`px-3 py-1 rounded-lg text-xs font-black uppercase tracking-widest shadow-sm ${
-                                                    ann.type === 'Urgent' ? 'bg-rose-50 text-rose-600' : 
-                                                    ann.type === 'Success' ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-blue-600'
-                                                }`}>{ann.type}</span>
+                                                <span className={`px-3 py-1 rounded-lg text-xs font-black uppercase tracking-widest shadow-sm ${ann.type === 'Urgent' ? 'bg-rose-50 text-rose-600' :
+                                                        ann.type === 'Success' ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-blue-600'
+                                                    }`}>{ann.type}</span>
                                             </td>
                                             <td className="px-8 py-6">
                                                 <div className="bg-slate-50/50 px-4 py-2 rounded-xl border border-slate-100 max-w-sm">
@@ -2873,7 +2901,7 @@ function AdminPortal() {
                                                 </div>
                                             </td>
                                             <td className="px-8 py-6">
-                                                <p className="text-xs font-black text-slate-400 uppercase tracking-widest font-mono">{new Date(ann.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric'})}</p>
+                                                <p className="text-xs font-black text-slate-400 uppercase tracking-widest font-mono">{new Date(ann.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
                                             </td>
                                             <td className="px-8 py-6 text-right">
                                                 <button onClick={() => deleteSingle(ann._id)} className="text-rose-400 hover:text-rose-600 p-3 hover:bg-rose-50 rounded-xl transition-all">
@@ -2897,7 +2925,7 @@ function AdminPortal() {
         const [loadingLogs, setLoadingLogs] = useState(false);
         const [page, setPage] = useState(1);
         const [totalPages, setTotalPages] = useState(1);
-        
+
         const fetchLogs = async (p = 1) => {
             setLoadingLogs(true);
             try {
@@ -2976,7 +3004,7 @@ function AdminPortal() {
                             </button>
                         </div>
                     </div>
-                    
+
                     <div className="p-1 sm:p-0">
                         <div className="sm:hidden space-y-2 px-4 py-2">
                             {logs.length === 0 && !loadingLogs ? (
@@ -3002,12 +3030,11 @@ function AdminPortal() {
                                                     </span>
                                                 </div>
                                             </div>
-                                            <span className={`px-2 py-0.5 text-[8px] font-black uppercase tracking-widest rounded-md shrink-0 text-center ${
-                                                actionText.includes('LOGIN') ? 'bg-blue-50 text-blue-600' :
-                                                actionText.includes('CREATE') || actionText.includes('APPROVE') || actionText.includes('Add') ? 'bg-emerald-50 text-emerald-600' :
-                                                actionText.includes('BLOCK') || actionText.includes('DELETE') ? 'bg-rose-50 text-rose-600' :
-                                                'bg-slate-50 text-slate-600'
-                                            }`}>
+                                            <span className={`px-2 py-0.5 text-[8px] font-black uppercase tracking-widest rounded-md shrink-0 text-center ${actionText.includes('LOGIN') ? 'bg-blue-50 text-blue-600' :
+                                                    actionText.includes('CREATE') || actionText.includes('APPROVE') || actionText.includes('Add') ? 'bg-emerald-50 text-emerald-600' :
+                                                        actionText.includes('BLOCK') || actionText.includes('DELETE') ? 'bg-rose-50 text-rose-600' :
+                                                            'bg-slate-50 text-slate-600'
+                                                }`}>
                                                 {actionText}
                                             </span>
                                         </div>
@@ -3021,7 +3048,7 @@ function AdminPortal() {
                                 );
                             })}
                         </div>
-                    
+
                         <div className="hidden sm:block overflow-x-auto">
                             <table className="w-full text-left text-sm">
                                 <thead>
@@ -3044,47 +3071,47 @@ function AdminPortal() {
                                     {logs.map((log) => {
                                         const actionText = log.action || '';
                                         return (
-                                        <tr key={log._id} className="hover:bg-slate-50 transition-colors">
-                                            <td className="px-6 py-4 whitespace-nowrap text-xs text-slate-500 font-medium">
-                                                {new Date(log.createdAt).toLocaleString()}
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="w-8 h-8 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center text-xs font-bold uppercase">
-                                                        {log.admin_name?.charAt(0) || <i className="fas fa-robot text-slate-400" />}
+                                            <tr key={log._id} className="hover:bg-slate-50 transition-colors">
+                                                <td className="px-6 py-4 whitespace-nowrap text-xs text-slate-500 font-medium">
+                                                    {new Date(log.createdAt).toLocaleString()}
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="w-8 h-8 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center text-xs font-bold uppercase">
+                                                            {log.admin_name?.charAt(0) || <i className="fas fa-robot text-slate-400" />}
+                                                        </div>
+                                                        <span className="font-bold text-slate-800 text-xs">
+                                                            {log.admin_name || "System/Unknown"}
+                                                        </span>
                                                     </div>
-                                                    <span className="font-bold text-slate-800 text-xs">
-                                                        {log.admin_name || "System/Unknown"}
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <span className={`px-3 py-1 text-[10px] font-bold uppercase tracking-widest rounded-full ${actionText.includes('LOGIN') ? 'bg-blue-100 text-blue-700' :
+                                                            actionText.includes('CREATE') || actionText.includes('APPROVE') || actionText.includes('Add') ? 'bg-emerald-100 text-emerald-700' :
+                                                                actionText.includes('BLOCK') || actionText.includes('DELETE') ? 'bg-rose-100 text-rose-700' :
+                                                                    'bg-slate-100 text-slate-700'
+                                                        }`}>
+                                                        {actionText}
                                                     </span>
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <span className={`px-3 py-1 text-[10px] font-bold uppercase tracking-widest rounded-full ${
-                                                    actionText.includes('LOGIN') ? 'bg-blue-100 text-blue-700' :
-                                                    actionText.includes('CREATE') || actionText.includes('APPROVE') || actionText.includes('Add') ? 'bg-emerald-100 text-emerald-700' :
-                                                    actionText.includes('BLOCK') || actionText.includes('DELETE') ? 'bg-rose-100 text-rose-700' :
-                                                    'bg-slate-100 text-slate-700'
-                                                }`}>
-                                                    {actionText}
-                                                </span>
-                                            </td>
-                                            <td className="px-6 py-4 text-xs text-slate-600 font-medium">
-                                                {log.details}
-                                                {log.target_id && (
-                                                    <span className="ml-1 text-[#002147] font-bold mt-1 inline-block">ID: {log.target_id.name || log.target_id.email || log.target_id._id || log.target_id}</span>
-                                                )}
-                                            </td>
-                                        </tr>
-                                    )})}
+                                                </td>
+                                                <td className="px-6 py-4 text-xs text-slate-600 font-medium">
+                                                    {log.details}
+                                                    {log.target_id && (
+                                                        <span className="ml-1 text-[#002147] font-bold mt-1 inline-block">ID: {log.target_id.name || log.target_id.email || log.target_id._id || log.target_id}</span>
+                                                    )}
+                                                </td>
+                                            </tr>
+                                        )
+                                    })}
                                 </tbody>
                             </table>
                         </div>
                     </div>
-                    
+
                     {totalPages > 1 && (
                         <div className="p-4 border-t border-slate-100 flex items-center justify-between bg-slate-50">
-                            <button 
-                                disabled={page === 1} 
+                            <button
+                                disabled={page === 1}
                                 onClick={() => fetchLogs(page - 1)}
                                 className="px-4 py-2 text-xs font-bold text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-50 transition-colors"
                             >
@@ -3093,8 +3120,8 @@ function AdminPortal() {
                             <span className="text-xs font-bold text-slate-500">
                                 Page {page} of {totalPages}
                             </span>
-                            <button 
-                                disabled={page === totalPages} 
+                            <button
+                                disabled={page === totalPages}
                                 onClick={() => fetchLogs(page + 1)}
                                 className="px-4 py-2 text-xs font-bold text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-50 transition-colors"
                             >
@@ -3331,7 +3358,7 @@ function AdminPortal() {
                     <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
                         <i className="fas fa-users-gear text-slate-400" /> Official Personnel
                     </h2>
-                    
+
                     <div className="sm:hidden space-y-2">
                         {adminList.filter(m => m.role !== 'Superuser').length === 0 ? (
                             <div className="text-center py-20 bg-white rounded-[2rem] border-2 border-dashed border-slate-100">
@@ -3526,7 +3553,8 @@ function AdminPortal() {
                     {activeTab === "events" && <EventsTab />}
                     {activeTab === "announcements" && <AnnouncementsTab />}
                     {activeTab === "certificates" && <CertificatesTab auth={auth} notify={notify} api={api} members={members} events={events} />}
-                    {activeTab === "batches" && <BatchesTab members={members} issuedCertificates={issuedCertificates} auth={auth} api={api} notify={notify} />}
+                    {activeTab === "batches" && !searchParams.get("dossier") && <BatchesTab members={members} issuedCertificates={issuedCertificates} auth={auth} api={api} notify={notify} setSearchParams={setSearchParams} />}
+                    {activeTab === "batches" && searchParams.get("dossier") && <DossierView memberId={searchParams.get("dossier")} members={members} onBack={() => setSearchParams({ tab: 'batches' })} />}
                     {isSuper && activeTab === "customization" && <CustomizationTabComponent auth={auth} notify={notify} getImgUrl={getImgUrl} inputCls={inputCls} api={api} members={members} />}
                     {activeTab === "settings" && <SettingsTab />}
                     {isSuper && activeTab === "admins" && <AdminsTab />}
