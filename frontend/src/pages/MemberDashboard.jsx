@@ -423,30 +423,38 @@ const MemberDashboard = () => {
                     <StatCard icon="fa-calendar-day" label="Upcoming Events" value={upcomingEventsCount} color="blue" />
                 </div>
 
-                {/* Direct Action Hub (Professional Styling) */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-8 pt-2 sm:pt-6">
-                    <button onClick={() => setActiveTab("events")} className="group p-5 sm:p-10 bg-white border border-slate-100 rounded-[2rem] sm:rounded-[3rem] shadow-xl shadow-slate-200/40 hover:-translate-y-1 sm:hover:-translate-y-3 transition-all text-left relative overflow-hidden flex items-center sm:block gap-4 sm:gap-8">
-                        <div className="absolute top-0 right-0 p-8 text-slate-50 group-hover:text-[#002147]/10 transition-colors hidden sm:block"><i className="fas fa-calendar-alt text-7xl" /></div>
-                        <div className="w-12 h-12 sm:w-16 sm:h-16 shrink-0 bg-blue-50 text-blue-600 rounded-xl sm:rounded-[1.5rem] flex items-center justify-center text-xl sm:text-2xl sm:mb-8 shadow-inner group-hover:bg-[#002147] group-hover:text-white transition-all duration-500"><i className="fas fa-calendar-star" /></div>
-                        <div>
-                            <h4 className="text-base sm:text-2xl font-bold text-slate-800 mb-1 sm:mb-3 tracking-tight">Explore Events</h4>
-                            <p className="text-slate-400 text-[9px] sm:text-[11px] font-medium uppercase tracking-[0.2em] leading-relaxed hidden sm:block">Browse upcoming events & registers</p>
+                {/* Direct Action Hub (Vibrant SaaS Styling) */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8 pt-4">
+                    <button onClick={() => setActiveTab("events")} className="group p-8 sm:p-10 bg-gradient-to-br from-blue-600 to-blue-800 rounded-[2.5rem] sm:rounded-[3rem] shadow-2xl shadow-blue-900/20 hover:-translate-y-2 transition-all duration-500 text-left relative overflow-hidden flex flex-col h-full">
+                        <div className="absolute top-0 right-0 p-10 text-white/5 group-hover:scale-125 group-hover:text-white/10 transition-all duration-700"><i className="fas fa-calendar-alt text-8xl" /></div>
+                        <div className="w-14 h-14 sm:w-16 sm:h-16 bg-white/20 backdrop-blur-md text-white rounded-2xl flex items-center justify-center text-xl sm:text-2xl mb-12 shadow-xl border border-white/20 group-hover:bg-white group-hover:text-blue-600 transition-all duration-500">
+                            <i className="fas fa-calendar-star" />
+                        </div>
+                        <div className="mt-auto">
+                            <h4 className="text-xl sm:text-2xl font-black text-white mb-2 tracking-tight">Explore Events</h4>
+                            <p className="text-blue-100 text-[10px] font-bold uppercase tracking-[0.2em] opacity-70 group-hover:opacity-100 transition-opacity">Browse upcoming events & registers</p>
                         </div>
                     </button>
-                    <button onClick={() => setActiveTab("certificates")} className="group p-5 sm:p-10 bg-white border border-slate-100 rounded-[2rem] sm:rounded-[3rem] shadow-xl shadow-slate-200/40 hover:-translate-y-1 sm:hover:-translate-y-3 transition-all text-left relative overflow-hidden flex items-center sm:block gap-4 sm:gap-8">
-                        <div className="absolute top-0 right-0 p-8 text-slate-50 group-hover:text-emerald-500/10 transition-colors hidden sm:block"><i className="fas fa-certificate text-7xl" /></div>
-                        <div className="w-12 h-12 sm:w-16 sm:h-16 shrink-0 bg-emerald-50 text-emerald-600 rounded-xl sm:rounded-[1.5rem] flex items-center justify-center text-xl sm:text-2xl sm:mb-8 shadow-inner group-hover:bg-[#002147] group-hover:text-white transition-all duration-500"><i className="fas fa-award-simple" /></div>
-                        <div>
-                            <h4 className="text-base sm:text-2xl font-bold text-slate-800 mb-1 sm:mb-3 tracking-tight">My Portfolio</h4>
-                            <p className="text-slate-400 text-[9px] sm:text-[11px] font-medium uppercase tracking-[0.2em] leading-relaxed hidden sm:block">Access your official society credentials</p>
+
+                    <button onClick={() => setActiveTab("certificates")} className="group p-8 sm:p-10 bg-gradient-to-br from-emerald-500 to-teal-700 rounded-[2.5rem] sm:rounded-[3rem] shadow-2xl shadow-emerald-900/20 hover:-translate-y-2 transition-all duration-500 text-left relative overflow-hidden flex flex-col h-full">
+                        <div className="absolute top-0 right-0 p-10 text-white/5 group-hover:scale-125 group-hover:text-white/10 transition-all duration-700"><i className="fas fa-certificate text-8xl" /></div>
+                        <div className="w-14 h-14 sm:w-16 sm:h-16 bg-white/20 backdrop-blur-md text-white rounded-2xl flex items-center justify-center text-xl sm:text-2xl mb-12 shadow-xl border border-white/20 group-hover:bg-white group-hover:text-emerald-600 transition-all duration-500">
+                            <i className="fas fa-award-simple" />
+                        </div>
+                        <div className="mt-auto">
+                            <h4 className="text-xl sm:text-2xl font-black text-white mb-2 tracking-tight">My Portfolio</h4>
+                            <p className="text-emerald-50 text-[10px] font-bold uppercase tracking-[0.2em] opacity-70 group-hover:opacity-100 transition-opacity">Access your official credentials</p>
                         </div>
                     </button>
-                    <button onClick={() => setActiveTab("announcements")} className="group p-5 sm:p-10 bg-white border border-slate-100 rounded-[2rem] sm:rounded-[3rem] shadow-xl shadow-slate-200/40 hover:-translate-y-1 sm:hover:-translate-y-3 transition-all text-left relative overflow-hidden flex items-center sm:block gap-4 sm:gap-8">
-                        <div className="absolute top-0 right-0 p-8 text-slate-50 group-hover:text-indigo-500/10 transition-colors hidden sm:block"><i className="fas fa-bell text-7xl" /></div>
-                        <div className="w-12 h-12 sm:w-16 sm:h-16 shrink-0 bg-indigo-50 text-indigo-600 rounded-xl sm:rounded-[1.5rem] flex items-center justify-center text-xl sm:text-2xl sm:mb-8 shadow-inner group-hover:bg-[#002147] group-hover:text-white transition-all duration-500"><i className="fas fa-bullhorn" /></div>
-                        <div>
-                            <h4 className="text-base sm:text-2xl font-bold text-slate-800 mb-1 sm:mb-3 tracking-tight">Society News</h4>
-                            <p className="text-slate-400 text-[9px] sm:text-[11px] font-medium uppercase tracking-[0.2em] leading-relaxed hidden sm:block">Stay updated with the latest news</p>
+
+                    <button onClick={() => setActiveTab("announcements")} className="group p-8 sm:p-10 bg-gradient-to-br from-slate-800 to-slate-900 rounded-[2.5rem] sm:rounded-[3rem] shadow-2xl shadow-slate-900/20 hover:-translate-y-2 transition-all duration-500 text-left relative overflow-hidden flex flex-col h-full">
+                        <div className="absolute top-0 right-0 p-10 text-white/5 group-hover:scale-125 group-hover:text-white/10 transition-all duration-700"><i className="fas fa-bell text-8xl" /></div>
+                        <div className="w-14 h-14 sm:w-16 sm:h-16 bg-white/20 backdrop-blur-md text-white rounded-2xl flex items-center justify-center text-xl sm:text-2xl mb-12 shadow-xl border border-white/20 group-hover:bg-white group-hover:text-slate-800 transition-all duration-500">
+                            <i className="fas fa-bullhorn" />
+                        </div>
+                        <div className="mt-auto">
+                            <h4 className="text-xl sm:text-2xl font-black text-white mb-2 tracking-tight">Society News</h4>
+                            <p className="text-slate-300 text-[10px] font-bold uppercase tracking-[0.2em] opacity-70 group-hover:opacity-100 transition-opacity">Stay updated with official news</p>
                         </div>
                     </button>
                 </div>
@@ -730,19 +738,20 @@ const MemberDashboard = () => {
                 </div>
             )}
 
-            {/* Event Details Modal */}
+            {/* Event Details Modal (Single Surface, Seamless Scroll) */}
             {selectedEvent && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 md:p-6 bg-white/95 animate-fade-in backdrop-blur-xl">
-                    <div className="bg-white w-full max-w-2xl rounded-[3rem] shadow-2xl border border-slate-100 overflow-hidden relative max-h-[90vh] flex flex-col">
-                        <button onClick={() => setSelectedEvent(null)} className="absolute top-6 right-6 w-10 h-10 bg-slate-50 rounded-full flex items-center justify-center text-slate-400 hover:text-[#002147] hover:bg-white shadow-sm transition-all z-10 border border-slate-100">
+                <div className="fixed inset-0 z-50 flex items-start justify-center p-4 md:p-12 bg-slate-900/60 backdrop-blur-md animate-fade-in overflow-y-auto pt-8 md:pt-24 pb-12">
+                    <div className="bg-white w-full max-w-2xl rounded-[2.5rem] shadow-2xl border border-white/20 relative flex flex-col h-fit overflow-hidden">
+                        <button onClick={() => setSelectedEvent(null)} className="absolute top-6 right-6 w-10 h-10 bg-black/10 backdrop-blur-md rounded-full flex items-center justify-center text-white hover:bg-white hover:text-slate-900 transition-all z-20 border border-white/20">
                             <i className="fas fa-times" />
                         </button>
 
-                        <div className="h-56 overflow-hidden flex-shrink-0">
+                        <div className="h-64 sm:h-72 overflow-hidden flex-shrink-0 relative">
                             <img src={getImgUrl(selectedEvent.image_url)} className="w-full h-full object-cover" alt="" />
+                            <div className="absolute inset-0 bg-gradient-to-t from-white via-transparent to-transparent opacity-40" />
                         </div>
 
-                        <div className="p-10 overflow-y-auto custom-scrollbar">
+                        <div className="p-10 flex-1">
                             <div className="flex items-center gap-3 mb-6">
                                 <span className="px-4 py-2 bg-[#002147] text-white text-[9px] font-bold uppercase tracking-widest rounded-xl shadow-lg shadow-blue-900/20">Official Event</span>
                                 {Date.now() > new Date(`${selectedEvent.endDate || selectedEvent.date}T23:59:59`).getTime() && (
