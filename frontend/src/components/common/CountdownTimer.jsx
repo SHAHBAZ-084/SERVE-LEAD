@@ -33,7 +33,7 @@ const CountdownTimer = ({ targetDate, onEnd }) => {
         const timer = setInterval(() => {
             const updatedTime = calculateTimeLeft();
             setTimeLeft(updatedTime);
-            
+
             if (Object.keys(updatedTime).length === 0) {
                 clearInterval(timer);
                 if (onEnd) onEnd();
@@ -55,7 +55,7 @@ const CountdownTimer = ({ targetDate, onEnd }) => {
 
     return (
         <div className="flex items-center gap-1.5 text-slate-500 font-medium text-[11px] sm:text-xs tracking-tight">
-            <span className="opacity-60">ends in:</span>
+            <span className="opacity-60">Ends in:</span>
             <div className="flex items-center gap-1 text-slate-700 font-bold tabular-nums">
                 {timeLeft.days > 0 && (
                     <span>{timeLeft.days}d</span>

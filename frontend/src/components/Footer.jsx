@@ -75,7 +75,7 @@ export default function Footer() {
                         </p>
                         <p className="text-slate-400 text-[8px] font-black uppercase tracking-[0.4em] mt-3 flex items-center justify-center md:justify-start gap-3 opacity-60 hover:opacity-100 transition-all duration-700">
                             <span className="w-1.5 h-1.5 bg-cyan-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(6,182,212,0.6)]" />
-                            System Developed by <span className="text-white font-black tracking-[0.2em]">Shahbaz & Ali</span>
+                            Designed & Built by <span className="text-white font-black tracking-[0.2em]">Shahbaz & Ali</span>
                         </p>
                     </div>
                     <div className="flex gap-6">
