@@ -27,7 +27,7 @@ app.use(helmet({
 app.use(compression()); // Gzip compression
 app.use(express.json({ limit: '10kb' })); 
 app.use(express.urlencoded({ extended: true, limit: '10kb' }));
-app.use(mongoSanitize()); // Re-enabled for injection protection
+// app.use(mongoSanitize()); // Disabled due to Express 5 req.query getter issue
 app.use(cookieParser());
 app.use(cors({
     origin: process.env.NODE_ENV === 'production' 
@@ -88,14 +88,17 @@ app.use('/api/tasks', require('./routes/taskRoutes'));
 // Root
 app.get('/', (req, res) => res.json({ status: 'active', env: process.env.NODE_ENV }));
 
-// Global Error Handler (DEBUG MODE - TEMPORARY)
+// Global Error Handler (Security Hardened)
 app.use((err, req, res, next) => {
     const statusCode = err.status || 500;
+    const isProduction = process.env.NODE_ENV === 'production';
+    
     logger.error(`${statusCode} - ${err.message} - ${req.originalUrl} - ${req.method} - ${req.ip}`);
     
     res.status(statusCode).json({
-        error: err.message,
-        stack: err.stack // Temporary for debugging
+        error: isProduction && statusCode === 500 
+            ? 'Internal Server Error' 
+            : err.message || 'An unexpected error occurred'
     });
 });
 
