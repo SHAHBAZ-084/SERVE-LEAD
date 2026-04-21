@@ -112,13 +112,13 @@ router.post('/login', asyncHandler(async (req, res) => {
     if (!isMatch) return res.status(401).json({ error: 'Invalid admin credentials' });
 
     const payload = { memberId: member._id, role: member.role };
-    const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '1d' });
+    const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '15m' });
 
     res.cookie('jwt', token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'strict',
-        maxAge: 24 * 60 * 60 * 1000
+        maxAge: 15 * 60 * 1000
     });
 
     res.json({ token, username: member.name, is_superuser: member.role === 'Superuser' });

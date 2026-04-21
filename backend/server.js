@@ -44,9 +44,9 @@ app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev', {
 
 // Global Rate Limiter
 const limiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 5000, // Developer bypass and relaxed limit for production debugging
-    message: { error: 'Too many requests from this IP.' }
+    windowMs: 1 * 60 * 1000, // 1 minute
+    max: 200, // 200 requests per minute
+    message: { error: 'Too many requests from this IP. Please wait a minute.' }
 });
 app.use('/api/', limiter);
 

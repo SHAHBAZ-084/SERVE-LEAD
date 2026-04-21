@@ -142,7 +142,7 @@ router.post('/register', asyncHandler(async (req, res) => {
         status: 'pending'
     });
 
-    const token = jwt.sign({ memberId: member._id, role: member.role }, process.env.JWT_SECRET, { expiresIn: '30d' });
+    const token = jwt.sign({ memberId: member._id, role: member.role }, process.env.JWT_SECRET, { expiresIn: '15m' });
     res.status(201).json({
         _id: member._id,
         name: member.name,
@@ -184,13 +184,13 @@ router.post('/login', asyncHandler(async (req, res) => {
         return res.status(401).json({ error: 'Invalid credentials.' });
     }
 
-    const token = jwt.sign({ memberId: member._id, role: member.role }, process.env.JWT_SECRET, { expiresIn: '30d' });
+    const token = jwt.sign({ memberId: member._id, role: member.role }, process.env.JWT_SECRET, { expiresIn: '15m' });
 
     res.cookie('jwt', token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'strict',
-        maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
+        maxAge: 15 * 60 * 1000 // 15 minutes
     });
 
     res.status(200).json({
