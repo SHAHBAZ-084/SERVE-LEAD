@@ -2508,37 +2508,40 @@ function AdminPortal() {
                                                 <i className="fas fa-calendar-xmark text-5xl mb-4 block opacity-10" />
                                                 <p className="text-xs font-bold uppercase tracking-widest">No events found in registry.</p>
                                             </td></tr>
-                                        ) : filteredEvents.map((ev) => {
-                                            const hasEnded = Date.now() > new Date(`${ev.endDate || ev.date}T23:59:59`).getTime();
-                                            return (
-                                                <tr key={ev._id} className={`transition-colors group ${selectedIds.includes(ev._id) ? 'bg-[#002147]/5' : 'hover:bg-slate-50/50'}`}>
-                                                    {bulkMode && (<td className="px-8 py-6 text-center transition-all">
-                                                        <input type="checkbox" checked={selectedIds.includes(ev._id)} onChange={() => toggleSelect(ev._id)} className="w-4 h-4 text-[#002147] border-slate-300 rounded focus:ring-[#002147] cursor-pointer" />
-                                                    </td>)}
-                                                    <td className="px-8 py-6">
-                                                        <div className="flex items-center gap-4">
-                                                            {ev.image_url && <img src={getImgUrl(ev.image_url)} className="w-12 h-12 rounded-xl object-cover border border-slate-100 shadow-sm" />}
-                                                            <div>
-                                                                <p className="font-black text-slate-800 leading-tight">{ev.title}</p>
-                                                                <p className="text-xs text-slate-400 font-bold mt-0.5"><i className="fas fa-location-dot mr-1" />{ev.location || "TBA"}</p>
-                                                            </div>
-                                                        </div>
-                                                    </td>
-                                                    <td className="px-8 py-6">
-                                                        <p className="text-xs font-bold text-slate-600">{new Date(ev.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })} - {new Date(ev.endDate || ev.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}</p>
-                                                        <p className="text-xs text-slate-400 font-bold mt-0.5 uppercase tracking-widest">{ev.time || "TBA"}</p>
-                                                    </td>
-                                                    <td className="px-8 py-6">
-                                                        <button onClick={() => viewParticipants(ev)} className="bg-slate-100 text-slate-600 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-[#002147] hover:text-white transition-all shadow-sm">
-                                                            <i className="fas fa-users mr-2" />
-                                                            {ev.participants?.length || 0} Registered
-                                                        </button>
-                                                    </td>
-                                                    <td className="px-8 py-6">
-                                                        <div className="flex flex-col gap-1.5">
-                                                            <CountdownTimer targetDate={`${ev.endDate || ev.date}T${ev.time || "23:59"}:00`} />
-                                                        </div>
-                                                    </td>
+                                         ) : filteredEvents.map((ev) => {
+                                             const d = ev.endDate || ev.date;
+                                             const dateStr = d ? new Date(d).toISOString().split('T')[0] : "";
+                                             const targetDate = `${dateStr}T${ev.time || "23:59"}:00`;
+
+                                             return (
+                                                 <tr key={ev._id} className={`transition-colors group ${selectedIds.includes(ev._id) ? 'bg-[#002147]/5' : 'hover:bg-slate-50/50'}`}>
+                                                     {bulkMode && (<td className="px-8 py-6 text-center transition-all">
+                                                         <input type="checkbox" checked={selectedIds.includes(ev._id)} onChange={() => toggleSelect(ev._id)} className="w-4 h-4 text-[#002147] border-slate-300 rounded focus:ring-[#002147] cursor-pointer" />
+                                                     </td>)}
+                                                     <td className="px-8 py-6">
+                                                         <div className="flex items-center gap-4">
+                                                             {ev.image_url && <img src={getImgUrl(ev.image_url)} className="w-12 h-12 rounded-xl object-cover border border-slate-100 shadow-sm" />}
+                                                             <div>
+                                                                 <p className="font-black text-slate-800 leading-tight">{ev.title}</p>
+                                                                 <p className="text-xs text-slate-400 font-bold mt-0.5"><i className="fas fa-location-dot mr-1" />{ev.location || "TBA"}</p>
+                                                             </div>
+                                                         </div>
+                                                     </td>
+                                                     <td className="px-8 py-6">
+                                                         <p className="text-xs font-bold text-slate-600">{new Date(ev.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })} - {new Date(ev.endDate || ev.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}</p>
+                                                         <p className="text-xs text-slate-400 font-bold mt-0.5 uppercase tracking-widest">{ev.time || "TBA"}</p>
+                                                     </td>
+                                                     <td className="px-8 py-6">
+                                                         <button onClick={() => viewParticipants(ev)} className="bg-slate-100 text-slate-600 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-[#002147] hover:text-white transition-all shadow-sm">
+                                                             <i className="fas fa-users mr-2" />
+                                                             {ev.participants?.length || 0} Registered
+                                                         </button>
+                                                     </td>
+                                                     <td className="px-8 py-6">
+                                                         <div className="flex flex-col gap-1.5">
+                                                             <CountdownTimer targetDate={targetDate} />
+                                                         </div>
+                                                     </td>
                                                     <td className="px-8 py-6 text-right">
                                                         <button onClick={() => deleteSingle(ev._id)} className="text-rose-400 hover:text-rose-600 p-3 hover:bg-rose-50 rounded-xl transition-all">
                                                             <i className="fas fa-trash-alt" />

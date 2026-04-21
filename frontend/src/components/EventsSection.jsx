@@ -84,51 +84,57 @@ export default function EventsSection() {
                         className="flex gap-8 overflow-x-auto pb-12 px-2 snap-x snap-mandatory"
                         style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
                     >
-                        {events.map((event, idx) => (
-                            <div
-                                key={event._id}
-                                className="min-w-[320px] md:min-w-[380px] snap-center group animate-fade-up"
-                                style={{ animationDelay: `${idx * 150}ms` }}
-                            >
-                                <div className="glass rounded-[2.5rem] overflow-hidden border border-slate-200/50 card-hover h-full flex flex-col shadow-xl">
-                                    <div className="relative h-64 overflow-hidden">
-                                        <img
-                                            src={getImgUrl(event.image_url) || defaultImg}
-                                            alt={event.title}
-                                            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
-                                        />
-                                        <div className="absolute top-6 left-6 glass px-4 py-2 rounded-2xl shadow-lg border border-white/50">
-                                            <p className="text-xs font-black text-slate-900">
-                                                {new Date(event.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}
-                                            </p>
-                                        </div>
-                                    </div>
-                                    <div className="p-8 flex-1 flex flex-col">
-                                        <h3 className="text-xl font-black text-slate-800 mb-4 group-hover:text-cyan-600 transition-colors">
-                                            {event.title}
-                                        </h3>
-                                        <p className="text-slate-500 text-sm line-clamp-3 mb-8 leading-relaxed">
-                                            {event.description}
-                                        </p>
-                                        <div className="mt-auto space-y-6">
-                                            <div className="flex items-center justify-between bg-slate-50/50 rounded-2xl p-4 border border-slate-100/50">
-                                                <div className="flex flex-col">
-                                                    <span className="text-[8px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">Time Remaining</span>
-                                                    <CountdownTimer targetDate={`${event.endDate || event.date}T${event.time || "23:59"}:00`} />
-                                                </div>
-                                                <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center text-cyan-600 shadow-sm">
-                                                    <i className="fas fa-hourglass-start animate-spin-slow" />
-                                                </div>
+                        {events.map((event, idx) => {
+                            const d = event.endDate || event.date;
+                            const dateStr = d ? new Date(d).toISOString().split('T')[0] : "";
+                            const targetDate = `${dateStr}T${event.time || "23:59"}:00`;
+
+                            return (
+                                <div
+                                    key={event._id}
+                                    className="w-[320px] md:w-[380px] shrink-0 snap-center group animate-fade-up"
+                                    style={{ animationDelay: `${idx * 150}ms` }}
+                                >
+                                    <div className="glass rounded-[2.5rem] overflow-hidden border border-slate-200/50 card-hover h-full flex flex-col shadow-xl">
+                                        <div className="relative h-64 overflow-hidden">
+                                            <img
+                                                src={getImgUrl(event.image_url) || defaultImg}
+                                                alt={event.title}
+                                                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                                            />
+                                            <div className="absolute top-6 left-6 glass px-4 py-2 rounded-2xl shadow-lg border border-white/50">
+                                                <p className="text-xs font-black text-slate-900">
+                                                    {new Date(event.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}
+                                                </p>
                                             </div>
-                                            <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-slate-400 border-t border-slate-50 pt-6">
-                                                <span className="flex items-center gap-2"><i className="fas fa-map-marker-alt text-cyan-500" /> {event.location || "TBA"}</span>
-                                                <span className="flex items-center gap-2"><i className="fas fa-clock text-cyan-500" /> {event.time || "TBA"}</span>
+                                        </div>
+                                        <div className="p-8 flex-1 flex flex-col min-w-0">
+                                            <h3 className="text-xl font-black text-slate-800 mb-4 group-hover:text-cyan-600 transition-colors break-words">
+                                                {event.title}
+                                            </h3>
+                                            <p className="text-slate-500 text-sm line-clamp-3 mb-8 leading-relaxed break-words">
+                                                {event.description}
+                                            </p>
+                                            <div className="mt-auto space-y-6">
+                                                <div className="flex items-center justify-between bg-slate-50/50 rounded-2xl p-4 border border-slate-100/50">
+                                                    <div className="flex flex-col">
+                                                        <span className="text-[8px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">Time Remaining</span>
+                                                        <CountdownTimer targetDate={targetDate} />
+                                                    </div>
+                                                    <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center text-cyan-600 shadow-sm">
+                                                        <i className="fas fa-hourglass-start animate-spin-slow" />
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-slate-400 border-t border-slate-50 pt-6">
+                                                    <span className="flex items-center gap-2 max-w-[50%] truncate" title={event.location}><i className="fas fa-map-marker-alt text-cyan-500" /> {event.location || "TBA"}</span>
+                                                    <span className="flex items-center gap-2"><i className="fas fa-clock text-cyan-500" /> {event.time || "TBA"}</span>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
-                        ))}
+                            );
+                        })}
                     </div>
                 )}
             </div>

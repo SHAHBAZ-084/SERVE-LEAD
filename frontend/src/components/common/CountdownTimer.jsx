@@ -2,7 +2,17 @@ import React, { useState, useEffect } from 'react';
 
 const CountdownTimer = ({ targetDate, onEnd }) => {
     const calculateTimeLeft = () => {
-        const difference = +new Date(targetDate) - +new Date();
+        // targetDate is passed as "YYYY-MM-DDTHH:mm:ss"
+        // We need to parse it carefully to avoid timezone shifts
+        const [datePart, timePart] = (targetDate || "").split('T');
+        if (!datePart || !timePart) return {};
+
+        const [year, month, day] = datePart.split('-').map(Number);
+        const [hour, minute, second] = timePart.split(':').map(Number);
+
+        // Create target in LOCAL time because that's what the user expects when they enter "17:50"
+        const target = new Date(year, month - 1, day, hour, minute, second || 0);
+        const difference = +target - +new Date();
         let timeLeft = {};
 
         if (difference > 0) {

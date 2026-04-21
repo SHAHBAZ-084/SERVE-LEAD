@@ -641,11 +641,15 @@ const MemberDashboard = () => {
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                     {events.map((event, index) => {
-                        const hasEnded = Date.now() > new Date(`${event.endDate || event.date}T23:59:59`).getTime();
+                        const d = event.endDate || event.date;
+                        const dateStr = d ? new Date(d).toISOString().split('T')[0] : "";
+                        const targetDate = `${dateStr}T${event.time || "23:59"}:00`;
+
+                        const hasEnded = Date.now() > new Date(targetDate).getTime();
                         const isJoined = event.participants?.some(p => p.memberId === user.dbId || p.memberId?._id === user.dbId);
 
                         return (
-                            <div key={index} className="bg-white rounded-[2.5rem] overflow-hidden shadow-2xl shadow-slate-200/50 border border-slate-100 hover:-translate-y-2 transition-all duration-500 group relative flex flex-col">
+                            <div key={index} className="bg-white rounded-[2.5rem] overflow-hidden shadow-2xl shadow-slate-200/50 border border-slate-100 hover:-translate-y-2 transition-all duration-500 group relative flex flex-col min-w-0">
                                 <div className="relative h-64 overflow-hidden">
                                     <img
                                         src={getImgUrl(event.image_url)}
@@ -673,17 +677,17 @@ const MemberDashboard = () => {
                                     </div>
                                 </div>
 
-                                <div className="p-8 flex-1 flex flex-col">
+                                <div className="p-8 flex-1 flex flex-col min-w-0">
                                     <div className="flex items-center gap-2 mb-4 text-[9px] font-bold uppercase tracking-[0.2em] text-slate-400">
                                         <i className="fas fa-location-dot text-[#002147] text-xs" />
                                         {event.location || "Society Venue"}
                                     </div>
 
-                                    <h3 className="font-bold text-2xl text-slate-800 mb-4 group-hover:text-[#002147] transition-colors leading-tight">
+                                    <h3 className="font-bold text-2xl text-slate-800 mb-4 group-hover:text-[#002147] transition-colors leading-tight break-words">
                                         {event.title}
                                     </h3>
 
-                                    <p className="text-slate-500 text-xs font-medium leading-relaxed mb-8 line-clamp-3">
+                                    <p className="text-slate-500 text-xs font-medium leading-relaxed mb-8 line-clamp-3 break-words">
                                         {event.description?.substring(0, 160)}...
                                     </p>
 
@@ -691,7 +695,7 @@ const MemberDashboard = () => {
                                     <div className="mb-8 p-5 bg-slate-50 rounded-3xl border border-slate-100 flex items-center justify-between">
                                         <div className="flex flex-col">
                                             <span className="text-[8px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2">Time Remaining</span>
-                                            <CountdownTimer targetDate={`${event.endDate || event.date}T${event.time || "23:59"}:00`} />
+                                            <CountdownTimer targetDate={targetDate} />
                                         </div>
                                         <div className="w-10 h-10 bg-white rounded-xl shadow-sm flex items-center justify-center text-[#002147] animate-pulse">
                                             <i className="fas fa-hourglass-start text-xs" />
