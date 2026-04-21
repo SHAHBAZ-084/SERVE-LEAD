@@ -32,23 +32,14 @@ export default function ProtectedRoute({ children, role = "Member" }) {
                 console.error(`Verification failed for ${role}:`, err);
                 
                 // ONLY invalidate session if it's a 401 Unauthorized error
-                // This prevents logging out on network errors or aborted requests (e.g. clicking 'back' while loading)
                 if (err.response && err.response.status === 401) {
                     setIsAuthenticated(false);
-                    if (role === "Admin") {
-                        localStorage.removeItem("adminToken");
-                    } else {
-                        localStorage.removeItem("token");
-                    }
+                    localStorage.clear(); // Clear all for safety
                 } else {
-                    // For other errors (network, 500, etc.), we might still want to let them in if we have a token
-                    // but for safety, let's just not clear the token and keep the current state if possible
-                    // or better yet, assume they are authenticated if the token exists but the server is down
-                    if (token) {
-                        setIsAuthenticated(true);
-                    } else {
-                        setIsAuthenticated(false);
-                    }
+                    // For other errors (network, 500), assume current token is still valid
+                    // to prevent locking out users on temporary server issues
+                    if (token) setIsAuthenticated(true);
+                    else setIsAuthenticated(false);
                 }
             } finally {
                 setIsVerifying(false);
@@ -56,6 +47,16 @@ export default function ProtectedRoute({ children, role = "Member" }) {
         };
 
         verifySession();
+
+        // Cross-tab logout synchronization
+        const syncLogout = (e) => {
+            if (e.key === (role === "Admin" ? "adminToken" : "token") && !e.newValue) {
+                window.location.reload(); // Force full reload to login
+            }
+        };
+
+        window.addEventListener("storage", syncLogout);
+        return () => window.removeEventListener("storage", syncLogout);
     }, [token, role]);
 
     if (isVerifying) {

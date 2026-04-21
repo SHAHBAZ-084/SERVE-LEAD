@@ -209,7 +209,12 @@ router.post('/login', asyncHandler(async (req, res) => {
 
 // Member Logout
 router.post('/logout', (req, res) => {
-    res.cookie('jwt', '', { maxAge: 1 });
+    res.cookie('jwt', '', { 
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        expires: new Date(0) 
+    });
     res.status(200).json({ message: 'Logged out successfully.' });
 });
 

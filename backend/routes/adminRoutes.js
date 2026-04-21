@@ -319,7 +319,12 @@ router.put('/profile', authMiddleware, isAdmin, asyncHandler(async (req, res) =>
 }));
 
 router.post('/logout', (req, res) => {
-    res.cookie('jwt', '', { maxAge: 1 });
+    res.cookie('jwt', '', { 
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        expires: new Date(0) 
+    });
     res.json({ message: 'Logged out' });
 });
 

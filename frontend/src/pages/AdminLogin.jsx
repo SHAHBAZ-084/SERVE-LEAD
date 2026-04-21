@@ -39,7 +39,7 @@ export default function AdminLogin() {
             } else {
                 localStorage.removeItem("adminIsSuper");
             }
-            navigate("/admin-portal");
+            navigate("/admin-portal", { replace: true });
         } catch (err) {
             console.error("Admin Login Error:", err);
             const msg = err.response?.data?.error || "Login Failed. Access Denied.";

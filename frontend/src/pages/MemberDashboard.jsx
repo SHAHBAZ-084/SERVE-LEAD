@@ -93,7 +93,7 @@ const MemberDashboard = () => {
             console.error("Logout error:", err);
         }
         localStorage.clear();
-        navigate("/");
+        navigate("/", { replace: true });
     }, [navigate]);
 
     const fetchAllData = useCallback(async () => {

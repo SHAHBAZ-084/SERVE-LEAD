@@ -44,7 +44,7 @@ export default function MemberLogin() {
       localStorage.setItem("userRole", `${response.data.member.role} Member`);
       localStorage.setItem("joiningYear", response.data.member.joining_year || "20XX");
 
-      navigate("/dashboard");
+      navigate("/dashboard", { replace: true });
     } catch (err) {
       console.error("Login Error:", err);
       const status = err.response?.status;
