@@ -2538,9 +2538,7 @@ function AdminPortal() {
                                                          </button>
                                                      </td>
                                                      <td className="px-8 py-6">
-                                                         <div className="flex flex-col gap-1.5">
-                                                             <CountdownTimer targetDate={targetDate} />
-                                                         </div>
+                                                         <CountdownTimer targetDate={targetDate} />
                                                      </td>
                                                     <td className="px-8 py-6 text-right">
                                                         <button onClick={() => deleteSingle(ev._id)} className="text-rose-400 hover:text-rose-600 p-3 hover:bg-rose-50 rounded-xl transition-all">

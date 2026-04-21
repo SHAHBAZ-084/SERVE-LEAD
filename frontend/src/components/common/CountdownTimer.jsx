@@ -47,32 +47,22 @@ const CountdownTimer = ({ targetDate, onEnd }) => {
 
     if (isEnded) {
         return (
-            <div className="flex items-center gap-2 text-rose-500 font-black uppercase tracking-[0.2em] text-[10px] animate-pulse">
-                <i className="fas fa-circle text-[6px]" /> Event Ended
-            </div>
+            <span className="text-[10px] font-bold text-rose-400 uppercase tracking-widest">
+                Ended
+            </span>
         );
     }
 
     return (
-        <div className="flex items-center gap-2 sm:gap-3 select-none">
-            <div className="flex flex-col items-center">
-                <span className="text-base sm:text-xl font-black text-slate-900 leading-none tabular-nums tracking-tighter">{String(timeLeft.days).padStart(2, '0')}</span>
-                <span className="text-[7px] font-black text-slate-400 uppercase tracking-widest mt-1">days</span>
-            </div>
-            <div className="text-slate-200 font-light mb-4 text-lg">:</div>
-            <div className="flex flex-col items-center">
-                <span className="text-base sm:text-xl font-black text-slate-900 leading-none tabular-nums tracking-tighter">{String(timeLeft.hours).padStart(2, '0')}</span>
-                <span className="text-[7px] font-black text-slate-400 uppercase tracking-widest mt-1">hrs</span>
-            </div>
-            <div className="text-slate-200 font-light mb-4 text-lg">:</div>
-            <div className="flex flex-col items-center">
-                <span className="text-base sm:text-xl font-black text-slate-900 leading-none tabular-nums tracking-tighter">{String(timeLeft.minutes).padStart(2, '0')}</span>
-                <span className="text-[7px] font-black text-slate-400 uppercase tracking-widest mt-1">min</span>
-            </div>
-            <div className="text-slate-200 font-light mb-4 text-lg">:</div>
-            <div className="flex flex-col items-center">
-                <span className="text-base sm:text-xl font-black text-cyan-600 leading-none animate-pulse tabular-nums tracking-tighter">{String(timeLeft.seconds).padStart(2, '0')}</span>
-                <span className="text-[7px] font-black text-cyan-500/50 uppercase tracking-widest mt-1">sec</span>
+        <div className="flex items-center gap-1.5 text-slate-500 font-medium text-[11px] sm:text-xs tracking-tight">
+            <span className="opacity-60">ends in:</span>
+            <div className="flex items-center gap-1 text-slate-700 font-bold tabular-nums">
+                {timeLeft.days > 0 && (
+                    <span>{timeLeft.days}d</span>
+                )}
+                <span>{timeLeft.hours}h</span>
+                <span>{timeLeft.minutes}m</span>
+                <span className="text-cyan-500 w-6">{timeLeft.seconds}s</span>
             </div>
         </div>
     );
