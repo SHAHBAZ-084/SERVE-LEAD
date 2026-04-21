@@ -41,27 +41,46 @@ function useCountUp(target, duration = 1200) {
 
 const StatCard = ({ icon, label, value, color }) => {
     const p = {
-        blue: { bg: "from-[#002147] to-[#003366]", shadow: "shadow-blue-900/10" },
-        indigo: { bg: "from-indigo-600 to-indigo-800", shadow: "shadow-indigo-900/10" },
-        sky: { bg: "from-blue-500 to-blue-700", shadow: "shadow-blue-900/10" },
-        violet: { bg: "from-slate-800 to-slate-900", shadow: "shadow-slate-900/10" },
-        emerald: { bg: "from-emerald-600 to-emerald-800", shadow: "shadow-emerald-900/10" },
+        blue: { bg: "from-[#002147] to-[#003366]", shadow: "shadow-blue-900/20", glow: "bg-blue-400" },
+        indigo: { bg: "from-indigo-600 to-indigo-800", shadow: "shadow-indigo-900/20", glow: "bg-indigo-300" },
+        sky: { bg: "from-sky-500 to-blue-600", shadow: "shadow-sky-900/20", glow: "bg-sky-300" },
+        emerald: { bg: "from-emerald-500 to-teal-700", shadow: "shadow-emerald-900/20", glow: "bg-emerald-300" },
     };
     const c = p[color] || p.blue;
     const rawStr = String(value ?? "0");
     const numeric = parseInt(rawStr, 10) || 0;
     const suffix = rawStr.replace(/^\d+/, "");
     const animated = useCountUp(numeric);
+    
     return (
-        <div className={`relative bg-gradient-to-br ${c.bg} rounded-2xl p-5 text-white shadow-lg ${c.shadow} overflow-hidden group hover:-translate-y-0.5 transition-all duration-300`}>
-            <div className="absolute -right-4 -top-4 w-24 h-24 rounded-full bg-white/10 group-hover:scale-125 transition-transform duration-500" />
-            <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center mb-4">
-                <i className={`fas ${icon} text-lg`} />
+        <div className={`relative bg-gradient-to-br ${c.bg} rounded-[2rem] p-6 text-white shadow-2xl ${c.shadow} overflow-hidden group hover:-translate-y-2 transition-all duration-500`}>
+            {/* Live Pulse Glow */}
+            <div className={`absolute -right-8 -bottom-8 w-32 h-32 rounded-full ${c.glow} opacity-10 blur-3xl group-hover:opacity-20 transition-opacity duration-700`} />
+            
+            <div className="relative z-10">
+                <div className="flex items-start justify-between mb-6">
+                    <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center shadow-lg border border-white/10 group-hover:scale-110 transition-transform duration-500">
+                        <i className={`fas ${icon} text-xl animate-float`} />
+                    </div>
+                    <div className="flex items-center gap-2 px-3 py-1 bg-white/10 backdrop-blur-md rounded-full border border-white/5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                        <span className="text-[8px] font-black uppercase tracking-[0.2em] opacity-80">Live</span>
+                    </div>
+                </div>
+                
+                <p className="text-4xl font-black tabular-nums leading-none tracking-tight mb-2">
+                    {value == null ? "—" : `${animated}${suffix}`}
+                </p>
+                <p className="text-white/60 text-[10px] font-bold uppercase tracking-[0.2em] leading-none">{label}</p>
             </div>
-            <p className="text-3xl font-extrabold tabular-nums">
-                {value == null ? "—" : `${animated}${suffix}`}
-            </p>
-            <p className="text-white/75 text-[10px] font-bold mt-0.5 uppercase tracking-widest">{label}</p>
+
+            <style>{`
+                @keyframes float {
+                    0%, 100% { transform: translateY(0); }
+                    50% { transform: translateY(-4px); }
+                }
+                .animate-float { animation: float 3s ease-in-out infinite; }
+            `}</style>
         </div>
     );
 };
@@ -423,38 +442,38 @@ const MemberDashboard = () => {
                     <StatCard icon="fa-calendar-day" label="Upcoming Events" value={upcomingEventsCount} color="blue" />
                 </div>
 
-                {/* Direct Action Hub (Vibrant SaaS Styling) */}
+                {/* Direct Action Hub (Vibrant Unique Styling) */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8 pt-4">
-                    <button onClick={() => setActiveTab("events")} className="group p-6 sm:p-10 bg-gradient-to-br from-blue-600 to-blue-800 rounded-[2.2rem] sm:rounded-[3rem] shadow-2xl shadow-blue-900/20 hover:-translate-y-2 transition-all duration-500 text-left relative overflow-hidden flex flex-col h-full min-h-[160px] sm:min-h-0">
-                        <div className="absolute top-0 right-0 p-8 sm:p-10 text-white/5 group-hover:scale-125 group-hover:text-white/10 transition-all duration-700"><i className="fas fa-calendar-alt text-7xl sm:text-8xl" /></div>
-                        <div className="w-12 h-12 sm:w-16 sm:h-16 bg-white/20 backdrop-blur-md text-white rounded-2xl flex items-center justify-center text-lg sm:text-2xl mb-8 sm:mb-12 shadow-xl border border-white/20 group-hover:bg-white group-hover:text-blue-600 transition-all duration-500">
-                            <i className="fas fa-calendar-star" />
+                    <button onClick={() => setActiveTab("events")} className="group p-8 sm:p-10 bg-gradient-to-br from-violet-600 to-indigo-700 rounded-[2.5rem] sm:rounded-[3rem] shadow-2xl shadow-violet-900/30 hover:-translate-y-2 transition-all duration-500 text-left relative overflow-hidden flex flex-col h-full min-h-[180px] sm:min-h-0">
+                        <div className="absolute top-0 right-0 p-10 text-white/5 group-hover:scale-125 group-hover:text-white/10 transition-all duration-700"><i className="fas fa-calendar-alt text-8xl" /></div>
+                        <div className="w-14 h-14 sm:w-16 sm:h-16 bg-white/20 backdrop-blur-md text-white rounded-2xl flex items-center justify-center text-xl sm:text-2xl mb-12 shadow-xl border border-white/20 group-hover:bg-white group-hover:text-violet-600 transition-all duration-500">
+                            <i className="fas fa-calendar-star animate-float" />
                         </div>
                         <div className="mt-auto">
-                            <h4 className="text-lg sm:text-2xl font-black text-white mb-1 sm:mb-2 tracking-tight">Explore Events</h4>
-                            <p className="text-blue-100 text-[9px] sm:text-[10px] font-bold uppercase tracking-[0.2em] opacity-70 group-hover:opacity-100 transition-opacity">Browse upcoming events</p>
+                            <h4 className="text-xl sm:text-2xl font-black text-white mb-2 tracking-tight">Explore Events</h4>
+                            <p className="text-violet-100 text-[10px] font-bold uppercase tracking-[0.2em] opacity-70 group-hover:opacity-100 transition-opacity">Browse upcoming events</p>
                         </div>
                     </button>
 
-                    <button onClick={() => setActiveTab("certificates")} className="group p-6 sm:p-10 bg-gradient-to-br from-emerald-500 to-teal-700 rounded-[2.2rem] sm:rounded-[3rem] shadow-2xl shadow-emerald-900/20 hover:-translate-y-2 transition-all duration-500 text-left relative overflow-hidden flex flex-col h-full min-h-[160px] sm:min-h-0">
-                        <div className="absolute top-0 right-0 p-8 sm:p-10 text-white/5 group-hover:scale-125 group-hover:text-white/10 transition-all duration-700"><i className="fas fa-certificate text-7xl sm:text-8xl" /></div>
-                        <div className="w-12 h-12 sm:w-16 sm:h-16 bg-white/20 backdrop-blur-md text-white rounded-2xl flex items-center justify-center text-lg sm:text-2xl mb-8 sm:mb-12 shadow-xl border border-white/20 group-hover:bg-white group-hover:text-emerald-600 transition-all duration-500">
-                            <i className="fas fa-award-simple" />
+                    <button onClick={() => setActiveTab("certificates")} className="group p-8 sm:p-10 bg-gradient-to-br from-amber-400 to-orange-600 rounded-[2.5rem] sm:rounded-[3rem] shadow-2xl shadow-orange-900/30 hover:-translate-y-2 transition-all duration-500 text-left relative overflow-hidden flex flex-col h-full min-h-[180px] sm:min-h-0">
+                        <div className="absolute top-0 right-0 p-10 text-white/5 group-hover:scale-125 group-hover:text-white/10 transition-all duration-700"><i className="fas fa-certificate text-8xl" /></div>
+                        <div className="w-14 h-14 sm:w-16 sm:h-16 bg-white/20 backdrop-blur-md text-white rounded-2xl flex items-center justify-center text-xl sm:text-2xl mb-12 shadow-xl border border-white/20 group-hover:bg-white group-hover:text-amber-600 transition-all duration-500">
+                            <i className="fas fa-award-simple animate-float" />
                         </div>
                         <div className="mt-auto">
-                            <h4 className="text-lg sm:text-2xl font-black text-white mb-1 sm:mb-2 tracking-tight">My Portfolio</h4>
-                            <p className="text-emerald-50 text-[9px] sm:text-[10px] font-bold uppercase tracking-[0.2em] opacity-70 group-hover:opacity-100 transition-opacity">Access your credentials</p>
+                            <h4 className="text-xl sm:text-2xl font-black text-white mb-2 tracking-tight">My Portfolio</h4>
+                            <p className="text-amber-50 text-[10px] font-bold uppercase tracking-[0.2em] opacity-70 group-hover:opacity-100 transition-opacity">Access your credentials</p>
                         </div>
                     </button>
 
-                    <button onClick={() => setActiveTab("announcements")} className="group p-6 sm:p-10 bg-gradient-to-br from-slate-800 to-slate-900 rounded-[2.2rem] sm:rounded-[3rem] shadow-2xl shadow-slate-900/20 hover:-translate-y-2 transition-all duration-500 text-left relative overflow-hidden flex flex-col h-full min-h-[160px] sm:min-h-0">
-                        <div className="absolute top-0 right-0 p-8 sm:p-10 text-white/5 group-hover:scale-125 group-hover:text-white/10 transition-all duration-700"><i className="fas fa-bell text-7xl sm:text-8xl" /></div>
-                        <div className="w-12 h-12 sm:w-16 sm:h-16 bg-white/20 backdrop-blur-md text-white rounded-2xl flex items-center justify-center text-lg sm:text-2xl mb-8 sm:mb-12 shadow-xl border border-white/20 group-hover:bg-white group-hover:text-slate-800 transition-all duration-500">
-                            <i className="fas fa-bullhorn" />
+                    <button onClick={() => setActiveTab("announcements")} className="group p-8 sm:p-10 bg-gradient-to-br from-rose-500 to-pink-600 rounded-[2.5rem] sm:rounded-[3rem] shadow-2xl shadow-rose-900/30 hover:-translate-y-2 transition-all duration-500 text-left relative overflow-hidden flex flex-col h-full min-h-[180px] sm:min-h-0">
+                        <div className="absolute top-0 right-0 p-10 text-white/5 group-hover:scale-125 group-hover:text-white/10 transition-all duration-700"><i className="fas fa-bell text-8xl" /></div>
+                        <div className="w-14 h-14 sm:w-16 sm:h-16 bg-white/20 backdrop-blur-md text-white rounded-2xl flex items-center justify-center text-xl sm:text-2xl mb-12 shadow-xl border border-white/20 group-hover:bg-white group-hover:text-rose-600 transition-all duration-500">
+                            <i className="fas fa-bullhorn animate-float" />
                         </div>
                         <div className="mt-auto">
-                            <h4 className="text-lg sm:text-2xl font-black text-white mb-1 sm:mb-2 tracking-tight">Society News</h4>
-                            <p className="text-slate-300 text-[9px] sm:text-[10px] font-bold uppercase tracking-[0.2em] opacity-70 group-hover:opacity-100 transition-opacity">Stay updated with news</p>
+                            <h4 className="text-xl sm:text-2xl font-black text-white mb-2 tracking-tight">Society News</h4>
+                            <p className="text-rose-50 text-[10px] font-bold uppercase tracking-[0.2em] opacity-70 group-hover:opacity-100 transition-opacity">Stay updated with news</p>
                         </div>
                     </button>
                 </div>
