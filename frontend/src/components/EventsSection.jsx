@@ -118,10 +118,12 @@ export default function EventsSection() {
                                             <div className="mt-auto space-y-4">
                                                 <div className="flex items-center justify-between py-3 border-t border-slate-50">
                                                     <CountdownTimer targetDate={targetDate} />
-                                                    <div className="flex items-center gap-1.5 text-[10px] font-bold text-cyan-600 uppercase tracking-wider">
-                                                        <span className="w-1.5 h-1.5 rounded-full bg-cyan-500 animate-pulse" />
-                                                        Live
-                                                    </div>
+                                                    {Date.now() < new Date(targetDate).getTime() && (
+                                                        <div className="flex items-center gap-1.5 text-[10px] font-bold text-cyan-600 uppercase tracking-wider">
+                                                            <span className="w-1.5 h-1.5 rounded-full bg-cyan-500 animate-pulse" />
+                                                            Live
+                                                        </div>
+                                                    )}
                                                 </div>
                                                 <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-slate-400 border-t border-slate-50 pt-4">
                                                     <span className="flex items-center gap-2 max-w-[50%] truncate" title={event.location}><i className="fas fa-map-marker-alt text-cyan-500" /> {event.location || "TBA"}</span>

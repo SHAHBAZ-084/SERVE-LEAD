@@ -694,7 +694,7 @@ const MemberDashboard = () => {
                                     {/* Minimal Inline Countdown */}
                                     <div className="mb-6 flex items-center justify-between py-3 border-y border-slate-50">
                                         <CountdownTimer targetDate={targetDate} />
-                                        {!hasEnded && (
+                                        {Date.now() < new Date(targetDate).getTime() && (
                                             <div className="flex items-center gap-1.5 text-[9px] font-black text-emerald-500 uppercase tracking-widest">
                                                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                                                 Live
