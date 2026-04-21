@@ -7,6 +7,7 @@ import MemberDashboard from "./pages/MemberDashboard";
 import AdminLogin from "./pages/AdminLogin";
 import AdminPortal from "./pages/AdminPortal";
 import ProtectedRoute from "./components/ProtectedRoute";
+import GuestRoute from "./components/GuestRoute";
 import Donate from './pages/Donate';
 import RegisterPage from './pages/RegisterPage';
 import MemberLogin from './pages/MemberLogin';
@@ -24,9 +25,21 @@ function App() {
         <Route path='/verification' element={<Verification />} />
         
         {/* Guest Only Routes (Redirect if already logged in) */}
-        <Route path="/register" element={<RegisterPage />} />
-        <Route path="/login" element={<MemberLogin />} />
-        <Route path="/admin-login" element={<AdminLogin />} />
+        <Route path="/register" element={
+          <GuestRoute role="Member">
+            <RegisterPage />
+          </GuestRoute>
+        } />
+        <Route path="/login" element={
+          <GuestRoute role="Member">
+            <MemberLogin />
+          </GuestRoute>
+        } />
+        <Route path="/admin-login" element={
+          <GuestRoute role="Admin">
+            <AdminLogin />
+          </GuestRoute>
+        } />
 
         {/* Protected Member Routes */}
         <Route path="/dashboard" element={

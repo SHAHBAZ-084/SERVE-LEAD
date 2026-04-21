@@ -112,6 +112,16 @@ const MemberDashboard = () => {
         }
     }, [auth]);
 
+    // Back-Button Trap: Prevent leaving the dashboard via 'Back' while authenticated
+    useEffect(() => {
+        const handlePopState = (e) => {
+            window.history.pushState(null, "", window.location.href);
+        };
+        window.history.pushState(null, "", window.location.href);
+        window.addEventListener("popstate", handlePopState);
+        return () => window.removeEventListener("popstate", handlePopState);
+    }, []);
+
     useEffect(() => {
         const token = localStorage.getItem("token");
         if (!token) {
