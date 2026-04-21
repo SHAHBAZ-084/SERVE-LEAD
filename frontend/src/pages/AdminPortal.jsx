@@ -1527,17 +1527,17 @@ function AdminPortal() {
         if (activeTab === "certificates" || activeTab === "batches") fetchCertificates();
     }, [activeTab, isSuper]);
 
-    // Back-Button Trap: Prevent leaving the dashboard via 'Back' while authenticated
+    // Back-Button Trap: Force the browser to stay on this page
     useEffect(() => {
+        // Push a state so there's something to go back from
+        window.history.pushState(null, null, window.location.pathname + window.location.search);
+        
         const handlePopState = (e) => {
-            // Push current state back to keep them here
-            window.history.pushState(null, "", window.location.href);
+            // If they try to go back, force them forward again
+            window.history.go(1);
         };
-        
-        // Initial push to handle the first back click
-        window.history.pushState(null, "", window.location.href);
+
         window.addEventListener("popstate", handlePopState);
-        
         return () => window.removeEventListener("popstate", handlePopState);
     }, []);
 

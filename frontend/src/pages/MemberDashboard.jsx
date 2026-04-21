@@ -112,12 +112,12 @@ const MemberDashboard = () => {
         }
     }, [auth]);
 
-    // Back-Button Trap: Prevent leaving the dashboard via 'Back' while authenticated
+    // Back-Button Trap: Force the browser to stay on this page
     useEffect(() => {
+        window.history.pushState(null, null, window.location.pathname + window.location.search);
         const handlePopState = (e) => {
-            window.history.pushState(null, "", window.location.href);
+            window.history.go(1);
         };
-        window.history.pushState(null, "", window.location.href);
         window.addEventListener("popstate", handlePopState);
         return () => window.removeEventListener("popstate", handlePopState);
     }, []);
