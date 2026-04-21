@@ -50,6 +50,14 @@ const limiter = rateLimit({
 });
 app.use('/api/', limiter);
 
+// Prevent Caching for API Routes (Security)
+app.use('/api/', (req, res, next) => {
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.set('Pragma', 'no-cache');
+    res.set('Expires', '0');
+    next();
+});
+
 // Serve Static Files
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 

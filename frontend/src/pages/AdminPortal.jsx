@@ -1563,13 +1563,8 @@ function AdminPortal() {
         } catch (err) {
             console.error("Admin logout error:", err);
         }
-        localStorage.removeItem("adminToken");
-        localStorage.removeItem("adminUser");
-        localStorage.removeItem("adminIsSuper");
-        // Also clear member tokens to prevent stale session overlap
-        localStorage.removeItem("token");
-        localStorage.removeItem("userName");
-        navigate("/admin-login");
+        localStorage.clear();
+        navigate("/admin-login", { replace: true });
     };
 
     const tabs = [

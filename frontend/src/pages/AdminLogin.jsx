@@ -1,9 +1,17 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../api";
 
 export default function AdminLogin() {
     const navigate = useNavigate();
+
+    useEffect(() => {
+        const token = localStorage.getItem("adminToken");
+        if (token) {
+            navigate("/admin-portal", { replace: true });
+        }
+    }, [navigate]);
+
     const [credentials, setCredentials] = useState({ email: "", password: "" });
     const [error, setError] = useState(null);
     const [loading, setLoading] = useState(false);

@@ -6,7 +6,7 @@ import Verification from './pages/Verification';
 import MemberDashboard from "./pages/MemberDashboard";
 import AdminLogin from "./pages/AdminLogin";
 import AdminPortal from "./pages/AdminPortal";
-import AdminRoute from "./components/AdminRoute";
+import ProtectedRoute from "./components/ProtectedRoute";
 import Donate from './pages/Donate';
 import RegisterPage from './pages/RegisterPage';
 import MemberLogin from './pages/MemberLogin';
@@ -24,13 +24,22 @@ function App() {
         <Route path="/login" element={<MemberLogin />} />
         <Route path="/about" element={<AboutPage />} />
         <Route path='/verification' element={<Verification />} />
-        <Route path="/dashboard" element={<MemberDashboard />} />
+        
+        {/* Protected Member Routes */}
+        <Route path="/dashboard" element={
+          <ProtectedRoute role="Member">
+            <MemberDashboard />
+          </ProtectedRoute>
+        } />
+        
         <Route path="/donate" element={<Donate />} />
         <Route path="/admin-login" element={<AdminLogin />} />
+        
+        {/* Protected Admin Routes */}
         <Route path="/admin-portal" element={
-          <AdminRoute>
+          <ProtectedRoute role="Admin">
             <AdminPortal />
-          </AdminRoute>
+          </ProtectedRoute>
         } />
       </Routes>
       <FloatingWhatsApp />
