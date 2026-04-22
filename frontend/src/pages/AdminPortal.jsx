@@ -185,7 +185,7 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
     const [activeSubTab, setActiveSubTab] = useState("donation");
     const [channels, setChannels] = useState([]);
     const [teamStructure, setTeamStructure] = useState([]);
-    const [leadership, setLeadership] = useState({ name: "", role: "", program: "", desc: "", img: "" });
+    const [leadership, setLeadership] = useState({ name: "", role: "", program: "", desc: "", img: "", email: "" });
     const [vision, setVision] = useState({
         badgeSubtitle: "Chairman Vision",
         badgeName: "Farooq Baloch",
@@ -452,6 +452,10 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
                                     <div className="col-span-1">
                                         <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1 block">Primary Title</label>
                                         <input type="text" value={leadership.role} onChange={e => setLeadership({ ...leadership, role: e.target.value })} className={inputCls} />
+                                    </div>
+                                    <div className="col-span-1 sm:col-span-2">
+                                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1 block">Gmail Address</label>
+                                        <input type="email" value={leadership.email} onChange={e => setLeadership({ ...leadership, email: e.target.value })} className={inputCls} placeholder="chairman@gmail.com" />
                                     </div>
                                     <div className="col-span-1 sm:col-span-2">
                                         <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1 block">Professional Bio</label>

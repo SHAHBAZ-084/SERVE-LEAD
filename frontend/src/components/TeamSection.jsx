@@ -69,16 +69,30 @@ export default function TeamSection({ memberData = "none", hide = false }) {
                   <div className="absolute inset-0 bg-gradient-to-t from-slate-900/60 via-transparent to-transparent block md:hidden" />
                   <div className="absolute bottom-6 left-6 block md:hidden">
                     <p className="text-[10px] font-black uppercase tracking-widest text-cyan-400 mb-1">Executive Leadership</p>
-                    <h3 className="text-2xl font-black text-white">{member.name}</h3>
+                    <div className="flex items-center gap-3">
+                      <h3 className="text-2xl font-black text-white">{member.name}</h3>
+                      {member.email && (
+                        <a href={`mailto:${member.email}`} className="w-8 h-8 bg-white/10 backdrop-blur-md text-white rounded-full flex items-center justify-center border border-white/20 transition-all active:scale-95" title="Contact via Gmail">
+                          <i className="fas fa-envelope text-[10px]" />
+                        </a>
+                      )}
+                    </div>
                   </div>
                 </div>
 
                 {/* Content Section - Refined Proportions */}
                 <div className="w-full md:w-[65%] lg:w-[70%] p-8 md:p-14 text-center md:text-left flex flex-col justify-center">
                   <div className="hidden md:flex flex-col md:flex-row md:items-center gap-3 mb-6">
-                    <span className="inline-block bg-cyan-50 text-cyan-600 text-[10px] font-black tracking-widest uppercase px-5 py-2 rounded-full border border-cyan-100 self-center md:self-start">
-                      {member.role}
-                    </span>
+                    <div className="flex items-center gap-2 self-center md:self-start">
+                      <span className="inline-block bg-cyan-50 text-cyan-600 text-[10px] font-black tracking-widest uppercase px-5 py-2 rounded-full border border-cyan-100">
+                        {member.role}
+                      </span>
+                      {member.email && (
+                        <a href={`mailto:${member.email}`} className="w-9 h-9 bg-rose-50 text-rose-500 rounded-full flex items-center justify-center hover:bg-rose-500 hover:text-white transition-all shadow-sm" title="Contact via Gmail">
+                          <i className="fas fa-envelope text-xs" />
+                        </a>
+                      )}
+                    </div>
                     <span className="hidden md:block w-1.5 h-1.5 bg-slate-200 rounded-full" />
                     <p className="text-slate-400 font-bold uppercase text-[9px] tracking-widest self-center md:self-start">{member.program}</p>
                   </div>
