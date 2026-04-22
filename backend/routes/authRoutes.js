@@ -202,7 +202,7 @@ router.post('/login', asyncHandler(async (req, res) => {
     res.cookie('jwt', token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
+        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
         maxAge: 15 * 60 * 1000 // 15 minutes
     });
 
@@ -225,7 +225,7 @@ router.post('/logout', (req, res) => {
     res.cookie('jwt', '', { 
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
+        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
         expires: new Date(0) 
     });
     res.status(200).json({ message: 'Logged out successfully.' });
