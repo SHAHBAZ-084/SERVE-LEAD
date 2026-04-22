@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import logo from "../assets/logo.png";
-import VerificationModal from "./common/VerificationModal";
 import { ShieldCheck } from "lucide-react";
 
 export default function Navbar() {
