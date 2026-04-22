@@ -1826,7 +1826,6 @@ function AdminPortal() {
                                             {bulkMode && (<th className="px-6 py-4 w-10 text-center transition-all">
                                                 <input type="checkbox" checked={selectedIds.length === generalMembers.length && generalMembers.length > 0} onChange={handleSelectAll} className="w-4 h-4 text-[#002147] border-slate-300 rounded focus:ring-[#002147]" />
                                             </th>)}
-                                            <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest">S.No</th>
                                             <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest">Member ID</th>
                                             <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest">Official Name</th>
                                             <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest">Gmail / Email</th>
@@ -1837,7 +1836,7 @@ function AdminPortal() {
                                     </thead>
                                     <tbody className="divide-y divide-slate-50">
                                         {generalMembers.length === 0 ? (
-                                            <tr><td colSpan={8} className="text-center py-20 text-slate-400">
+                                            <tr><td colSpan={7} className="text-center py-20 text-slate-400">
                                                 <i className="fas fa-id-badge text-5xl mb-4 block opacity-10" /> No records matched the query.
                                             </td></tr>
                                         ) : generalMembers.map((m) => (
@@ -1845,7 +1844,6 @@ function AdminPortal() {
                                                 {bulkMode && (<td className="px-6 py-5 text-center transition-all">
                                                     <input type="checkbox" checked={selectedIds.includes(m.member_id)} onChange={() => toggleSelect(m.member_id)} className="w-4 h-4 text-[#002147] border-slate-300 rounded focus:ring-[#002147]" />
                                                 </td>)}
-                                                <td className="px-6 py-5 font-mono text-xs text-slate-400">{m.serial_number || "-"}</td>
                                                 <td className="px-6 py-5 font-mono text-xs text-[#002147] font-bold">{m.member_id}</td>
                                                 <td className="px-6 py-5 text-slate-800 font-bold">{m.name}</td>
                                                 <td className="px-6 py-5 text-slate-500 text-xs">{m.email}</td>
