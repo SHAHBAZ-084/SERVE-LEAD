@@ -59,6 +59,13 @@ router.delete('/members/:id', authMiddleware, isAdmin, asyncHandler(async (req, 
         if (member.certificate_url) await deleteFile(member.certificate_url);
 
         await Member.deleteOne({ _id: req.params.id });
+        
+        // Remove from all event participants lists
+        await Event.updateMany(
+            {},
+            { $pull: { participants: { memberId: req.params.id } } }
+        );
+
         await logActivity(req.user.memberId, 'DELETED_MEMBER', `Permanent removal: ${member.name} (${member.email})`, req.params.id);
         
         res.json({ message: 'Application and associated files deleted successfully.' });
@@ -90,6 +97,13 @@ router.post('/members/bulk-delete', authMiddleware, isAdmin, asyncHandler(async 
     }
 
     await Member.deleteMany({ _id: { $in: deletableIds } });
+    
+    // Remove from all event participants lists in bulk
+    await Event.updateMany(
+        {},
+        { $pull: { participants: { memberId: { $in: deletableIds } } } }
+    );
+
     await logActivity(req.user.memberId, 'BULK_DELETE', `Mass removal of ${deletableIds.length} applications.`);
     
     res.json({ message: `Successfully removed ${deletableIds.length} records and associated files.` });

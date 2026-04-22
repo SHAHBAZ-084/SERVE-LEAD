@@ -330,7 +330,7 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
 
     return (
         <div className="max-w-4xl mx-auto space-y-8 animate-fade-up pb-20">
-            <div className="grid grid-cols-2 sm:flex gap-2 sm:gap-4 p-2 bg-slate-200/50 rounded-2xl w-full sm:w-fit">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4 p-2 bg-slate-200/50 rounded-2xl w-full sm:w-fit">
                 <button onClick={() => setActiveSubTab("donation")} className={`py-2.5 px-4 sm:px-6 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all flex items-center justify-center gap-2 ${activeSubTab === "donation" ? "bg-white text-cyan-600 shadow-sm" : "text-slate-500 hover:text-slate-800"}`}>
                     <i className="fas fa-money-check-dollar"></i> <span className="sm:inline">Financials</span>
                 </button>
@@ -541,7 +541,7 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
                             <div className="space-y-8">
                                 {/* Image & Badge Section */}
                                 <div className="p-4 sm:p-6 bg-slate-50/50 rounded-3xl border border-slate-100 flex flex-col items-center md:flex-row gap-6 sm:gap-8">
-                                    <div className="w-full max-w-[240px] aspect-[4/5] sm:w-48 sm:h-60 rounded-2xl bg-white border border-slate-200 overflow-hidden relative group flex-shrink-0 animate-fade-up">
+                                    <div className="w-full max-w-[200px] aspect-[4/5] sm:w-48 sm:h-60 rounded-2xl bg-white border border-slate-200 overflow-hidden relative group flex-shrink-0 animate-fade-up">
                                         {vision.img ? <img src={getImgUrl(vision.img)} className="w-full h-full object-cover" /> :
                                             <div className="w-full h-full flex flex-col items-center justify-center text-slate-300 bg-slate-50">
                                                 <i className="fas fa-image text-3xl mb-2" />
@@ -1777,7 +1777,7 @@ const AdminPortal = () => {
 
         if (activeTab === "dashboard") fetchStats();
         if (activeTab === "members" || activeTab === "admins" || activeTab === "certificates" || activeTab === "batches") fetchMembers();
-        if (activeTab === "approvals") fetchPendingMembers();
+        if (activeTab === "pending") fetchPendingMembers();
         if (activeTab === "events" || activeTab === "certificates") fetchEvents();
         if (activeTab === "announcements") fetchAnnouncements();
         if (activeTab === "certificates" || activeTab === "batches") fetchCertificates();
@@ -1842,7 +1842,7 @@ const AdminPortal = () => {
     const tabs = [
         { id: "dashboard", label: "Dashboard", icon: "fa-th-large" },
         { id: "members", label: "Members", icon: "fa-users" },
-        { id: "approvals", label: "Pending", icon: "fa-user-clock" },
+        { id: "pending", label: "Pending", icon: "fa-user-clock" },
         { id: "events", label: "Events", icon: "fa-calendar-alt" },
         { id: "announcements", label: "Announcements", icon: "fa-bullhorn" },
         { id: "certificates", label: "Certificates", icon: "fa-medal" },
@@ -1907,6 +1907,307 @@ const DashboardTab = ({ adminUser, setActiveTab, stats, isSuper, tabs, Spinner, 
 
 
     // ── Approvals Tab ──────────────────────────────────────────
+    const ApprovalsTab = ({ pendingMembers, fetchPendingMembers, loading, auth, notify, Spinner, api }) => {
+        const [searchTerm, setSearchTerm] = useState("");
+        const [selectedIds, setSelectedIds] = useState([]);
+        const [isProcessing, setIsProcessing] = useState(false);
+        const [bulkMode, setBulkMode] = useState(false);
+
+        const [interviewTarget, setInterviewTarget] = useState(null);
+        const [interviewForm, setInterviewForm] = useState({ venue: "SLS Society HQ, Campus Block B", message: "" });
+        const [sendingCall, setSendingCall] = useState(false);
+
+        const filtered = (pendingMembers || []).filter(m =>
+            m.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            m.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            m.joining_year?.toString().includes(searchTerm)
+        );
+
+        const handleSelectAll = (e) => setSelectedIds(e.target.checked ? filtered.map(m => m._id) : []);
+        const toggleSelect = (id) => setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
+
+        const approveSingle = async (id) => {
+            if (!window.confirm("Approve this member?")) return;
+            setIsProcessing(true);
+            try {
+                const r = await api.post(`admin/approve-member/${id}`, {}, auth);
+                notify(`Approved! Member ID: ${r.data.member_id}`);
+                fetchPendingMembers();
+            }
+            catch (err) {
+                notify("Failed to approve", "error");
+                if (err.response?.data?.error?.toLowerCase().includes("already")) { fetchPendingMembers(); }
+            } finally { setIsProcessing(false); }
+        };
+
+        const deleteSingle = async (id, name) => {
+            if (!window.confirm(`Are you sure you want to delete ${name}'s application? This action cannot be undone.`)) return;
+            setIsProcessing(true);
+            try {
+                await api.delete(`admin/members/${id}`, auth);
+                notify("Application deleted successfully.");
+                fetchPendingMembers();
+            } catch (err) {
+                notify(err.response?.data?.error || "Failed to delete application.", "error");
+            } finally { setIsProcessing(false); }
+        };
+
+        const handleBulkApprove = async () => {
+            if (!window.confirm(`Bulk approve ${selectedIds.length} applications?`)) return;
+            setIsProcessing(true);
+            let count = 0;
+            await Promise.all(selectedIds.map(async id => {
+                try { await api.post(`admin/approve-member/${id}`, {}, auth); count++; } catch { } // eslint-disable-line no-empty
+            }));
+            notify(`Approved ${count} members.`);
+            fetchPendingMembers();
+            setSelectedIds([]);
+            setIsProcessing(false);
+        };
+
+        const handleBulkDelete = async () => {
+            if (!window.confirm(`CRITICAL ACTION: Are you sure you want to PERMANENTLY DELETE ${selectedIds.length} applications?`)) return;
+            setIsProcessing(true);
+            try {
+                await api.post("admin/members/bulk-delete", { ids: selectedIds }, auth);
+                notify(`Successfully deleted ${selectedIds.length} applications.`);
+                fetchPendingMembers();
+                setSelectedIds([]);
+            } catch (err) {
+                notify("Bulk delete failed", "error");
+            } finally { setIsProcessing(false); }
+        };
+
+        const handleInterviewCall = async (e) => {
+            e.preventDefault();
+            if (!interviewTarget) return;
+            setSendingCall(true);
+            try {
+                await api.post(`admin/interview-call/${interviewTarget._id}`, interviewForm, auth);
+                notify(`Interview call sent to ${interviewTarget.name}!`);
+                setInterviewTarget(null);
+                setInterviewForm({ venue: "SLS Society HQ, Campus Block B", message: "" });
+                fetchPendingMembers();
+            } catch (err) {
+                notify(err.response?.data?.error || "Failed to send interview invitation", "error");
+            } finally { setSendingCall(false); }
+        };
+
+        return (
+            <div className="space-y-6 animate-fade-up relative">
+                {selectedIds.length > 0 && (
+                    <div className="fixed sm:absolute bottom-6 sm:bottom-auto sm:top-0 left-1/2 -translate-x-1/2 sm:-translate-y-1/2 z-[100] bg-slate-900 text-white px-5 sm:px-6 py-3 rounded-2xl sm:rounded-full shadow-2xl shadow-blue-900/40 flex flex-wrap items-center justify-center gap-4 animate-fade-up border border-slate-700 w-[90%] sm:w-auto ring-4 ring-slate-900/20 backdrop-blur-md">
+                        <span className="text-[10px] sm:text-xs font-bold bg-white/10 px-3 py-1 rounded-xl sm:rounded-full whitespace-nowrap">{selectedIds.length} Selected</span>
+                        <div className="hidden sm:block w-px h-4 bg-white/20" />
+                        <button onClick={handleBulkApprove} disabled={isProcessing} className="text-emerald-400 hover:text-emerald-300 text-[10px] sm:text-xs font-black uppercase tracking-widest transition-colors flex items-center gap-2">
+                            {isProcessing ? <i className="fas fa-spinner fa-spin" /> : <i className="fas fa-check-double" />} Approve
+                        </button>
+                        <div className="hidden sm:block w-px h-4 bg-white/20" />
+                        <button onClick={handleBulkDelete} disabled={isProcessing} className="text-rose-400 hover:text-rose-300 text-[10px] sm:text-xs font-black uppercase tracking-widest transition-colors flex items-center gap-2">
+                            <i className="fas fa-trash-alt" /> Delete
+                        </button>
+                    </div>
+                )}
+
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <div>
+                        <h2 className="text-xl font-bold text-slate-800">Pending Approvals</h2>
+                        <p className="text-slate-400 text-sm mt-1">{(pendingMembers || []).length} remaining in queue</p>
+                    </div>
+                    <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+                        <button onClick={() => { setBulkMode(!bulkMode); setSelectedIds([]); }} className={`px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-widest transition-all ${bulkMode ? 'bg-[#002147] text-white shadow-sm' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>
+                            <i className="fas fa-layer-group mr-2" /> {bulkMode ? "Done" : "Select"}
+                        </button>
+                        <div className="relative w-full sm:w-72">
+                            <i className="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm" />
+                            <input type="text" placeholder="Filter applicants..." value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="w-full bg-white border border-slate-200 rounded-xl pl-11 pr-4 py-2.5 text-slate-800 focus:ring-2 focus:ring-[#002147]/10 focus:border-[#002147] outline-none text-sm shadow-sm" />
+                        </div>
+                    </div>
+                </div>
+
+                {loading ? <Spinner /> : (
+                    <>
+                        <div className="sm:hidden space-y-2">
+                            {filtered.length === 0 ? (
+                                <div className="text-center py-20 text-slate-300 bg-white rounded-[2rem] border-2 border-dashed border-slate-100">
+                                    <i className="fas fa-check-circle text-4xl mb-3 block opacity-20" />
+                                    <p className="text-[10px] font-black uppercase tracking-widest">No pending members</p>
+                                </div>
+                            ) : filtered.map((m) => (
+                                <div key={m._id} className="p-3 bg-white rounded-2xl border border-slate-100 shadow-sm space-y-3 relative overflow-hidden transition-all">
+                                    <div className="flex justify-between items-center gap-3">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-8 h-8 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center font-black text-[10px] uppercase shadow-inner">
+                                                {(m.name || "?").charAt(0)}
+                                            </div>
+                                            <div>
+                                                <h4 className="font-bold text-slate-800 leading-none mb-1 text-xs">{m.name}</h4>
+                                                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest leading-none">Class {m.joining_year}</p>
+                                            </div>
+                                        </div>
+                                        {m.interview_called ? (
+                                            <span className="text-[8px] font-black text-emerald-600 uppercase tracking-widest bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100">Called</span>
+                                        ) : (
+                                            <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest bg-slate-50 px-2 py-0.5 rounded-md border border-slate-100">Pending</span>
+                                        )}
+                                    </div>
+
+                                    <div className="flex gap-2">
+                                        <button onClick={() => setInterviewTarget(m)}
+                                            className={`flex-1 text-[9px] py-2 rounded-lg font-black uppercase tracking-widest border transition-all ${m.interview_called ? "bg-amber-50 text-amber-600 border-amber-100" : "bg-blue-50 text-blue-600 border-blue-100"
+                                                }`}>
+                                            Interview
+                                        </button>
+                                        <button onClick={() => approveSingle(m._id)} disabled={isProcessing}
+                                            className="flex-1 text-[9px] bg-emerald-50 text-emerald-600 border border-emerald-100 py-2 rounded-lg font-black uppercase tracking-widest disabled:opacity-50">
+                                            Approve
+                                        </button>
+                                        <button onClick={() => deleteSingle(m._id, m.name)} disabled={isProcessing}
+                                            className="w-10 text-[9px] bg-rose-50 text-rose-500 border border-rose-100 py-2 rounded-lg font-black flex items-center justify-center transition-all hover:bg-rose-500 hover:text-white">
+                                            <i className="fas fa-trash-alt" />
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        <div className="hidden sm:block bg-white rounded-2xl sm:rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+                            <div className="overflow-x-auto custom-scrollbar-horizontal">
+                                <table className="w-full text-sm">
+                                    <thead>
+                                        <tr className="bg-slate-50 border-b border-slate-200 text-left">
+                                            {bulkMode && (<th className="px-5 py-3.5 w-10 text-center transition-all">
+                                                <input type="checkbox" checked={selectedIds.length === filtered.length && filtered.length > 0} onChange={handleSelectAll} className="w-4 h-4 text-[#002147] border-slate-300 rounded focus:ring-[#002147]" />
+                                            </th>)}
+                                            <th className="px-5 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-widest">Applicant Name</th>
+                                            <th className="px-5 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-widest">Email Record</th>
+                                            <th className="px-5 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-widest">Entry Year</th>
+                                            <th className="px-5 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-widest text-right">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-100">
+                                        {filtered.length === 0 ? (
+                                            <tr><td colSpan={5} className="text-center py-20 text-slate-400">
+                                                <i className="fas fa-check-circle text-4xl mb-4 block text-emerald-300/50" />
+                                                <p className="text-xs font-black uppercase tracking-widest">No pending members</p>
+                                            </td></tr>
+                                        ) : filtered.map((m) => (
+                                            <tr key={m._id} className={`transition-colors group ${selectedIds.includes(m._id) ? 'bg-[#002147]/5' : 'hover:bg-amber-50/40'}`}>
+                                                {bulkMode && (<td className="px-5 py-3.5 text-center transition-all">
+                                                    <input type="checkbox" checked={selectedIds.includes(m._id)} onChange={() => toggleSelect(m._id)} className="w-4 h-4 text-[#002147] border-slate-300 rounded focus:ring-[#002147]" />
+                                                </td>)}
+                                                <td className="px-5 py-3.5">
+                                                    <div className="flex flex-col">
+                                                        <span className="text-slate-800 font-bold">{m.name}</span>
+                                                        <div className="flex items-center gap-1.5 mt-1">
+                                                            <span className="text-xs font-black text-blue-500 uppercase tracking-widest bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100">Applicant</span>
+                                                            {m.interview_called ? (
+                                                                <span className="text-xs font-black text-emerald-500 uppercase tracking-widest bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100 flex items-center gap-1">
+                                                                    <i className="fas fa-check-circle text-xs" /> Called
+                                                                </span>
+                                                            ) : (
+                                                                <span className="text-xs font-black text-slate-400 uppercase tracking-widest bg-slate-50 px-1.5 py-0.5 rounded border border-slate-100">Not Called</span>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td className="px-5 py-3.5 text-slate-500">{m.email}</td>
+                                                <td className="px-5 py-3.5 font-bold text-slate-400 font-mono tracking-tighter">{m.joining_year}</td>
+                                                <td className="px-5 py-3.5 text-right flex justify-end gap-2">
+                                                    <button onClick={() => setInterviewTarget(m)}
+                                                        className={`text-xs px-4 py-2 rounded-xl transition-all font-bold uppercase tracking-widest flex items-center gap-1.5 shadow-sm border ${m.interview_called
+                                                                ? "bg-amber-50 text-amber-600 border-amber-200 hover:bg-amber-100"
+                                                                : "bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100"
+                                                            }`}>
+                                                        <i className={m.interview_called ? "fas fa-sync-alt" : "fas fa-microphone-alt"} />
+                                                        {m.interview_called ? "Call Again" : "Interview Call"}
+                                                    </button>
+                                                    <button onClick={() => approveSingle(m._id)} disabled={isProcessing}
+                                                        className="text-xs bg-emerald-50 text-emerald-600 border border-emerald-200 px-4 py-2 rounded-xl hover:bg-emerald-100 transition-colors font-bold uppercase tracking-widest disabled:opacity-50 flex items-center gap-1.5 shadow-sm">
+                                                        <i className="fas fa-check" /> Approve
+                                                    </button>
+                                                    <button onClick={() => deleteSingle(m._id, m.name)} disabled={isProcessing}
+                                                        className="text-white bg-rose-500 w-10 h-10 rounded-xl hover:bg-rose-600 transition-all flex items-center justify-center shadow-lg shadow-rose-900/20 active:scale-95 disabled:opacity-50" title="Delete Application">
+                                                        <i className="fas fa-trash-alt" />
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </>
+                )}
+
+                {interviewTarget && (
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
+                        <div className="bg-white rounded-[2.5rem] w-full max-w-lg shadow-2xl border border-slate-100 overflow-hidden animate-zoom-in max-h-[90vh] flex flex-col">
+                            <div className="bg-[#002147] p-8 text-white relative flex-shrink-0">
+                                <button onClick={() => setInterviewTarget(null)} className="absolute top-8 right-8 text-white/40 hover:text-white transition-all transform hover:rotate-90">
+                                    <i className="fas fa-times text-xl" />
+                                </button>
+                                <div className="w-14 h-14 bg-white/10 rounded-2xl flex items-center justify-center mb-5 backdrop-blur-md border border-white/10">
+                                    <i className="fas fa-calendar-check text-2xl" />
+                                </div>
+                                <h3 className="text-2xl font-black tracking-tight leading-tight uppercase">Schedule Interview Call</h3>
+                                <p className="text-white/50 text-[10px] font-black uppercase tracking-[0.3em] mt-2">Recruitment Drive Invitation</p>
+                            </div>
+
+                            <form onSubmit={handleInterviewCall} className="p-8 space-y-6 overflow-y-auto custom-scrollbar flex-1">
+                                <div className="group">
+                                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 ml-1 group-focus-within:text-[#002147] transition-colors">Interview Venue / Location</label>
+                                    <div className="relative">
+                                        <i className="fas fa-location-dot absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-[#002147] transition-colors" />
+                                        <input
+                                            type="text"
+                                            required
+                                            value={interviewForm.venue}
+                                            onChange={e => setInterviewForm({ ...interviewForm, venue: e.target.value })}
+                                            className="w-full bg-slate-50 border border-slate-100 rounded-2xl pl-12 pr-5 py-4 text-sm font-bold text-slate-800 placeholder:text-slate-300 focus:bg-white focus:ring-4 focus:ring-[#002147]/5 focus:border-[#002147] outline-none transition-all"
+                                            placeholder="e.g. Society HQ or Online Link"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="group">
+                                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 ml-1 group-focus-within:text-[#002147] transition-colors">Interview Description / Details</label>
+                                    <textarea
+                                        rows="4"
+                                        required
+                                        value={interviewForm.message}
+                                        onChange={e => setInterviewForm({ ...interviewForm, message: e.target.value })}
+                                        className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-5 text-sm font-bold text-slate-800 placeholder:text-slate-300 focus:bg-white focus:ring-4 focus:ring-[#002147]/5 focus:border-[#002147] outline-none transition-all resize-none shadow-sm"
+                                        placeholder="Add schedule, instructions or requirements..."
+                                    />
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4 pt-2 pb-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => setInterviewTarget(null)}
+                                        className="px-6 py-4 bg-slate-100 text-slate-500 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-200 transition-all border border-slate-100 shadow-sm"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        disabled={sendingCall}
+                                        className="px-6 py-4 bg-[#002147] text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 transition-all shadow-xl shadow-blue-900/20 flex items-center justify-center gap-2 disabled:opacity-50 active:scale-95"
+                                    >
+                                        {sendingCall ? <i className="fas fa-spinner fa-spin" /> : <i className="fas fa-paper-plane" />}
+                                        {sendingCall ? "Sending..." : "Confirm & Send"}
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                )}
+            </div>
+        );
+    };
 
     // ── Events Tab ───────────────────────────────────────────
 // ── Events Tab (Moved Outside to fix Search Strokes) ────────
@@ -3190,7 +3491,7 @@ const AdminsTab = ({ members, adminUser, auth, notify, fetchMembers, inputCls, i
                     ))}
                 </div>
 
-                <div className="hidden sm:block bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                <div className="hidden sm:block bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden overflow-x-auto">
                     <table className="w-full text-sm">
                         <thead>
                             <tr className="bg-slate-50 border-b border-slate-200 text-left">
@@ -3249,7 +3550,7 @@ const AdminsTab = ({ members, adminUser, auth, notify, fetchMembers, inputCls, i
 };
 
     return (
-        <div className="min-h-screen bg-[#F1F5F9] flex font-sans text-slate-900">
+        <div className="min-h-screen bg-[#F1F5F9] flex font-sans text-slate-900 max-w-full overflow-x-hidden">
 
             {/* Sidebar */}
             <aside className={`fixed inset-y-0 left-0 z-40 w-64 bg-[#002147] flex flex-col shadow-2xl transition-transform duration-500 ease-in-out ${mobileNav ? "translate-x-0" : "-translate-x-full"} lg:translate-x-0`}>
@@ -3295,7 +3596,7 @@ const AdminsTab = ({ members, adminUser, auth, notify, fetchMembers, inputCls, i
             {mobileNav && <div className="fixed inset-0 z-30 bg-slate-900/40 lg:hidden" onClick={() => setMobileNav(false)} />}
 
             {/* Main Content */}
-            <main className="flex-1 lg:ml-64 flex flex-col min-h-screen">
+            <main className="flex-1 lg:ml-64 flex flex-col min-h-screen max-w-full overflow-x-hidden">
                 {/* Header */}
                 <header className="sticky top-0 z-30 bg-white border-b border-slate-200 px-4 sm:px-8 py-4 sm:py-5 flex items-center justify-between shadow-sm">
                     <div className="flex items-center gap-3 sm:gap-5">
@@ -3330,7 +3631,7 @@ const AdminsTab = ({ members, adminUser, auth, notify, fetchMembers, inputCls, i
 
                     {activeTab === "dashboard" && <DashboardTab adminUser={adminUser} setActiveTab={setActiveTab} stats={stats} isSuper={isSuper} tabs={tabs} Spinner={Spinner} StatCard={StatCard} />}
                     {activeTab === "members" && <MembersTab members={members} fetchMembers={fetchMembers} loading={loading} search={search} setSearch={setSearch} auth={auth} notify={notify} Spinner={Spinner} adminUser={adminUser} api={api} inputCls={inputCls} />}
-                    {activeTab === "pending" && <ApprovalsTab pendingMembers={pendingMembers} fetchPendingMembers={fetchPendingMembers} loading={loading} auth={auth} notify={notify} Spinner={Spinner} />}
+                    {activeTab === "pending" && <ApprovalsTab pendingMembers={pendingMembers} fetchPendingMembers={fetchPendingMembers} loading={loading} auth={auth} notify={notify} Spinner={Spinner} api={api} />}
                     {activeTab === "events" && !searchParams.get("eventId") && <EventsTab events={events} fetchEvents={fetchEvents} api={api} auth={auth} notify={notify} setSearchParams={setSearchParams} getImgUrl={getImgUrl} CountdownTimer={CountdownTimer} inputCls={inputCls} />}
                     {activeTab === "events" && searchParams.get("eventId") && (
                         <ParticipantsView 
