@@ -1,17 +1,15 @@
 import { useState } from "react";
 import api from "../api";
-import { useNotification } from "../context/NotificationContext";
 
 export default function VerificationSection() {
   const [memberId, setMemberId] = useState("");
   const [loading, setLoading] = useState(false);
-  const { notify } = useNotification();
 
   const handleVerify = async (e) => {
     e.preventDefault();
     
     if (!memberId) {
-      notify("Please enter a Membership ID.", "error");
+      alert("Please enter a Membership ID.");
       return;
     }
 
@@ -23,14 +21,14 @@ export default function VerificationSection() {
       const response = await api.get(`member/${cleanId}/`);
       
       // SUCCESS: Just show the verification message (No window.open)
-      notify(`✅ VERIFIED MEMBER\n\nName: ${response.data.name}\nID: ${response.data.member_id}\nStatus: Active Member`);
+      alert(`✅ VERIFIED MEMBER\n\nName: ${response.data.name}\nID: ${response.data.member_id}\nStatus: Active Member`);
       
     } catch (error) {
       console.error("Verification Error:", error);
       if (error.response && error.response.status === 404) {
-        notify(`❌ Verification Failed\n\nMember ID "${cleanId}" was not found in our database.`, "error");
+        alert(`❌ Verification Failed\n\nMember ID "${cleanId}" was not found in our database.`);
       } else {
-        notify("⚠️ Connection Error. Please ensure the backend is running.", "error");
+        alert("⚠️ Connection Error. Please ensure the backend is running.");
       }
     } finally {
       setLoading(false);
