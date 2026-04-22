@@ -73,11 +73,13 @@ export default function TeamSection({ memberData = "none", hide = false }) {
                         <h3 className="text-2xl font-black text-white">{member.name}</h3>
                         {member.email && (
                           <a 
-                            href={`mailto:${member.email}?subject=${encodeURIComponent(member.email_subject || "Society Inquiry")}&body=${encodeURIComponent(member.email_body || "Hello Chairman,")}`}
-                            className="w-9 h-9 bg-gradient-to-br from-rose-500 to-pink-600 text-white rounded-full flex items-center justify-center border border-white/20 transition-all active:scale-90 shadow-lg shadow-rose-900/40" 
-                            title="Contact via Gmail"
+                            href={`https://mail.google.com/mail/?view=cm&fs=1&to=${member.email}&su=${encodeURIComponent(member.email_subject || "Society Inquiry")}&body=${encodeURIComponent(member.email_body || "Hello Chairman,")}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="w-10 h-10 bg-gradient-to-br from-[#EA4335] to-[#FBBC05] text-white rounded-full flex items-center justify-center border-2 border-white/30 transition-all active:scale-90 shadow-2xl shadow-rose-900/60" 
+                            title="Contact on Gmail"
                           >
-                            <i className="fas fa-envelope text-[10px]" />
+                            <i className="fas fa-envelope text-xs" />
                           </a>
                         )}
                       </div>
@@ -93,11 +95,14 @@ export default function TeamSection({ memberData = "none", hide = false }) {
                       </span>
                       {member.email && (
                         <a 
-                          href={`mailto:${member.email}?subject=${encodeURIComponent(member.email_subject || "Society Inquiry")}&body=${encodeURIComponent(member.email_body || "Hello Chairman,")}`}
-                          className="w-10 h-10 bg-gradient-to-br from-rose-500 to-pink-600 text-white rounded-full flex items-center justify-center hover:scale-110 hover:shadow-xl hover:shadow-rose-500/30 transition-all duration-300 ring-4 ring-rose-500/10 group/mail" 
-                          title="Send a pre-filled email"
+                          href={`https://mail.google.com/mail/?view=cm&fs=1&to=${member.email}&su=${encodeURIComponent(member.email_subject || "Society Inquiry")}&body=${encodeURIComponent(member.email_body || "Hello Chairman,")}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="w-11 h-11 bg-gradient-to-br from-[#EA4335] to-[#FBBC05] text-white rounded-full flex items-center justify-center hover:scale-110 hover:shadow-2xl hover:shadow-rose-500/40 transition-all duration-500 ring-4 ring-white shadow-xl group/mail relative overflow-hidden" 
+                          title="Contact Chairman on Gmail"
                         >
-                          <i className="fas fa-envelope text-xs animate-pulse group-hover/mail:animate-none" />
+                          <div className="absolute inset-0 bg-white/20 opacity-0 group-hover/mail:opacity-100 transition-opacity" />
+                          <i className="fas fa-envelope text-sm" />
                         </a>
                       )}
                     </div>
