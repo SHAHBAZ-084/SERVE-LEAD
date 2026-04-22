@@ -21,6 +21,14 @@ if (process.env.NODE_ENV === 'production') {
 }
 
 // 2. Middlewares
+app.use(cors({
+    origin: process.env.NODE_ENV === 'production' 
+        ? [process.env.FRONTEND_URL, 'https://sls-management-system.web.app', 'https://serveandlead.org', 'https://www.serveandlead.org', 'https://serveandleadsociety-1fbd7.web.app'] 
+        : 'http://localhost:5173',
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH']
+}));
+
 app.use(helmet({
     crossOriginResourcePolicy: { policy: "cross-origin" }
 })); 
@@ -29,13 +37,6 @@ app.use(express.json({ limit: '10kb' }));
 app.use(express.urlencoded({ extended: true, limit: '10kb' }));
 // app.use(mongoSanitize()); // Disabled due to Express 5 req.query getter issue
 app.use(cookieParser());
-app.use(cors({
-    origin: process.env.NODE_ENV === 'production' 
-        ? [process.env.FRONTEND_URL, 'https://sls-management-system.web.app', 'https://serveandlead.org', 'https://www.serveandlead.org'] 
-        : 'http://localhost:5173',
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH']
-}));
 
 // Logging
 app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev', {
