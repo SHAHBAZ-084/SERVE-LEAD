@@ -330,19 +330,19 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
 
     return (
         <div className="max-w-4xl mx-auto space-y-8 animate-fade-up pb-20">
-            <div className="flex gap-2 sm:gap-4 p-2 bg-slate-200/50 rounded-2xl w-full sm:w-fit overflow-x-auto no-scrollbar whitespace-nowrap">
-                <button onClick={() => setActiveSubTab("donation")} className={`py-2.5 px-6 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all ${activeSubTab === "donation" ? "bg-white text-cyan-600 shadow-sm" : "text-slate-500 hover:text-slate-800"}`}>
-                    <i className="fas fa-money-check-dollar mr-2"></i> Donation Channels
+            <div className="grid grid-cols-2 sm:flex gap-2 sm:gap-4 p-2 bg-slate-200/50 rounded-2xl w-full sm:w-fit">
+                <button onClick={() => setActiveSubTab("donation")} className={`py-2.5 px-4 sm:px-6 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all flex items-center justify-center gap-2 ${activeSubTab === "donation" ? "bg-white text-cyan-600 shadow-sm" : "text-slate-500 hover:text-slate-800"}`}>
+                    <i className="fas fa-money-check-dollar"></i> <span className="sm:inline">Financials</span>
                 </button>
-                <button onClick={() => setActiveSubTab("team")} className={`py-2.5 px-6 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all ${activeSubTab === "team" ? "bg-white text-purple-600 shadow-sm" : "text-slate-500 hover:text-slate-800"}`}>
-                    <i className="fas fa-users-gear mr-2"></i> Team Management
+                <button onClick={() => setActiveSubTab("team")} className={`py-2.5 px-4 sm:px-6 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all flex items-center justify-center gap-2 ${activeSubTab === "team" ? "bg-white text-purple-600 shadow-sm" : "text-slate-500 hover:text-slate-800"}`}>
+                    <i className="fas fa-users-gear"></i> <span className="sm:inline">Management</span>
                 </button>
-                <button onClick={() => setActiveSubTab("vision")} className={`py-2.5 px-6 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all ${activeSubTab === "vision" ? "bg-white text-emerald-600 shadow-sm" : "text-slate-500 hover:text-slate-800"}`}>
-                    <i className="fas fa-eye mr-2"></i> Vision Section
+                <button onClick={() => setActiveSubTab("vision")} className={`py-2.5 px-4 sm:px-6 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all flex items-center justify-center gap-2 ${activeSubTab === "vision" ? "bg-white text-emerald-600 shadow-sm" : "text-slate-500 hover:text-slate-800"}`}>
+                    <i className="fas fa-eye"></i> <span className="sm:inline">Vision Section</span>
                 </button>
                 {auth.is_superuser && (
-                    <button onClick={() => setActiveSubTab("admins")} className={`py-2.5 px-6 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all ${activeSubTab === "admins" ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500 hover:text-slate-800"}`}>
-                        <i className="fas fa-shield-halved mr-2"></i> Manage Admins
+                    <button onClick={() => setActiveSubTab("admins")} className={`py-2.5 px-4 sm:px-6 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all flex items-center justify-center gap-2 ${activeSubTab === "admins" ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500 hover:text-slate-800"}`}>
+                        <i className="fas fa-shield-halved"></i> <span className="sm:inline">Admins</span>
                     </button>
                 )}
             </div>
@@ -540,8 +540,8 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
 
                             <div className="space-y-8">
                                 {/* Image & Badge Section */}
-                                <div className="p-6 bg-slate-50/50 rounded-3xl border border-slate-100 flex flex-col md:flex-row gap-8 items-center">
-                                    <div className="w-48 h-60 rounded-2xl bg-white border border-slate-200 overflow-hidden relative group flex-shrink-0 animate-fade-up">
+                                <div className="p-4 sm:p-6 bg-slate-50/50 rounded-3xl border border-slate-100 flex flex-col items-center md:flex-row gap-6 sm:gap-8">
+                                    <div className="w-full max-w-[240px] aspect-[4/5] sm:w-48 sm:h-60 rounded-2xl bg-white border border-slate-200 overflow-hidden relative group flex-shrink-0 animate-fade-up">
                                         {vision.img ? <img src={getImgUrl(vision.img)} className="w-full h-full object-cover" /> :
                                             <div className="w-full h-full flex flex-col items-center justify-center text-slate-300 bg-slate-50">
                                                 <i className="fas fa-image text-3xl mb-2" />
