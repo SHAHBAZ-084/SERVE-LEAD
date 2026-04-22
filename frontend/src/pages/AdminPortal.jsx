@@ -185,7 +185,7 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
     const [activeSubTab, setActiveSubTab] = useState("donation");
     const [channels, setChannels] = useState([]);
     const [teamStructure, setTeamStructure] = useState([]);
-    const [leadership, setLeadership] = useState({ name: "", role: "", program: "", desc: "", img: "", email: "" });
+    const [leadership, setLeadership] = useState({ name: "", role: "", program: "", desc: "", img: "", email: "", email_subject: "Inquiry regarding Serve & Lead Society", email_body: "Hello Chairman,\n\nI am reaching out to..." });
     const [vision, setVision] = useState({
         badgeSubtitle: "Chairman Vision",
         badgeName: "Farooq Baloch",
@@ -456,6 +456,14 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
                                     <div className="col-span-1 sm:col-span-2">
                                         <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1 block">Gmail Address</label>
                                         <input type="email" value={leadership.email} onChange={e => setLeadership({ ...leadership, email: e.target.value })} className={inputCls} placeholder="chairman@gmail.com" />
+                                    </div>
+                                    <div className="col-span-1">
+                                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1 block">Default Email Subject</label>
+                                        <input type="text" value={leadership.email_subject} onChange={e => setLeadership({ ...leadership, email_subject: e.target.value })} className={inputCls} placeholder="e.g. Society Inquiry" />
+                                    </div>
+                                    <div className="col-span-1">
+                                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1 block">Auto-Message Body</label>
+                                        <textarea rows={1} value={leadership.email_body} onChange={e => setLeadership({ ...leadership, email_body: e.target.value })} className={inputCls} placeholder="Pre-filled message for visitors..." />
                                     </div>
                                     <div className="col-span-1 sm:col-span-2">
                                         <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1 block">Professional Bio</label>

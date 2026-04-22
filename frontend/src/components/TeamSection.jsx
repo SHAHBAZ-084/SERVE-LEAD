@@ -69,14 +69,18 @@ export default function TeamSection({ memberData = "none", hide = false }) {
                   <div className="absolute inset-0 bg-gradient-to-t from-slate-900/60 via-transparent to-transparent block md:hidden" />
                   <div className="absolute bottom-6 left-6 block md:hidden">
                     <p className="text-[10px] font-black uppercase tracking-widest text-cyan-400 mb-1">Executive Leadership</p>
-                    <div className="flex items-center gap-3">
-                      <h3 className="text-2xl font-black text-white">{member.name}</h3>
-                      {member.email && (
-                        <a href={`mailto:${member.email}`} className="w-8 h-8 bg-white/10 backdrop-blur-md text-white rounded-full flex items-center justify-center border border-white/20 transition-all active:scale-95" title="Contact via Gmail">
-                          <i className="fas fa-envelope text-[10px]" />
-                        </a>
-                      )}
-                    </div>
+                      <div className="flex items-center gap-3">
+                        <h3 className="text-2xl font-black text-white">{member.name}</h3>
+                        {member.email && (
+                          <a 
+                            href={`mailto:${member.email}?subject=${encodeURIComponent(member.email_subject || "Society Inquiry")}&body=${encodeURIComponent(member.email_body || "Hello Chairman,")}`}
+                            className="w-9 h-9 bg-gradient-to-br from-rose-500 to-pink-600 text-white rounded-full flex items-center justify-center border border-white/20 transition-all active:scale-90 shadow-lg shadow-rose-900/40" 
+                            title="Contact via Gmail"
+                          >
+                            <i className="fas fa-envelope text-[10px]" />
+                          </a>
+                        )}
+                      </div>
                   </div>
                 </div>
 
@@ -88,8 +92,12 @@ export default function TeamSection({ memberData = "none", hide = false }) {
                         {member.role}
                       </span>
                       {member.email && (
-                        <a href={`mailto:${member.email}`} className="w-9 h-9 bg-rose-50 text-rose-500 rounded-full flex items-center justify-center hover:bg-rose-500 hover:text-white transition-all shadow-sm" title="Contact via Gmail">
-                          <i className="fas fa-envelope text-xs" />
+                        <a 
+                          href={`mailto:${member.email}?subject=${encodeURIComponent(member.email_subject || "Society Inquiry")}&body=${encodeURIComponent(member.email_body || "Hello Chairman,")}`}
+                          className="w-10 h-10 bg-gradient-to-br from-rose-500 to-pink-600 text-white rounded-full flex items-center justify-center hover:scale-110 hover:shadow-xl hover:shadow-rose-500/30 transition-all duration-300 ring-4 ring-rose-500/10 group/mail" 
+                          title="Send a pre-filled email"
+                        >
+                          <i className="fas fa-envelope text-xs animate-pulse group-hover/mail:animate-none" />
                         </a>
                       )}
                     </div>
