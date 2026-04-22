@@ -73,11 +73,9 @@ export default function TeamSection({ memberData = "none", hide = false }) {
                         <h3 className="text-2xl font-black text-white">{member.name}</h3>
                         {member.email && (
                           <a 
-                            href={`https://mail.google.com/mail/?view=cm&fs=1&to=${member.email}&su=${encodeURIComponent(member.email_subject || "Society Inquiry")}&body=${encodeURIComponent(member.email_body || "Hello Chairman,")}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
+                            href={`mailto:${member.email}?subject=${encodeURIComponent(member.email_subject || "Society Inquiry")}&body=${encodeURIComponent(member.email_body || "Hello Chairman,")}`}
                             className="w-10 h-10 bg-gradient-to-br from-[#EA4335] to-[#FBBC05] text-white rounded-full flex items-center justify-center border-2 border-white/30 transition-all active:scale-90 shadow-2xl shadow-rose-900/60" 
-                            title="Contact on Gmail"
+                            title="Contact on Gmail App"
                           >
                             <i className="fas fa-envelope text-xs" />
                           </a>
