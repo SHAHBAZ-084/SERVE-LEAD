@@ -1537,7 +1537,7 @@ const DossierView = ({ memberId, members, onBack }) => {
 // ── Settings Tab (SELF-MANAGEMENT) ───────────────────────
 
 // ── Members Tab (Moved Outside to fix Search Strokes) ────────
-const MembersTab = ({ members, fetchMembers, loading, search, setSearch, auth, notify, Spinner, adminUser }) => {
+const MembersTab = ({ members, fetchMembers, loading, search, setSearch, auth, notify, Spinner, adminUser, api, inputCls }) => {
     const [selectedIds, setSelectedIds] = useState([]);
     const [isProcessing, setIsProcessing] = useState(false);
     const [bulkMode, setBulkMode] = useState(false);
@@ -1634,7 +1634,7 @@ const MembersTab = ({ members, fetchMembers, loading, search, setSearch, auth, n
                                 <div className="flex items-center justify-between gap-3">
                                     <div className="flex items-center gap-3">
                                         <div className="w-8 h-8 bg-[#002147] text-white rounded-lg flex items-center justify-center font-black text-[10px] uppercase shadow-md">
-                                            {m.name.charAt(0)}
+                                            {(m.name || "?").charAt(0)}
                                         </div>
                                         <div>
                                             <h4 className="font-bold text-slate-800 leading-none mb-1 text-xs">{m.name}</h4>
@@ -3012,7 +3012,7 @@ const SettingsTab = ({ adminUser, api, auth, notify, logout, setAdminUser, input
 
 
     // ── Admins Tab (Moved Outside to fix Search Strokes) ────────
-const AdminsTab = ({ members, adminUser, auth, notify, fetchMembers, inputCls, isSuper }) => {
+const AdminsTab = ({ members, adminUser, auth, notify, fetchMembers, inputCls, isSuper, api }) => {
     const [form, setForm] = useState({ name: "", email: "", password: "", joining_year: new Date().getFullYear(), member_id: "", role: "Admin" });
     const [submitting, setSubmitting] = useState(false);
     const [editing, setEditing] = useState(null);
@@ -3151,7 +3151,7 @@ const AdminsTab = ({ members, adminUser, auth, notify, fetchMembers, inputCls, i
                             <div className="flex justify-between items-center gap-3">
                                 <div className="flex items-center gap-2">
                                     <div className="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-600 shrink-0">
-                                        <span className="font-bold text-[10px] uppercase">{m.name.charAt(0)}</span>
+                                        <span className="font-bold text-[10px] uppercase">{(m.name || "?").charAt(0)}</span>
                                     </div>
                                     <div>
                                         <h4 className="font-bold text-slate-800 text-xs leading-none mb-1">{m.name}</h4>
@@ -3329,7 +3329,7 @@ const AdminsTab = ({ members, adminUser, auth, notify, fetchMembers, inputCls, i
                     )}
 
                     {activeTab === "dashboard" && <DashboardTab adminUser={adminUser} setActiveTab={setActiveTab} stats={stats} isSuper={isSuper} tabs={tabs} Spinner={Spinner} StatCard={StatCard} />}
-                    {activeTab === "members" && <MembersTab />}
+                    {activeTab === "members" && <MembersTab members={members} fetchMembers={fetchMembers} loading={loading} search={search} setSearch={setSearch} auth={auth} notify={notify} Spinner={Spinner} adminUser={adminUser} api={api} inputCls={inputCls} />}
                     {activeTab === "pending" && <ApprovalsTab pendingMembers={pendingMembers} fetchPendingMembers={fetchPendingMembers} loading={loading} auth={auth} notify={notify} Spinner={Spinner} />}
                     {activeTab === "events" && !searchParams.get("eventId") && <EventsTab events={events} fetchEvents={fetchEvents} api={api} auth={auth} notify={notify} setSearchParams={setSearchParams} getImgUrl={getImgUrl} CountdownTimer={CountdownTimer} inputCls={inputCls} />}
                     {activeTab === "events" && searchParams.get("eventId") && (
@@ -3349,7 +3349,7 @@ const AdminsTab = ({ members, adminUser, auth, notify, fetchMembers, inputCls, i
                     {activeTab === "batches" && searchParams.get("dossier") && <DossierView memberId={searchParams.get("dossier")} members={members} onBack={() => setSearchParams({ tab: 'batches' })} />}
                     {isSuper && activeTab === "customization" && <CustomizationTabComponent auth={auth} notify={notify} getImgUrl={getImgUrl} inputCls={inputCls} api={api} members={members} />}
                     {activeTab === "settings" && <SettingsTab adminUser={adminUser} api={api} auth={auth} notify={notify} logout={logout} setAdminUser={setAdminUser} inputCls={inputCls} />}
-                    {isSuper && activeTab === "admins" && <AdminsTab />}
+                    {isSuper && activeTab === "admins" && <AdminsTab members={members} adminUser={adminUser} auth={auth} notify={notify} fetchMembers={fetchMembers} inputCls={inputCls} isSuper={isSuper} api={api} />}
                     {isSuper && activeTab === "logs" && <LogsTab api={api} auth={auth} notify={notify} isSuper={isSuper} />}
                 </div>
             </main>
