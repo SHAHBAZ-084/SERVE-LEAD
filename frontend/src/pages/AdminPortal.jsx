@@ -1398,7 +1398,7 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
                 </div>
             )}
 
-            <div style={{ position: 'fixed', top: 0, left: 0, width: '794px', height: '1123px', opacity: 0, pointerEvents: 'none', zIndex: -100, overflow: 'hidden' }}>
+            <div style={{ position: 'fixed', top: '-9999px', left: '-9999px', width: '794px', height: '1123px', opacity: 0, pointerEvents: 'none', zIndex: -100, overflow: 'hidden' }}>
                 {exportData && (
                     <div id="cert-export-node">
                         <CertificateTemplate data={exportData} />
