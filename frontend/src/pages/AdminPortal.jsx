@@ -330,7 +330,7 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
 
     return (
         <div className="max-w-4xl mx-auto space-y-8 animate-fade-up pb-20">
-            <div className="flex gap-4 p-2 bg-slate-200/50 rounded-2xl w-fit">
+            <div className="flex gap-2 sm:gap-4 p-2 bg-slate-200/50 rounded-2xl w-full sm:w-fit overflow-x-auto no-scrollbar whitespace-nowrap">
                 <button onClick={() => setActiveSubTab("donation")} className={`py-2.5 px-6 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all ${activeSubTab === "donation" ? "bg-white text-cyan-600 shadow-sm" : "text-slate-500 hover:text-slate-800"}`}>
                     <i className="fas fa-money-check-dollar mr-2"></i> Donation Channels
                 </button>
@@ -361,9 +361,9 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
                                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Global donation and account settings</p>
                                 </div>
                             </div>
-                            <div className="flex gap-2">
-                                <button type="button" onClick={() => addChannel('Wallet')} className="px-5 py-2.5 bg-emerald-50 text-emerald-600 rounded-xl text-[10px] font-black uppercase border border-emerald-100">+ Add Wallet</button>
-                                <button type="button" onClick={() => addChannel('Bank')} className="px-5 py-2.5 bg-blue-50 text-blue-600 rounded-xl text-[10px] font-black uppercase border border-blue-100">+ Add Bank</button>
+                            <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+                                <button type="button" onClick={() => addChannel('Wallet')} className="flex-1 sm:flex-none px-4 py-2.5 bg-emerald-50 text-emerald-600 rounded-xl text-[10px] font-black uppercase border border-emerald-100">+ Wallet</button>
+                                <button type="button" onClick={() => addChannel('Bank')} className="flex-1 sm:flex-none px-4 py-2.5 bg-blue-50 text-blue-600 rounded-xl text-[10px] font-black uppercase border border-blue-100">+ Bank</button>
                             </div>
                         </div>
 
@@ -377,7 +377,7 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
                                             <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs ${ch.type === 'Bank' ? 'bg-blue-100 text-blue-600' : 'bg-emerald-100 text-emerald-600'}`}><i className={`fas ${ch.type === 'Bank' ? 'fa-building-columns' : 'fa-mobile-screen'}`} /></div>
                                             <span className="text-xs font-black text-slate-900 uppercase tracking-widest">{ch.type} Channel</span>
                                         </div>
-                                        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                                             {ch.type === 'Wallet' ? (
                                                 <>
                                                     <div>
@@ -429,7 +429,7 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
                                         <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mt-1">Chairman / Principal Figure</p>
                                     </div>
                                 </div>
-                                <button type="button" onClick={saveLeadership} disabled={submitting} className="px-5 py-2.5 bg-[#002147] text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 transition-all shadow-md disabled:opacity-50">
+                                <button type="button" onClick={saveLeadership} disabled={submitting} className="w-full sm:w-auto px-5 py-2.5 bg-[#002147] text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 transition-all shadow-md disabled:opacity-50">
                                     <i className="fas fa-save mr-1.5" />
                                     {submitting ? "Saving..." : "Save Profile"}
                                 </button>
@@ -492,7 +492,7 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
 
                                         <div className="grid grid-cols-1 gap-4">
                                             {cat.members.map((m) => (
-                                                <div key={m.id} className="p-4 bg-slate-50/50 rounded-2xl border border-slate-100 relative group flex gap-6 items-center">
+                                                <div key={m.id} className="p-4 sm:p-5 bg-slate-50/50 rounded-2xl border border-slate-100 relative group flex flex-col sm:flex-row gap-5 sm:gap-6 items-center">
                                                     <button type="button" onClick={() => removeMember(cat.id, m.id)} className="absolute top-2 right-2 text-slate-200 hover:text-rose-500 p-2"><i className="fas fa-times" /></button>
 
                                                     <div className="w-20 h-20 rounded-2xl bg-white border border-slate-200 overflow-hidden relative group/img flex-shrink-0">
@@ -504,11 +504,11 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
                                                         </label>
                                                     </div>
 
-                                                    <div className="flex-1 grid grid-cols-2 gap-3">
+                                                    <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-3 w-full">
                                                         <input type="text" placeholder="Full Name" value={m.name} onChange={e => updateMember(cat.id, m.id, 'name', e.target.value)} className="w-full text-xs p-2.5 rounded-xl border border-slate-200" />
                                                         <input type="text" placeholder="Designation" value={m.role} onChange={e => updateMember(cat.id, m.id, 'role', e.target.value)} className="w-full text-xs p-2.5 rounded-xl border border-slate-200" />
                                                         <input type="text" placeholder="Program/Field" value={m.program} onChange={e => updateMember(cat.id, m.id, 'program', e.target.value)} className="w-full text-xs p-2.5 rounded-xl border border-slate-200" />
-                                                        <textarea placeholder="Bio description..." rows={1} value={m.desc} onChange={e => updateMember(cat.id, m.id, 'desc', e.target.value)} className="w-full text-xs p-2.5 rounded-xl border border-slate-200" />
+                                                        <textarea placeholder="Bio description..." rows={1} value={m.desc} onChange={e => updateMember(cat.id, m.id, 'desc', e.target.value)} className="w-full text-xs p-2.5 rounded-xl border border-slate-200 resize-none" />
                                                     </div>
                                                 </div>
                                             ))}
@@ -588,10 +588,10 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
             )}
 
             {/* Global Actions */}
-            <div className="flex justify-end pt-4 pb-2">
+            <div className="flex justify-center sm:justify-end pt-4 pb-2">
                 <button type="button" onClick={save} disabled={submitting}
-                    className="px-6 py-3.5 bg-[#002147] text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 transition-all shadow-md disabled:opacity-50 flex items-center gap-2">
-                    {submitting ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <i className="fas fa-cloud-arrow-up text-xs" />}
+                    className="w-full sm:w-auto px-8 py-4 sm:px-6 sm:py-3.5 bg-[#002147] text-white rounded-2xl sm:rounded-xl text-xs sm:text-[10px] font-black uppercase tracking-[0.2em] sm:tracking-widest hover:bg-slate-800 transition-all shadow-xl shadow-blue-900/10 disabled:opacity-50 flex items-center justify-center gap-3">
+                    {submitting ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <i className="fas fa-cloud-arrow-up text-sm sm:text-xs" />}
                     Apply All Changes
                 </button>
             </div>
