@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import api, { getImgUrl } from "../api";
 import logo from "../assets/logo.png";
 import sealImg from "../assets/sealcertificate.png";
+import { useNotification } from "../context/NotificationContext";
 import CountdownTimer from "../components/common/CountdownTimer";
 const Spinner = () => (
     <div className="flex justify-center py-16">
@@ -99,6 +100,7 @@ const MemberDashboard = () => {
     const [mobileNav, setMobileNav] = useState(false);
     const [selectedEvent, setSelectedEvent] = useState(null);
     const [joining, setJoining] = useState(false);
+    const { notify } = useNotification();
 
     const navigate = useNavigate();
 
@@ -195,10 +197,10 @@ const MemberDashboard = () => {
         if (e && e.preventDefault) e.preventDefault();
         try {
             await api.put("auth/profile", profileForm, auth);
-            alert("Profile updated successfully!");
+            notify("Profile updated successfully!");
             setProfileForm(prev => ({ ...prev, password: "" }));
         } catch (err) {
-            alert(err.response?.data?.error || "Failed to update profile");
+            notify(err.response?.data?.error || "Failed to update profile", "error");
         }
     };
 
@@ -206,10 +208,10 @@ const MemberDashboard = () => {
         setJoining(true);
         try {
             const res = await api.post(`events/${eventId}/join`, {}, auth);
-            alert(res.data.message || "Successfully joined!");
+            notify(res.data.message || "Successfully joined!");
             fetchAllData(); // Refresh list to show 'Joined' status
         } catch (err) {
-            alert(err.response?.data?.error || "Failed to join event");
+            notify(err.response?.data?.error || "Failed to join event", "error");
         } finally {
             setJoining(false);
         }
@@ -296,7 +298,7 @@ const MemberDashboard = () => {
             document.body.removeChild(iframe);
         } catch (err) {
             console.error("PDF Export Error:", err);
-            alert(`PDF Error: ${err.message}`);
+            notify(`PDF Error: ${err.message}`, "error");
         } finally {
             setExporting(false);
             setExportData(null);

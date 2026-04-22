@@ -43,10 +43,27 @@ router.get('/', asyncHandler(async (req, res) => {
     res.json(mappedEvents);
 }));
 
-// GET all events (Admin view)
+// GET all events (Admin view - with pagination)
 router.get('/admin', authMiddleware, isAdmin, asyncHandler(async (req, res) => {
-    const events = await Event.find().sort({ date: -1 }).lean();
-    res.json(events);
+    const { page = 1, limit = 10, search } = req.query;
+    let query = {};
+    if (search) {
+        query.title = new RegExp(search, 'i');
+    }
+
+    const events = await Event.find(query)
+        .sort({ date: -1 })
+        .limit(limit * 1)
+        .skip((page - 1) * limit)
+        .lean();
+        
+    const count = await Event.countDocuments(query);
+    res.json({ 
+        events: events.map(e => ({ ...e, _id: e._id.toString() })), 
+        totalPages: Math.ceil(count / limit), 
+        currentPage: Number(page),
+        totalEvents: count 
+    });
 }));
 
 // GET participants for a specific event (Admin only - with pagination)

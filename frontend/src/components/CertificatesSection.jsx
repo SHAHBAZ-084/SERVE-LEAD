@@ -1,12 +1,14 @@
 import { useState, useEffect } from "react";
 import api from "../api";
 import useScrollReveal from "../hooks/useScrollReveal";
+import { useNotification } from "../context/NotificationContext";
 
 export default function CertificatesSection() {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({ certificateType: "", eventSlug: "", memberId: "" });
   const ref = useScrollReveal();
+  const { notify } = useNotification();
 
   useEffect(() => {
     if (form.certificateType === "participation") {
@@ -35,11 +37,11 @@ export default function CertificatesSection() {
       if (certificateUrl) {
         window.open(certificateUrl, "_blank");
       } else {
-        alert("Certificate found, but no file is attached. Please contact admin.");
+        notify("Certificate found, but no file is attached. Please contact admin.", "error");
       }
     } catch (error) {
       const errorMsg = error.response?.data?.error || "ID not found or network error.";
-      alert(errorMsg);
+      notify(errorMsg, "error");
     } finally {
       setLoading(false);
     }

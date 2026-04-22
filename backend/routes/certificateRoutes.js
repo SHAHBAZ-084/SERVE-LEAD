@@ -198,16 +198,36 @@ router.get('/member/me', authMiddleware, async (req, res) => {
     }
 });
 
-// 3. GET /api/certificates/admin/all - Fetch all issued certificates (Admin only)
+// 3. GET /api/certificates/admin/all - Fetch all issued certificates (Admin only - with pagination)
 router.get('/admin/all', authMiddleware, isAdmin, async (req, res) => {
     try {
-        const certificates = await Certificate.find()
+        const { page = 1, limit = 10, search } = req.query;
+        let query = {};
+        
+        if (search) {
+            query.$or = [
+                { memberName: new RegExp(search, 'i') },
+                { member_id_str: new RegExp(search, 'i') }
+            ];
+        }
+
+        const certificates = await Certificate.find(query)
             .populate('memberId', 'name member_id role')
             .populate('eventId', 'title date')
             .populate('issuedBy', 'name role')
-            .sort({ createdAt: -1 });
+            .sort({ createdAt: -1 })
+            .limit(limit * 1)
+            .skip((page - 1) * limit)
+            .lean();
 
-        res.json(certificates);
+        const count = await Certificate.countDocuments(query);
+        
+        res.json({
+            certificates,
+            totalPages: Math.ceil(count / limit),
+            currentPage: Number(page),
+            totalCertificates: count
+        });
     } catch (error) {
         console.error('Fetch All Certificates Error:', error);
         res.status(500).json({ error: 'Server Error fetching all certificates.' });
