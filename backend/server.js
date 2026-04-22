@@ -30,7 +30,14 @@ app.use(cors({
 }));
 
 app.use(helmet({
-    crossOriginResourcePolicy: { policy: "cross-origin" }
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+    contentSecurityPolicy: {
+        directives: {
+            ...helmet.contentSecurityPolicy.getDefaultDirectives(),
+            "script-src": ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+            "img-src": ["'self'", "data:", "https:", "blob:"],
+        },
+    },
 })); 
 app.use(compression()); // Gzip compression
 app.use(express.json({ limit: '10kb' })); 
