@@ -16,26 +16,42 @@ The system employs a **"Liquid Glass" Aesthetic**, prioritizing readability, pre
 ### 👨‍💻 Administrative Command Center (The Portal)
 The Admin experience is divided into high-impact sub-modules:
 - **Identity Verification Station:** A strict approval queue for new registrations. Admins can verify credentials before granting portal access.
-- **Member Repository:** Centralized database for managing thousands of society members. Supports advanced filtering, blocking, and account termination.
+- **Smart Certificate Engine:** 
+  - Dynamic generation of official certificates (Membership, Appreciation, Excellence).
+  - **Bulk Issuance:** One-click certification for entire batches or filtered member groups.
+  - High-fidelity PDF exports with cryptographic verification signatures.
+- **Member Repository & Batches:** 
+  - Centralized database for managing thousands of members. 
+  - Batch-wise categorization for easy tracking of recruitment cycles.
+  - Advanced filtering, blocking, and account termination capabilities.
 - **Society Event Factory:**
   - Create and manage high-visibility events with dynamic imagery.
-  - Track registration metrics in real-time.
-  - Integrated QR-ready participant lists.
-- **Activity Forensic Logging:** Automatic audit trails for every administrative action. 
-  - *Automatic Persistence Optimization:* Logs are intelligently purged every 3 days via MongoDB TTL indexing to ensure maximum system throughput.
+  - Integrated QR-ready participant lists and real-time registration tracking.
+- **Brand Customization Engine:**
+  - **Team Management:** Dynamically update society leadership and team structures.
+  - **Donation Hub:** Manage official financial channels (Meezan, HBL, EasyPaisa, etc.).
+  - **Chairman Vision:** Real-time updates to the society's mission and leadership profiles.
+- **Activity Forensic Logging:** Automatic audit trails for every administrative action with intelligent auto-purge (3-day TTL rotation).
+
+### 🔍 Public Verification System (The Dossier)
+A transparency tool designed to prevent certificate fraud:
+- **Instant Lookup:** Public users can verify any member's official status using their SLS ID.
+- **Official Records:** Displays verified membership details, role, and batch information directly from the secure database.
 
 ### 👥 Professional Member Portal
 A personalized hub for verified society members:
-- **Membership Credentials:** Instantly access verified certificates and membership status.
-- **Opportunity Hub:** Discover upcoming events, workshops, and high-impact highlights.
-- **Secure Authentication:** Multi-layered security including **Gmail OTP verification** (via Nodemailer) during onboarding.
+- **Membership Credentials:** Instantly access and download verified certificates.
+- **Opportunity Hub:** Discover upcoming events and high-impact highlights.
+- **Secure Authentication:** Multi-layered security including **Gmail OTP verification** during onboarding.
 
 ---
 
 ## 🔒 Security Architecture
-- **Layered Access Control:** Differentiates between `Pending`, `Approved`, and `Blocked` statuses.
+- **Layered Access Control:** Differentiates between `Pending`, `Approved`, `Blocked`, and `Superuser` statuses.
 - **Encrypted Session Management:** Uses secure JSON Web Tokens (JWT) for stateless, highly secure sessions.
-- **Data Hardening:** Integrated protection against typical web vulnerabilities via Helmet.js, including strict Cross-Origin Resource Policies (CORP) for secure media serving.
+- **Hardened Security Headers:** Integrated **Helmet.js** with customized **Content Security Policies (CSP)** to prevent XSS while allowing dynamic script execution and external media.
+- **Rate Limiting:** Protects API endpoints against brute force and DDoS attempts.
+- **Referential Integrity:** Automatic cascade deletion to maintain data consistency (e.g., removing deleted members from event records).
 
 ---
 
@@ -43,41 +59,41 @@ A personalized hub for verified society members:
 
 ### Frontend Infrastructure
 - **Framework:** React.js (Vite)
-- **Styling:** Advanced Tailwind CSS (Custom Design System)
-- **State Persistence:** LocalStorage-based session recovery
-- **PDF Generation:** Integrated `jsPDF` and `html2canvas` for dynamic certificate issuance.
+- **Styling:** Vanilla CSS & Tailwind CSS (Custom Design System)
+- **State Management:** Notification Context & LocalStorage persistence.
+- **PDF Core:** Integrated `jsPDF` and `html2canvas` for dynamic UI-to-PDF capture.
 
 ### Backend Infrastructure
 - **Runtime:** Node.js v18+
 - **Framework:** Express.js
 - **Database:** MongoDB Atlas (NoSQL)
-- **Communication:** Axios-based API consumption.
+- **Media:** Integrated AWS S3 / Local Storage for high-speed asset delivery.
 
 ---
 
 ## 📦 Setting Up the Environment
 
 ### 1. Initialize Backend
-Navigate into the `backend_node` directory and configure the environment:
+Navigate into the `backend` directory and configure the environment:
 ```env
 PORT=5000
-MONGO_URI=mongodb_srv_url
-JWT_SECRET=your_unique_security_salt
-EMAIL_USER=society_official_gmail
-EMAIL_PASS=standard_app_password
+MONGO_URI=your_mongodb_url
+JWT_SECRET=your_secret_key
+EMAIL_USER=official_society_email
+EMAIL_PASS=gmail_app_password
+NODE_ENV=production
 ```
-Install dependencies and seed the system:
+Install dependencies and start the engine:
 ```bash
 npm install
-node createAdmin.js   # Create the master administrator account
-npm run dev           # Start the development engine
+npm run dev
 ```
 
 ### 2. Initialize Frontend
 Navigate into the `frontend` directory:
 ```bash
 npm install
-npm run dev           # Launch the high-fidelity UI
+npm run dev
 ```
 
 ---
