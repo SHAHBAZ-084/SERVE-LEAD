@@ -1536,7 +1536,218 @@ const DossierView = ({ memberId, members, onBack }) => {
 
 // ── Settings Tab (SELF-MANAGEMENT) ───────────────────────
 
-function AdminPortal() {
+// ── Members Tab (Moved Outside to fix Search Strokes) ────────
+const MembersTab = ({ members, fetchMembers, loading, search, setSearch, auth, notify, Spinner, adminUser }) => {
+    const [selectedIds, setSelectedIds] = useState([]);
+    const [isProcessing, setIsProcessing] = useState(false);
+    const [bulkMode, setBulkMode] = useState(false);
+    const [localSearch, setLocalSearch] = useState(search);
+
+    const generalMembers = members.filter(m => m.role !== 'Admin' && m.role !== 'Superuser');
+
+    const handleSelectAll = (e) => setSelectedIds(e.target.checked ? generalMembers.map(m => m._id) : []);
+    const toggleSelect = (id) => setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
+
+    const deleteSingle = async (dbId, name) => {
+        if (!window.confirm(`Are you sure you want to PERMANENTLY DELETE ${name}? This action cannot be undone.`)) return;
+        setIsProcessing(true);
+        try {
+            await api.delete(`admin/members/${dbId}`, auth);
+            notify("Member deleted successfully.");
+            fetchMembers();
+        }
+        catch (err) { notify(err.response?.data?.error || "Delete failed", "error"); }
+        finally { setIsProcessing(false); }
+    };
+
+    const toggleSuspend = async (memberDbId) => {
+        try {
+            const res = await api.patch(`admin/members/${memberDbId}/toggle-block`, {}, auth);
+            fetchMembers();
+            notify(res.data.message);
+        } catch (err) {
+            notify(err.response?.data?.error || "Failed to update member status", "error");
+        }
+    };
+
+    const handleBulkDelete = async () => {
+        if (!window.confirm(`CRITICAL: Permanently delete ${selectedIds.length} members?`)) return;
+        setIsProcessing(true);
+        try {
+            await api.post("admin/members/bulk-delete", { ids: selectedIds }, auth);
+            notify(`Successfully deleted ${selectedIds.length} members.`);
+            fetchMembers();
+            setSelectedIds([]);
+        } catch (err) {
+            notify("Bulk delete failed", "error");
+        } finally { setIsProcessing(false); }
+    };
+
+    const triggerSearch = () => {
+        setSearch(localSearch);
+        fetchMembers();
+    };
+
+    return (
+        <div className="space-y-6 animate-fade-up relative">
+            {selectedIds.length > 0 && (
+                <div className="fixed sm:absolute bottom-6 sm:bottom-auto sm:top-0 left-1/2 -translate-x-1/2 sm:-translate-y-1/2 z-[100] bg-slate-900 text-white px-5 sm:px-6 py-3 rounded-2xl sm:rounded-full shadow-2xl shadow-blue-900/40 flex flex-wrap items-center justify-center gap-4 animate-fade-up border border-slate-700 w-[90%] sm:w-auto ring-4 ring-slate-900/20 backdrop-blur-md">
+                    <span className="text-[10px] sm:text-xs font-bold bg-white/10 px-3 py-1 rounded-xl sm:rounded-full whitespace-nowrap">{selectedIds.length} Selected</span>
+                    <div className="hidden sm:block w-px h-4 bg-white/20" />
+                    <button onClick={handleBulkDelete} disabled={isProcessing} className="text-rose-400 hover:text-rose-300 text-[10px] sm:text-xs font-black uppercase tracking-widest transition-colors flex items-center gap-2">
+                        {isProcessing ? <i className="fas fa-spinner fa-spin" /> : <i className="fas fa-trash-alt" />} Delete
+                    </button>
+                </div>
+            )}
+
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div>
+                    <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Active Members</h2>
+                    <p className="text-slate-500 text-xs font-bold mt-1 uppercase tracking-widest">{generalMembers.length} Approved Members</p>
+                </div>
+                <div className="flex gap-3 w-full sm:w-auto">
+                    <button onClick={() => { setBulkMode(!bulkMode); setSelectedIds([]); }} className={`px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-widest transition-all ${bulkMode ? 'bg-[#002147] text-white shadow-sm' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>
+                        <i className="fas fa-layer-group mr-2" /> {bulkMode ? "Done" : "Select"}
+                    </button>
+                    <div className="relative flex-1 sm:flex-none">
+                        <i className="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm" />
+                        <input type="text" placeholder="Search members..." value={localSearch}
+                            onChange={(e) => setLocalSearch(e.target.value)} onKeyDown={(e) => e.key === "Enter" && triggerSearch()}
+                            className="w-full sm:w-72 bg-white border border-slate-200 rounded-xl pl-11 pr-4 py-2.5 text-slate-800 placeholder-slate-400 focus:ring-2 focus:ring-[#002147]/10 focus:border-[#002147] outline-none text-sm transition-all" />
+                    </div>
+                    <button onClick={triggerSearch} className="bg-[#002147] text-white px-6 py-2.5 rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-slate-800 transition-all shadow-sm">
+                        Search
+                    </button>
+                </div>
+            </div>
+
+            {loading ? <Spinner /> : (
+                <>
+                    <div className="sm:hidden space-y-2">
+                        {generalMembers.length === 0 ? (
+                            <div className="text-center py-20 text-slate-300 bg-white rounded-[2rem] border-2 border-dashed border-slate-100">
+                                <i className="fas fa-id-badge text-5xl mb-4 block opacity-10" />
+                                <p className="text-[10px] font-black uppercase tracking-widest">No records matched</p>
+                            </div>
+                        ) : generalMembers.map((m) => (
+                            <div key={m.member_id} className="p-3 bg-white rounded-2xl border border-slate-100 shadow-sm space-y-3 relative overflow-hidden transition-all">
+                                <div className="flex items-center justify-between gap-3">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-8 h-8 bg-[#002147] text-white rounded-lg flex items-center justify-center font-black text-[10px] uppercase shadow-md">
+                                            {m.name.charAt(0)}
+                                        </div>
+                                        <div>
+                                            <h4 className="font-bold text-slate-800 leading-none mb-1 text-xs">{m.name}</h4>
+                                            <p className="text-[9px] font-bold text-[#002147]/60 uppercase tracking-widest">{m.member_id}</p>
+                                        </div>
+                                    </div>
+                                    <div className="flex flex-col items-end gap-1">
+                                        <span className={`text-[8px] font-black px-2 py-0.5 rounded-md uppercase tracking-wider ${m.status === 'blocked' ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"}`}>
+                                            {m.status === 'blocked' ? "Suspended" : "Active"}
+                                        </span>
+                                        <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">{m.role || "General"}</span>
+                                    </div>
+                                </div>
+
+                                <div className="flex gap-2">
+                                    {m.role !== 'Superuser' && m.member_id !== adminUser && (
+                                        <>
+                                            <button onClick={() => toggleSuspend(m._id)}
+                                                className={`flex-1 text-[9px] font-black uppercase tracking-widest py-2 rounded-lg transition-all border ${m.status === 'blocked' ? "bg-emerald-50 text-emerald-600 border-emerald-100" : "bg-amber-50 text-amber-600 border-amber-100"}`}>
+                                                {m.status === 'blocked' ? "Active" : "Suspend"}
+                                            </button>
+                                            <button onClick={() => deleteSingle(m._id, m.name)}
+                                                className="flex-1 text-[9px] font-black uppercase tracking-widest bg-rose-50 text-rose-500 border border-rose-100 py-2 rounded-lg">
+                                                Delete
+                                            </button>
+                                        </>
+                                    )}
+                                    {m.member_id === adminUser && (
+                                        <div className="flex-1 text-center py-2 text-[9px] font-bold uppercase tracking-widest text-slate-300 italic bg-slate-50 rounded-lg">Primary Admin (Owner)</div>
+                                    )}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+
+                    <div className="hidden sm:block bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-sm">
+                                <thead>
+                                    <tr className="bg-slate-50 border-b border-slate-100 text-left">
+                                        {bulkMode && (<th className="px-6 py-4 w-10 text-center transition-all">
+                                            <input type="checkbox" checked={selectedIds.length === generalMembers.length && generalMembers.length > 0} onChange={handleSelectAll} className="w-4 h-4 text-[#002147] border-slate-300 rounded focus:ring-[#002147]" />
+                                        </th>)}
+                                        <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest">Member ID</th>
+                                        <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest">Official Name</th>
+                                        <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest">Gmail / Email</th>
+                                        <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest">Role</th>
+                                        <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest">Status</th>
+                                        <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest text-right">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-50">
+                                    {generalMembers.length === 0 ? (
+                                        <tr><td colSpan={7} className="text-center py-20 text-slate-400">
+                                            <i className="fas fa-id-badge text-5xl mb-4 block opacity-10" /> No records matched the query.
+                                        </td></tr>
+                                    ) : generalMembers.map((m) => (
+                                        <tr key={m.member_id} className={`transition-colors group ${selectedIds.includes(m.member_id) ? 'bg-[#002147]/5' : 'hover:bg-slate-50'}`}>
+                                            {bulkMode && (<td className="px-6 py-5 text-center transition-all">
+                                                <input type="checkbox" checked={selectedIds.includes(m.member_id)} onChange={() => toggleSelect(m.member_id)} className="w-4 h-4 text-[#002147] border-slate-300 rounded focus:ring-[#002147]" />
+                                            </td>)}
+                                            <td className="px-6 py-5 font-mono text-xs text-[#002147] font-bold">{m.member_id}</td>
+                                            <td className="px-6 py-5 text-slate-800 font-bold">{m.name}</td>
+                                            <td className="px-6 py-5 text-slate-500 text-xs">{m.email}</td>
+                                            <td className="px-6 py-5">
+                                                <span className={`text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider ${m.role === 'Executive' ? "bg-purple-100 text-purple-700" :
+                                                    m.role === 'Admin' ? "bg-amber-100 text-amber-800" :
+                                                        m.role === 'Superuser' ? "bg-rose-100 text-rose-800" :
+                                                            "bg-blue-50 text-blue-700"
+                                                    }`}>
+                                                    {m.role || "General"}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-5">
+                                                <span className={`text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider ${m.status === 'blocked' ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"}`}>
+                                                    {m.status === 'blocked' ? "Suspended" : "Active"}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-5 text-right">
+                                                <div className="flex justify-end gap-2">
+                                                    {m.role !== 'Superuser' && m.member_id !== adminUser && (
+                                                        <>
+                                                            <button onClick={() => toggleSuspend(m._id)}
+                                                                title={m.status === 'blocked' ? "Reactivate Membership" : "Suspend Membership"}
+                                                                className={`text-xs font-bold uppercase tracking-widest px-3 py-1.5 rounded-lg transition-all ${m.status === 'blocked' ? "text-emerald-500 hover:bg-emerald-50" : "text-amber-500 hover:bg-amber-50"}`}>
+                                                                <i className={`fas ${m.status === 'blocked' ? "fa-user-check" : "fa-user-lock"} mr-1`} />
+                                                                {m.status === 'blocked' ? "Reactivate" : "Suspend"}
+                                                            </button>
+                                                            <button onClick={() => deleteSingle(m._id, m.name)}
+                                                                className="text-xs font-bold uppercase tracking-widest text-rose-500 hover:bg-rose-50 px-3 py-1.5 rounded-lg transition-all">
+                                                                <i className="fas fa-trash-alt mr-1" /> Delete
+                                                            </button>
+                                                        </>
+                                                    )}
+                                                    {m.member_id === adminUser && (
+                                                        <span className="text-xs font-bold uppercase tracking-[0.2em] text-slate-400 opacity-50 px-3 py-1.5">Owner</span>
+                                                    )}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </>
+            )}
+        </div>
+    );
+};
+
+
+const AdminPortal = () => {
     const navigate = useNavigate();
     const [searchParams, setSearchParams] = useSearchParams();
     const activeTab = searchParams.get("tab") || "dashboard";
@@ -1644,927 +1855,428 @@ function AdminPortal() {
     }
 
     // ── Dashboard Tab ────────────────────────────────────────
-    const DashboardTab = () => (
-        <div className="space-y-6 animate-fade-up">
-            <div className="relative p-8 rounded-2xl overflow-hidden border border-slate-200 bg-white shadow-sm">
-                <div className="absolute top-0 right-0 w-64 h-64 bg-[#002147]/5 blur-[100px] -mr-32 -mt-32" />
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 relative z-10">
-                    <div>
-                        <h2 className="text-3xl font-bold text-slate-900 leading-tight tracking-tight">Welcome back, <span className="text-[#002147]">{adminUser}</span> 👋</h2>
-                        <p className="text-slate-500 text-sm mt-1 font-medium">SLS Society Management Dashboard</p>
-                    </div>
-                    <div className="flex gap-3">
-                        <button onClick={() => setActiveTab('events')} className="px-5 py-2.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl text-xs font-black uppercase tracking-widest transition-all border border-indigo-100 flex items-center gap-2">
-                            <i className="fas fa-calendar-plus" /> Create Event
-                        </button>
-                        <button onClick={() => setActiveTab('certificates')} className="px-5 py-2.5 bg-[#002147] hover:bg-slate-800 text-white shadow-lg shadow-blue-900/10 rounded-xl text-xs font-black uppercase tracking-widest transition-all flex items-center gap-2">
-                            <i className="fas fa-certificate" /> Create Certificate
-                        </button>
-                    </div>
+// ── Dashboard Tab (Moved Outside) ────────────────────
+const DashboardTab = ({ adminUser, setActiveTab, stats, isSuper, tabs, Spinner, StatCard }) => (
+    <div className="space-y-6 animate-fade-up">
+        <div className="relative p-8 rounded-2xl overflow-hidden border border-slate-200 bg-white shadow-sm">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-[#002147]/5 blur-[100px] -mr-32 -mt-32" />
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 relative z-10">
+                <div>
+                    <h2 className="text-3xl font-bold text-slate-900 leading-tight tracking-tight">Welcome back, <span className="text-[#002147]">{adminUser}</span> 👋</h2>
+                    <p className="text-slate-500 text-sm mt-1 font-medium">SLS Society Management Dashboard</p>
                 </div>
-            </div>
-            {stats ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-                    <StatCard icon="fa-users" label="Total Members" value={stats.total_members} color="blue" />
-                    <StatCard icon="fa-user-clock" label="Pending" value={stats.pending_members} color="indigo" />
-                    {isSuper && <StatCard icon="fa-user-shield" label="Admins" value={stats.total_admins} color="sky" />}
-                    <StatCard icon="fa-calendar-alt" label="Events" value={stats.total_events} color="violet" />
-                </div>
-            ) : <Spinner />}
-
-            <div className="space-y-4">
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">Quick Management</p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {tabs.slice(1, 4).map((t) => (
-                        <button key={t.id} onClick={() => setActiveTab(t.id)}
-                            className="flex items-center gap-4 p-5 bg-white border border-slate-200 rounded-2xl hover:border-[#002147] hover:shadow-lg transition-all duration-300 group">
-                            <div className="w-11 h-11 bg-slate-50 rounded-xl flex items-center justify-center group-hover:bg-[#002147] transition-colors">
-                                <i className={`fas ${t.icon} text-[#002147] text-sm group-hover:text-white`} />
-                            </div>
-                            <span className="text-slate-600 group-hover:text-[#002147] text-sm font-bold tracking-tight transition-colors">{t.label}</span>
-                            <i className="fas fa-chevron-right text-slate-300 text-xs ml-auto group-hover:text-[#002147] group-hover:translate-x-1 transition-all" />
-                        </button>
-                    ))}
+                <div className="flex gap-3">
+                    <button onClick={() => setActiveTab('events')} className="px-5 py-2.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl text-xs font-black uppercase tracking-widest transition-all border border-indigo-100 flex items-center gap-2">
+                        <i className="fas fa-calendar-plus" /> Create Event
+                    </button>
+                    <button onClick={() => setActiveTab('certificates')} className="px-5 py-2.5 bg-[#002147] hover:bg-slate-800 text-white shadow-lg shadow-blue-900/10 rounded-xl text-xs font-black uppercase tracking-widest transition-all flex items-center gap-2">
+                        <i className="fas fa-certificate" /> Create Certificate
+                    </button>
                 </div>
             </div>
         </div>
-    );
+        {stats ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+                <StatCard icon="fa-users" label="Total Members" value={stats.total_members} color="blue" />
+                <StatCard icon="fa-user-clock" label="Pending" value={stats.pending_members} color="indigo" />
+                {isSuper && <StatCard icon="fa-user-shield" label="Admins" value={stats.total_admins} color="sky" />}
+                <StatCard icon="fa-calendar-alt" label="Events" value={stats.total_events} color="violet" />
+            </div>
+        ) : <Spinner />}
+
+        <div className="space-y-4">
+            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">Quick Management</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {tabs.slice(1, 4).map((t) => (
+                    <button key={t.id} onClick={() => setActiveTab(t.id)}
+                        className="flex items-center gap-4 p-5 bg-white border border-slate-200 rounded-2xl hover:border-[#002147] hover:shadow-lg transition-all duration-300 group">
+                        <div className="w-11 h-11 bg-slate-50 rounded-xl flex items-center justify-center group-hover:bg-[#002147] transition-colors">
+                            <i className={`fas ${t.icon} text-[#002147] text-sm group-hover:text-white`} />
+                        </div>
+                        <span className="text-slate-600 group-hover:text-[#002147] text-sm font-bold tracking-tight transition-colors">{t.label}</span>
+                        <i className="fas fa-chevron-right text-slate-300 text-xs ml-auto group-hover:text-[#002147] group-hover:translate-x-1 transition-all" />
+                    </button>
+                ))}
+            </div>
+        </div>
+    </div>
+);
+
 
     // ── Members Tab ──────────────────────────────────────────
-    const MembersTab = () => {
-        const [selectedIds, setSelectedIds] = useState([]);
-        const [isProcessing, setIsProcessing] = useState(false);
-        const [bulkMode, setBulkMode] = useState(false);
 
-        const generalMembers = members.filter(m => m.role !== 'Admin' && m.role !== 'Superuser');
-
-        const handleSelectAll = (e) => setSelectedIds(e.target.checked ? generalMembers.map(m => m._id) : []);
-        const toggleSelect = (id) => setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
-
-        const deleteSingle = async (dbId, name) => {
-            if (!window.confirm(`Are you sure you want to PERMANENTLY DELETE ${name}? This action cannot be undone.`)) return;
-            setIsProcessing(true);
-            try {
-                await api.delete(`admin/members/${dbId}`, auth);
-                notify("Member deleted successfully.");
-                fetchMembers();
-            }
-            catch (err) { notify(err.response?.data?.error || "Delete failed", "error"); }
-            finally { setIsProcessing(false); }
-        };
-
-        const toggleSuspend = async (memberDbId) => {
-            try {
-                const res = await api.patch(`admin/members/${memberDbId}/toggle-block`, {}, auth);
-                fetchMembers();
-                notify(res.data.message);
-            } catch (err) {
-                notify(err.response?.data?.error || "Failed to update member status", "error");
-            }
-        };
-
-        const handleBulkDelete = async () => {
-            if (!window.confirm(`CRITICAL: Permanently delete ${selectedIds.length} members?`)) return;
-            setIsProcessing(true);
-            try {
-                await api.post("admin/members/bulk-delete", { ids: selectedIds }, auth);
-                notify(`Successfully deleted ${selectedIds.length} members.`);
-                fetchMembers();
-                setSelectedIds([]);
-            } catch (err) {
-                notify("Bulk delete failed", "error");
-            } finally { setIsProcessing(false); }
-        };
-
-        return (
-            <div className="space-y-6 animate-fade-up relative">
-                {selectedIds.length > 0 && (
-                    <div className="fixed sm:absolute bottom-6 sm:bottom-auto sm:top-0 left-1/2 -translate-x-1/2 sm:-translate-y-1/2 z-[100] bg-slate-900 text-white px-5 sm:px-6 py-3 rounded-2xl sm:rounded-full shadow-2xl shadow-blue-900/40 flex flex-wrap items-center justify-center gap-4 animate-fade-up border border-slate-700 w-[90%] sm:w-auto ring-4 ring-slate-900/20 backdrop-blur-md">
-                        <span className="text-[10px] sm:text-xs font-bold bg-white/10 px-3 py-1 rounded-xl sm:rounded-full whitespace-nowrap">{selectedIds.length} Selected</span>
-                        <div className="hidden sm:block w-px h-4 bg-white/20" />
-                        <button onClick={handleBulkDelete} disabled={isProcessing} className="text-rose-400 hover:text-rose-300 text-[10px] sm:text-xs font-black uppercase tracking-widest transition-colors flex items-center gap-2">
-                            {isProcessing ? <i className="fas fa-spinner fa-spin" /> : <i className="fas fa-trash-alt" />} Delete
-                        </button>
-                    </div>
-                )}
-
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                    <div>
-                        <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Active Members</h2>
-                        <p className="text-slate-500 text-xs font-bold mt-1 uppercase tracking-widest">{generalMembers.length} Approved Members</p>
-                    </div>
-                    <div className="flex gap-3 w-full sm:w-auto">
-                        <button onClick={() => { setBulkMode(!bulkMode); setSelectedIds([]); }} className={`px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-widest transition-all ${bulkMode ? 'bg-[#002147] text-white shadow-sm' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>
-                            <i className="fas fa-layer-group mr-2" /> {bulkMode ? "Done" : "Select"}
-                        </button>
-                        <div className="relative flex-1 sm:flex-none">
-                            <i className="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm" />
-                            <input type="text" placeholder="Search members..." value={search}
-                                onChange={(e) => setSearch(e.target.value)} onKeyDown={(e) => e.key === "Enter" && fetchMembers()}
-                                className="w-full sm:w-72 bg-white border border-slate-200 rounded-xl pl-11 pr-4 py-2.5 text-slate-800 placeholder-slate-400 focus:ring-2 focus:ring-[#002147]/10 focus:border-[#002147] outline-none text-sm transition-all" />
-                        </div>
-                        <button onClick={fetchMembers} className="bg-[#002147] text-white px-6 py-2.5 rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-slate-800 transition-all shadow-sm">
-                            Search
-                        </button>
-                    </div>
-                </div>
-
-                {loading ? <Spinner /> : (
-                    <>
-                        <div className="sm:hidden space-y-2">
-                            {generalMembers.length === 0 ? (
-                                <div className="text-center py-20 text-slate-300 bg-white rounded-[2rem] border-2 border-dashed border-slate-100">
-                                    <i className="fas fa-id-badge text-5xl mb-4 block opacity-10" />
-                                    <p className="text-[10px] font-black uppercase tracking-widest">No records matched</p>
-                                </div>
-                            ) : generalMembers.map((m) => (
-                                <div key={m.member_id} className="p-3 bg-white rounded-2xl border border-slate-100 shadow-sm space-y-3 relative overflow-hidden transition-all">
-                                    <div className="flex items-center justify-between gap-3">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-8 h-8 bg-[#002147] text-white rounded-lg flex items-center justify-center font-black text-[10px] uppercase shadow-md">
-                                                {m.name.charAt(0)}
-                                            </div>
-                                            <div>
-                                                <h4 className="font-bold text-slate-800 leading-none mb-1 text-xs">{m.name}</h4>
-                                                <p className="text-[9px] font-bold text-[#002147]/60 uppercase tracking-widest">{m.member_id}</p>
-                                            </div>
-                                        </div>
-                                        <div className="flex flex-col items-end gap-1">
-                                            <span className={`text-[8px] font-black px-2 py-0.5 rounded-md uppercase tracking-wider ${m.status === 'blocked' ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"}`}>
-                                                {m.status === 'blocked' ? "Suspended" : "Active"}
-                                            </span>
-                                            <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">{m.role || "General"}</span>
-                                        </div>
-                                    </div>
-
-                                    <div className="flex gap-2">
-                                        {m.role !== 'Superuser' && m.member_id !== adminUser && (
-                                            <>
-                                                <button onClick={() => toggleSuspend(m._id)}
-                                                    className={`flex-1 text-[9px] font-black uppercase tracking-widest py-2 rounded-lg transition-all border ${m.status === 'blocked' ? "bg-emerald-50 text-emerald-600 border-emerald-100" : "bg-amber-50 text-amber-600 border-amber-100"}`}>
-                                                    {m.status === 'blocked' ? "Active" : "Suspend"}
-                                                </button>
-                                                <button onClick={() => deleteSingle(m._id, m.name)}
-                                                    className="flex-1 text-[9px] font-black uppercase tracking-widest bg-rose-50 text-rose-500 border border-rose-100 py-2 rounded-lg">
-                                                    Delete
-                                                </button>
-                                            </>
-                                        )}
-                                        {m.member_id === adminUser && (
-                                            <div className="flex-1 text-center py-2 text-[9px] font-bold uppercase tracking-widest text-slate-300 italic bg-slate-50 rounded-lg">Primary Admin (Owner)</div>
-                                        )}
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-
-                        <div className="hidden sm:block bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
-                            <div className="overflow-x-auto">
-                                <table className="w-full text-sm">
-                                    <thead>
-                                        <tr className="bg-slate-50 border-b border-slate-100 text-left">
-                                            {bulkMode && (<th className="px-6 py-4 w-10 text-center transition-all">
-                                                <input type="checkbox" checked={selectedIds.length === generalMembers.length && generalMembers.length > 0} onChange={handleSelectAll} className="w-4 h-4 text-[#002147] border-slate-300 rounded focus:ring-[#002147]" />
-                                            </th>)}
-                                            <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest">Member ID</th>
-                                            <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest">Official Name</th>
-                                            <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest">Gmail / Email</th>
-                                            <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest">Role</th>
-                                            <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest">Status</th>
-                                            <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest text-right">Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-slate-50">
-                                        {generalMembers.length === 0 ? (
-                                            <tr><td colSpan={7} className="text-center py-20 text-slate-400">
-                                                <i className="fas fa-id-badge text-5xl mb-4 block opacity-10" /> No records matched the query.
-                                            </td></tr>
-                                        ) : generalMembers.map((m) => (
-                                            <tr key={m.member_id} className={`transition-colors group ${selectedIds.includes(m.member_id) ? 'bg-[#002147]/5' : 'hover:bg-slate-50'}`}>
-                                                {bulkMode && (<td className="px-6 py-5 text-center transition-all">
-                                                    <input type="checkbox" checked={selectedIds.includes(m.member_id)} onChange={() => toggleSelect(m.member_id)} className="w-4 h-4 text-[#002147] border-slate-300 rounded focus:ring-[#002147]" />
-                                                </td>)}
-                                                <td className="px-6 py-5 font-mono text-xs text-[#002147] font-bold">{m.member_id}</td>
-                                                <td className="px-6 py-5 text-slate-800 font-bold">{m.name}</td>
-                                                <td className="px-6 py-5 text-slate-500 text-xs">{m.email}</td>
-                                                <td className="px-6 py-5">
-                                                    <span className={`text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider ${m.role === 'Executive' ? "bg-purple-100 text-purple-700" :
-                                                        m.role === 'Admin' ? "bg-amber-100 text-amber-800" :
-                                                            m.role === 'Superuser' ? "bg-rose-100 text-rose-800" :
-                                                                "bg-blue-50 text-blue-700"
-                                                        }`}>
-                                                        {m.role || "General"}
-                                                    </span>
-                                                </td>
-                                                <td className="px-6 py-5">
-                                                    <span className={`text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider ${m.status === 'blocked' ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"}`}>
-                                                        {m.status === 'blocked' ? "Suspended" : "Active"}
-                                                    </span>
-                                                </td>
-                                                <td className="px-6 py-5 text-right">
-                                                    <div className="flex justify-end gap-2">
-                                                        {m.role !== 'Superuser' && m.member_id !== adminUser && (
-                                                            <>
-                                                                <button onClick={() => toggleSuspend(m._id)}
-                                                                    title={m.status === 'blocked' ? "Reactivate Membership" : "Suspend Membership"}
-                                                                    className={`text-xs font-bold uppercase tracking-widest px-3 py-1.5 rounded-lg transition-all ${m.status === 'blocked' ? "text-emerald-500 hover:bg-emerald-50" : "text-amber-500 hover:bg-amber-50"}`}>
-                                                                    <i className={`fas ${m.status === 'blocked' ? "fa-user-check" : "fa-user-lock"} mr-1`} />
-                                                                    {m.status === 'blocked' ? "Reactivate" : "Suspend"}
-                                                                </button>
-                                                                <button onClick={() => deleteSingle(m._id, m.name)}
-                                                                    className="text-xs font-bold uppercase tracking-widest text-rose-500 hover:bg-rose-50 px-3 py-1.5 rounded-lg transition-all">
-                                                                    <i className="fas fa-trash-alt mr-1" /> Delete
-                                                                </button>
-                                                            </>
-                                                        )}
-                                                        {m.member_id === adminUser && (
-                                                            <span className="text-xs font-bold uppercase tracking-[0.2em] text-slate-400 opacity-50 px-3 py-1.5">Owner</span>
-                                                        )}
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </>
-                )}
-            </div>
-        );
-    };
 
     // ── Approvals Tab ──────────────────────────────────────────
-    const ApprovalsTab = () => {
-        const [searchTerm, setSearchTerm] = useState("");
-        const [selectedIds, setSelectedIds] = useState([]);
-        const [isProcessing, setIsProcessing] = useState(false);
-        const [bulkMode, setBulkMode] = useState(false);
 
-        const [interviewTarget, setInterviewTarget] = useState(null);
-        const [interviewForm, setInterviewForm] = useState({ venue: "SLS Society HQ, Campus Block B", message: "" });
-        const [sendingCall, setSendingCall] = useState(false);
+    // ── Events Tab ───────────────────────────────────────────
+// ── Events Tab (Moved Outside to fix Search Strokes) ────────
+const EventsTab = ({ events, fetchEvents, api, auth, notify, setSearchParams, getImgUrl, CountdownTimer, inputCls }) => {
+    const [activeSubTab, setActiveSubTab] = useState("view");
+    const [form, setForm] = useState({ title: "", description: "", date: "", endDate: "", location: "", is_active: true, time: "" });
+    const [creating, setCreating] = useState(false);
+    const [file, setFile] = useState(null);
+    const [preview, setPreview] = useState(null);
+    const [searchTerm, setSearchTerm] = useState("");
+    const [statusFilter, setStatusFilter] = useState("All");
+    const [selectedIds, setSelectedIds] = useState([]);
+    const [isProcessing, setIsProcessing] = useState(false);
+    const [bulkMode, setBulkMode] = useState(false);
+    const ldt = new Date();
+    const todayStr = `${ldt.getFullYear()}-${String(ldt.getMonth() + 1).padStart(2, '0')}-${String(ldt.getDate()).padStart(2, '0')}`;
 
-        const filtered = pendingMembers.filter(m =>
-            m.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            m.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            m.joining_year?.toString().includes(searchTerm)
-        );
+    const filteredEvents = events.filter(e => {
+        const matchSearch = e.title?.toLowerCase().includes(searchTerm.toLowerCase()) || e.location?.toLowerCase().includes(searchTerm.toLowerCase());
+        const endTimestamp = new Date(`${e.endDate || e.date}T23:59:59`).getTime();
+        const hasEnded = Date.now() > endTimestamp;
+        const matchStatus = statusFilter === "All" || (statusFilter === "Running" && !hasEnded) || (statusFilter === "Ended" && hasEnded);
+        return matchSearch && matchStatus;
+    });
 
-        const handleSelectAll = (e) => setSelectedIds(e.target.checked ? filtered.map(m => m._id) : []);
-        const toggleSelect = (id) => setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
+    const handleSelectAll = (e) => setSelectedIds(e.target.checked ? filteredEvents.map(ev => ev._id) : []);
+    const toggleSelect = (id) => setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
 
-        const approveSingle = async (id) => {
-            if (!window.confirm("Approve this member?")) return;
-            setIsProcessing(true);
+    const handleFileChange = (e) => {
+        const selected = e.target.files[0];
+        if (selected) {
+            setFile(selected);
+            setPreview(URL.createObjectURL(selected));
+        }
+    };
+
+    const create = async (e) => {
+        e.preventDefault();
+
+        const now = new Date();
+        const isToday = form.date === todayStr;
+
+        if (!form.date) {
+            notify("Please select a date", "error");
+            return;
+        }
+
+        if (isToday && form.time) {
             try {
-                const r = await api.post(`admin/approve-member/${id}`, {}, auth);
-                notify(`Approved! Member ID: ${r.data.member_id}`);
-                fetchPendingMembers();
+                const eventStartTime = new Date(`${form.date}T${form.time}:00`);
+                if (!isNaN(eventStartTime.getTime()) && eventStartTime < now) {
+                    notify("Selected time has already passed for today.", "error");
+                    return;
+                }
+            } catch (err) {
+                console.error("Date validation error:", e);
             }
-            catch (err) {
-                notify("Failed to approve", "error");
-                if (err.response?.data?.error?.toLowerCase().includes("already")) { fetchPendingMembers(); }
-            } finally { setIsProcessing(false); }
-        };
+        }
 
-        const deleteSingle = async (id, name) => {
-            if (!window.confirm(`Are you sure you want to delete ${name}'s application? This action cannot be undone.`)) return;
-            setIsProcessing(true);
-            try {
-                await api.delete(`admin/members/${id}`, auth);
-                notify("Application deleted successfully.");
-                fetchPendingMembers();
-            } catch (err) {
-                notify(err.response?.data?.error || "Failed to delete application.", "error");
-            } finally { setIsProcessing(false); }
-        };
+        if (form.date < todayStr) {
+            notify("Event date cannot be in the past", "error");
+            return;
+        }
 
-        const handleBulkApprove = async () => {
-            if (!window.confirm(`Bulk approve ${selectedIds.length} applications?`)) return;
-            setIsProcessing(true);
-            let count = 0;
-            await Promise.all(selectedIds.map(async id => {
-                try { await api.post(`admin/approve-member/${id}`, {}, auth); count++; } catch { } // eslint-disable-line no-empty
-            }));
-            notify(`Approved ${count} members.`);
-            fetchPendingMembers();
-            setSelectedIds([]);
-            setIsProcessing(false);
-        };
+        if (form.endDate && form.endDate < form.date) {
+            notify("The event cannot end before it starts.", "error");
+            return;
+        }
 
-        const handleBulkDelete = async () => {
-            if (!window.confirm(`CRITICAL ACTION: Are you sure you want to PERMANENTLY DELETE ${selectedIds.length} applications?`)) return;
-            setIsProcessing(true);
-            try {
-                await api.post("admin/members/bulk-delete", { ids: selectedIds }, auth);
-                notify(`Successfully deleted ${selectedIds.length} applications.`);
-                fetchPendingMembers();
-                setSelectedIds([]);
-            } catch (err) {
-                notify("Bulk delete failed", "error");
-            } finally { setIsProcessing(false); }
-        };
+        setCreating(true);
+        try {
+            const formData = new FormData();
+            formData.append("title", form.title);
+            formData.append("description", form.description);
+            formData.append("date", form.date);
+            formData.append("endDate", form.endDate || form.date);
+            formData.append("location", form.location);
+            formData.append("is_active", form.is_active);
+            formData.append("time", form.time);
+            if (file) formData.append("image", file);
 
-        const handleInterviewCall = async (e) => {
-            e.preventDefault();
-            if (!interviewTarget) return;
-            setSendingCall(true);
-            try {
-                await api.post(`admin/interview-call/${interviewTarget._id}`, interviewForm, auth);
-                notify(`Interview call sent to ${interviewTarget.name}!`);
-                setInterviewTarget(null);
-                setInterviewForm({ venue: "SLS Society HQ, Campus Block B", message: "" });
-                fetchPendingMembers();
-            } catch (err) {
-                notify(err.response?.data?.error || "Failed to send interview invitation", "error");
-            } finally { setSendingCall(false); }
-        };
+            await api.post("events/", formData, {
+                headers: { ...auth.headers, "Content-Type": "multipart/form-data" }
+            });
 
-        return (
-            <div className="space-y-6 animate-fade-up relative">
-                {selectedIds.length > 0 && (
-                    <div className="fixed sm:absolute bottom-6 sm:bottom-auto sm:top-0 left-1/2 -translate-x-1/2 sm:-translate-y-1/2 z-[100] bg-slate-900 text-white px-5 sm:px-6 py-3 rounded-2xl sm:rounded-full shadow-2xl shadow-blue-900/40 flex flex-wrap items-center justify-center gap-4 animate-fade-up border border-slate-700 w-[90%] sm:w-auto ring-4 ring-slate-900/20 backdrop-blur-md">
-                        <span className="text-[10px] sm:text-xs font-bold bg-white/10 px-3 py-1 rounded-xl sm:rounded-full whitespace-nowrap">{selectedIds.length} Selected</span>
-                        <div className="hidden sm:block w-px h-4 bg-white/20" />
-                        <button onClick={handleBulkApprove} disabled={isProcessing} className="text-emerald-400 hover:text-emerald-300 text-[10px] sm:text-xs font-black uppercase tracking-widest transition-colors flex items-center gap-2">
-                            {isProcessing ? <i className="fas fa-spinner fa-spin" /> : <i className="fas fa-check-double" />} Approve
-                        </button>
-                        <div className="hidden sm:block w-px h-4 bg-white/20" />
-                        <button onClick={handleBulkDelete} disabled={isProcessing} className="text-rose-400 hover:text-rose-300 text-[10px] sm:text-xs font-black uppercase tracking-widest transition-colors flex items-center gap-2">
-                            <i className="fas fa-trash-alt" /> Delete
-                        </button>
-                    </div>
-                )}
+            notify(`Event "${form.title}" created!`);
+            setForm({ title: "", description: "", date: "", endDate: "", location: "", is_active: true, time: "" });
+            setFile(null); setPreview(null);
+            fetchEvents();
+            setActiveSubTab("view");
+        } catch (err) { notify(err.response?.data?.error || "Failed to create", "error"); }
+        finally { setCreating(false); }
+    };
 
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                    <div>
-                        <h2 className="text-xl font-bold text-slate-800">Pending Approvals</h2>
-                        <p className="text-slate-400 text-sm mt-1">{pendingMembers.length} remaining in queue</p>
-                    </div>
-                    <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-                        <button onClick={() => { setBulkMode(!bulkMode); setSelectedIds([]); }} className={`px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-widest transition-all ${bulkMode ? 'bg-[#002147] text-white shadow-sm' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>
-                            <i className="fas fa-layer-group mr-2" /> {bulkMode ? "Done" : "Select"}
-                        </button>
-                        <div className="relative w-full sm:w-72">
-                            <i className="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm" />
-                            <input type="text" placeholder="Filter applicants..." value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                className="w-full bg-white border border-slate-200 rounded-xl pl-11 pr-4 py-2.5 text-slate-800 focus:ring-2 focus:ring-[#002147]/10 focus:border-[#002147] outline-none text-sm shadow-sm" />
+    const deleteSingle = async (id) => {
+        if (!window.confirm("Delete event?")) return;
+        setIsProcessing(true);
+        try { await api.delete(`events/${id}`, auth); notify("Event deleted"); fetchEvents(); }
+        catch { notify("Delete failed", "error"); }
+        finally { setIsProcessing(false); }
+    };
+
+    const handleBulkDelete = async () => {
+        if (!window.confirm(`Permanently remove ${selectedIds.length} event records?`)) return;
+        setIsProcessing(true);
+        let count = 0;
+        await Promise.all(selectedIds.map(async id => {
+            try { await api.delete(`events/${id}`, auth); count++; } catch (e) { }
+        }));
+        notify(`Removed ${count} out of ${selectedIds.length} events`);
+        fetchEvents();
+        setSelectedIds([]);
+        setIsProcessing(false);
+    };
+
+    const viewParticipants = (event) => {
+        setSearchParams({ tab: 'events', eventId: event._id });
+    };
+
+
+    return (
+        <div className="space-y-6 animate-fade-up">
+            <div className="flex gap-4 p-2 bg-slate-100 rounded-2xl w-fit">
+                <button
+                    onClick={() => setActiveSubTab("view")}
+                    className={`py-2 px-6 text-xs font-black uppercase tracking-widest rounded-xl transition-all ${activeSubTab === "view" ? "bg-white text-[#002147] shadow-sm" : "text-slate-500 hover:text-slate-800"}`}
+                >
+                    <i className="fas fa-list-ul mr-2"></i> View Events
+                </button>
+                <button
+                    onClick={() => setActiveSubTab("create")}
+                    className={`py-2 px-6 text-xs font-black uppercase tracking-widest rounded-xl transition-all ${activeSubTab === "create" ? "bg-white text-[#002147] shadow-sm" : "text-slate-500 hover:text-slate-800"}`}
+                >
+                    <i className="fas fa-plus mr-2"></i> Create Event
+                </button>
+            </div>
+
+            {activeSubTab === "create" && (
+                <div className="bg-white border border-slate-200 rounded-3xl sm:rounded-[2.5rem] p-5 sm:p-10 shadow-xl relative overflow-hidden animate-fade-in">
+                    <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-blue-600 to-indigo-700" />
+                    <h3 className="text-xl sm:text-2xl font-black text-slate-800 mb-6 sm:mb-8 flex items-center gap-4">
+                        <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-50 text-blue-600 rounded-xl sm:rounded-2xl flex items-center justify-center text-lg sm:text-xl shadow-inner"><i className="fas fa-calendar-plus" /></div>
+                        Create New Event
+                    </h3>
+                    <form onSubmit={create} className="space-y-8">
+                        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                            <div className="sm:col-span-2 lg:col-span-1">
+                                <label className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 block ml-1">Event Title *</label>
+                                <input type="text" placeholder="Official Event Name" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className={inputCls} required />
+                            </div>
+                            <div>
+                                <label className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 block ml-1">Start Date *</label>
+                                <input type="date" min={todayStr} value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value, endDate: e.target.value > form.endDate ? e.target.value : form.endDate })} className={inputCls} required />
+                            </div>
+                            <div>
+                                <label className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 block ml-1">End Date *</label>
+                                <input type="date" min={form.date || todayStr} value={form.endDate} onChange={(e) => setForm({ ...form, endDate: e.target.value })} className={inputCls} required />
+                            </div>
+                            <div>
+                                <label className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 block ml-1">Starting Time</label>
+                                <input type="time" value={form.time} onChange={(e) => setForm({ ...form, time: e.target.value })} className={inputCls} />
+                            </div>
+                            <div>
+                                <label className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 block ml-1">Physical Location</label>
+                                <input type="text" placeholder="e.g. Main Auditorium, UET" value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} className={inputCls} />
+                            </div>
+                            <div>
+                                <label className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 block ml-1">Event Poster</label>
+                                <div className="flex items-center gap-4">
+                                    <label className="flex-1 flex items-center justify-center gap-3 px-4 py-3 bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl cursor-pointer hover:border-[#002147] hover:bg-white transition-all text-slate-400 text-xs font-black uppercase tracking-widest">
+                                        <i className="fas fa-cloud-arrow-up text-sm" />
+                                        {file ? file.name : "Select Asset"}
+                                        <input type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
+                                    </label>
+                                    {preview && (
+                                        <div className="w-14 h-14 rounded-xl overflow-hidden border-2 border-slate-100 shadow-sm">
+                                            <img src={preview} alt="Preview" className="w-full h-full object-cover" />
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                        <div>
+                            <label className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 block ml-1">Event Description</label>
+                            <textarea placeholder="Provide detailed event information..." value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={4} className={`${inputCls} resize-none`} />
+                        </div>
+                        <div className="flex flex-col sm:flex-row justify-between items-center gap-6 pt-4 border-t border-slate-50">
+                            <div className="flex items-center gap-4">
+                                <label className="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" checked={form.is_active} onChange={(e) => setForm({ ...form, is_active: e.target.checked })} className="sr-only peer" />
+                                    <div className="w-12 h-6 bg-slate-200 rounded-full peer peer-checked:bg-emerald-500 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full shadow-inner" />
+                                </label>
+                                <span className={`text-xs font-black uppercase tracking-widest ${form.is_active ? "text-emerald-600" : "text-slate-400"}`}>{form.is_active ? "Live Status" : "Standby Status"}</span>
+                            </div>
+                            <button type="submit" disabled={creating}
+                                className={`px-12 py-4 rounded-2xl text-xs font-black uppercase tracking-[0.3em] transition-all shadow-xl ${creating ? "bg-slate-100 text-slate-400 cursor-not-allowed" : "bg-[#002147] text-white hover:bg-slate-800 shadow-blue-900/20 active:scale-95"}`}>
+                                {creating ? "Processing..." : "Create Event"}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            )}
+
+            {activeSubTab === "view" && (
+                <div className="space-y-8 animate-fade-in relative">
+                    {selectedIds.length > 0 && (
+                        <div className="fixed sm:absolute bottom-6 sm:bottom-auto sm:top-0 left-1/2 -translate-x-1/2 sm:-translate-y-1/2 z-[100] bg-slate-900 text-white px-5 sm:px-6 py-3 rounded-2xl sm:rounded-full shadow-2xl shadow-blue-900/40 flex flex-wrap items-center justify-center gap-4 animate-fade-up border border-slate-700 w-[90%] sm:w-auto ring-4 ring-slate-900/20 backdrop-blur-md">
+                            <span className="text-[10px] sm:text-xs font-bold bg-white/10 px-3 py-1 rounded-xl sm:rounded-full whitespace-nowrap">{selectedIds.length} Selected</span>
+                            <div className="hidden sm:block w-px h-4 bg-white/20" />
+                            <button onClick={handleBulkDelete} disabled={isProcessing} className="text-rose-400 hover:text-rose-300 text-[10px] sm:text-xs font-black uppercase tracking-widest transition-colors flex items-center gap-2">
+                                {isProcessing ? <i className="fas fa-spinner fa-spin" /> : <i className="fas fa-trash-alt" />} Delete Records
+                            </button>
+                        </div>
+                    )}
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
+                        <div className="bg-white p-5 sm:p-8 rounded-2xl sm:rounded-[2rem] border border-slate-100 shadow-xl shadow-slate-200/40">
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Posts</p>
+                            <p className="text-2xl sm:text-3xl font-black text-slate-800 uppercase">{events.length}</p>
+                        </div>
+                        <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-xl shadow-slate-200/40">
+                            <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1">Active / Running</p>
+                            <p className="text-3xl font-black text-emerald-500 uppercase">
+                                {events.filter(e => Date.now() <= new Date(`${e.endDate || e.date}T23:59:59`).getTime()).length}
+                            </p>
+                        </div>
+                        <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-xl shadow-slate-200/40">
+                            <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1">Ended / Archive</p>
+                            <p className="text-3xl font-black text-slate-300 uppercase">{events.filter(e => Date.now() > new Date(`${e.endDate || e.date}T23:59:59`).getTime()).length}</p>
                         </div>
                     </div>
-                </div>
 
-                {loading ? <Spinner /> : (
-                    <>
-                        <div className="sm:hidden space-y-2">
-                            {filtered.length === 0 ? (
-                                <div className="text-center py-20 text-slate-300 bg-white rounded-[2rem] border-2 border-dashed border-slate-100">
-                                    <i className="fas fa-check-circle text-4xl mb-3 block opacity-20" />
-                                    <p className="text-[10px] font-black uppercase tracking-widest">Queue is empty</p>
-                                </div>
-                            ) : filtered.map((m) => (
-                                <div key={m._id} className="p-3 bg-white rounded-2xl border border-slate-100 shadow-sm space-y-3 relative overflow-hidden transition-all">
-                                    <div className="flex justify-between items-center gap-3">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                        <h3 className="text-xl font-black text-slate-800 tracking-tight">Event Registry</h3>
+                        <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+                            <button onClick={() => { setBulkMode(!bulkMode); setSelectedIds([]); }} className={`px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-widest transition-all ${bulkMode ? 'bg-[#002147] text-white shadow-sm' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>
+                                <i className="fas fa-layer-group mr-2" /> {bulkMode ? "Done" : "Select"}
+                            </button>
+                            <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold text-slate-600 focus:border-[#002147] outline-none shadow-sm cursor-pointer hover:border-slate-300 transition-all">
+                                <option value="All">All Statuses</option>
+                                <option value="Running">Running Active</option>
+                                <option value="Ended">Archive Ended</option>
+                            </select>
+                            <div className="relative w-full sm:w-64">
+                                <i className="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm" />
+                                <input type="text" placeholder="Search events..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl pl-11 pr-4 py-2.5 text-slate-800 text-sm shadow-sm outline-none focus:border-[#002147] focus:ring-2 focus:ring-[#002147]/10" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="sm:hidden space-y-2">
+                        {filteredEvents.length === 0 ? (
+                            <div className="text-center py-24 bg-white rounded-[2rem] border border-slate-100 shadow-sm">
+                                <i className="fas fa-calendar-xmark text-4xl mb-4 block text-slate-100" />
+                                <p className="text-[10px] font-black uppercase tracking-widest text-slate-300">No events found</p>
+                            </div>
+                        ) : filteredEvents.map((ev) => {
+                            const hasEnded = Date.now() > new Date(`${ev.endDate || ev.date}T23:59:59`).getTime();
+                            return (
+                                <div key={ev._id} className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden relative transition-all p-3 space-y-3">
+                                    <div className="flex items-center justify-between gap-3">
                                         <div className="flex items-center gap-3">
-                                            <div className="w-8 h-8 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center font-black text-[10px] uppercase shadow-inner">
-                                                {m.name.charAt(0)}
+                                            <div className="w-10 h-10 bg-slate-100 rounded-lg overflow-hidden shrink-0">
+                                                {ev.image_url ? (
+                                                    <img src={getImgUrl(ev.image_url)} className="w-full h-full object-cover" />
+                                                ) : (
+                                                    <div className="w-full h-full flex items-center justify-center">
+                                                        <i className="fas fa-calendar-alt text-lg text-slate-200" />
+                                                    </div>
+                                                )}
                                             </div>
                                             <div>
-                                                <h4 className="font-bold text-slate-800 leading-none mb-1 text-xs">{m.name}</h4>
-                                                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest leading-none">Class {m.joining_year}</p>
+                                                <h4 className="font-bold text-slate-800 text-xs leading-tight mb-1">{ev.title}</h4>
+                                                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1">
+                                                    <i className="fas fa-users text-blue-500" /> {ev.participants?.length || 0} Joined
+                                                </p>
                                             </div>
                                         </div>
-                                        {m.interview_called ? (
-                                            <span className="text-[8px] font-black text-emerald-600 uppercase tracking-widest bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100">Called</span>
-                                        ) : (
-                                            <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest bg-slate-50 px-2 py-0.5 rounded-md border border-slate-100">Pending</span>
-                                        )}
+                                        <span className={`px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-widest ${hasEnded ? "bg-slate-100 text-slate-500" : "bg-emerald-50 text-emerald-600 border border-emerald-100"
+                                            }`}>
+                                            {hasEnded ? "Ended" : "Live"}
+                                        </span>
                                     </div>
 
                                     <div className="flex gap-2">
-                                        <button onClick={() => setInterviewTarget(m)}
-                                            className={`flex-1 text-[9px] py-2 rounded-lg font-black uppercase tracking-widest border transition-all ${m.interview_called ? "bg-amber-50 text-amber-600 border-amber-100" : "bg-blue-50 text-blue-600 border-blue-100"
-                                                }`}>
-                                            Interview
+                                        <button onClick={() => viewParticipants(ev)} className="flex-1 bg-[#002147] text-white py-2 rounded-lg text-[9px] font-black uppercase tracking-widest">
+                                            Participants
                                         </button>
-                                        <button onClick={() => approveSingle(m._id)} disabled={isProcessing}
-                                            className="flex-1 text-[9px] bg-emerald-50 text-emerald-600 border border-emerald-100 py-2 rounded-lg font-black uppercase tracking-widest disabled:opacity-50">
-                                            Approve
-                                        </button>
-                                        <button onClick={() => deleteSingle(m._id, m.name)} disabled={isProcessing}
-                                            className="w-10 text-[9px] bg-rose-50 text-rose-500 border border-rose-100 py-2 rounded-lg font-black flex items-center justify-center transition-all hover:bg-rose-500 hover:text-white">
+                                        <button onClick={() => deleteSingle(ev._id)} className="w-10 bg-rose-50 text-rose-500 rounded-lg flex items-center justify-center border border-rose-100">
                                             <i className="fas fa-trash-alt" />
                                         </button>
                                     </div>
                                 </div>
-                            ))}
-                        </div>
+                            );
+                        })}
+                    </div>
 
-                        <div className="hidden sm:block bg-white rounded-2xl sm:rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
-                            <div className="overflow-x-auto custom-scrollbar-horizontal">
-                                <table className="w-full text-sm">
-                                    <thead>
-                                        <tr className="bg-slate-50 border-b border-slate-200 text-left">
-                                            {bulkMode && (<th className="px-5 py-3.5 w-10 text-center transition-all">
-                                                <input type="checkbox" checked={selectedIds.length === filtered.length && filtered.length > 0} onChange={handleSelectAll} className="w-4 h-4 text-[#002147] border-slate-300 rounded focus:ring-[#002147]" />
-                                            </th>)}
-                                            <th className="px-5 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-widest">Applicant Name</th>
-                                            <th className="px-5 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-widest">Email Record</th>
-                                            <th className="px-5 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-widest">Entry Year</th>
-                                            <th className="px-5 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-widest text-right">Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-slate-100">
-                                        {filtered.length === 0 ? (
-                                            <tr><td colSpan={5} className="text-center py-20 text-slate-400">
-                                                <i className="fas fa-check-circle text-4xl mb-4 block text-emerald-300/50" />
-                                                <p className="text-xs font-black uppercase tracking-widest">All caught up! No pending applications.</p>
-                                            </td></tr>
-                                        ) : filtered.map((m) => (
-                                            <tr key={m._id} className={`transition-colors group ${selectedIds.includes(m._id) ? 'bg-[#002147]/5' : 'hover:bg-amber-50/40'}`}>
-                                                {bulkMode && (<td className="px-5 py-3.5 text-center transition-all">
-                                                    <input type="checkbox" checked={selectedIds.includes(m._id)} onChange={() => toggleSelect(m._id)} className="w-4 h-4 text-[#002147] border-slate-300 rounded focus:ring-[#002147]" />
-                                                </td>)}
-                                                <td className="px-5 py-3.5">
-                                                    <div className="flex flex-col">
-                                                        <span className="text-slate-800 font-bold">{m.name}</span>
-                                                        <div className="flex items-center gap-1.5 mt-1">
-                                                            <span className="text-xs font-black text-blue-500 uppercase tracking-widest bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100">Applicant</span>
-                                                            {m.interview_called ? (
-                                                                <span className="text-xs font-black text-emerald-500 uppercase tracking-widest bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100 flex items-center gap-1">
-                                                                    <i className="fas fa-check-circle text-xs" /> Called
-                                                                </span>
-                                                            ) : (
-                                                                <span className="text-xs font-black text-slate-400 uppercase tracking-widest bg-slate-50 px-1.5 py-0.5 rounded border border-slate-100">Not Called</span>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td className="px-5 py-3.5 text-slate-500">{m.email}</td>
-                                                <td className="px-5 py-3.5 font-bold text-slate-400 font-mono tracking-tighter">{m.joining_year}</td>
-                                                <td className="px-5 py-3.5 text-right flex justify-end gap-2">
-                                                    <button onClick={() => setInterviewTarget(m)}
-                                                        className={`text-xs px-4 py-2 rounded-xl transition-all font-bold uppercase tracking-widest flex items-center gap-1.5 shadow-sm border ${m.interview_called
-                                                                ? "bg-amber-50 text-amber-600 border-amber-200 hover:bg-amber-100"
-                                                                : "bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100"
-                                                            }`}>
-                                                        <i className={m.interview_called ? "fas fa-sync-alt" : "fas fa-microphone-alt"} />
-                                                        {m.interview_called ? "Call Again" : "Interview Call"}
-                                                    </button>
-                                                    <button onClick={() => approveSingle(m._id)} disabled={isProcessing}
-                                                        className="text-xs bg-emerald-50 text-emerald-600 border border-emerald-200 px-4 py-2 rounded-xl hover:bg-emerald-100 transition-colors font-bold uppercase tracking-widest disabled:opacity-50 flex items-center gap-1.5 shadow-sm">
-                                                        <i className="fas fa-check" /> Approve
-                                                    </button>
-                                                    <button onClick={() => deleteSingle(m._id, m.name)} disabled={isProcessing}
-                                                        className="text-white bg-rose-500 w-10 h-10 rounded-xl hover:bg-rose-600 transition-all flex items-center justify-center shadow-lg shadow-rose-900/20 active:scale-95 disabled:opacity-50" title="Delete Application">
+                    <div className="hidden sm:block bg-white rounded-[2.5rem] border border-slate-200 shadow-2xl overflow-hidden">
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-sm">
+                                <thead>
+                                    <tr className="bg-slate-50 border-b border-slate-100 text-left">
+                                        {bulkMode && (<th className="px-8 py-5 w-10 text-center transition-all">
+                                            <input type="checkbox" checked={selectedIds.length === filteredEvents.length && filteredEvents.length > 0} onChange={handleSelectAll} className="w-4 h-4 text-[#002147] border-slate-300 rounded focus:ring-[#002147] cursor-pointer" />
+                                        </th>)}
+                                        <th className="px-8 py-5 text-xs font-black text-slate-400 uppercase tracking-widest">Event Title</th>
+                                        <th className="px-8 py-5 text-xs font-black text-slate-400 uppercase tracking-widest">Schedule</th>
+                                        <th className="px-8 py-5 text-xs font-black text-slate-400 uppercase tracking-widest">Registrations</th>
+                                        <th className="px-8 py-5 text-xs font-black text-slate-400 uppercase tracking-widest">Status</th>
+                                        <th className="px-8 py-5 text-xs font-black text-slate-400 uppercase tracking-widest text-right">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-50">
+                                    {filteredEvents.length === 0 ? (
+                                        <tr><td colSpan={6} className="text-center py-24 text-slate-300">
+                                            <i className="fas fa-calendar-xmark text-5xl mb-4 block opacity-10" />
+                                            <p className="text-xs font-bold uppercase tracking-widest">No events found in registry.</p>
+                                        </td></tr>
+                                     ) : filteredEvents.map((ev) => {
+                                         const d = ev.endDate || ev.date;
+                                         const dateStr = d ? new Date(d).toISOString().split('T')[0] : "";
+                                         const targetDate = `${dateStr}T${ev.time || "23:59"}:00`;
+
+                                         return (
+                                             <tr key={ev._id} className={`transition-colors group ${selectedIds.includes(ev._id) ? 'bg-[#002147]/5' : 'hover:bg-slate-50/50'}`}>
+                                                 {bulkMode && (<td className="px-8 py-6 text-center transition-all">
+                                                     <input type="checkbox" checked={selectedIds.includes(ev._id)} onChange={() => toggleSelect(ev._id)} className="w-4 h-4 text-[#002147] border-slate-300 rounded focus:ring-[#002147] cursor-pointer" />
+                                                 </td>)}
+                                                 <td className="px-8 py-6">
+                                                     <div className="flex items-center gap-4">
+                                                         {ev.image_url && <img src={getImgUrl(ev.image_url)} className="w-12 h-12 rounded-xl object-cover border border-slate-100 shadow-sm" />}
+                                                         <div>
+                                                             <p className="font-black text-slate-800 leading-tight">{ev.title}</p>
+                                                             <p className="text-xs text-slate-400 font-bold mt-0.5"><i className="fas fa-location-dot mr-1" />{ev.location || "TBA"}</p>
+                                                         </div>
+                                                     </div>
+                                                 </td>
+                                                 <td className="px-8 py-6">
+                                                     <p className="text-xs font-bold text-slate-600">{new Date(ev.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })} - {new Date(ev.endDate || ev.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}</p>
+                                                     <p className="text-xs text-slate-400 font-bold mt-0.5 uppercase tracking-widest">{ev.time || "TBA"}</p>
+                                                 </td>
+                                                 <td className="px-8 py-6">
+                                                     <button onClick={() => viewParticipants(ev)} className="bg-slate-100 text-slate-600 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-[#002147] hover:text-white transition-all shadow-sm">
+                                                         <i className="fas fa-users mr-2" />
+                                                         {ev.participants?.length || 0} Registered
+                                                     </button>
+                                                 </td>
+                                                 <td className="px-8 py-6">
+                                                     <CountdownTimer targetDate={targetDate} />
+                                                 </td>
+                                                <td className="px-8 py-6 text-right">
+                                                    <button onClick={() => deleteSingle(ev._id)} className="text-rose-400 hover:text-rose-600 p-3 hover:bg-rose-50 rounded-xl transition-all">
                                                         <i className="fas fa-trash-alt" />
                                                     </button>
                                                 </td>
                                             </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </>
-                )}
-
-                {interviewTarget && (
-                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
-                        <div className="bg-white rounded-[2.5rem] w-full max-w-lg shadow-2xl border border-slate-100 overflow-hidden animate-zoom-in max-h-[90vh] flex flex-col">
-                            <div className="bg-[#002147] p-8 text-white relative flex-shrink-0">
-                                <button onClick={() => setInterviewTarget(null)} className="absolute top-8 right-8 text-white/40 hover:text-white transition-all transform hover:rotate-90">
-                                    <i className="fas fa-times text-xl" />
-                                </button>
-                                <div className="w-14 h-14 bg-white/10 rounded-2xl flex items-center justify-center mb-5 backdrop-blur-md border border-white/10">
-                                    <i className="fas fa-calendar-check text-2xl" />
-                                </div>
-                                <h3 className="text-2xl font-black tracking-tight leading-tight uppercase">Schedule Interview Call</h3>
-                                <p className="text-white/50 text-[10px] font-black uppercase tracking-[0.3em] mt-2">Recruitment Drive Invitation</p>
-                            </div>
-
-                            <form onSubmit={handleInterviewCall} className="p-8 space-y-6 overflow-y-auto custom-scrollbar flex-1">
-                                <div className="group">
-                                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 ml-1 group-focus-within:text-[#002147] transition-colors">Interview Venue / Location</label>
-                                    <div className="relative">
-                                        <i className="fas fa-location-dot absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-[#002147] transition-colors" />
-                                        <input
-                                            type="text"
-                                            required
-                                            value={interviewForm.venue}
-                                            onChange={e => setInterviewForm({ ...interviewForm, venue: e.target.value })}
-                                            className="w-full bg-slate-50 border border-slate-100 rounded-2xl pl-12 pr-5 py-4 text-sm font-bold text-slate-800 placeholder:text-slate-300 focus:bg-white focus:ring-4 focus:ring-[#002147]/5 focus:border-[#002147] outline-none transition-all"
-                                            placeholder="e.g. Society HQ or Online Link"
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className="group">
-                                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 ml-1 group-focus-within:text-[#002147] transition-colors">Interview Description / Details</label>
-                                    <textarea
-                                        rows="4"
-                                        required
-                                        value={interviewForm.message}
-                                        onChange={e => setInterviewForm({ ...interviewForm, message: e.target.value })}
-                                        className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-5 text-sm font-bold text-slate-800 placeholder:text-slate-300 focus:bg-white focus:ring-4 focus:ring-[#002147]/5 focus:border-[#002147] outline-none transition-all resize-none shadow-sm"
-                                        placeholder="Add schedule, instructions or requirements..."
-                                    />
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-4 pt-2 pb-2">
-                                    <button
-                                        type="button"
-                                        onClick={() => setInterviewTarget(null)}
-                                        className="px-6 py-4 bg-slate-100 text-slate-500 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-200 transition-all border border-slate-100 shadow-sm"
-                                    >
-                                        Cancel
-                                    </button>
-                                    <button
-                                        type="submit"
-                                        disabled={sendingCall}
-                                        className="px-6 py-4 bg-[#002147] text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 transition-all shadow-xl shadow-blue-900/20 flex items-center justify-center gap-2 disabled:opacity-50 active:scale-95"
-                                    >
-                                        {sendingCall ? <i className="fas fa-spinner fa-spin" /> : <i className="fas fa-paper-plane" />}
-                                        {sendingCall ? "Sending..." : "Confirm & Send"}
-                                    </button>
-                                </div>
-                            </form>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
                         </div>
                     </div>
-                )}
-            </div>
-        );
-    };
-
-    // ── Events Tab ───────────────────────────────────────────
-    const EventsTab = () => {
-        const [activeSubTab, setActiveSubTab] = useState("view");
-        const [form, setForm] = useState({ title: "", description: "", date: "", endDate: "", location: "", is_active: true, time: "" });
-        const [creating, setCreating] = useState(false);
-        const [file, setFile] = useState(null);
-        const [preview, setPreview] = useState(null);
-        const [searchTerm, setSearchTerm] = useState("");
-        const [statusFilter, setStatusFilter] = useState("All");
-        const [selectedIds, setSelectedIds] = useState([]);
-        const [isProcessing, setIsProcessing] = useState(false);
-        const [bulkMode, setBulkMode] = useState(false);
-        const ldt = new Date();
-        const todayStr = `${ldt.getFullYear()}-${String(ldt.getMonth() + 1).padStart(2, '0')}-${String(ldt.getDate()).padStart(2, '0')}`;
-
-        const filteredEvents = events.filter(e => {
-            const matchSearch = e.title?.toLowerCase().includes(searchTerm.toLowerCase()) || e.location?.toLowerCase().includes(searchTerm.toLowerCase());
-            const endTimestamp = new Date(`${e.endDate || e.date}T23:59:59`).getTime();
-            const hasEnded = Date.now() > endTimestamp;
-            const matchStatus = statusFilter === "All" || (statusFilter === "Running" && !hasEnded) || (statusFilter === "Ended" && hasEnded);
-            return matchSearch && matchStatus;
-        });
-
-        const handleSelectAll = (e) => setSelectedIds(e.target.checked ? filteredEvents.map(ev => ev._id) : []);
-        const toggleSelect = (id) => setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
-
-        const handleFileChange = (e) => {
-            const selected = e.target.files[0];
-            if (selected) {
-                setFile(selected);
-                setPreview(URL.createObjectURL(selected));
-            }
-        };
-
-        const create = async (e) => {
-            e.preventDefault();
-
-            const now = new Date();
-            const isToday = form.date === todayStr;
-
-            if (!form.date) {
-                notify("Please select a date", "error");
-                return;
-            }
-
-            if (isToday && form.time) {
-                try {
-                    const eventStartTime = new Date(`${form.date}T${form.time}:00`);
-                    if (!isNaN(eventStartTime.getTime()) && eventStartTime < now) {
-                        notify("Selected time has already passed for today.", "error");
-                        return;
-                    }
-                } catch (err) {
-                    console.error("Date validation error:", e);
-                }
-            }
-
-            if (form.date < todayStr) {
-                notify("Event date cannot be in the past", "error");
-                return;
-            }
-
-            if (form.endDate && form.endDate < form.date) {
-                notify("The event cannot end before it starts.", "error");
-                return;
-            }
-
-            setCreating(true);
-            try {
-                const formData = new FormData();
-                formData.append("title", form.title);
-                formData.append("description", form.description);
-                formData.append("date", form.date);
-                formData.append("endDate", form.endDate || form.date);
-                formData.append("location", form.location);
-                formData.append("is_active", form.is_active);
-                formData.append("time", form.time);
-                if (file) formData.append("image", file);
-
-                await api.post("events/", formData, {
-                    headers: { ...auth.headers, "Content-Type": "multipart/form-data" }
-                });
-
-                notify(`Event "${form.title}" created!`);
-                setForm({ title: "", description: "", date: "", endDate: "", location: "", is_active: true, time: "" });
-                setFile(null); setPreview(null);
-                fetchEvents();
-                setActiveSubTab("view");
-            } catch (err) { notify(err.response?.data?.error || "Failed to create", "error"); }
-            finally { setCreating(false); }
-        };
-
-        const deleteSingle = async (id) => {
-            if (!window.confirm("Delete event?")) return;
-            setIsProcessing(true);
-            try { await api.delete(`events/${id}`, auth); notify("Event deleted"); fetchEvents(); }
-            catch { notify("Delete failed", "error"); }
-            finally { setIsProcessing(false); }
-        };
-
-        const handleBulkDelete = async () => {
-            if (!window.confirm(`Permanently remove ${selectedIds.length} event records?`)) return;
-            setIsProcessing(true);
-            let count = 0;
-            await Promise.all(selectedIds.map(async id => {
-                try { await api.delete(`events/${id}`, auth); count++; } catch (e) { }
-            }));
-            notify(`Removed ${count} out of ${selectedIds.length} events`);
-            fetchEvents();
-            setSelectedIds([]);
-            setIsProcessing(false);
-        };
-
-        const viewParticipants = (event) => {
-            setSearchParams({ tab: 'events', eventId: event._id });
-        };
-
-
-        return (
-            <div className="space-y-6 animate-fade-up">
-                <div className="flex gap-4 p-2 bg-slate-100 rounded-2xl w-fit">
-                    <button
-                        onClick={() => setActiveSubTab("view")}
-                        className={`py-2 px-6 text-xs font-black uppercase tracking-widest rounded-xl transition-all ${activeSubTab === "view" ? "bg-white text-[#002147] shadow-sm" : "text-slate-500 hover:text-slate-800"}`}
-                    >
-                        <i className="fas fa-list-ul mr-2"></i> View Events
-                    </button>
-                    <button
-                        onClick={() => setActiveSubTab("create")}
-                        className={`py-2 px-6 text-xs font-black uppercase tracking-widest rounded-xl transition-all ${activeSubTab === "create" ? "bg-white text-[#002147] shadow-sm" : "text-slate-500 hover:text-slate-800"}`}
-                    >
-                        <i className="fas fa-plus mr-2"></i> Create Event
-                    </button>
                 </div>
+            )}
+        </div>
+    );
+};
 
-                {activeSubTab === "create" && (
-                    <div className="bg-white border border-slate-200 rounded-3xl sm:rounded-[2.5rem] p-5 sm:p-10 shadow-xl relative overflow-hidden animate-fade-in">
-                        <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-blue-600 to-indigo-700" />
-                        <h3 className="text-xl sm:text-2xl font-black text-slate-800 mb-6 sm:mb-8 flex items-center gap-4">
-                            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-50 text-blue-600 rounded-xl sm:rounded-2xl flex items-center justify-center text-lg sm:text-xl shadow-inner"><i className="fas fa-calendar-plus" /></div>
-                            Create New Event
-                        </h3>
-                        <form onSubmit={create} className="space-y-8">
-                            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                                <div className="sm:col-span-2 lg:col-span-1">
-                                    <label className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 block ml-1">Event Title *</label>
-                                    <input type="text" placeholder="Official Event Name" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className={inputCls} required />
-                                </div>
-                                <div>
-                                    <label className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 block ml-1">Start Date *</label>
-                                    <input type="date" min={todayStr} value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value, endDate: e.target.value > form.endDate ? e.target.value : form.endDate })} className={inputCls} required />
-                                </div>
-                                <div>
-                                    <label className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 block ml-1">End Date *</label>
-                                    <input type="date" min={form.date || todayStr} value={form.endDate} onChange={(e) => setForm({ ...form, endDate: e.target.value })} className={inputCls} required />
-                                </div>
-                                <div>
-                                    <label className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 block ml-1">Starting Time</label>
-                                    <input type="time" value={form.time} onChange={(e) => setForm({ ...form, time: e.target.value })} className={inputCls} />
-                                </div>
-                                <div>
-                                    <label className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 block ml-1">Physical Location</label>
-                                    <input type="text" placeholder="e.g. Main Auditorium, UET" value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} className={inputCls} />
-                                </div>
-                                <div>
-                                    <label className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 block ml-1">Event Poster</label>
-                                    <div className="flex items-center gap-4">
-                                        <label className="flex-1 flex items-center justify-center gap-3 px-4 py-3 bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl cursor-pointer hover:border-[#002147] hover:bg-white transition-all text-slate-400 text-xs font-black uppercase tracking-widest">
-                                            <i className="fas fa-cloud-arrow-up text-sm" />
-                                            {file ? file.name : "Select Asset"}
-                                            <input type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
-                                        </label>
-                                        {preview && (
-                                            <div className="w-14 h-14 rounded-xl overflow-hidden border-2 border-slate-100 shadow-sm">
-                                                <img src={preview} alt="Preview" className="w-full h-full object-cover" />
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
-                            <div>
-                                <label className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 block ml-1">Event Description</label>
-                                <textarea placeholder="Provide detailed event information..." value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={4} className={`${inputCls} resize-none`} />
-                            </div>
-                            <div className="flex flex-col sm:flex-row justify-between items-center gap-6 pt-4 border-t border-slate-50">
-                                <div className="flex items-center gap-4">
-                                    <label className="relative inline-flex items-center cursor-pointer">
-                                        <input type="checkbox" checked={form.is_active} onChange={(e) => setForm({ ...form, is_active: e.target.checked })} className="sr-only peer" />
-                                        <div className="w-12 h-6 bg-slate-200 rounded-full peer peer-checked:bg-emerald-500 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full shadow-inner" />
-                                    </label>
-                                    <span className={`text-xs font-black uppercase tracking-widest ${form.is_active ? "text-emerald-600" : "text-slate-400"}`}>{form.is_active ? "Live Status" : "Standby Status"}</span>
-                                </div>
-                                <button type="submit" disabled={creating}
-                                    className={`px-12 py-4 rounded-2xl text-xs font-black uppercase tracking-[0.3em] transition-all shadow-xl ${creating ? "bg-slate-100 text-slate-400 cursor-not-allowed" : "bg-[#002147] text-white hover:bg-slate-800 shadow-blue-900/20 active:scale-95"}`}>
-                                    {creating ? "Processing..." : "Create Event"}
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                )}
 
-                {activeSubTab === "view" && (
-                    <div className="space-y-8 animate-fade-in relative">
-                        {selectedIds.length > 0 && (
-                            <div className="fixed sm:absolute bottom-6 sm:bottom-auto sm:top-0 left-1/2 -translate-x-1/2 sm:-translate-y-1/2 z-[100] bg-slate-900 text-white px-5 sm:px-6 py-3 rounded-2xl sm:rounded-full shadow-2xl shadow-blue-900/40 flex flex-wrap items-center justify-center gap-4 animate-fade-up border border-slate-700 w-[90%] sm:w-auto ring-4 ring-slate-900/20 backdrop-blur-md">
-                                <span className="text-[10px] sm:text-xs font-bold bg-white/10 px-3 py-1 rounded-xl sm:rounded-full whitespace-nowrap">{selectedIds.length} Selected</span>
-                                <div className="hidden sm:block w-px h-4 bg-white/20" />
-                                <button onClick={handleBulkDelete} disabled={isProcessing} className="text-rose-400 hover:text-rose-300 text-[10px] sm:text-xs font-black uppercase tracking-widest transition-colors flex items-center gap-2">
-                                    {isProcessing ? <i className="fas fa-spinner fa-spin" /> : <i className="fas fa-trash-alt" />} Delete Records
-                                </button>
-                            </div>
-                        )}
-
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
-                            <div className="bg-white p-5 sm:p-8 rounded-2xl sm:rounded-[2rem] border border-slate-100 shadow-xl shadow-slate-200/40">
-                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Posts</p>
-                                <p className="text-2xl sm:text-3xl font-black text-slate-800 uppercase">{events.length}</p>
-                            </div>
-                            <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-xl shadow-slate-200/40">
-                                <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1">Active / Running</p>
-                                <p className="text-3xl font-black text-emerald-500 uppercase">
-                                    {events.filter(e => Date.now() <= new Date(`${e.endDate || e.date}T23:59:59`).getTime()).length}
-                                </p>
-                            </div>
-                            <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-xl shadow-slate-200/40">
-                                <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1">Ended / Archive</p>
-                                <p className="text-3xl font-black text-slate-300 uppercase">{events.filter(e => Date.now() > new Date(`${e.endDate || e.date}T23:59:59`).getTime()).length}</p>
-                            </div>
-                        </div>
-
-                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                            <h3 className="text-xl font-black text-slate-800 tracking-tight">Event Registry</h3>
-                            <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-                                <button onClick={() => { setBulkMode(!bulkMode); setSelectedIds([]); }} className={`px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-widest transition-all ${bulkMode ? 'bg-[#002147] text-white shadow-sm' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>
-                                    <i className="fas fa-layer-group mr-2" /> {bulkMode ? "Done" : "Select"}
-                                </button>
-                                <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold text-slate-600 focus:border-[#002147] outline-none shadow-sm cursor-pointer hover:border-slate-300 transition-all">
-                                    <option value="All">All Statuses</option>
-                                    <option value="Running">Running Active</option>
-                                    <option value="Ended">Archive Ended</option>
-                                </select>
-                                <div className="relative w-full sm:w-64">
-                                    <i className="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm" />
-                                    <input type="text" placeholder="Search events..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl pl-11 pr-4 py-2.5 text-slate-800 text-sm shadow-sm outline-none focus:border-[#002147] focus:ring-2 focus:ring-[#002147]/10" />
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="sm:hidden space-y-2">
-                            {filteredEvents.length === 0 ? (
-                                <div className="text-center py-24 bg-white rounded-[2rem] border border-slate-100 shadow-sm">
-                                    <i className="fas fa-calendar-xmark text-4xl mb-4 block text-slate-100" />
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-300">No events found</p>
-                                </div>
-                            ) : filteredEvents.map((ev) => {
-                                const hasEnded = Date.now() > new Date(`${ev.endDate || ev.date}T23:59:59`).getTime();
-                                return (
-                                    <div key={ev._id} className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden relative transition-all p-3 space-y-3">
-                                        <div className="flex items-center justify-between gap-3">
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-10 h-10 bg-slate-100 rounded-lg overflow-hidden shrink-0">
-                                                    {ev.image_url ? (
-                                                        <img src={getImgUrl(ev.image_url)} className="w-full h-full object-cover" />
-                                                    ) : (
-                                                        <div className="w-full h-full flex items-center justify-center">
-                                                            <i className="fas fa-calendar-alt text-lg text-slate-200" />
-                                                        </div>
-                                                    )}
-                                                </div>
-                                                <div>
-                                                    <h4 className="font-bold text-slate-800 text-xs leading-tight mb-1">{ev.title}</h4>
-                                                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1">
-                                                        <i className="fas fa-users text-blue-500" /> {ev.participants?.length || 0} Joined
-                                                    </p>
-                                                </div>
-                                            </div>
-                                            <span className={`px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-widest ${hasEnded ? "bg-slate-100 text-slate-500" : "bg-emerald-50 text-emerald-600 border border-emerald-100"
-                                                }`}>
-                                                {hasEnded ? "Ended" : "Live"}
-                                            </span>
-                                        </div>
-
-                                        <div className="flex gap-2">
-                                            <button onClick={() => viewParticipants(ev)} className="flex-1 bg-[#002147] text-white py-2 rounded-lg text-[9px] font-black uppercase tracking-widest">
-                                                Participants
-                                            </button>
-                                            <button onClick={() => deleteSingle(ev._id)} className="w-10 bg-rose-50 text-rose-500 rounded-lg flex items-center justify-center border border-rose-100">
-                                                <i className="fas fa-trash-alt" />
-                                            </button>
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-
-                        <div className="hidden sm:block bg-white rounded-[2.5rem] border border-slate-200 shadow-2xl overflow-hidden">
-                            <div className="overflow-x-auto">
-                                <table className="w-full text-sm">
-                                    <thead>
-                                        <tr className="bg-slate-50 border-b border-slate-100 text-left">
-                                            {bulkMode && (<th className="px-8 py-5 w-10 text-center transition-all">
-                                                <input type="checkbox" checked={selectedIds.length === filteredEvents.length && filteredEvents.length > 0} onChange={handleSelectAll} className="w-4 h-4 text-[#002147] border-slate-300 rounded focus:ring-[#002147] cursor-pointer" />
-                                            </th>)}
-                                            <th className="px-8 py-5 text-xs font-black text-slate-400 uppercase tracking-widest">Event Title</th>
-                                            <th className="px-8 py-5 text-xs font-black text-slate-400 uppercase tracking-widest">Schedule</th>
-                                            <th className="px-8 py-5 text-xs font-black text-slate-400 uppercase tracking-widest">Registrations</th>
-                                            <th className="px-8 py-5 text-xs font-black text-slate-400 uppercase tracking-widest">Status</th>
-                                            <th className="px-8 py-5 text-xs font-black text-slate-400 uppercase tracking-widest text-right">Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-slate-50">
-                                        {filteredEvents.length === 0 ? (
-                                            <tr><td colSpan={6} className="text-center py-24 text-slate-300">
-                                                <i className="fas fa-calendar-xmark text-5xl mb-4 block opacity-10" />
-                                                <p className="text-xs font-bold uppercase tracking-widest">No events found in registry.</p>
-                                            </td></tr>
-                                         ) : filteredEvents.map((ev) => {
-                                             const d = ev.endDate || ev.date;
-                                             const dateStr = d ? new Date(d).toISOString().split('T')[0] : "";
-                                             const targetDate = `${dateStr}T${ev.time || "23:59"}:00`;
-
-                                             return (
-                                                 <tr key={ev._id} className={`transition-colors group ${selectedIds.includes(ev._id) ? 'bg-[#002147]/5' : 'hover:bg-slate-50/50'}`}>
-                                                     {bulkMode && (<td className="px-8 py-6 text-center transition-all">
-                                                         <input type="checkbox" checked={selectedIds.includes(ev._id)} onChange={() => toggleSelect(ev._id)} className="w-4 h-4 text-[#002147] border-slate-300 rounded focus:ring-[#002147] cursor-pointer" />
-                                                     </td>)}
-                                                     <td className="px-8 py-6">
-                                                         <div className="flex items-center gap-4">
-                                                             {ev.image_url && <img src={getImgUrl(ev.image_url)} className="w-12 h-12 rounded-xl object-cover border border-slate-100 shadow-sm" />}
-                                                             <div>
-                                                                 <p className="font-black text-slate-800 leading-tight">{ev.title}</p>
-                                                                 <p className="text-xs text-slate-400 font-bold mt-0.5"><i className="fas fa-location-dot mr-1" />{ev.location || "TBA"}</p>
-                                                             </div>
-                                                         </div>
-                                                     </td>
-                                                     <td className="px-8 py-6">
-                                                         <p className="text-xs font-bold text-slate-600">{new Date(ev.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })} - {new Date(ev.endDate || ev.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}</p>
-                                                         <p className="text-xs text-slate-400 font-bold mt-0.5 uppercase tracking-widest">{ev.time || "TBA"}</p>
-                                                     </td>
-                                                     <td className="px-8 py-6">
-                                                         <button onClick={() => viewParticipants(ev)} className="bg-slate-100 text-slate-600 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-[#002147] hover:text-white transition-all shadow-sm">
-                                                             <i className="fas fa-users mr-2" />
-                                                             {ev.participants?.length || 0} Registered
-                                                         </button>
-                                                     </td>
-                                                     <td className="px-8 py-6">
-                                                         <CountdownTimer targetDate={targetDate} />
-                                                     </td>
-                                                    <td className="px-8 py-6 text-right">
-                                                        <button onClick={() => deleteSingle(ev._id)} className="text-rose-400 hover:text-rose-600 p-3 hover:bg-rose-50 rounded-xl transition-all">
-                                                            <i className="fas fa-trash-alt" />
-                                                        </button>
-                                                    </td>
-                                                </tr>
-                                            );
-                                        })}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-            </div>
-        );
-    };
-
-    // ── Participants Static View ──────────────────────────────
+    // ── Participants Static View (Moved Outside) ──────────────
     const ParticipantsView = ({ eventId, events, onBack, auth, api, notify, fetchEvents }) => {
         const [participants, setParticipants] = useState([]);
         const [loading, setLoading] = useState(true);
@@ -2776,8 +2488,8 @@ function AdminPortal() {
         );
     };
 
-    // ── Announcements Tab ────────────────────────────────────
-    const AnnouncementsTab = () => {
+    // ── Announcements Tab (Moved Outside) ────────────────────
+    const AnnouncementsTab = ({ announcements, fetchAnnouncements, api, auth, notify, inputCls }) => {
         const [form, setForm] = useState({ title: "", content: "", type: "Info" });
         const [submitting, setSubmitting] = useState(false);
         const [searchTerm, setSearchTerm] = useState("");
@@ -2986,552 +2698,555 @@ function AdminPortal() {
     };
 
     // ── System Logs Tab (SUPERUSER ONLY) ────────────────────────
-    const LogsTab = () => {
-        const [logs, setLogs] = useState([]);
-        const [loadingLogs, setLoadingLogs] = useState(false);
-        const [page, setPage] = useState(1);
-        const [totalPages, setTotalPages] = useState(1);
+// ── System Logs Tab (Moved Outside) ────────────────────────
+const LogsTab = ({ api, auth, notify, isSuper }) => {
+    const [logs, setLogs] = useState([]);
+    const [loadingLogs, setLoadingLogs] = useState(false);
+    const [page, setPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(1);
 
-        const fetchLogs = async (p = 1) => {
-            setLoadingLogs(true);
-            try {
-                const r = await api.get(`admin/logs?page=${p}&limit=50`, auth);
-                setLogs(r.data.logs || []);
-                setTotalPages(r.data.totalPages || 1);
-                setPage(r.data.currentPage || 1);
-            } catch (err) {
-                notify("Failed to load logs", "error");
-            } finally {
-                setLoadingLogs(false);
-            }
-        };
-        const handleExport = async () => {
-            try {
-                const r = await api.get('admin/logs/export', { ...auth, responseType: 'blob' });
-                const url = window.URL.createObjectURL(new Blob([r.data]));
-                const link = document.createElement('a');
-                link.href = url;
-                link.setAttribute('download', 'system_history_logs.csv');
-                document.body.appendChild(link);
-                link.click();
-                link.parentNode.removeChild(link);
-                notify("Export successful", "success");
-            } catch (err) {
-                notify("Failed to export logs", "error");
-            }
-        };
+    const fetchLogs = async (p = 1) => {
+        setLoadingLogs(true);
+        try {
+            const r = await api.get(`admin/logs?page=${p}&limit=50`, auth);
+            setLogs(r.data.logs || []);
+            setTotalPages(r.data.totalPages || 1);
+            setPage(r.data.currentPage || 1);
+        } catch (err) {
+            notify("Failed to load logs", "error");
+        } finally {
+            setLoadingLogs(false);
+        }
+    };
+    const handleExport = async () => {
+        try {
+            const r = await api.get('admin/logs/export', { ...auth, responseType: 'blob' });
+            const url = window.URL.createObjectURL(new Blob([r.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', 'system_history_logs.csv');
+            document.body.appendChild(link);
+            link.click();
+            link.parentNode.removeChild(link);
+            notify("Export successful", "success");
+        } catch (err) {
+            notify("Failed to export logs", "error");
+        }
+    };
 
-        const handleBackup = async () => {
-            try {
-                const r = await api.get('admin/backup', { ...auth, responseType: 'blob' });
-                const url = window.URL.createObjectURL(new Blob([r.data]));
-                const link = document.createElement('a');
-                link.href = url;
-                link.setAttribute('download', `FULL_BACKUP_${new Date().toISOString().split('T')[0]}.json`);
-                document.body.appendChild(link);
-                link.click();
-                link.parentNode.removeChild(link);
-                notify("Full database backup successful", "success");
-            } catch (err) {
-                notify("Failed to backup database", "error");
-            }
-        };
+    const handleBackup = async () => {
+        try {
+            const r = await api.get('admin/backup', { ...auth, responseType: 'blob' });
+            const url = window.URL.createObjectURL(new Blob([r.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `FULL_BACKUP_${new Date().toISOString().split('T')[0]}.json`);
+            document.body.appendChild(link);
+            link.click();
+            link.parentNode.removeChild(link);
+            notify("Full database backup successful", "success");
+        } catch (err) {
+            notify("Failed to backup database", "error");
+        }
+    };
 
-        useEffect(() => {
-            fetchLogs(1);
-        }, []);
+    useEffect(() => {
+        fetchLogs(1);
+    }, []);
 
-        return (
-            <div className="space-y-6 animate-fade-up">
-                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                    <div className="p-6 border-b border-slate-100 flex items-center justify-between">
-                        <div>
-                            <h2 className="text-xl font-bold text-slate-800 flex items-center gap-3">
-                                <div className="w-8 h-8 rounded-lg bg-[#002147]/10 text-[#002147] flex items-center justify-center">
-                                    <i className="fas fa-clipboard-list" />
-                                </div>
-                                System Activity Logs
-                            </h2>
-                            <p className="text-xs text-slate-500 mt-1">Permanent record of all management actions taken</p>
-                        </div>
-                        <div className="flex items-center gap-3">
-                            <button onClick={handleExport} className="hidden sm:flex px-4 py-2 text-xs font-bold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 hover:text-[#002147] rounded-lg transition-colors items-center gap-2 shadow-sm">
-                                <i className="fas fa-file-export text-[#002147]" />
-                                Export CSV
-                            </button>
-                            {isSuper && (
-                                <button onClick={handleBackup} className="hidden sm:flex px-4 py-2 text-xs font-bold text-white bg-[#002147] hover:bg-[#002147]/90 rounded-lg transition-colors items-center gap-2 shadow-sm">
-                                    <i className="fas fa-database" />
-                                    Full Backup (JSON)
-                                </button>
-                            )}
-                            <button onClick={() => fetchLogs(page)} className="text-slate-400 hover:text-[#002147] transition-colors p-2 bg-slate-50 border border-slate-100 hover:bg-blue-50 rounded-lg shadow-sm">
-                                <i className={`fas fa-sync-alt ${loadingLogs ? "animate-spin" : ""}`} />
-                            </button>
-                        </div>
+    return (
+        <div className="space-y-6 animate-fade-up">
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                <div className="p-6 border-b border-slate-100 flex items-center justify-between">
+                    <div>
+                        <h2 className="text-xl font-bold text-slate-800 flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-lg bg-[#002147]/10 text-[#002147] flex items-center justify-center">
+                                <i className="fas fa-clipboard-list" />
+                            </div>
+                            System Activity Logs
+                        </h2>
+                        <p className="text-xs text-slate-500 mt-1">Permanent record of all management actions taken</p>
                     </div>
+                    <div className="flex items-center gap-3">
+                        <button onClick={handleExport} className="hidden sm:flex px-4 py-2 text-xs font-bold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 hover:text-[#002147] rounded-lg transition-colors items-center gap-2 shadow-sm">
+                            <i className="fas fa-file-export text-[#002147]" />
+                            Export CSV
+                        </button>
+                        {isSuper && (
+                            <button onClick={handleBackup} className="hidden sm:flex px-4 py-2 text-xs font-bold text-white bg-[#002147] hover:bg-[#002147]/90 rounded-lg transition-colors items-center gap-2 shadow-sm">
+                                <i className="fas fa-database" />
+                                Full Backup (JSON)
+                            </button>
+                        )}
+                        <button onClick={() => fetchLogs(page)} className="text-slate-400 hover:text-[#002147] transition-colors p-2 bg-slate-50 border border-slate-100 hover:bg-blue-50 rounded-lg shadow-sm">
+                            <i className={`fas fa-sync-alt ${loadingLogs ? "animate-spin" : ""}`} />
+                        </button>
+                    </div>
+                </div>
 
-                    <div className="p-1 sm:p-0">
-                        <div className="sm:hidden space-y-2 px-4 py-2">
-                            {logs.length === 0 && !loadingLogs ? (
-                                <div className="text-center py-16 bg-slate-50/50 border-2 border-dashed border-slate-100 rounded-3xl">
-                                    <i className="fas fa-inbox text-4xl mb-3 opacity-20 block text-slate-400" />
-                                    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">No system logs recorded yet.</p>
-                                </div>
-                            ) : logs.map((log) => {
-                                const actionText = log.action || '';
-                                return (
-                                    <div key={log._id} className="bg-white rounded-2xl p-3 shadow-sm border border-slate-100 relative overflow-hidden space-y-2">
-                                        <div className="flex justify-between items-center gap-3">
-                                            <div className="flex items-center gap-2">
-                                                <div className="w-8 h-8 rounded-lg bg-slate-50 text-slate-600 flex items-center justify-center text-xs font-black uppercase shrink-0 border border-slate-100">
-                                                    {log.admin_name?.charAt(0) || <i className="fas fa-robot text-slate-400" />}
-                                                </div>
-                                                <div className="flex flex-col">
-                                                    <span className="font-bold text-slate-800 text-xs leading-none mb-1 text-wrap">
-                                                        {log.admin_name || "System/Unknown"}
-                                                    </span>
-                                                    <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none">
-                                                        {new Date(log.createdAt).toLocaleString()}
-                                                    </span>
-                                                </div>
+                <div className="p-1 sm:p-0">
+                    <div className="sm:hidden space-y-2 px-4 py-2">
+                        {logs.length === 0 && !loadingLogs ? (
+                            <div className="text-center py-16 bg-slate-50/50 border-2 border-dashed border-slate-100 rounded-3xl">
+                                <i className="fas fa-inbox text-4xl mb-3 opacity-20 block text-slate-400" />
+                                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">No system logs recorded yet.</p>
+                            </div>
+                        ) : logs.map((log) => {
+                            const actionText = log.action || '';
+                            return (
+                                <div key={log._id} className="bg-white rounded-2xl p-3 shadow-sm border border-slate-100 relative overflow-hidden space-y-2">
+                                    <div className="flex justify-between items-center gap-3">
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-8 h-8 rounded-lg bg-slate-50 text-slate-600 flex items-center justify-center text-xs font-black uppercase shrink-0 border border-slate-100">
+                                                {log.admin_name?.charAt(0) || <i className="fas fa-robot text-slate-400" />}
                                             </div>
-                                            <span className={`px-2 py-0.5 text-[8px] font-black uppercase tracking-widest rounded-md shrink-0 text-center ${actionText.includes('LOGIN') ? 'bg-blue-50 text-blue-600' :
-                                                    actionText.includes('CREATE') || actionText.includes('APPROVE') || actionText.includes('Add') ? 'bg-emerald-50 text-emerald-600' :
-                                                        actionText.includes('BLOCK') || actionText.includes('DELETE') ? 'bg-rose-50 text-rose-600' :
-                                                            'bg-slate-50 text-slate-600'
-                                                }`}>
-                                                {actionText}
-                                            </span>
-                                        </div>
-                                        <div className="bg-slate-50/50 px-2.5 py-2 rounded-xl text-[10px] text-slate-600 font-medium">
-                                            {log.details}
-                                            {log.target_id && (
-                                                <span className="block mt-1 text-[#002147] font-bold text-[8px] uppercase tracking-widest leading-none">ID: {log.target_id.name || log.target_id.email || log.target_id._id || log.target_id}</span>
-                                            )}
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-
-                        <div className="hidden sm:block overflow-x-auto">
-                            <table className="w-full text-left text-sm">
-                                <thead>
-                                    <tr className="bg-slate-50 border-b border-slate-200">
-                                        <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wide">Timestamp</th>
-                                        <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wide">Administrator</th>
-                                        <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wide">Action</th>
-                                        <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wide">Additional Details</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-100">
-                                    {logs.length === 0 && !loadingLogs && (
-                                        <tr>
-                                            <td colSpan={4} className="px-6 py-12 text-center text-slate-400">
-                                                <i className="fas fa-inbox text-4xl mb-3 block opacity-20" />
-                                                No system logs recorded yet.
-                                            </td>
-                                        </tr>
-                                    )}
-                                    {logs.map((log) => {
-                                        const actionText = log.action || '';
-                                        return (
-                                            <tr key={log._id} className="hover:bg-slate-50 transition-colors">
-                                                <td className="px-6 py-4 whitespace-nowrap text-xs text-slate-500 font-medium">
+                                            <div className="flex flex-col">
+                                                <span className="font-bold text-slate-800 text-xs leading-none mb-1 text-wrap">
+                                                    {log.admin_name || "System/Unknown"}
+                                                </span>
+                                                <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none">
                                                     {new Date(log.createdAt).toLocaleString()}
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="w-8 h-8 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center text-xs font-bold uppercase">
-                                                            {log.admin_name?.charAt(0) || <i className="fas fa-robot text-slate-400" />}
-                                                        </div>
-                                                        <span className="font-bold text-slate-800 text-xs">
-                                                            {log.admin_name || "System/Unknown"}
-                                                        </span>
-                                                    </div>
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    <span className={`px-3 py-1 text-[10px] font-bold uppercase tracking-widest rounded-full ${actionText.includes('LOGIN') ? 'bg-blue-100 text-blue-700' :
-                                                            actionText.includes('CREATE') || actionText.includes('APPROVE') || actionText.includes('Add') ? 'bg-emerald-100 text-emerald-700' :
-                                                                actionText.includes('BLOCK') || actionText.includes('DELETE') ? 'bg-rose-100 text-rose-700' :
-                                                                    'bg-slate-100 text-slate-700'
-                                                        }`}>
-                                                        {actionText}
-                                                    </span>
-                                                </td>
-                                                <td className="px-6 py-4 text-xs text-slate-600 font-medium">
-                                                    {log.details}
-                                                    {log.target_id && (
-                                                        <span className="ml-1 text-[#002147] font-bold mt-1 inline-block">ID: {log.target_id.name || log.target_id.email || log.target_id._id || log.target_id}</span>
-                                                    )}
-                                                </td>
-                                            </tr>
-                                        )
-                                    })}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-
-                    {totalPages > 1 && (
-                        <div className="p-4 border-t border-slate-100 flex items-center justify-between bg-slate-50">
-                            <button
-                                disabled={page === 1}
-                                onClick={() => fetchLogs(page - 1)}
-                                className="px-4 py-2 text-xs font-bold text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-50 transition-colors"
-                            >
-                                Previous
-                            </button>
-                            <span className="text-xs font-bold text-slate-500">
-                                Page {page} of {totalPages}
-                            </span>
-                            <button
-                                disabled={page === totalPages}
-                                onClick={() => fetchLogs(page + 1)}
-                                className="px-4 py-2 text-xs font-bold text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-50 transition-colors"
-                            >
-                                Next
-                            </button>
-                        </div>
-                    )}
-                </div>
-            </div>
-        );
-    };
-
-    // ── Settings Tab (SELF-MANAGEMENT) ───────────────────────
-
-    const SettingsTab = () => {
-        const [profile, setProfile] = useState({ name: adminUser, oldPassword: "", newPassword: "", confirmPassword: "" });
-        const [updating, setUpdating] = useState(false);
-
-        const handleUpdate = async (e) => {
-            e.preventDefault();
-            if (profile.newPassword && profile.newPassword !== profile.confirmPassword) {
-                return notify("New passwords do not match", "error");
-            }
-            setUpdating(true);
-            try {
-                const r = await api.put("admin/profile", {
-                    name: profile.name,
-                    oldPassword: profile.oldPassword,
-                    newPassword: profile.newPassword
-                }, auth);
-
-                notify(r.data.message);
-                localStorage.setItem("adminUser", r.data.name);
-                setAdminUser(r.data.name);
-                setProfile({ ...profile, oldPassword: "", newPassword: "", confirmPassword: "" });
-            } catch (err) {
-                notify(err.response?.data?.error || "Profile update failed", "error");
-            } finally {
-                setUpdating(false);
-            }
-        };
-
-        return (
-            <div className="max-w-2xl mx-auto animate-fade-up">
-                <div className="bg-white rounded-3xl sm:rounded-[2.5rem] border border-slate-200 shadow-xl overflow-hidden relative">
-                    <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-[#002147] to-blue-500" />
-
-                    <div className="p-6 md:p-12">
-                        <div className="flex flex-wrap items-center justify-between gap-4 mb-8 sm:mb-10">
-                            <div className="flex items-center gap-4">
-                                <div className="w-12 h-12 sm:w-14 sm:h-14 bg-blue-50 rounded-xl sm:rounded-2xl flex items-center justify-center text-[#002147] text-lg sm:text-xl shadow-inner">
-                                    <i className="fas fa-user-edit" />
-                                </div>
-                                <div>
-                                    <h2 className="text-xl sm:text-2xl font-black text-slate-800 tracking-tight">Security & Profile</h2>
-                                    <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mt-1">Self-Management Console</p>
-                                </div>
-                            </div>
-                            <button type="button" onClick={logout} className="group flex items-center gap-2 px-5 py-2.5 bg-rose-50 text-rose-600 rounded-xl hover:bg-rose-100 transition-all border border-rose-100 shadow-sm active:scale-95">
-                                <i className="fas fa-power-off text-xs group-hover:scale-110 transition-transform" />
-                                <span className="text-[10px] font-black uppercase tracking-[0.2em]">Logout</span>
-                            </button>
-                        </div>
-
-                        <form onSubmit={handleUpdate} className="space-y-8">
-                            <div className="space-y-6">
-                                <div>
-                                    <label className="text-xs font-black text-slate-500 uppercase tracking-widest pl-1 mb-2 block">Display Name</label>
-                                    <input type="text" value={profile.name} onChange={e => setProfile({ ...profile, name: e.target.value })} className={inputCls} required />
-                                </div>
-
-                                <div className="p-6 bg-slate-50 rounded-3xl border border-slate-100 space-y-5">
-                                    <p className="text-xs font-black text-[#002147] uppercase tracking-widest flex items-center gap-2">
-                                        <i className="fas fa-lock" /> Security Update
-                                    </p>
-
-                                    <div>
-                                        <label className="text-xs font-bold text-slate-400 uppercase tracking-widest pl-1 mb-1.5 block">Current Password (Required)</label>
-                                        <input type="password" placeholder="••••••••" value={profile.oldPassword} onChange={e => setProfile({ ...profile, oldPassword: e.target.value })} className={inputCls} required />
-                                    </div>
-
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                        <div>
-                                            <label className="text-xs font-bold text-slate-400 uppercase tracking-widest pl-1 mb-1.5 block">New Password</label>
-                                            <input type="password" placeholder="Leave blank to keep current" value={profile.newPassword} onChange={e => setProfile({ ...profile, newPassword: e.target.value })} className={inputCls} />
+                                                </span>
+                                            </div>
                                         </div>
-                                        <div>
-                                            <label className="text-xs font-bold text-slate-400 uppercase tracking-widest pl-1 mb-1.5 block">Confirm New</label>
-                                            <input type="password" placeholder="••••••••" value={profile.confirmPassword} onChange={e => setProfile({ ...profile, confirmPassword: e.target.value })} className={inputCls} />
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <button type="submit" disabled={updating}
-                                className="w-full bg-[#002147] text-white py-4 rounded-2xl font-black uppercase text-xs tracking-[0.2em] hover:bg-slate-800 transition-all shadow-xl shadow-blue-900/10 flex items-center justify-center gap-3 disabled:opacity-50">
-                                {updating ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <i className="fas fa-save" />}
-                                SAVE
-                            </button>
-                        </form>
-
-                    </div>
-                </div>
-            </div>
-        );
-    };
-
-    // ── Admins Tab (SUPERUSER ONLY) ──────────────────────────
-    const AdminsTab = () => {
-        const [form, setForm] = useState({ name: "", email: "", password: "", joining_year: new Date().getFullYear(), member_id: "", role: "Admin" });
-        const [submitting, setSubmitting] = useState(false);
-        const [editing, setEditing] = useState(null);
-        const [editForm, setEditForm] = useState({ name: "", email: "", password: "" });
-        const adminList = members.filter(m => m.role === "Admin" || m.role === "Superuser");
-
-        const create = async (e) => {
-            e.preventDefault(); setSubmitting(true);
-            try {
-                await api.post("admin/members/add/", form, auth);
-                notify(`Admin account ${form.member_id} created!`);
-                setForm({ name: "", email: "", password: "", joining_year: new Date().getFullYear(), member_id: "", role: "Admin" });
-                fetchMembers();
-            } catch (err) { notify(err.response?.data?.error || "Failed to create admin", "error"); }
-            finally { setSubmitting(false); }
-        };
-
-        const del = async (id) => {
-            if (!window.confirm(`Delete admin ${id}? This action is irreversible.`)) return;
-            try { await api.delete(`admin/members/${id}/delete/`, auth); notify(`Admin ${id} deleted`); fetchMembers(); }
-            catch { notify("Delete failed", "error"); }
-        };
-
-        const toggleBlock = async (id) => {
-            try {
-                const r = await api.patch(`admin/members/${id}/toggle-block`, {}, auth);
-                notify(r.data.message);
-                fetchMembers();
-            } catch (err) {
-                notify(err.response?.data?.error || "Failed to toggle block", "error");
-            }
-        };
-
-        const updateAdmin = async (e) => {
-            e.preventDefault();
-            try {
-                await api.put(`admin/members/${editing}/update`, editForm, auth);
-                notify(`Admin ${editing} updated successfully`);
-                setEditing(null);
-                fetchMembers();
-            } catch (err) {
-                notify(err.response?.data?.error || "Update failed", "error");
-            }
-        };
-
-        return (
-            <div className="space-y-6 animate-fade-up relative">
-                <div className="bg-white border border-slate-200 rounded-2xl sm:rounded-3xl p-5 sm:p-8 shadow-sm">
-                    <h3 className="text-lg font-black text-slate-800 mb-6 flex items-center gap-3 uppercase tracking-tight">
-                        <div className="w-9 h-9 sm:w-10 sm:h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center text-sm shadow-inner"><i className="fas fa-user-plus" /></div>
-                        Official Registration
-                    </h3>
-                    <form onSubmit={create} className="space-y-4">
-                        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                            <div>
-                                <label className="text-xs font-semibold text-slate-500 block mb-1.5">Full Name *</label>
-                                <input type="text" placeholder="Admin Name" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} className={inputCls} required />
-                            </div>
-                            <div>
-                                <label className="text-xs font-semibold text-slate-500 block mb-1.5">Member ID / Username *</label>
-                                <input type="text" placeholder="e.g. admin-hr" value={form.member_id} onChange={e => setForm({ ...form, member_id: e.target.value })} className={inputCls} required />
-                            </div>
-                            <div>
-                                <label className="text-xs font-semibold text-slate-500 block mb-1.5">Email Address *</label>
-                                <input type="email" placeholder="admin@sls.edu.pk" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} className={inputCls} required />
-                            </div>
-                            <div>
-                                <label className="text-xs font-semibold text-slate-500 block mb-1.5">Assign Password *</label>
-                                <input type="password" placeholder="••••••••" value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} className={inputCls} required />
-                            </div>
-                            <div>
-                                <label className="text-xs font-semibold text-slate-500 block mb-1.5">Joining Year *</label>
-                                <input type="number" value={form.joining_year} onChange={e => setForm({ ...form, joining_year: e.target.value })} className={inputCls} required />
-                            </div>
-                        </div>
-                        <div className="flex justify-between items-center pt-4 border-t border-slate-50 mt-2">
-                            <div className="flex items-center gap-2 text-slate-400 group">
-                                <i className="fas fa-info-circle text-xs" />
-                                <p className="text-xs font-bold uppercase tracking-widest leading-none">Account Role: <span className="text-indigo-600">Administrator</span></p>
-                            </div>
-                            <button type="submit" disabled={submitting}
-                                className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-semibold transition-all shadow-sm ${submitting ? "bg-slate-200 text-slate-400 cursor-not-allowed" : "bg-slate-900 text-white hover:bg-slate-800 shadow-slate-300 hover:-translate-y-0.5"}`}>
-                                {submitting ? <div className="w-4 h-4 border-2 border-slate-400 border-t-transparent rounded-full animate-spin" /> : <i className="fas fa-shield-halved" />}
-                                Register Admin
-                            </button>
-                        </div>
-                    </form>
-                </div>
-
-                {editing && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-slate-900/40 backdrop-blur-sm animate-fade-in">
-                        <div className="bg-white w-full max-w-md rounded-[2.5rem] shadow-2xl border border-slate-200 overflow-hidden relative animate-zoom-in">
-                            <div className="absolute top-0 left-0 w-full h-1.5 bg-[#002147]" />
-                            <div className="p-8">
-                                <div className="flex justify-between items-center mb-6">
-                                    <h3 className="text-xl font-black text-[#002147] uppercase tracking-tight">Edit Administrator</h3>
-                                    <button onClick={() => setEditing(null)} className="text-slate-400 hover:text-rose-500 transition-colors">
-                                        <i className="fas fa-times text-lg" />
-                                    </button>
-                                </div>
-                                <form onSubmit={updateAdmin} className="space-y-5">
-                                    <div>
-                                        <label className="text-xs font-black text-slate-500 uppercase tracking-widest pl-1 mb-1.5 block">Display Name</label>
-                                        <input type="text" value={editForm.name} onChange={e => setEditForm({ ...editForm, name: e.target.value })} className={inputCls} required />
-                                    </div>
-                                    <div>
-                                        <label className="text-xs font-black text-slate-500 uppercase tracking-widest pl-1 mb-1.5 block">Email Address (Unique)</label>
-                                        <input type="email" value={editForm.email} onChange={e => setEditForm({ ...editForm, email: e.target.value })} className={inputCls} required />
-                                    </div>
-                                    <div>
-                                        <label className="text-xs font-black text-slate-500 uppercase tracking-widest pl-1 mb-1.5 block">New Password (Override)</label>
-                                        <input type="password" placeholder="Leave blank to keep current" value={editForm.password} onChange={e => setEditForm({ ...editForm, password: e.target.value })} className={inputCls} />
-                                    </div>
-                                    <div className="flex gap-3 pt-4">
-                                        <button type="button" onClick={() => setEditing(null)} className="flex-1 px-6 py-3.5 rounded-2xl border border-slate-200 text-slate-600 font-bold text-xs uppercase hover:bg-slate-50 transition-all">Cancel</button>
-                                        <button type="submit" className="flex-1 px-6 py-3.5 rounded-2xl bg-[#002147] text-white font-bold text-xs uppercase hover:bg-slate-800 transition-all shadow-lg shadow-blue-900/20">Update Account</button>
-                                    </div>
-                                </form>
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-                <div className="space-y-4">
-                    <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-                        <i className="fas fa-users-gear text-slate-400" /> Official Personnel
-                    </h2>
-
-                    <div className="sm:hidden space-y-2">
-                        {adminList.filter(m => m.role !== 'Superuser').length === 0 ? (
-                            <div className="text-center py-20 bg-white rounded-[2rem] border-2 border-dashed border-slate-100">
-                                <i className="fas fa-user-shield text-4xl mb-4 opacity-10" />
-                                <p className="text-[10px] font-black uppercase tracking-widest text-slate-300">No admins found</p>
-                            </div>
-                        ) : adminList.filter(m => m.role !== 'Superuser').map((m) => (
-                            <div key={m.member_id} className={`p-3 bg-white rounded-2xl border border-slate-100 shadow-sm relative overflow-hidden transition-all space-y-3 ${m.status === 'blocked' ? "opacity-75" : ""}`}>
-                                <div className="flex justify-between items-center gap-3">
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-600 shrink-0">
-                                            <span className="font-bold text-[10px] uppercase">{m.name.charAt(0)}</span>
-                                        </div>
-                                        <div>
-                                            <h4 className="font-bold text-slate-800 text-xs leading-none mb-1">{m.name}</h4>
-                                            <p className="text-[9px] font-bold text-indigo-600 uppercase tracking-widest leading-none">{m.member_id}</p>
-                                        </div>
-                                    </div>
-                                    <div className="flex flex-col items-end text-right">
-                                        <span className={`text-[8px] font-black px-2 py-0.5 rounded-md uppercase tracking-widest ${m.status === 'blocked' ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"}`}>
-                                            {m.status === 'blocked' ? "Blocked" : "Active"}
+                                        <span className={`px-2 py-0.5 text-[8px] font-black uppercase tracking-widest rounded-md shrink-0 text-center ${actionText.includes('LOGIN') ? 'bg-blue-50 text-blue-600' :
+                                                actionText.includes('CREATE') || actionText.includes('APPROVE') || actionText.includes('Add') ? 'bg-emerald-50 text-emerald-600' :
+                                                    actionText.includes('BLOCK') || actionText.includes('DELETE') ? 'bg-rose-50 text-rose-600' :
+                                                        'bg-slate-50 text-slate-600'
+                                            }`}>
+                                            {actionText}
                                         </span>
-                                        <span className="text-[8px] font-black text-purple-600 uppercase tracking-widest bg-purple-50 px-1.5 py-0.5 rounded border border-purple-100 mt-1">{m.role}</span>
+                                    </div>
+                                    <div className="bg-slate-50/50 px-2.5 py-2 rounded-xl text-[10px] text-slate-600 font-medium">
+                                        {log.details}
+                                        {log.target_id && (
+                                            <span className="block mt-1 text-[#002147] font-bold text-[8px] uppercase tracking-widest leading-none">ID: {log.target_id.name || log.target_id.email || log.target_id._id || log.target_id}</span>
+                                        )}
                                     </div>
                                 </div>
-
-                                <div className="flex gap-2 pt-1 border-t border-slate-50">
-                                    {m.member_id !== adminUser ? (
-                                        <>
-                                            <button onClick={() => toggleBlock(m._id)}
-                                                className={`flex-1 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${m.status === 'blocked' ? "bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white" : "bg-amber-50 text-amber-600 hover:bg-amber-500 hover:text-white"}`}>
-                                                {m.status === 'blocked' ? "Unblock" : "Block"}
-                                            </button>
-                                            <button onClick={() => { setEditing(m.member_id); setEditForm({ name: m.name, password: "" }); }}
-                                                className="flex-1 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest bg-slate-50 text-slate-600 hover:bg-[#002147] hover:text-white transition-all">
-                                                Edit
-                                            </button>
-                                            <button onClick={() => del(m.member_id)}
-                                                className="w-8 h-8 rounded-lg bg-rose-50 text-rose-500 flex items-center justify-center hover:bg-rose-500 hover:text-white transition-all">
-                                                <i className="fas fa-trash-alt text-[10px]" />
-                                            </button>
-                                        </>
-                                    ) : (
-                                        <div className="w-full text-center py-2 text-[9px] font-black uppercase tracking-[0.2em] text-blue-400 opacity-50 bg-blue-50/50 rounded-lg">Account Owner</div>
-                                    )}
-                                </div>
-                            </div>
-                        ))}
+                            );
+                        })}
                     </div>
 
-                    <div className="hidden sm:block bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                        <table className="w-full text-sm">
+                    <div className="hidden sm:block overflow-x-auto">
+                        <table className="w-full text-left text-sm">
                             <thead>
-                                <tr className="bg-slate-50 border-b border-slate-200 text-left">
-                                    <th className="px-6 py-4 text-xs font-black text-slate-500 uppercase tracking-widest">ID/Username</th>
-                                    <th className="px-6 py-4 text-xs font-black text-slate-500 uppercase tracking-widest">Name</th>
-                                    <th className="px-6 py-4 text-xs font-black text-slate-500 uppercase tracking-widest">Privilege Level</th>
-                                    <th className="px-6 py-4 text-xs font-black text-slate-500 uppercase tracking-widest">Status</th>
-                                    <th className="px-6 py-4 text-xs font-black text-slate-500 uppercase tracking-widest text-right">Actions</th>
+                                <tr className="bg-slate-50 border-b border-slate-200">
+                                    <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wide">Timestamp</th>
+                                    <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wide">Administrator</th>
+                                    <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wide">Action</th>
+                                    <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wide">Additional Details</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100">
-                                {adminList.filter(m => m.role !== 'Superuser').map((m) => (
-                                    <tr key={m.member_id} className={`hover:bg-purple-50/40 transition-colors group text-left ${m.status === 'blocked' ? "opacity-60 bg-slate-50/10" : ""}`}>
-                                        <td className="px-6 py-4 font-mono text-xs text-slate-800 font-bold">{m.member_id}</td>
-                                        <td className="px-6 py-4 text-slate-800 font-bold">{m.name}</td>
-                                        <td className="px-6 py-4">
-                                            <span className="text-xs font-bold px-3 py-1 rounded-full uppercase tracking-widest bg-purple-100 text-purple-700">
-                                                {m.role}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <span className={`text-xs font-bold px-3 py-1 rounded-full uppercase tracking-widest ${m.status === 'blocked' ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"}`}>
-                                                {m.status === 'blocked' ? "Blocked" : "Active"}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-4 text-right">
-                                            <div className="flex justify-end items-center gap-2">
-                                                {m.member_id !== adminUser ? (
-                                                    <>
-                                                        <button onClick={() => toggleBlock(m._id)}
-                                                            className={`text-[9px] font-black uppercase tracking-widest border px-3 py-2 rounded-lg transition-all ${m.status === 'blocked' ? "bg-emerald-50 text-emerald-600 border-emerald-200 hover:bg-emerald-100" : "bg-amber-50 text-amber-600 border-amber-200 hover:bg-amber-100"}`}>
-                                                            {m.status === 'blocked' ? "Unblock" : "Block"}
-                                                        </button>
-                                                        <button onClick={() => { setEditing(m.member_id); setEditForm({ name: m.name, password: "" }); }}
-                                                            className="text-[9px] font-black uppercase tracking-widest bg-slate-50 text-slate-600 border border-slate-200 px-3 py-2 rounded-lg hover:bg-slate-100 transition-all">
-                                                            Edit
-                                                        </button>
-                                                        <button onClick={() => del(m.member_id)}
-                                                            className="text-rose-400 hover:text-rose-600 p-2 hover:bg-rose-50 rounded-lg transition-all">
-                                                            <i className="fas fa-trash-alt" />
-                                                        </button>
-                                                    </>
-                                                ) : (
-                                                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-500/60 bg-blue-50 px-4 py-1.5 rounded-full">Owner</span>
-                                                )}
-                                            </div>
+                                {logs.length === 0 && !loadingLogs && (
+                                    <tr>
+                                        <td colSpan={4} className="px-6 py-12 text-center text-slate-400">
+                                            <i className="fas fa-inbox text-4xl mb-3 block opacity-20" />
+                                            No system logs recorded yet.
                                         </td>
                                     </tr>
-                                ))}
+                                )}
+                                {logs.map((log) => {
+                                    const actionText = log.action || '';
+                                    return (
+                                        <tr key={log._id} className="hover:bg-slate-50 transition-colors">
+                                            <td className="px-6 py-4 whitespace-nowrap text-xs text-slate-500 font-medium">
+                                                {new Date(log.createdAt).toLocaleString()}
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-8 h-8 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center text-xs font-bold uppercase">
+                                                        {log.admin_name?.charAt(0) || <i className="fas fa-robot text-slate-400" />}
+                                                    </div>
+                                                    <span className="font-bold text-slate-800 text-xs">
+                                                        {log.admin_name || "System/Unknown"}
+                                                    </span>
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <span className={`px-3 py-1 text-[10px] font-bold uppercase tracking-widest rounded-full ${actionText.includes('LOGIN') ? 'bg-blue-100 text-blue-700' :
+                                                        actionText.includes('CREATE') || actionText.includes('APPROVE') || actionText.includes('Add') ? 'bg-emerald-100 text-emerald-700' :
+                                                            actionText.includes('BLOCK') || actionText.includes('DELETE') ? 'bg-rose-100 text-rose-700' :
+                                                                'bg-slate-100 text-slate-700'
+                                                    }`}>
+                                                    {actionText}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-4 text-xs text-slate-600 font-medium">
+                                                {log.details}
+                                                {log.target_id && (
+                                                    <span className="ml-1 text-[#002147] font-bold mt-1 inline-block">ID: {log.target_id.name || log.target_id.email || log.target_id._id || log.target_id}</span>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    )
+                                })}
                             </tbody>
                         </table>
                     </div>
                 </div>
+
+                {totalPages > 1 && (
+                    <div className="p-4 border-t border-slate-100 flex items-center justify-between bg-slate-50">
+                        <button
+                            disabled={page === 1}
+                            onClick={() => fetchLogs(page - 1)}
+                            className="px-4 py-2 text-xs font-bold text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-50 transition-colors"
+                        >
+                            Previous
+                        </button>
+                        <span className="text-xs font-bold text-slate-500">
+                            Page {page} of {totalPages}
+                        </span>
+                        <button
+                            disabled={page === totalPages}
+                            onClick={() => fetchLogs(page + 1)}
+                            className="px-4 py-2 text-xs font-bold text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-50 transition-colors"
+                        >
+                            Next
+                        </button>
+                    </div>
+                )}
             </div>
-        );
+        </div>
+    );
+};
+
+
+    // ── Settings Tab (SELF-MANAGEMENT) ───────────────────────
+
+// ── Settings Tab (Moved Outside) ────────────────────
+const SettingsTab = ({ adminUser, api, auth, notify, logout, setAdminUser, inputCls }) => {
+    const [profile, setProfile] = useState({ name: adminUser, oldPassword: "", newPassword: "", confirmPassword: "" });
+    const [updating, setUpdating] = useState(false);
+
+    const handleUpdate = async (e) => {
+        e.preventDefault();
+        if (profile.newPassword && profile.newPassword !== profile.confirmPassword) {
+            return notify("New passwords do not match", "error");
+        }
+        setUpdating(true);
+        try {
+            const r = await api.put("admin/profile", {
+                name: profile.name,
+                oldPassword: profile.oldPassword,
+                newPassword: profile.newPassword
+            }, auth);
+
+            notify(r.data.message);
+            localStorage.setItem("adminUser", r.data.name);
+            setAdminUser(r.data.name);
+            setProfile({ ...profile, oldPassword: "", newPassword: "", confirmPassword: "" });
+        } catch (err) {
+            notify(err.response?.data?.error || "Profile update failed", "error");
+        } finally {
+            setUpdating(false);
+        }
     };
+
+    return (
+        <div className="max-w-2xl mx-auto animate-fade-up">
+            <div className="bg-white rounded-3xl sm:rounded-[2.5rem] border border-slate-200 shadow-xl overflow-hidden relative">
+                <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-[#002147] to-blue-500" />
+
+                <div className="p-6 md:p-12">
+                    <div className="flex flex-wrap items-center justify-between gap-4 mb-8 sm:mb-10">
+                        <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 sm:w-14 sm:h-14 bg-blue-50 rounded-xl sm:rounded-2xl flex items-center justify-center text-[#002147] text-lg sm:text-xl shadow-inner">
+                                <i className="fas fa-user-edit" />
+                            </div>
+                            <div>
+                                <h2 className="text-xl sm:text-2xl font-black text-slate-800 tracking-tight">Security & Profile</h2>
+                                <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mt-1">Self-Management Console</p>
+                            </div>
+                        </div>
+                        <button type="button" onClick={logout} className="group flex items-center gap-2 px-5 py-2.5 bg-rose-50 text-rose-600 rounded-xl hover:bg-rose-100 transition-all border border-rose-100 shadow-sm active:scale-95">
+                            <i className="fas fa-power-off text-xs group-hover:scale-110 transition-transform" />
+                            <span className="text-[10px] font-black uppercase tracking-[0.2em]">Logout</span>
+                        </button>
+                    </div>
+
+                    <form onSubmit={handleUpdate} className="space-y-8">
+                        <div className="space-y-6">
+                            <div>
+                                <label className="text-xs font-black text-slate-500 uppercase tracking-widest pl-1 mb-2 block">Display Name</label>
+                                <input type="text" value={profile.name} onChange={e => setProfile({ ...profile, name: e.target.value })} className={inputCls} required />
+                            </div>
+
+                            <div className="p-6 bg-slate-50 rounded-3xl border border-slate-100 space-y-5">
+                                <p className="text-xs font-black text-[#002147] uppercase tracking-widest flex items-center gap-2">
+                                    <i className="fas fa-lock" /> Security Update
+                                </p>
+
+                                <div>
+                                    <label className="text-xs font-bold text-slate-400 uppercase tracking-widest pl-1 mb-1.5 block">Current Password (Required)</label>
+                                    <input type="password" placeholder="••••••••" value={profile.oldPassword} onChange={e => setProfile({ ...profile, oldPassword: e.target.value })} className={inputCls} required />
+                                </div>
+
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="text-xs font-bold text-slate-400 uppercase tracking-widest pl-1 mb-1.5 block">New Password</label>
+                                        <input type="password" placeholder="Leave blank to keep current" value={profile.newPassword} onChange={e => setProfile({ ...profile, newPassword: e.target.value })} className={inputCls} />
+                                    </div>
+                                    <div>
+                                        <label className="text-xs font-bold text-slate-400 uppercase tracking-widest pl-1 mb-1.5 block">Confirm New</label>
+                                        <input type="password" placeholder="••••••••" value={profile.confirmPassword} onChange={e => setProfile({ ...profile, confirmPassword: e.target.value })} className={inputCls} />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <button type="submit" disabled={updating}
+                            className="w-full bg-[#002147] text-white py-4 rounded-2xl font-black uppercase text-xs tracking-[0.2em] hover:bg-slate-800 transition-all shadow-xl shadow-blue-900/10 flex items-center justify-center gap-3 disabled:opacity-50">
+                            {updating ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <i className="fas fa-save" />}
+                            SAVE
+                        </button>
+                    </form>
+
+                </div>
+            </div>
+        </div>
+    );
+};
+
+
+    // ── Admins Tab (Moved Outside to fix Search Strokes) ────────
+const AdminsTab = ({ members, adminUser, auth, notify, fetchMembers, inputCls, isSuper }) => {
+    const [form, setForm] = useState({ name: "", email: "", password: "", joining_year: new Date().getFullYear(), member_id: "", role: "Admin" });
+    const [submitting, setSubmitting] = useState(false);
+    const [editing, setEditing] = useState(null);
+    const [editForm, setEditForm] = useState({ name: "", email: "", password: "" });
+    const adminList = members.filter(m => m.role === "Admin" || m.role === "Superuser");
+
+    const create = async (e) => {
+        e.preventDefault(); setSubmitting(true);
+        try {
+            await api.post("admin/members/add/", form, auth);
+            notify(`Admin account ${form.member_id} created!`);
+            setForm({ name: "", email: "", password: "", joining_year: new Date().getFullYear(), member_id: "", role: "Admin" });
+            fetchMembers();
+        } catch (err) { notify(err.response?.data?.error || "Failed to create admin", "error"); }
+        finally { setSubmitting(false); }
+    };
+
+    const del = async (id, name) => {
+        if (!window.confirm(`Delete admin ${name}? This action is irreversible.`)) return;
+        try { 
+            await api.delete(`admin/members/${id}`, auth); 
+            notify(`Admin ${name} deleted`); 
+            fetchMembers(); 
+        }
+        catch (err) { notify(err.response?.data?.error || "Delete failed", "error"); }
+    };
+
+    const toggleBlock = async (id) => {
+        try {
+            const r = await api.patch(`admin/members/${id}/toggle-block`, {}, auth);
+            notify(r.data.message);
+            fetchMembers();
+        } catch (err) {
+            notify(err.response?.data?.error || "Failed to toggle block", "error");
+        }
+    };
+
+    const updateAdmin = async (e) => {
+        e.preventDefault();
+        try {
+            await api.put(`admin/members/${editing}/update`, editForm, auth);
+            notify(`Admin updated successfully`);
+            setEditing(null);
+            fetchMembers();
+        } catch (err) {
+            notify(err.response?.data?.error || "Update failed", "error");
+        }
+    };
+
+    return (
+        <div className="space-y-6 animate-fade-up relative">
+            <div className="bg-white border border-slate-200 rounded-2xl sm:rounded-3xl p-5 sm:p-8 shadow-sm">
+                <h3 className="text-lg font-black text-slate-800 mb-6 flex items-center gap-3 uppercase tracking-tight">
+                    <div className="w-9 h-9 sm:w-10 sm:h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center text-sm shadow-inner"><i className="fas fa-user-plus" /></div>
+                    Official Registration
+                </h3>
+                <form onSubmit={create} className="space-y-4">
+                    <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <div>
+                            <label className="text-xs font-semibold text-slate-500 block mb-1.5">Full Name *</label>
+                            <input type="text" placeholder="Admin Name" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} className={inputCls} required />
+                        </div>
+                        <div>
+                            <label className="text-xs font-semibold text-slate-500 block mb-1.5">Member ID / Username *</label>
+                            <input type="text" placeholder="e.g. admin-hr" value={form.member_id} onChange={e => setForm({ ...form, member_id: e.target.value })} className={inputCls} required />
+                        </div>
+                        <div>
+                            <label className="text-xs font-semibold text-slate-500 block mb-1.5">Email Address *</label>
+                            <input type="email" placeholder="admin@sls.edu.pk" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} className={inputCls} required />
+                        </div>
+                        <div>
+                            <label className="text-xs font-semibold text-slate-500 block mb-1.5">Assign Password *</label>
+                            <input type="password" placeholder="••••••••" value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} className={inputCls} required />
+                        </div>
+                        <div>
+                            <label className="text-xs font-semibold text-slate-500 block mb-1.5">Joining Year *</label>
+                            <input type="number" value={form.joining_year} onChange={e => setForm({ ...form, joining_year: e.target.value })} className={inputCls} required />
+                        </div>
+                    </div>
+                    <div className="flex justify-between items-center pt-4 border-t border-slate-50 mt-2">
+                        <div className="flex items-center gap-2 text-slate-400 group">
+                            <i className="fas fa-info-circle text-xs" />
+                            <p className="text-xs font-bold uppercase tracking-widest leading-none">Account Role: <span className="text-indigo-600">Administrator</span></p>
+                        </div>
+                        <button type="submit" disabled={submitting}
+                            className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-semibold transition-all shadow-sm ${submitting ? "bg-slate-200 text-slate-400 cursor-not-allowed" : "bg-slate-900 text-white hover:bg-slate-800 shadow-slate-300 hover:-translate-y-0.5"}`}>
+                            {submitting ? <div className="w-4 h-4 border-2 border-slate-400 border-t-transparent rounded-full animate-spin" /> : <i className="fas fa-shield-halved" />}
+                            Register Admin
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            {editing && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-slate-900/40 backdrop-blur-sm animate-fade-in">
+                    <div className="bg-white w-full max-w-md rounded-[2.5rem] shadow-2xl border border-slate-200 overflow-hidden relative animate-zoom-in">
+                        <div className="absolute top-0 left-0 w-full h-1.5 bg-[#002147]" />
+                        <div className="p-8">
+                            <div className="flex justify-between items-center mb-6">
+                                <h3 className="text-xl font-black text-[#002147] uppercase tracking-tight">Edit Administrator</h3>
+                                <button onClick={() => setEditing(null)} className="text-slate-400 hover:text-rose-500 transition-colors">
+                                    <i className="fas fa-times text-lg" />
+                                </button>
+                            </div>
+                            <form onSubmit={updateAdmin} className="space-y-5">
+                                <div>
+                                    <label className="text-xs font-black text-slate-500 uppercase tracking-widest pl-1 mb-1.5 block">Display Name</label>
+                                    <input type="text" value={editForm.name} onChange={e => setEditForm({ ...editForm, name: e.target.value })} className={inputCls} required />
+                                </div>
+                                <div>
+                                    <label className="text-xs font-black text-slate-500 uppercase tracking-widest pl-1 mb-1.5 block">Email Address (Unique)</label>
+                                    <input type="email" value={editForm.email} onChange={e => setEditForm({ ...editForm, email: e.target.value })} className={inputCls} required />
+                                </div>
+                                <div>
+                                    <label className="text-xs font-black text-slate-500 uppercase tracking-widest pl-1 mb-1.5 block">New Password (Override)</label>
+                                    <input type="password" placeholder="Leave blank to keep current" value={editForm.password} onChange={e => setEditForm({ ...editForm, password: e.target.value })} className={inputCls} />
+                                </div>
+                                <div className="flex gap-3 pt-4">
+                                    <button type="button" onClick={() => setEditing(null)} className="flex-1 px-6 py-3.5 rounded-2xl border border-slate-200 text-slate-600 font-bold text-xs uppercase hover:bg-slate-50 transition-all">Cancel</button>
+                                    <button type="submit" className="flex-1 px-6 py-3.5 rounded-2xl bg-[#002147] text-white font-bold text-xs uppercase hover:bg-slate-800 transition-all shadow-lg shadow-blue-900/20">Update Account</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            <div className="space-y-4">
+                <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                    <i className="fas fa-users-gear text-slate-400" /> Official Personnel
+                </h2>
+
+                <div className="sm:hidden space-y-2">
+                    {adminList.filter(m => m.role !== 'Superuser' || isSuper).map((m) => (
+                        <div key={m.member_id} className={`p-3 bg-white rounded-2xl border border-slate-100 shadow-sm relative overflow-hidden transition-all space-y-3 ${m.status === 'blocked' ? "opacity-75" : ""}`}>
+                            <div className="flex justify-between items-center gap-3">
+                                <div className="flex items-center gap-2">
+                                    <div className="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-600 shrink-0">
+                                        <span className="font-bold text-[10px] uppercase">{m.name.charAt(0)}</span>
+                                    </div>
+                                    <div>
+                                        <h4 className="font-bold text-slate-800 text-xs leading-none mb-1">{m.name}</h4>
+                                        <p className="text-[9px] font-bold text-indigo-600 uppercase tracking-widest leading-none">{m.member_id}</p>
+                                    </div>
+                                </div>
+                                <div className="flex flex-col items-end text-right">
+                                    <span className={`text-[8px] font-black px-2 py-0.5 rounded-md uppercase tracking-widest ${m.status === 'blocked' ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"}`}>
+                                        {m.status === 'blocked' ? "Blocked" : "Active"}
+                                    </span>
+                                    <span className="text-[8px] font-black text-purple-600 uppercase tracking-widest bg-purple-50 px-1.5 py-0.5 rounded border border-purple-100 mt-1">{m.role}</span>
+                                </div>
+                            </div>
+
+                            <div className="flex gap-2 pt-1 border-t border-slate-50">
+                                {m.member_id !== adminUser ? (
+                                    <>
+                                        <button onClick={() => toggleBlock(m._id)}
+                                            className={`flex-1 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${m.status === 'blocked' ? "bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white" : "bg-amber-50 text-amber-600 hover:bg-amber-500 hover:text-white"}`}>
+                                            {m.status === 'blocked' ? "Unblock" : "Block"}
+                                        </button>
+                                        <button onClick={() => { setEditing(m.member_id); setEditForm({ name: m.name, email: m.email, password: "" }); }}
+                                            className="flex-1 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest bg-slate-50 text-slate-600 hover:bg-[#002147] hover:text-white transition-all">
+                                            Edit
+                                        </button>
+                                        <button onClick={() => del(m._id, m.name)}
+                                            className="w-8 h-8 rounded-lg bg-rose-50 text-rose-500 flex items-center justify-center hover:bg-rose-500 hover:text-white transition-all">
+                                            <i className="fas fa-trash-alt text-[10px]" />
+                                        </button>
+                                    </>
+                                ) : (
+                                    <div className="w-full text-center py-2 text-[9px] font-black uppercase tracking-[0.2em] text-blue-400 opacity-50 bg-blue-50/50 rounded-lg">Account Owner</div>
+                                )}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+
+                <div className="hidden sm:block bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                    <table className="w-full text-sm">
+                        <thead>
+                            <tr className="bg-slate-50 border-b border-slate-200 text-left">
+                                <th className="px-6 py-4 text-xs font-black text-slate-500 uppercase tracking-widest">ID/Username</th>
+                                <th className="px-6 py-4 text-xs font-black text-slate-500 uppercase tracking-widest">Name</th>
+                                <th className="px-6 py-4 text-xs font-black text-slate-500 uppercase tracking-widest">Privilege Level</th>
+                                <th className="px-6 py-4 text-xs font-black text-slate-500 uppercase tracking-widest">Status</th>
+                                <th className="px-6 py-4 text-xs font-black text-slate-500 uppercase tracking-widest text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                            {adminList.filter(m => m.role !== 'Superuser' || isSuper).map((m) => (
+                                <tr key={m.member_id} className={`hover:bg-purple-50/40 transition-colors group text-left ${m.status === 'blocked' ? "opacity-60 bg-slate-50/10" : ""}`}>
+                                    <td className="px-6 py-4 font-mono text-xs text-slate-800 font-bold">{m.member_id}</td>
+                                    <td className="px-6 py-4 text-slate-800 font-bold">{m.name}</td>
+                                    <td className="px-6 py-4">
+                                        <span className="text-xs font-bold px-3 py-1 rounded-full uppercase tracking-widest bg-purple-100 text-purple-700">
+                                            {m.role}
+                                        </span>
+                                    </td>
+                                    <td className="px-6 py-4">
+                                        <span className={`text-xs font-bold px-3 py-1 rounded-full uppercase tracking-widest ${m.status === 'blocked' ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"}`}>
+                                            {m.status === 'blocked' ? "Blocked" : "Active"}
+                                        </span>
+                                    </td>
+                                    <td className="px-6 py-4 text-right">
+                                        <div className="flex justify-end items-center gap-2">
+                                            {m.member_id !== adminUser ? (
+                                                <>
+                                                    <button onClick={() => toggleBlock(m._id)}
+                                                        className={`text-[9px] font-black uppercase tracking-widest border px-3 py-2 rounded-lg transition-all ${m.status === 'blocked' ? "bg-emerald-50 text-emerald-600 border-emerald-200 hover:bg-emerald-100" : "bg-amber-50 text-amber-600 border-amber-200 hover:bg-amber-100"}`}>
+                                                        {m.status === 'blocked' ? "Unblock" : "Block"}
+                                                    </button>
+                                                    <button onClick={() => { setEditing(m.member_id); setEditForm({ name: m.name, email: m.email, password: "" }); }}
+                                                        className="text-[9px] font-black uppercase tracking-widest bg-slate-50 text-slate-600 border border-slate-200 px-3 py-2 rounded-lg hover:bg-slate-100 transition-all">
+                                                        Edit
+                                                    </button>
+                                                    <button onClick={() => del(m._id, m.name)}
+                                                        className="text-rose-400 hover:text-rose-600 p-2 hover:bg-rose-50 rounded-lg transition-all">
+                                                        <i className="fas fa-trash-alt" />
+                                                    </button>
+                                                </>
+                                            ) : (
+                                                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-500/60 bg-blue-50 px-4 py-1.5 rounded-full">Owner</span>
+                                            )}
+                                        </div>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    );
+};
 
     return (
         <div className="min-h-screen bg-[#F1F5F9] flex font-sans text-slate-900">
@@ -3613,10 +3328,10 @@ function AdminPortal() {
                         </div>
                     )}
 
-                    {activeTab === "dashboard" && <DashboardTab />}
+                    {activeTab === "dashboard" && <DashboardTab adminUser={adminUser} setActiveTab={setActiveTab} stats={stats} isSuper={isSuper} tabs={tabs} Spinner={Spinner} StatCard={StatCard} />}
                     {activeTab === "members" && <MembersTab />}
-                    {activeTab === "approvals" && <ApprovalsTab />}
-                    {activeTab === "events" && !searchParams.get("eventId") && <EventsTab />}
+                    {activeTab === "pending" && <ApprovalsTab pendingMembers={pendingMembers} fetchPendingMembers={fetchPendingMembers} loading={loading} auth={auth} notify={notify} Spinner={Spinner} />}
+                    {activeTab === "events" && !searchParams.get("eventId") && <EventsTab events={events} fetchEvents={fetchEvents} api={api} auth={auth} notify={notify} setSearchParams={setSearchParams} getImgUrl={getImgUrl} CountdownTimer={CountdownTimer} inputCls={inputCls} />}
                     {activeTab === "events" && searchParams.get("eventId") && (
                         <ParticipantsView 
                             eventId={searchParams.get("eventId")} 
@@ -3628,14 +3343,14 @@ function AdminPortal() {
                             fetchEvents={fetchEvents} 
                         />
                     )}
-                    {activeTab === "announcements" && <AnnouncementsTab />}
+                    {activeTab === "announcements" && <AnnouncementsTab announcements={announcements} fetchAnnouncements={fetchAnnouncements} api={api} auth={auth} notify={notify} inputCls={inputCls} />}
                     {activeTab === "certificates" && <CertificatesTab auth={auth} notify={notify} api={api} members={members} events={events} />}
                     {activeTab === "batches" && !searchParams.get("dossier") && <BatchesTab members={members} issuedCertificates={issuedCertificates} auth={auth} api={api} notify={notify} setSearchParams={setSearchParams} />}
                     {activeTab === "batches" && searchParams.get("dossier") && <DossierView memberId={searchParams.get("dossier")} members={members} onBack={() => setSearchParams({ tab: 'batches' })} />}
                     {isSuper && activeTab === "customization" && <CustomizationTabComponent auth={auth} notify={notify} getImgUrl={getImgUrl} inputCls={inputCls} api={api} members={members} />}
-                    {activeTab === "settings" && <SettingsTab />}
+                    {activeTab === "settings" && <SettingsTab adminUser={adminUser} api={api} auth={auth} notify={notify} logout={logout} setAdminUser={setAdminUser} inputCls={inputCls} />}
                     {isSuper && activeTab === "admins" && <AdminsTab />}
-                    {isSuper && activeTab === "logs" && <LogsTab />}
+                    {isSuper && activeTab === "logs" && <LogsTab api={api} auth={auth} notify={notify} isSuper={isSuper} />}
                 </div>
             </main>
         </div>
