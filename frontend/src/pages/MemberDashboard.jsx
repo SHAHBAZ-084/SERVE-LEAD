@@ -14,7 +14,7 @@ import html2canvas from "html2canvas";
 
 // ── Shared Primitives ─────────────────────────────────────
 const inputCls =
-    "w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#002147] focus:bg-white focus:outline-none transition-all duration-200 text-sm shadow-sm placeholder:text-slate-300";
+    "w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 focus:ring-0 focus:bg-white focus:outline-none transition-all duration-200 text-sm shadow-sm placeholder:text-slate-300";
 
 /** Counts up from 0 → target with easeOutQuart easing */
 function useCountUp(target, duration = 1200) {

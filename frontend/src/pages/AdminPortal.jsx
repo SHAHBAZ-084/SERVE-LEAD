@@ -81,7 +81,7 @@ const BatchesTab = ({ members, issuedCertificates, auth, api, notify, setSearchP
                             placeholder={`Search in Batch ${selectedBatch}...`}
                             value={batchSearch}
                             onChange={(e) => setBatchSearch(e.target.value)}
-                            className="w-full bg-white border border-slate-200 rounded-2xl pl-12 pr-6 py-3.5 text-sm font-bold text-slate-800 placeholder:text-slate-300 focus:ring-8 focus:ring-[#002147]/5 focus:border-[#002147] outline-none transition-all shadow-sm"
+                            className="w-full bg-white border border-slate-200 rounded-2xl pl-12 pr-6 py-3.5 text-sm font-bold text-slate-800 placeholder:text-slate-300 focus:ring-0  outline-none transition-all shadow-sm"
                         />
                     </div>
                 </div>
@@ -1195,7 +1195,7 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
                                 placeholder="Filter records..."
                                 value={searchCert}
                                 onChange={(e) => setSearchCert(e.target.value)}
-                                className="w-full sm:w-56 bg-slate-50 border border-slate-100 rounded-xl pl-10 pr-4 py-2.5 text-xs focus:ring-2 focus:ring-[#002147]/10 outline-none transition-all placeholder:text-slate-300 shadow-inner"
+                                className="w-full sm:w-56 bg-slate-50 border border-slate-100 rounded-xl pl-10 pr-4 py-2.5 text-xs focus:ring-0 outline-none transition-all placeholder:text-slate-300 shadow-inner"
                             />
                         </div>
                         <button onClick={() => { setSelectMode(!selectMode); setSelectedCertIds([]); }} className={`px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border ${selectMode ? 'bg-[#002147] text-white border-[#002147] shadow-lg shadow-blue-900/20' : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'}`}>
@@ -1625,7 +1625,7 @@ const MembersTab = ({ members, fetchMembers, loading, search, setSearch, auth, n
                         <i className="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm" />
                         <input type="text" placeholder="Search members..." value={localSearch}
                             onChange={(e) => setLocalSearch(e.target.value)} onKeyDown={(e) => e.key === "Enter" && triggerSearch()}
-                            className="w-full sm:w-72 bg-white border border-slate-200 rounded-xl pl-11 pr-4 py-2.5 text-slate-800 placeholder-slate-400 focus:ring-2 focus:ring-[#002147]/10 focus:border-[#002147] outline-none text-sm transition-all" />
+                            className="w-full sm:w-72 bg-white border border-slate-200 rounded-xl pl-11 pr-4 py-2.5 text-slate-800 placeholder-slate-400 focus:ring-0  outline-none text-sm transition-all" />
                     </div>
                     <button onClick={triggerSearch} className="bg-[#002147] text-white px-6 py-2.5 rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-slate-800 transition-all shadow-sm">
                         Search
@@ -2034,7 +2034,7 @@ const DashboardTab = ({ adminUser, setActiveTab, stats, isSuper, tabs, Spinner, 
                             <i className="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm" />
                             <input type="text" placeholder="Filter applicants..." value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                className="w-full bg-white border border-slate-200 rounded-xl pl-11 pr-4 py-2.5 text-slate-800 focus:ring-2 focus:ring-[#002147]/10 focus:border-[#002147] outline-none text-sm shadow-sm" />
+                                className="w-full bg-white border border-slate-200 rounded-xl pl-11 pr-4 py-2.5 text-slate-800 focus:ring-0  outline-none text-sm shadow-sm" />
                         </div>
                     </div>
                 </div>
@@ -2178,7 +2178,7 @@ const DashboardTab = ({ adminUser, setActiveTab, stats, isSuper, tabs, Spinner, 
                                             required
                                             value={interviewForm.venue}
                                             onChange={e => setInterviewForm({ ...interviewForm, venue: e.target.value })}
-                                            className="w-full bg-slate-50 border border-slate-100 rounded-2xl pl-12 pr-5 py-4 text-sm font-bold text-slate-800 placeholder:text-slate-300 focus:bg-white focus:ring-4 focus:ring-[#002147]/5 focus:border-[#002147] outline-none transition-all"
+                                            className="w-full bg-slate-50 border border-slate-100 rounded-2xl pl-12 pr-5 py-4 text-sm font-bold text-slate-800 placeholder:text-slate-300 focus:bg-white focus:ring-0  outline-none transition-all"
                                             placeholder="e.g. Society HQ or Online Link"
                                         />
                                     </div>
@@ -2191,7 +2191,7 @@ const DashboardTab = ({ adminUser, setActiveTab, stats, isSuper, tabs, Spinner, 
                                         required
                                         value={interviewForm.message}
                                         onChange={e => setInterviewForm({ ...interviewForm, message: e.target.value })}
-                                        className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-5 text-sm font-bold text-slate-800 placeholder:text-slate-300 focus:bg-white focus:ring-4 focus:ring-[#002147]/5 focus:border-[#002147] outline-none transition-all resize-none shadow-sm"
+                                        className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-5 text-sm font-bold text-slate-800 placeholder:text-slate-300 focus:bg-white focus:ring-0  outline-none transition-all resize-none shadow-sm"
                                         placeholder="Add schedule, instructions or requirements..."
                                     />
                                 </div>
@@ -2458,14 +2458,14 @@ const EventsTab = ({ events, fetchEvents, api, auth, notify, setSearchParams, ge
                             <button onClick={() => { setBulkMode(!bulkMode); setSelectedIds([]); }} className={`px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-widest transition-all ${bulkMode ? 'bg-[#002147] text-white shadow-sm' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>
                                 <i className="fas fa-layer-group mr-2" /> {bulkMode ? "Done" : "Select"}
                             </button>
-                            <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold text-slate-600 focus:border-[#002147] outline-none shadow-sm cursor-pointer hover:border-slate-300 transition-all">
+                            <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold text-slate-600  outline-none shadow-sm cursor-pointer hover:border-slate-300 transition-all">
                                 <option value="All">All Statuses</option>
                                 <option value="Running">Running Active</option>
                                 <option value="Ended">Archive Ended</option>
                             </select>
                             <div className="relative w-full sm:w-64">
                                 <i className="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm" />
-                                <input type="text" placeholder="Search events..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl pl-11 pr-4 py-2.5 text-slate-800 text-sm shadow-sm outline-none focus:border-[#002147] focus:ring-2 focus:ring-[#002147]/10" />
+                                <input type="text" placeholder="Search events..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl pl-11 pr-4 py-2.5 text-slate-800 text-sm shadow-sm outline-none  focus:ring-0" />
                             </div>
                         </div>
                     </div>
