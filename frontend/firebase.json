@@ -6,6 +6,17 @@
       "**/.*",
       "**/node_modules/**"
     ],
+    "headers": [
+      {
+        "source": "**",
+        "headers": [
+          {
+            "key": "Content-Security-Policy",
+            "value": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https: blob:; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' https://api.serveandlead.org https://identitytoolkit.googleapis.com https://securetoken.googleapis.com; frame-ancestors 'none';"
+          }
+        ]
+      }
+    ],
     "rewrites": [
       {
         "source": "**",
