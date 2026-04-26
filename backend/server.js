@@ -39,7 +39,7 @@ app.use(helmet({
     contentSecurityPolicy: {
         directives: {
             ...helmet.contentSecurityPolicy.getDefaultDirectives(),
-            "script-src": ["'self'", (req, res) => `'nonce-${res.locals.nonce}'`],
+            "script-src": ["'self'", (req, res) => `'nonce-${res.locals.nonce}'`, "'unsafe-eval'"],
             "img-src": ["'self'", "data:", "https:", "blob:"],
         },
     },
