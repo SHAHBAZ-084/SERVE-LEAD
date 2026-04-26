@@ -3,6 +3,14 @@ const router = express.Router();
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
+const rateLimit = require('express-rate-limit');
+
+const otpLimiter = rateLimit({
+    windowMs: 5 * 60 * 1000, // 5 minutes
+    max: 3, // limit each IP to 3 OTP requests per window
+    message: { error: 'Too many OTP requests. Please try again after 5 minutes.' }
+});
+
 const Member = require('../models/Member');
 const OTP = require('../models/OTP');
 const { sendOTPEmail, sendResetPasswordEmail } = require('../utils/emailService');
@@ -60,7 +68,7 @@ router.post('/check-email', asyncHandler(async (req, res) => {
 }));
 
 // Send Registration OTP
-router.post('/send-otp', async (req, res) => {
+router.post('/send-otp', otpLimiter, async (req, res) => {
     try {
         const { email } = req.body;
         if (!email) return res.status(400).json({ error: 'Email is required.' });
@@ -77,8 +85,8 @@ router.post('/send-otp', async (req, res) => {
             return res.status(400).json({ error: 'Account already exists for this Gmail.' });
         }
 
-        // 3. Generate 6-digit OTP
-        const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+        // 3. Generate 6-digit OTP (securely)
+        const otpCode = crypto.randomInt(100000, 1000000).toString();
 
         // 4. Save to DB (overwrite if already exists for this email)
         await OTP.deleteMany({ email: email.toLowerCase() });
@@ -104,9 +112,22 @@ router.post('/send-otp', async (req, res) => {
 });
 
 // Resend OTP
-router.post('/resend-otp', asyncHandler(async (req, res) => {
+router.post('/resend-otp', otpLimiter, asyncHandler(async (req, res) => {
     const { email } = req.body;
-    const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+    
+    if (!email) return res.status(400).json({ error: 'Email is required.' });
+    
+    const gmailRegex = /^[a-zA-Z0-9._%+-]+@gmail\.com$/;
+    if (!gmailRegex.test(email)) {
+        return res.status(400).json({ error: 'Only official @gmail.com accounts are permitted.' });
+    }
+    
+    const existing = await Member.findOne({ email: email.toLowerCase() });
+    if (existing) {
+        return res.status(400).json({ error: 'Account already exists for this Gmail.' });
+    }
+
+    const otpCode = crypto.randomInt(100000, 1000000).toString();
     await OTP.deleteMany({ email: email.toLowerCase() });
     await OTP.create({ email: email.toLowerCase(), code: otpCode });
     
@@ -130,24 +151,50 @@ router.post('/verify-otp', asyncHandler(async (req, res) => {
 
 // Final Registration
 router.post('/register', asyncHandler(async (req, res) => {
-    // The frontend sends a flat formData object, not nested
-    const formData = req.body;
-    const email = formData.email?.toLowerCase();
+    // Extract only safe fields to prevent Mass Assignment
+    const {
+        name,
+        email: rawEmail,
+        password,
+        joining_year,
+        father_name,
+        whatsapp,
+        education_level,
+        program,
+        passing_year,
+        university,
+        address,
+        city
+    } = req.body;
+
+    const email = rawEmail?.toLowerCase();
 
     if (!email) return res.status(400).json({ error: 'Email is required' });
+    if (!password) return res.status(400).json({ error: 'Password is required' });
+
+    const hashedPassword = await bcrypt.hash(password, 12);
 
     const member = await Member.create({
-        ...formData,
+        name,
         email,
-        status: 'pending'
+        password: hashedPassword,
+        joining_year,
+        father_name,
+        whatsapp,
+        education_level,
+        program,
+        passing_year,
+        university,
+        address,
+        city,
+        status: 'pending',
+        role: 'General' // Explicitly enforce default role
     });
 
-    const token = jwt.sign({ memberId: member._id, role: member.role }, process.env.JWT_SECRET, { expiresIn: '15m' });
     res.status(201).json({
         _id: member._id,
         name: member.name,
-        email: member.email,
-        token
+        email: member.email
     });
 }));
 
@@ -185,29 +232,23 @@ router.post('/login', asyncHandler(async (req, res) => {
         });
     }
 
-    // Check if password matches plaintext (older signups) or hashed (resets)
-    let isMatch = false;
-    if (member.password === password) {
-        isMatch = true;
-    } else {
-        isMatch = await bcrypt.compare(password, member.password).catch(() => false);
-    }
+    // Check if password matches hashed password
+    const isMatch = await bcrypt.compare(password, member.password).catch(() => false);
 
     if (!isMatch) {
         return res.status(401).json({ error: 'Invalid credentials.' });
     }
 
-    const token = jwt.sign({ memberId: member._id, role: member.role }, process.env.JWT_SECRET, { expiresIn: '15m' });
+    const token = jwt.sign({ memberId: member._id, role: member.role }, process.env.JWT_SECRET, { expiresIn: '7d' });
 
     res.cookie('jwt', token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-        maxAge: 15 * 60 * 1000 // 15 minutes
+        maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
     });
 
     res.status(200).json({
-        token,
         member: {
             id: member._id,
             member_id: member.member_id,

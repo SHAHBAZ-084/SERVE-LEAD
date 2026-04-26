@@ -29,12 +29,17 @@ app.use(cors({
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH']
 }));
 
+app.use((req, res, next) => {
+    res.locals.nonce = require('crypto').randomBytes(16).toString('base64');
+    next();
+});
+
 app.use(helmet({
     crossOriginResourcePolicy: { policy: "cross-origin" },
     contentSecurityPolicy: {
         directives: {
             ...helmet.contentSecurityPolicy.getDefaultDirectives(),
-            "script-src": ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+            "script-src": ["'self'", (req, res) => `'nonce-${res.locals.nonce}'`],
             "img-src": ["'self'", "data:", "https:", "blob:"],
         },
     },
@@ -42,7 +47,7 @@ app.use(helmet({
 app.use(compression()); // Gzip compression
 app.use(express.json({ limit: '10kb' })); 
 app.use(express.urlencoded({ extended: true, limit: '10kb' }));
-// app.use(mongoSanitize()); // Disabled due to Express 5 req.query getter issue
+app.use(mongoSanitize({ replaceWith: '_' })); // Fix Express 5 issue and prevent NoSQL Injection
 app.use(cookieParser());
 
 // Logging
@@ -65,6 +70,7 @@ const authLimiter = rateLimit({
     message: { error: 'Too many attempts. Please try again after 15 minutes.' }
 });
 app.use('/api/auth/login', authLimiter);
+app.use('/api/admin/login', authLimiter);
 app.use('/api/auth/verify-otp', authLimiter);
 
 // Prevent Caching for API Routes (Security)

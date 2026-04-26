@@ -1,9 +1,16 @@
 const express = require('express');
 const router = express.Router();
+const rateLimit = require('express-rate-limit');
 const { sendContactEmail } = require('../utils/emailService');
 
+const contactLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 3, // limit each IP to 3 contact requests per windowMs
+    message: { error: 'Too many inquiries sent from this IP. Please try again after 15 minutes.' }
+});
+
 // POST /api/contact - Handle Homepage Inquiries
-router.post('/', async (req, res) => {
+router.post('/', contactLimiter, async (req, res) => {
   try {
     const { name, email, message } = req.body;
 

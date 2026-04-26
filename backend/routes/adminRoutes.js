@@ -126,16 +126,16 @@ router.post('/login', asyncHandler(async (req, res) => {
     if (!isMatch) return res.status(401).json({ error: 'Invalid admin credentials' });
 
     const payload = { memberId: member._id, role: member.role };
-    const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '15m' });
+    const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '7d' });
 
     res.cookie('jwt', token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-        maxAge: 15 * 60 * 1000
+        maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
     });
 
-    res.json({ token, username: member.name, is_superuser: member.role === 'Superuser' });
+    res.json({ username: member.name, is_superuser: member.role === 'Superuser' });
     logActivity(member._id, 'Login', `Logged into Admin Portal`);
 }));
 
@@ -162,7 +162,10 @@ router.get('/dashboard', authMiddleware, isAdmin, asyncHandler(async (req, res) 
 
 // GET all approved members (with pagination and search)
 router.get('/members', authMiddleware, isAdmin, asyncHandler(async (req, res) => {
-    const { search, page = 1, limit = 10 } = req.query;
+    let { search, page = 1, limit = 10 } = req.query;
+    page = parseInt(page, 10) || 1;
+    limit = parseInt(limit, 10) || 10;
+
     let query = { status: req.user.role === 'Superuser' ? { $in: ['approved', 'blocked'] } : 'approved' };
     
     if (req.user.role === 'Admin') query.role = { $nin: ['Admin', 'Superuser'] };
@@ -176,7 +179,7 @@ router.get('/members', authMiddleware, isAdmin, asyncHandler(async (req, res) =>
     const members = await Member.find(query)
         .select('-password')
         .sort({ createdAt: -1 }) // Sort by recent
-        .limit(limit * 1)
+        .limit(limit)
         .skip((page - 1) * limit)
         .lean();
 
@@ -378,22 +381,25 @@ router.get('/logs/export', authMiddleware, isSuperuser, asyncHandler(async (req,
 
 // GET Logs (Superuser only)
 router.get('/logs', authMiddleware, isSuperuser, asyncHandler(async (req, res) => {
-    const { page = 1, limit = 20 } = req.query;
+    let { page = 1, limit = 20 } = req.query;
+    page = parseInt(page, 10) || 1;
+    limit = parseInt(limit, 10) || 20;
+
     const logs = await Log.find()
         .populate('target_id', 'name email')
         .sort({ createdAt: -1 })
-        .limit(limit * 1)
+        .limit(limit)
         .skip((page - 1) * limit)
         .lean();
     
     const count = await Log.countDocuments();
-    res.json({ logs, totalPages: Math.ceil(count / limit), currentPage: Number(page) });
+    res.json({ logs, totalPages: Math.ceil(count / limit), currentPage: page });
 }));
 
 // GET Full Database Backup JSON (Superuser only)
 router.get('/backup', authMiddleware, isSuperuser, asyncHandler(async (req, res) => {
     const backup = {
-        members: await Member.find().lean(),
+        members: await Member.find().select('-password').lean(),
         events: await Event.find().lean(),
         counters: await Counter.find().lean(),
         logs: await Log.find().lean(),

@@ -86,7 +86,7 @@ router.post('/', authMiddleware, isAdmin, async (req, res) => {
 
   } catch (error) {
     console.error('CRITICAL: Issue Certificate Error:', error.message, error.stack);
-    res.status(500).json({ error: `Server Error: ${error.message}` });
+    res.status(500).json({ error: 'An unexpected error occurred while issuing the certificate.' });
   }
 });
 
@@ -163,7 +163,7 @@ router.post('/bulk', authMiddleware, isAdmin, async (req, res) => {
 
   } catch (error) {
     console.error('CRITICAL: Bulk Issue Certificate Error:', error.message, error.stack);
-    res.status(500).json({ error: `Server Error: ${error.message}` });
+    res.status(500).json({ error: 'An unexpected error occurred during bulk issuance.' });
   }
 });
 
