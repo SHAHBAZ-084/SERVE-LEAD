@@ -35,7 +35,7 @@ export default function MemberLogin() {
     try {
       const response = await api.post("auth/login", credentials);
 
-      localStorage.setItem("token", response.data.token);
+      localStorage.setItem("token", "cookie-auth-active");
       localStorage.setItem("userName", response.data.member.name);
       localStorage.setItem("memberId", response.data.member.member_id || "Awaiting Approval");
       localStorage.setItem("userDbId", response.data.member.id);

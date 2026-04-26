@@ -32,6 +32,7 @@ export default function AdminLogin() {
 
         try {
             const response = await api.post("admin/login", credentials);
+            localStorage.setItem("adminToken", "cookie-auth-active"); // Dummy token for ProtectedRoute
             localStorage.setItem("adminUser", response.data.username);
             if (response.data.is_superuser) {
                 localStorage.setItem("adminIsSuper", "1");

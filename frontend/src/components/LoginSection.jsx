@@ -25,7 +25,7 @@ export default function LoginSection() {
       const response = await api.post("auth/login", credentials);
 
       // Save Token and User Info to LocalStorage (adjusted for new response structure)
-      localStorage.setItem("token", response.data.token);
+      localStorage.setItem("token", "cookie-auth-active");
       localStorage.setItem("userName", response.data.member.name);
       localStorage.setItem("memberId", response.data.member.id || "");
       localStorage.setItem("status", response.data.member.status);
