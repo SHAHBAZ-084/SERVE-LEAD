@@ -47,7 +47,7 @@ app.use(helmet({
 app.use(compression()); // Gzip compression
 app.use(express.json({ limit: '10kb' })); 
 app.use(express.urlencoded({ extended: true, limit: '10kb' }));
-app.use(mongoSanitize({ replaceWith: '_' })); // Fix Express 5 issue and prevent NoSQL Injection
+// app.use(mongoSanitize({ replaceWith: '_' })); // Broken with Express 5 - causes 500 on req.query
 app.use(cookieParser());
 
 // Logging
