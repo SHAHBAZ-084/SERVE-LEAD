@@ -1704,9 +1704,9 @@ const MembersTab = ({ members, fetchMembers, loading, search, setSearch, auth, n
                                             <i className="fas fa-id-badge text-5xl mb-4 block opacity-10" /> No records matched the query.
                                         </td></tr>
                                     ) : generalMembers.map((m) => (
-                                        <tr key={m.member_id} className={`transition-colors group ${selectedIds.includes(m.member_id) ? 'bg-[#002147]/5' : 'hover:bg-slate-50'}`}>
+                                        <tr key={m._id} className={`transition-colors group ${selectedIds.includes(m._id) ? 'bg-[#002147]/5' : 'hover:bg-slate-50'}`}>
                                             {bulkMode && (<td className="px-6 py-5 text-center transition-all">
-                                                <input type="checkbox" checked={selectedIds.includes(m.member_id)} onChange={() => toggleSelect(m.member_id)} className="w-4 h-4 text-[#002147] border-slate-300 rounded focus:ring-[#002147]" />
+                                                <input type="checkbox" checked={selectedIds.includes(m._id)} onChange={() => toggleSelect(m._id)} className="w-4 h-4 text-[#002147] border-slate-300 rounded focus:ring-[#002147]" />
                                             </td>)}
                                             <td className="px-6 py-5 font-mono text-xs text-[#002147] font-bold">{m.member_id}</td>
                                             <td className="px-6 py-5 text-slate-800 font-bold">{m.name}</td>
@@ -1820,7 +1820,7 @@ const AdminPortal = () => {
     const fetchMembers = async () => {
         setLoading(true);
         try {
-            const r = await api.get(`admin/members?search=${search}`, auth);
+            const r = await api.get(`admin/members?search=${search}&limit=1000&page=1`, auth);
             setMembers(r.data.members || []);
         }
         catch (err) { console.error(err); }
