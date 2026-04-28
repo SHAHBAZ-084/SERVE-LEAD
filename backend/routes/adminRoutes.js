@@ -144,7 +144,7 @@ router.get('/dashboard', authMiddleware, isAdmin, asyncHandler(async (req, res) 
     const [totalMembers, pendingMembers, totalAdmin, totalEvents, activeEvents] = await Promise.all([
         Member.countDocuments({ status: 'approved', role: 'General' }),
         Member.countDocuments({ status: 'pending' }),
-        Member.countDocuments({ role: { $in: ['Admin', 'Superuser'] } }),
+        Member.countDocuments({ role: { $in: ['Admin', 'Superuser'] }, status: 'approved' }),
         Event.countDocuments(),
         Event.countDocuments({ is_active: true })
     ]);
