@@ -1549,7 +1549,7 @@ const DossierView = ({ memberId, members, onBack }) => {
 // ── Settings Tab (SELF-MANAGEMENT) ───────────────────────
 
 // ── Members Tab (Moved Outside to fix Search Strokes) ────────
-const MembersTab = ({ members, fetchMembers, loading, search, setSearch, auth, notify, Spinner, adminUser, api, inputCls }) => {
+const MembersTab = ({ members, fetchMembers, loading, search, setSearch, auth, notify, Spinner, adminUser, api, inputCls, page, setPage, totalPages }) => {
     const [selectedIds, setSelectedIds] = useState([]);
     const [isProcessing, setIsProcessing] = useState(false);
     const [bulkMode, setBulkMode] = useState(false);
@@ -1596,6 +1596,7 @@ const MembersTab = ({ members, fetchMembers, loading, search, setSearch, auth, n
     };
 
     const triggerSearch = () => {
+        setPage(1);
         setSearch(localSearch);
         fetchMembers();
     };
@@ -1754,6 +1755,30 @@ const MembersTab = ({ members, fetchMembers, loading, search, setSearch, auth, n
                     </div>
                 </>
             )}
+
+            {totalPages > 1 && (
+                <div className="flex items-center justify-center gap-4 pt-4">
+                    <button
+                        onClick={() => setPage(p => Math.max(p - 1, 1))}
+                        disabled={page === 1}
+                        className="px-5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-black uppercase tracking-widest text-slate-600 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                    >
+                        <i className="fas fa-arrow-left mr-2" /> Prev
+                    </button>
+
+                    <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">
+                        Page {page} of {totalPages}
+                    </span>
+
+                    <button
+                        onClick={() => setPage(p => Math.min(p + 1, totalPages))}
+                        disabled={page === totalPages}
+                        className="px-5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-black uppercase tracking-widest text-slate-600 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                    >
+                        Next <i className="fas fa-arrow-right ml-2" />
+                    </button>
+                </div>
+            )}
         </div>
     );
 };
@@ -1774,6 +1799,8 @@ const AdminPortal = () => {
     const [toast, setToast] = useState(null);
     const [mobileNav, setMobileNav] = useState(false);
     const [issuedCertificates, setIssuedCertificates] = useState([]);
+    const [membersPage, setMembersPage] = useState(1);
+    const [membersTotalPages, setMembersTotalPages] = useState(1);
 
     const token = localStorage.getItem("adminToken");
     const [adminUser, setAdminUser] = useState(localStorage.getItem("adminUser"));
@@ -1794,6 +1821,10 @@ const AdminPortal = () => {
         if (activeTab === "announcements") fetchAnnouncements();
         if (activeTab === "certificates" || activeTab === "batches") fetchCertificates();
     }, [activeTab, isSuper]);
+
+    useEffect(() => {
+        if (activeTab === "members") fetchMembers();
+    }, [membersPage]);
 
     // Back-Button Trap: Force the browser to stay on this page
     useEffect(() => {
@@ -1820,8 +1851,9 @@ const AdminPortal = () => {
     const fetchMembers = async () => {
         setLoading(true);
         try {
-            const r = await api.get(`admin/members?search=${search}&limit=1000&page=1`, auth);
+            const r = await api.get(`admin/members?search=${search}&page=${membersPage}&limit=10`, auth);
             setMembers(r.data.members || []);
+            setMembersTotalPages(r.data.totalPages || 1);
         }
         catch (err) { console.error(err); }
         finally { setLoading(false); }
@@ -3642,7 +3674,24 @@ const AdminsTab = ({ members, adminUser, auth, notify, fetchMembers, inputCls, i
                     )}
 
                     {activeTab === "dashboard" && <DashboardTab adminUser={adminUser} setActiveTab={setActiveTab} stats={stats} isSuper={isSuper} tabs={tabs} Spinner={Spinner} StatCard={StatCard} />}
-                    {activeTab === "members" && <MembersTab members={members} fetchMembers={fetchMembers} loading={loading} search={search} setSearch={setSearch} auth={auth} notify={notify} Spinner={Spinner} adminUser={adminUser} api={api} inputCls={inputCls} />}
+                    {activeTab === "members" && (
+                        <MembersTab 
+                            members={members} 
+                            fetchMembers={fetchMembers} 
+                            loading={loading} 
+                            search={search} 
+                            setSearch={setSearch} 
+                            auth={auth} 
+                            notify={notify} 
+                            Spinner={Spinner} 
+                            adminUser={adminUser} 
+                            api={api} 
+                            inputCls={inputCls} 
+                            page={membersPage}
+                            setPage={setMembersPage}
+                            totalPages={membersTotalPages}
+                        />
+                    )}
                     {activeTab === "pending" && <ApprovalsTab pendingMembers={pendingMembers} fetchPendingMembers={fetchPendingMembers} loading={loading} auth={auth} notify={notify} Spinner={Spinner} api={api} />}
                     {activeTab === "events" && !searchParams.get("eventId") && <EventsTab events={events} fetchEvents={fetchEvents} api={api} auth={auth} notify={notify} setSearchParams={setSearchParams} getImgUrl={getImgUrl} CountdownTimer={CountdownTimer} inputCls={inputCls} />}
                     {activeTab === "events" && searchParams.get("eventId") && (
