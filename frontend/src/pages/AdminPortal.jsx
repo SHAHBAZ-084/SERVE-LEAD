@@ -666,7 +666,7 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
             // Filter out certificates issued to Admins or Superusers
             const nonAdminCerts = r.data.filter(c => {
                 const role = c.memberId?.role;
-                return role !== 'Admin' && role !== 'Superuser';
+                return role && role !== 'Admin' && role !== 'Superuser';
             });
             setIssuedCertificates(nonAdminCerts);
         } catch (err) {
@@ -1870,7 +1870,15 @@ const AdminPortal = () => {
         try { const r = await api.get("announcements", auth); setAnnouncements(r.data); } catch { }
     };
     const fetchCertificates = async () => {
-        try { const r = await api.get("certificates/admin/all", auth); setIssuedCertificates(r.data); } catch { }
+        try { 
+            const r = await api.get("certificates/admin/all", auth); 
+            // Filter out certificates issued to Admins or Superusers
+            const nonAdminCerts = r.data.filter(c => {
+                const role = c.memberId?.role;
+                return role && role !== 'Admin' && role !== 'Superuser';
+            });
+            setIssuedCertificates(nonAdminCerts); 
+        } catch { }
     };
 
     const logout = async () => {
@@ -3362,7 +3370,7 @@ const AdminsTab = ({ members, adminUser, auth, notify, fetchMembers, inputCls, i
     const [submitting, setSubmitting] = useState(false);
     const [editing, setEditing] = useState(null);
     const [editForm, setEditForm] = useState({ name: "", email: "", password: "" });
-    const adminList = members.filter(m => m.role === "Admin" || m.role === "Superuser");
+    const adminList = members.filter(m => m.role === "Admin");
 
     const create = async (e) => {
         e.preventDefault(); setSubmitting(true);
