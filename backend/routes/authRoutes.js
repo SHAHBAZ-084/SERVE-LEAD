@@ -281,7 +281,8 @@ router.post('/forgot-password', asyncHandler(async (req, res) => {
     if (!member) return res.status(404).json({ error: 'No account found with that email.' });
 
     const resetToken = crypto.randomBytes(32).toString('hex');
-    member.resetPasswordToken = resetToken;
+    const hashedToken = crypto.createHash('sha256').update(resetToken).digest('hex');
+    member.resetPasswordToken = hashedToken;
     member.resetPasswordExpire = Date.now() + 10 * 60 * 1000; // 10 minutes
     await member.save();
 
@@ -303,8 +304,10 @@ router.post('/reset-password', asyncHandler(async (req, res) => {
     const { token, newPassword } = req.body;
     if (!token || !newPassword) return res.status(400).json({ error: 'Invalid request.' });
 
+    const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+
     const member = await Member.findOne({
-        resetPasswordToken: token,
+        resetPasswordToken: hashedToken,
         resetPasswordExpire: { $gt: Date.now() }
     });
 
