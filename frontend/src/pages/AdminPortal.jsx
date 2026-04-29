@@ -1791,6 +1791,7 @@ const AdminPortal = () => {
     const setActiveTab = (tab) => setSearchParams({ tab });
     const [stats, setStats] = useState(null);
     const [members, setMembers] = useState([]);
+    const [allMembers, setAllMembers] = useState([]);
     const [pendingMembers, setPendingMembers] = useState([]);
     const [announcements, setAnnouncements] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -1815,7 +1816,8 @@ const AdminPortal = () => {
         }
 
         if (activeTab === "dashboard") fetchStats();
-        if (activeTab === "members" || activeTab === "admins" || activeTab === "certificates" || activeTab === "batches") fetchMembers();
+        if (activeTab === "members") fetchMembers();
+        if (activeTab === "admins" || activeTab === "certificates" || activeTab === "batches") fetchAllMembers();
         if (activeTab === "pending") fetchPendingMembers();
         if (activeTab === "events" || activeTab === "certificates") fetchEvents();
         if (activeTab === "announcements") fetchAnnouncements();
@@ -1857,6 +1859,14 @@ const AdminPortal = () => {
         }
         catch (err) { console.error(err); }
         finally { setLoading(false); }
+    };
+    const fetchAllMembers = async () => {
+        try {
+            const r = await api.get(`admin/members?limit=1000`, auth);
+            setAllMembers(r.data.members || []);
+        } catch (err) {
+            console.error("Fetch All Members Error:", err);
+        }
     };
     const fetchPendingMembers = async () => {
         setLoading(true);
@@ -3714,12 +3724,12 @@ const AdminsTab = ({ members, adminUser, auth, notify, fetchMembers, inputCls, i
                         />
                     )}
                     {activeTab === "announcements" && <AnnouncementsTab announcements={announcements} fetchAnnouncements={fetchAnnouncements} api={api} auth={auth} notify={notify} inputCls={inputCls} />}
-                    {activeTab === "certificates" && <CertificatesTab auth={auth} notify={notify} api={api} members={members} events={events} />}
-                    {activeTab === "batches" && !searchParams.get("dossier") && <BatchesTab members={members} issuedCertificates={issuedCertificates} auth={auth} api={api} notify={notify} setSearchParams={setSearchParams} />}
-                    {activeTab === "batches" && searchParams.get("dossier") && <DossierView memberId={searchParams.get("dossier")} members={members} onBack={() => setSearchParams({ tab: 'batches' })} />}
-                    {isSuper && activeTab === "customization" && <CustomizationTabComponent auth={auth} notify={notify} getImgUrl={getImgUrl} inputCls={inputCls} api={api} members={members} />}
+                    {activeTab === "certificates" && <CertificatesTab auth={auth} notify={notify} api={api} members={allMembers} events={events} />}
+                    {activeTab === "batches" && !searchParams.get("dossier") && <BatchesTab members={allMembers} issuedCertificates={issuedCertificates} auth={auth} api={api} notify={notify} setSearchParams={setSearchParams} />}
+                    {activeTab === "batches" && searchParams.get("dossier") && <DossierView memberId={searchParams.get("dossier")} members={allMembers} onBack={() => setSearchParams({ tab: 'batches' })} />}
+                    {isSuper && activeTab === "customization" && <CustomizationTabComponent auth={auth} notify={notify} getImgUrl={getImgUrl} inputCls={inputCls} api={api} members={allMembers} />}
                     {activeTab === "settings" && <SettingsTab adminUser={adminUser} api={api} auth={auth} notify={notify} logout={logout} setAdminUser={setAdminUser} inputCls={inputCls} />}
-                    {isSuper && activeTab === "admins" && <AdminsTab members={members} adminUser={adminUser} auth={auth} notify={notify} fetchMembers={fetchMembers} inputCls={inputCls} isSuper={isSuper} api={api} />}
+                    {isSuper && activeTab === "admins" && <AdminsTab members={allMembers} adminUser={adminUser} auth={auth} notify={notify} fetchMembers={fetchAllMembers} inputCls={inputCls} isSuper={isSuper} api={api} />}
                     {isSuper && activeTab === "logs" && <LogsTab api={api} auth={auth} notify={notify} isSuper={isSuper} />}
                 </div>
             </main>
