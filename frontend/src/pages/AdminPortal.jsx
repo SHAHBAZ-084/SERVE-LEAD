@@ -13,6 +13,8 @@ import { inputCls, useCountUp, StatCard, Spinner } from "../components/common/Ad
 const BatchesTab = ({ members, issuedCertificates, auth, api, notify, setSearchParams }) => {
     const [selectedBatch, setSelectedBatch] = useState(null);
     const [batchSearch, setBatchSearch] = useState("");
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 10;
 
     // Group members by their joining date using the Sep 1st boundary
     const calculateBatch = (dateStr) => {
@@ -67,10 +69,13 @@ const BatchesTab = ({ members, issuedCertificates, auth, api, notify, setSearchP
             (m.member_id || "").toLowerCase().includes(batchSearch.toLowerCase())
         );
 
+        const totalPages = Math.ceil(batchMembers.length / itemsPerPage);
+        const paginatedMembers = batchMembers.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
         return (
             <div className="space-y-8 animate-fade-up">
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
-                    <button onClick={() => { setSelectedBatch(null); setBatchSearch(""); }} className="flex items-center gap-2 text-slate-400 hover:text-[#002147] transition-colors text-xs font-black uppercase tracking-widest leading-none bg-transparent border-none cursor-pointer">
+                    <button onClick={() => { setSelectedBatch(null); setBatchSearch(""); setCurrentPage(1); }} className="flex items-center gap-2 text-slate-400 hover:text-[#002147] transition-colors text-xs font-black uppercase tracking-widest leading-none bg-transparent border-none cursor-pointer">
                         <i className="fas fa-arrow-left" /> Back to Overview
                     </button>
 
@@ -80,14 +85,18 @@ const BatchesTab = ({ members, issuedCertificates, auth, api, notify, setSearchP
                             type="text"
                             placeholder={`Search in Batch ${selectedBatch}...`}
                             value={batchSearch}
-                            onChange={(e) => setBatchSearch(e.target.value)}
+                            onChange={(e) => { setBatchSearch(e.target.value); setCurrentPage(1); }}
                             className="w-full bg-white border border-slate-200 rounded-2xl pl-12 pr-6 py-3.5 text-sm font-bold text-slate-800 placeholder:text-slate-300 focus:ring-0  outline-none transition-all shadow-sm"
                         />
                     </div>
                 </div>
 
                 <div className="sm:hidden space-y-4">
-                    {batchMembers.map(m => (
+                    {paginatedMembers.length === 0 ? (
+                        <div className="text-center py-20 bg-white rounded-[2rem] border border-slate-100 shadow-sm">
+                            <p className="text-xs font-bold text-slate-300 uppercase tracking-widest">No members found</p>
+                        </div>
+                    ) : paginatedMembers.map(m => (
                         <div key={m._id} className="bg-white rounded-[2rem] border border-slate-100 shadow-xl p-6 relative overflow-hidden group">
                             <div className="absolute top-0 right-0 p-4 opacity-[0.03] group-hover:opacity-[0.06] transition-opacity">
                                 <i className="fas fa-id-card text-6xl" />
@@ -128,7 +137,13 @@ const BatchesTab = ({ members, issuedCertificates, auth, api, notify, setSearchP
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-50 text-[13px]">
-                                {batchMembers.map(m => (
+                                {paginatedMembers.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={3} className="px-8 py-20 text-center text-slate-300">
+                                            <p className="text-xs font-bold uppercase tracking-widest">No members found in this batch</p>
+                                        </td>
+                                    </tr>
+                                ) : paginatedMembers.map(m => (
                                     <tr key={m._id} className="hover:bg-slate-50/30 transition-colors">
                                         <td className="px-8 py-5">
                                             <div className="flex flex-col">
@@ -153,6 +168,30 @@ const BatchesTab = ({ members, issuedCertificates, auth, api, notify, setSearchP
                         </table>
                     </div>
                 </div>
+
+                {totalPages > 1 && (
+                    <div className="flex items-center justify-center gap-4 pt-4">
+                        <button
+                            onClick={() => setCurrentPage(p => Math.max(p - 1, 1))}
+                            disabled={currentPage === 1}
+                            className="px-5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-black uppercase tracking-widest text-slate-600 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                        >
+                            <i className="fas fa-arrow-left mr-2" /> Prev
+                        </button>
+
+                        <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">
+                            Page {currentPage} of {totalPages}
+                        </span>
+
+                        <button
+                            onClick={() => setCurrentPage(p => Math.min(p + 1, totalPages))}
+                            disabled={currentPage === totalPages}
+                            className="px-5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-black uppercase tracking-widest text-slate-600 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                        >
+                            Next <i className="fas fa-arrow-right ml-2" />
+                        </button>
+                    </div>
+                )}
             </div>
         );
     }
@@ -168,7 +207,7 @@ const BatchesTab = ({ members, issuedCertificates, auth, api, notify, setSearchP
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
                 {sortedBatchYears.map(year => (
-                    <button key={year} onClick={() => setSelectedBatch(year)} className="group p-10 bg-white border border-slate-100 rounded-[3rem] shadow-2xl hover:-translate-y-3 transition-all text-left relative overflow-hidden active:scale-95">
+                    <button key={year} onClick={() => { setSelectedBatch(year); setCurrentPage(1); }} className="group p-10 bg-white border border-slate-100 rounded-[3rem] shadow-2xl hover:-translate-y-3 transition-all text-left relative overflow-hidden active:scale-95">
                         <div className="absolute top-0 right-0 p-8 text-[#002147]/5 group-hover:text-[#002147]/10 transition-colors"><i className="fas fa-calendar-alt text-8xl rotate-12" /></div>
                         <h4 className="text-3xl font-black text-slate-800 mb-2 tracking-tight">Batch {year}</h4>
                         <p className="text-[#003366] text-xs font-bold uppercase tracking-widest">{batchData[year].length} Members</p>
