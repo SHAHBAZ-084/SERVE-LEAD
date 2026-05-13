@@ -189,7 +189,7 @@ export default function ExecutiveRegisterPage() {
               </div>
               <h3 className="text-4xl font-black text-slate-900 mb-5 tracking-tight uppercase">Executive Profile Received</h3>
               <p className="text-slate-400 text-sm font-bold uppercase tracking-widest leading-loose max-w-xs mx-auto mb-6">
-                Aapki executive application submit ho gai hai. Verification ke baad dashboard access milega.
+                Your executive application has been successfully submitted. You will receive dashboard access once verified.
               </p>
               {waLink && (
                 <a href={waLink} target="_blank" rel="noopener noreferrer" className="btn-whatsapp">

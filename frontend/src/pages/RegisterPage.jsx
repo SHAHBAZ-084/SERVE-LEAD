@@ -187,7 +187,7 @@ export default function RegisterPage() {
               </div>
               <h3 className="text-4xl font-black text-slate-900 mb-5 tracking-tight uppercase">Application Received</h3>
               <p className="text-slate-400 text-sm font-bold uppercase tracking-widest leading-loose max-w-xs mx-auto mb-6">
-                Aapki application successfully submit ho gai hai. Hamari team jald aapse contact karegi.
+                Your application has been successfully submitted. Our team will contact you shortly.
               </p>
               {waLink && (
                 <a href={waLink} target="_blank" rel="noopener noreferrer" className="btn-whatsapp">
