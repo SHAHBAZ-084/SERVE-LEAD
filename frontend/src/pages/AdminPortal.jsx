@@ -726,6 +726,41 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
     const [selectMode, setSelectMode] = useState(false);
     const [isRevoking, setIsRevoking] = useState(false);
     const [isDownloading, setIsDownloading] = useState(false);
+    
+    const CERT_TEMPLATES = [
+      {
+        id: 1,
+        name: "Classic Blue",
+        thumb: "🔵",
+        orientation: "portrait",   // 794 × 1123
+        bgColor: "#ffffff",
+        accentColor: "#003366",
+        textColor: "#0f172a",
+        borderColor: "#002147",
+      },
+      {
+        id: 2,
+        name: "Modern Blue",
+        thumb: "🔷",
+        orientation: "landscape",  // 1123 × 794
+        bgColor: "#f0f4ff",
+        accentColor: "#1a56db",
+        textColor: "#0f172a",
+        borderColor: "#1a56db",
+      },
+      {
+        id: 3,
+        name: "Gold & Blue",
+        thumb: "🏅",
+        orientation: "landscape",  // 1123 × 794
+        bgColor: "#ffffff",
+        accentColor: "#1a56db",
+        textColor: "#0f172a",
+        borderColor: "#c8a951",
+      },
+    ];
+
+    const [selectedTemplate, setSelectedTemplate] = useState(CERT_TEMPLATES[0]);
 
     const [form, setForm] = useState({
         memberId: "",
@@ -738,7 +773,7 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
         awardType: "Official Membership"
     });
 
-    const [certAssets, setCertAssets] = useState({ logo: null, seal: null });
+    const [certAssets, setCertAssets] = useState({ logo: null, seal: null, signature: null, stamp: null });
 
     useEffect(() => {
         fetchCertificates();
@@ -757,6 +792,8 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
         };
         loadToDataURL(logo, 'logo');
         loadToDataURL(sealImg, 'seal');
+        loadToDataURL('/signature.png', 'signature');
+        loadToDataURL('/stamp.png', 'stamp');
     }, []);
 
     const fetchCertificates = async () => {
@@ -830,16 +867,23 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
 
     const downloadPDF = async (certData) => {
         setExportData(certData);
-        notify("Preparing Isolated Sandbox for high-resolution document...");
+        notify("Preparing document...");
+        
+        // Give React time to re-render the unified node with new data
+        await new Promise(r => setTimeout(r, 150));
 
         try {
+            const isLandscape = selectedTemplate.orientation === 'landscape';
+            const W = isLandscape ? 1123 : 794;
+            const H = isLandscape ? 794 : 1123;
+
             // 1. Create a hidden iframe sandbox
             const iframe = document.createElement('iframe');
             iframe.style.position = 'fixed';
             iframe.style.top = '0';
             iframe.style.left = '0';
-            iframe.style.width = '794px';
-            iframe.style.height = '1123px';
+            iframe.style.width = `${W}px`;
+            iframe.style.height = `${H}px`;
             iframe.style.opacity = '0';
             iframe.style.pointerEvents = 'none';
             iframe.style.zIndex = '-1000';
@@ -847,7 +891,7 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
 
             const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
 
-            // 2. Inject barebones HTML with ONLY the necessary fonts (NO TAILWIND)
+            // 2. Inject barebones HTML
             iframeDoc.open();
             iframeDoc.write(`
                 <!DOCTYPE html>
@@ -867,11 +911,10 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
             `);
             iframeDoc.close();
 
-            // 3. Wait for fonts in the sandbox to load
             await new Promise(r => setTimeout(r, 1000));
             await iframeDoc.fonts.ready;
 
-            // 4. Clone the purified certificate node into the sandbox
+            // 3. Clone the unified node
             const sourceElement = document.getElementById('cert-export-node');
             if (!sourceElement) throw new Error("Export engine not found in DOM");
 
@@ -879,33 +922,38 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
             clonedNode.style.opacity = '1';
             clonedNode.style.visibility = 'visible';
             clonedNode.style.display = 'block';
+            clonedNode.style.position = 'static';
+            clonedNode.style.transform = 'none';
+            clonedNode.style.left = 'auto';
+            clonedNode.style.top = 'auto';
 
             iframeDoc.getElementById('sandbox-root').appendChild(clonedNode);
 
-            // 5. High-Resolution Capture from the Sandbox
+            // 4. Capture
             const canvas = await html2canvas(clonedNode, {
                 scale: 2,
                 useCORS: true,
                 allowTaint: false,
                 logging: false,
                 backgroundColor: "#ffffff",
-                windowWidth: 794,
-                windowHeight: 1123
+                windowWidth: W,
+                windowHeight: H
             });
 
-            // 6. Generate PDF and Cleanup
+            // 5. Generate PDF
             const imgData = canvas.toDataURL('image/png', 1.0);
             const pdf = new jsPDF({
-                orientation: 'portrait',
+                orientation: isLandscape ? 'landscape' : 'portrait',
                 unit: 'mm',
                 format: 'a4',
                 compress: true
             });
 
-            pdf.addImage(imgData, 'PNG', 0, 0, 210, 297, undefined, 'FAST');
+            const pdfW = isLandscape ? 297 : 210;
+            const pdfH = isLandscape ? 210 : 297;
+            pdf.addImage(imgData, 'PNG', 0, 0, pdfW, pdfH, undefined, 'FAST');
             pdf.save(`SLS_Official_${certData.memberId?.name?.replace(/\s+/g, '_') || 'Award'}.pdf`);
 
-            // Final Cleanup
             document.body.removeChild(iframe);
             notify("PDF Generated Successfully!");
         } catch (err) {
@@ -988,109 +1036,248 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
         setForm({ ...form, category: cat, description: desc || form.description });
     };
 
-    const CertificateTemplate = ({ data, id }) => (
-        <div id={id} style={{ position: 'relative', width: '794px', height: '1123px', padding: '60px', fontFamily: '"Playfair Display", serif', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', margin: '0 auto', overflow: 'hidden', backgroundColor: '#ffffff', color: '#0f172a', boxSizing: 'border-box' }}>
-            {/* Outer Double Blue Border */}
-            <div style={{ position: 'absolute', top: '16px', bottom: '16px', left: '16px', right: '16px', border: '1px solid #002147', pointerEvents: 'none' }} />
-            <div style={{ position: 'absolute', top: '20px', bottom: '20px', left: '20px', right: '20px', border: '1px solid #002147', pointerEvents: 'none' }} />
-
-            {/* Logo/Header Section */}
-            <div style={{ paddingTop: '40px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                <img src={certAssets.logo || logo} alt="Logo" style={{ height: '120px', marginBottom: '8px', objectFit: 'contain' }} />
-                <p style={{ color: '#002147', fontSize: '15px', fontStyle: 'italic', marginBottom: '8px', letterSpacing: '0.025em', fontWeight: '500' }}>Building Leaders Through Service</p>
-                <h1 style={{ fontFamily: '"Playfair Display", serif', color: '#002147', fontSize: '44px', fontWeight: '900', lineHeight: 1, marginBottom: '16px', textTransform: 'uppercase', letterSpacing: '-0.025em' }}>
-                    {data.title || "CERTIFICATE OF MEMBERSHIP"}
-                </h1>
-                <div style={{ textAlign: 'center', fontFamily: 'sans-serif', paddingLeft: '40px', paddingRight: '40px', lineHeight: 1.6, fontSize: '15px', color: '#475569' }}>
-                    <p>
-                        This is to certify that the individual named below has been duly granted <br />
-                        <strong style={{ fontWeight: 'bold', color: '#002147' }}>{data.awardType || "Official Membership"}</strong> in the Serve & Lead Society (SLS-UET).
-                    </p>
-                </div>
-            </div>
-
-            {/* Name Section with Yellow Lines - Professional Upgrade */}
-            <div style={{ marginTop: '48px', marginBottom: '40px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', paddingLeft: '40px', paddingRight: '40px' }}>
-                <div style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <div style={{ height: '2px', width: '48px', borderRadius: '9999px', position: 'relative', flexShrink: 0, backgroundColor: '#FFD700', marginRight: '24px', marginTop: '10px' }}>
-                        <div style={{ position: 'absolute', left: '-4px', top: '-4px', width: '8px', height: '8px', transform: 'rotate(45deg)', backgroundColor: '#FFD700' }} />
-                    </div>
-                    <h2 style={{ fontFamily: '"Playfair Display", serif', fontSize: '52px', lineHeight: 1.1, color: '#1a1a1a', fontWeight: 'bold', textAlign: 'center', textTransform: 'uppercase', letterSpacing: '-0.025em', whiteSpace: 'nowrap' }}>
-                        {data.memberId?.name || "Member Name"}
-                    </h2>
-                    <div style={{ height: '2px', width: '48px', borderRadius: '9999px', position: 'relative', flexShrink: 0, backgroundColor: '#FFD700', marginLeft: '24px', marginTop: '10px' }}>
-                        <div style={{ position: 'absolute', right: '-4px', top: '-4px', width: '8px', height: '8px', transform: 'rotate(45deg)', backgroundColor: '#FFD700' }} />
-                    </div>
-                </div>
-            </div>
-
-            {/* Member Information Box */}
-            <div style={{ marginLeft: '40px', marginRight: '40px', border: '1px solid #002147', overflow: 'hidden' }}>
-                <div style={{ backgroundColor: '#002147', paddingTop: '8px', paddingBottom: '8px', textAlign: 'center' }}>
-                    <h3 style={{ border: 'none', color: '#ffffff', fontWeight: 'bold', fontSize: '17px', letterSpacing: '0.2em', fontFamily: 'sans-serif', textTransform: 'uppercase' }}>MEMBER INFORMATION</h3>
-                </div>
-                <div style={{ padding: '20px', fontFamily: 'sans-serif' }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: '180px 1fr', rowGap: '12px', fontSize: '15px' }}>
-                        <span style={{ fontWeight: 'bold', color: '#002147' }}>Membership ID:</span>
-                        <span style={{ fontWeight: 'bold', color: '#0f172a' }}>{data.memberId?.member_id || "2025-SLS-UET1"}</span>
-
-                        <span style={{ fontWeight: 'bold', color: '#002147' }}>Joining Date:</span>
-                        <span style={{ fontWeight: '500', color: '#334155' }}>
-                            {new Date(data.memberId?.createdAt || Date.now()).toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' })}
-                        </span>
-
-                        <span style={{ fontWeight: 'bold', color: '#002147' }}>Status:</span>
-                        <span style={{ fontWeight: '500', color: '#334155' }}>Member from UET Lahore</span>
-                    </div>
-                </div>
-            </div>
-
-            {/* Specific Terms Text Block */}
-            <div style={{ marginTop: '48px', marginLeft: '40px', marginRight: '40px', textAlign: 'center', fontFamily: 'sans-serif', fontSize: '14px', lineHeight: 1.6, paddingLeft: '40px', paddingRight: '40px', color: '#334155' }}>
-                <p>
-                    {data.description || "The bearer of this certificate is entitled to all privileges and responsibilities associated with the General Membership."}
-                </p>
-
-                <div style={{ marginTop: '24px', fontSize: '12px', fontStyle: 'italic', color: '#64748b' }}>
-                    <p>
-                        Valid from {new Date(data.createdAt || Date.now()).toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' })} until {new Date(new Date(data.createdAt || Date.now()).setFullYear(new Date(data.createdAt || Date.now()).getFullYear() + 1)).toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' })}
-                    </p>
-                </div>
-
-                <div style={{ marginTop: '24px' }}>
-                    <p style={{ textDecoration: 'underline', textUnderlineOffset: '4px', fontWeight: 'bold', color: '#1e293b' }}>
-                        Issued on: {new Date(data.createdAt || Date.now()).toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' })}
-                    </p>
-                </div>
-            </div>
-
-            {/* Authentication: Seal & Signature */}
-            <div style={{ position: 'absolute', bottom: '64px', left: '60px', right: '60px', height: '180px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', boxSizing: 'border-box' }}>
-                {/* Official Red PNG Seal (Bottom Left) */}
-                <div style={{ position: 'relative', transform: 'rotate(-8deg) scale(0.85) translateX(45px)', opacity: 0.9, userSelect: 'none', pointerEvents: 'none', transformOrigin: 'bottom left' }}>
-                    <img src={certAssets.seal || sealImg} alt="Seal" style={{ width: '180px', height: '180px', objectFit: 'contain', filter: 'drop-shadow(0 4px 3px rgba(0, 0, 0, 0.07)) drop-shadow(0 2px 2px rgba(0, 0, 0, 0.06))' }} />
-                </div>
-
-                {/* Hand-written Signature (Bottom Right) */}
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', paddingRight: '20px' }}>
-                    <div style={{ position: 'relative', marginBottom: 0, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                        <p style={{ fontSize: '42px', lineHeight: 1, marginBottom: '4px', fontFamily: '"Dancing Script", cursive', color: '#1e293b', opacity: 0.85, fontWeight: 'normal', margin: 0 }}>
-                            {data.chairmanName || "Farooq Baloch"}
-                        </p>
-                        <div style={{ width: '200px', height: '1px', backgroundColor: '#1e293b' }} />
-                    </div>
-                    <div style={{ marginTop: '12px' }}>
-                        <p style={{ fontWeight: '900', fontSize: '16px', letterSpacing: '-0.025em', textDecoration: 'underline', textUnderlineOffset: '4px', color: '#1a1a1a', margin: 0 }}>{data.chairmanName || "Muhammad Farooq Ahmad"}</p>
-                        <p style={{ fontSize: '12px', fontWeight: '900', textTransform: 'uppercase', letterSpacing: '0.2em', marginTop: '4px', color: '#94a3b8', margin: 0 }}>Chairman - SLS</p>
-                    </div>
-                </div>
-            </div>
-
-            {/* Verification Footer (Very Bottom) */}
-            <div style={{ position: 'absolute', bottom: '36px', left: 0, width: '100%', textAlign: 'center', fontSize: '9px', fontWeight: '500', userSelect: 'none', pointerEvents: 'none', opacity: 0.6, color: '#94a3b8' }}>
-                Verify Membership at: https://sls-uet.org/verify | Membership ID: {data.memberId?.member_id || "2025-SLS-UET.01"}
-            </div>
+    // ── TEMPLATE 1: Classic Blue (Portrait) ──
+    const Template1 = ({ data, id }) => (
+      <div id={id} style={{
+        position: 'relative', width: '794px', height: '1123px',
+        backgroundColor: '#ffffff', fontFamily: '"Playfair Display", serif',
+        overflow: 'hidden', boxSizing: 'border-box', color: '#0f172a'
+      }}>
+        {/* Top-right blue geometric triangles */}
+        <div style={{ position: 'absolute', top: 0, right: 0, width: '220px', height: '200px', overflow: 'hidden' }}>
+          <div style={{ position: 'absolute', top: '-30px', right: '-30px', width: '160px', height: '160px', backgroundColor: '#003366', clipPath: 'polygon(100% 0, 0 0, 100% 100%)' }} />
+          <div style={{ position: 'absolute', top: '10px', right: '40px', width: '100px', height: '100px', backgroundColor: '#1a8cff', clipPath: 'polygon(100% 0, 0 0, 100% 100%)', opacity: 0.7 }} />
+          <div style={{ position: 'absolute', top: '-10px', right: '100px', width: '80px', height: '80px', backgroundColor: '#66b3ff', clipPath: 'polygon(50% 0, 100% 100%, 0 100%)', opacity: 0.5 }} />
         </div>
+    
+        {/* Bottom-left blue geometric triangles */}
+        <div style={{ position: 'absolute', bottom: 0, left: 0, width: '200px', height: '200px', overflow: 'hidden' }}>
+          <div style={{ position: 'absolute', bottom: '-30px', left: '-30px', width: '160px', height: '160px', backgroundColor: '#003366', clipPath: 'polygon(0 100%, 0 0, 100% 100%)' }} />
+          <div style={{ position: 'absolute', bottom: '20px', left: '40px', width: '100px', height: '100px', backgroundColor: '#1a8cff', clipPath: 'polygon(0 100%, 0 0, 100% 100%)', opacity: 0.6 }} />
+        </div>
+    
+        {/* Double border */}
+        <div style={{ position: 'absolute', top: '14px', bottom: '14px', left: '14px', right: '14px', border: '1.5px solid #002147', pointerEvents: 'none' }} />
+        <div style={{ position: 'absolute', top: '19px', bottom: '19px', left: '19px', right: '19px', border: '1px solid #002147', pointerEvents: 'none' }} />
+    
+        {/* Logo top-left */}
+        <div style={{ position: 'absolute', top: '40px', left: '40px' }}>
+          <img src={certAssets.logo || logo} alt="Logo" style={{ height: '80px', objectFit: 'contain' }} />
+        </div>
+    
+        {/* Date top-left below logo */}
+        <div style={{ position: 'absolute', top: '130px', left: '40px', fontSize: '12px', color: '#334155' }}>
+          Date of Issue: {new Date(data.createdAt || Date.now()).toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' })}
+        </div>
+    
+        {/* Main title centered */}
+        <div style={{ paddingTop: '60px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+          <h1 style={{ fontSize: '64px', fontWeight: '900', color: '#003366', letterSpacing: '-0.02em', textTransform: 'uppercase', lineHeight: 1, margin: 0, textAlign: 'center' }}>
+            {data.title || "CERTIFICATE"}
+          </h1>
+          <p style={{ fontSize: '28px', fontStyle: 'italic', color: '#003366', margin: '8px 0', textAlign: 'center' }}>
+            {data.awardType || "Of Participation"}
+          </p>
+          <p style={{ fontSize: '14px', fontStyle: 'italic', color: '#475569', marginTop: '8px' }}>
+            This certificate is presented to
+          </p>
+        </div>
+    
+        {/* Recipient name */}
+        <div style={{ textAlign: 'center', marginTop: '32px', padding: '0 60px' }}>
+          <h2 style={{ fontSize: '42px', fontWeight: 'bold', color: '#1a1a1a', fontFamily: '"Playfair Display", serif', textTransform: 'uppercase', letterSpacing: '-0.02em' }}>
+            {data.memberId?.name || "Member Name"}
+          </h2>
+        </div>
+    
+        {/* Body text */}
+        <div style={{ textAlign: 'center', marginTop: '32px', padding: '0 80px', fontFamily: 'sans-serif', fontSize: '14px', lineHeight: 1.7, color: '#334155', fontStyle: 'italic' }}>
+          <p>has successfully participated in the online training session titled</p>
+          <p style={{ fontWeight: 'bold', color: '#003366', fontStyle: 'normal' }}>"{data.title || "CERTIFICATE OF MEMBERSHIP"}"</p>
+          <p>held on {new Date(data.createdAt || Date.now()).toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' })}.</p>
+          <p style={{ marginTop: '12px' }}>{data.description || "The participant actively engaged in the orientation, practical demonstration, assessment, and interactive Q&A session."}</p>
+          <p style={{ marginTop: '12px' }}>This certificate is issued only after the <strong>successful submission</strong> of the required <strong>assessment</strong>.</p>
+          <p style={{ marginTop: '8px' }}>We appreciate the participant's commitment to academic excellence and continuous learning.</p>
+        </div>
+    
+        {/* Signature + Stamp row */}
+        <div style={{ position: 'absolute', bottom: '90px', left: '100px', right: '100px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            {certAssets.signature
+              ? <img src={certAssets.signature} alt="Signature" style={{ height: '70px', objectFit: 'contain', marginBottom: '4px' }} />
+              : <p style={{ fontSize: '32px', fontFamily: '"Dancing Script", cursive', color: '#1e293b' }}>{data.chairmanName || "M Farooq Ahmad"}</p>
+            }
+            <div style={{ width: '180px', height: '1px', backgroundColor: '#0f172a', marginBottom: '6px' }} />
+            <p style={{ fontWeight: 'bold', fontSize: '14px', color: '#0f172a', margin: 0 }}>{data.chairmanName || "M Farooq Ahmad"}</p>
+            <p style={{ fontSize: '11px', color: '#64748b', margin: 0 }}>CEO of Society</p>
+          </div>
+    
+          <div>
+            {certAssets.stamp
+              ? <img src={certAssets.stamp} alt="Stamp" style={{ width: '120px', height: '120px', objectFit: 'contain' }} />
+              : <img src={certAssets.seal || sealImg} alt="Seal" style={{ width: '120px', height: '120px', objectFit: 'contain' }} />
+            }
+          </div>
+        </div>
+    
+        {/* Footer */}
+        <div style={{ position: 'absolute', bottom: '40px', left: 0, width: '100%', textAlign: 'center', fontSize: '10px', color: '#94a3b8', fontStyle: 'italic' }}>
+          Verify Through SLS Website by Using Membership ID
+        </div>
+      </div>
+    );
+    
+    // ── TEMPLATE 2: Modern Blue (Landscape) ──
+    const Template2 = ({ data, id }) => (
+      <div id={id} style={{
+        position: 'relative', width: '1123px', height: '794px',
+        backgroundColor: '#ffffff', fontFamily: '"Playfair Display", serif',
+        overflow: 'hidden', boxSizing: 'border-box', color: '#0f172a'
+      }}>
+        {/* Blue accent left edge */}
+        <div style={{ position: 'absolute', top: 0, left: 0, width: '80px', height: '100%', backgroundColor: '#1a56db', opacity: 0.15 }} />
+        {/* Blue corner top-left */}
+        <div style={{ position: 'absolute', top: 0, left: 0, width: '250px', height: '120px', background: 'linear-gradient(135deg, #1a56db 60%, transparent 100%)' }} />
+        {/* Blue corner bottom-right */}
+        <div style={{ position: 'absolute', bottom: 0, right: 0, width: '250px', height: '120px', background: 'linear-gradient(315deg, #1a56db 60%, transparent 100%)' }} />
+    
+        {/* Logo top-right */}
+        <div style={{ position: 'absolute', top: '30px', right: '40px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <img src={certAssets.logo || logo} alt="Logo" style={{ height: '65px', objectFit: 'contain' }} />
+        </div>
+    
+        {/* Main title top-left */}
+        <div style={{ position: 'absolute', top: '40px', left: '100px' }}>
+          <h1 style={{ fontSize: '52px', fontWeight: '900', color: '#ffffff', margin: 0, lineHeight: 1 }}>{data.title || "Certificate"}</h1>
+          <p style={{ fontSize: '20px', color: '#ffffff', margin: '4px 0 0', fontFamily: 'sans-serif' }}>{data.awardType || "of Participation"}</p>
+          <p style={{ fontSize: '14px', color: '#e2e8f0', fontFamily: 'sans-serif', marginTop: '4px' }}>presented to :</p>
+        </div>
+    
+        {/* Recipient name */}
+        <div style={{ textAlign: 'center', marginTop: '180px' }}>
+          <h2 style={{ fontSize: '48px', fontWeight: 'bold', color: '#1a1a1a', fontFamily: '"Playfair Display", serif', textTransform: 'uppercase', letterSpacing: '-0.02em' }}>
+            {data.memberId?.name || "Member Name"}
+          </h2>
+        </div>
+    
+        {/* Body text */}
+        <div style={{ textAlign: 'center', marginTop: '20px', padding: '0 100px', fontFamily: 'sans-serif', fontSize: '13px', lineHeight: 1.7, color: '#334155', fontStyle: 'italic' }}>
+          <p>has successfully participated in the online training session titled</p>
+          <p style={{ fontWeight: 'bold', color: '#003366', fontStyle: 'normal' }}>"{data.title || "CERTIFICATE OF MEMBERSHIP"}"</p>
+          <p>held on {new Date(data.createdAt || Date.now()).toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' })}.</p>
+          <p style={{ marginTop: '8px' }}>{data.description || "The participant actively engaged in the orientation, practical demonstration, assessment, and interactive Q&A session."}</p>
+          <p style={{ marginTop: '8px' }}>This certificate is issued only after the <strong>successful submission</strong> of the required <strong>assessment</strong>. We appreciate the participant's commitment to academic excellence and continuous learning.</p>
+        </div>
+    
+        {/* Signature + Stamp */}
+        <div style={{ position: 'absolute', bottom: '60px', left: '80px', right: '80px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            {certAssets.signature
+              ? <img src={certAssets.signature} alt="Signature" style={{ height: '60px', objectFit: 'contain', marginBottom: '4px' }} />
+              : <p style={{ fontSize: '28px', fontFamily: '"Dancing Script", cursive', color: '#1e293b' }}>{data.chairmanName || "M Farooq Ahmad"}</p>
+            }
+            <div style={{ width: '160px', height: '1px', backgroundColor: '#0f172a', marginBottom: '6px' }} />
+            <p style={{ fontWeight: 'bold', fontSize: '13px', color: '#0f172a', margin: 0 }}>{data.chairmanName || "M Farooq Ahmad"}</p>
+            <p style={{ fontSize: '11px', color: '#64748b', margin: 0 }}>Chairman SLS</p>
+          </div>
+    
+          <div>
+            {certAssets.stamp
+              ? <img src={certAssets.stamp} alt="Stamp" style={{ width: '110px', height: '110px', objectFit: 'contain' }} />
+              : <img src={certAssets.seal || sealImg} alt="Seal" style={{ width: '110px', height: '110px', objectFit: 'contain' }} />
+            }
+          </div>
+    
+          <div style={{ width: '160px', height: '1px', backgroundColor: '#0f172a' }} />
+        </div>
+    
+        {/* Footer */}
+        <div style={{ position: 'absolute', bottom: '20px', left: 0, width: '100%', textAlign: 'center', fontSize: '10px', color: '#94a3b8', fontStyle: 'italic' }}>
+          Verify Through SLS Website by Using Membership ID
+        </div>
+      </div>
+    );
+    
+    // ── TEMPLATE 3: Gold & Blue (Landscape) ──
+    const Template3 = ({ data, id }) => (
+      <div id={id} style={{
+        position: 'relative', width: '1123px', height: '794px',
+        backgroundColor: '#ffffff', fontFamily: 'sans-serif',
+        overflow: 'hidden', boxSizing: 'border-box', color: '#0f172a'
+      }}>
+        {/* Right side — blue & gold geometric block */}
+        <div style={{ position: 'absolute', top: 0, right: 0, width: '320px', height: '100%' }}>
+          <div style={{ position: 'absolute', top: 0, right: 0, width: '100%', height: '55%', backgroundColor: '#1a56db' }} />
+          <div style={{ position: 'absolute', bottom: 0, right: 0, width: '100%', height: '45%', backgroundColor: '#003366' }} />
+          {/* Gold diagonal stripe */}
+          <div style={{ position: 'absolute', top: '20px', right: '20px', width: '8px', height: '90%', backgroundColor: '#c8a951', borderRadius: '4px' }} />
+          {/* White dot accent */}
+          <div style={{ position: 'absolute', top: '50%', right: '50%', width: '12px', height: '12px', backgroundColor: '#ffffff', borderRadius: '50%', transform: 'translate(50%, -50%)' }} />
+          {/* Green diagonal lines */}
+          <div style={{ position: 'absolute', bottom: '60px', right: '60px', width: '60px', height: '3px', backgroundColor: '#22c55e', transform: 'rotate(-45deg)' }} />
+          <div style={{ position: 'absolute', bottom: '80px', right: '50px', width: '40px', height: '3px', backgroundColor: '#22c55e', transform: 'rotate(-45deg)' }} />
+          {/* Stamp bottom-right */}
+          <div style={{ position: 'absolute', bottom: '30px', right: '30px' }}>
+            {certAssets.stamp
+              ? <img src={certAssets.stamp} alt="Stamp" style={{ width: '100px', height: '100px', objectFit: 'contain' }} />
+              : <img src={certAssets.seal || sealImg} alt="Seal" style={{ width: '100px', height: '100px', objectFit: 'contain' }} />
+          }
+          </div>
+        </div>
+    
+        {/* Gold dots top-right (behind block) */}
+        <div style={{ position: 'absolute', top: '10px', right: '310px', display: 'grid', gridTemplateColumns: 'repeat(6, 8px)', gap: '6px' }}>
+          {Array(24).fill(0).map((_, i) => (
+            <div key={i} style={{ width: '6px', height: '6px', backgroundColor: '#c8a951', borderRadius: '50%', opacity: 0.6 }} />
+          ))}
+        </div>
+    
+        {/* Logo top-left */}
+        <div style={{ position: 'absolute', top: '30px', left: '40px' }}>
+          <img src={certAssets.logo || logo} alt="Logo" style={{ height: '75px', objectFit: 'contain' }} />
+        </div>
+    
+        {/* Main title */}
+        <div style={{ position: 'absolute', top: '120px', left: '40px', right: '340px' }}>
+          <h1 style={{ fontSize: '44px', fontWeight: '900', color: '#0f172a', textTransform: 'uppercase', letterSpacing: '-0.02em', lineHeight: 1, margin: 0 }}>
+            {data.title || "CERTIFICATE"}
+          </h1>
+          <p style={{ fontSize: '24px', fontWeight: 'bold', color: '#1a56db', margin: '4px 0 0' }}>{data.awardType || "OF PARTICIPATION"}</p>
+          <p style={{ fontSize: '16px', color: '#334155', marginTop: '8px' }}>This Certificate Is Proudly Presented To</p>
+        </div>
+    
+        {/* Name with line */}
+        <div style={{ position: 'absolute', top: '260px', left: '40px', right: '340px' }}>
+          <div style={{ width: '80%', height: '1px', backgroundColor: '#0f172a', marginBottom: '12px' }} />
+          <h2 style={{ fontSize: '40px', fontWeight: 'bold', color: '#1a1a1a', fontFamily: '"Playfair Display", serif', textTransform: 'uppercase', letterSpacing: '-0.02em', margin: 0 }}>
+            {data.memberId?.name || "Member Name"}
+          </h2>
+        </div>
+    
+        {/* Body text */}
+        <div style={{ position: 'absolute', top: '360px', left: '40px', right: '340px', fontSize: '14px', lineHeight: 1.7, color: '#334155' }}>
+          <p>In recognition of active participation in the</p>
+          <p style={{ fontWeight: 'bold', color: '#0f172a', fontSize: '16px' }}>{data.title || "Training Session"}</p>
+          <p style={{ marginTop: '8px' }}>{data.description || "Your dedication to personal branding & professional growth is truly appreciated. We commend your commitment to enhancing your digital presence & career development."}</p>
+        </div>
+    
+        {/* Signature */}
+        <div style={{ position: 'absolute', bottom: '60px', left: '40px', display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+          {certAssets.signature
+            ? <img src={certAssets.signature} alt="Signature" style={{ height: '60px', objectFit: 'contain', marginBottom: '4px' }} />
+            : <p style={{ fontSize: '28px', fontFamily: '"Dancing Script", cursive', color: '#1e293b', margin: 0 }}>{data.chairmanName || "Muhammad Farooq Ahmad"}</p>
+          }
+          <div style={{ width: '200px', height: '1px', backgroundColor: '#0f172a', marginTop: '4px', marginBottom: '6px' }} />
+          <p style={{ fontWeight: 'bold', fontSize: '14px', color: '#0f172a', margin: 0 }}>{data.chairmanName || "Muhammad Farooq Ahmad"}</p>
+          <p style={{ fontSize: '12px', fontStyle: 'italic', color: '#64748b', margin: 0 }}>Chairman SLS</p>
+        </div>
+    
+        {/* Footer + branding */}
+        <div style={{ position: 'absolute', bottom: '20px', left: '40px', right: '340px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <p style={{ fontSize: '10px', color: '#94a3b8', fontStyle: 'italic', margin: 0 }}>Verify Through SLS Website by Using Membership ID</p>
+          <p style={{ fontSize: '12px', fontWeight: 'bold', color: '#003366', margin: 0 }}>SERVE & LEAD SOCIETY</p>
+        </div>
+      </div>
     );
 
     return (
@@ -1102,6 +1289,23 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
                     </div>
                     <div>
                         <h2 className="text-xl font-bold text-slate-800">Certificates Hub</h2>
+                        
+                        {/* Template Selector */}
+                        <div className="flex gap-3 mt-3 flex-wrap">
+                          {CERT_TEMPLATES.map(t => (
+                            <button
+                              key={t.id}
+                              onClick={() => setSelectedTemplate(t)}
+                              className={`flex flex-col items-center gap-1 px-4 py-2 rounded-xl border-2 text-xs font-bold transition-all
+                                ${selectedTemplate.id === t.id
+                                  ? 'border-[#002147] bg-[#002147] text-white shadow-lg scale-105'
+                                  : 'border-slate-200 bg-white text-slate-600 hover:border-[#002147]'}`}
+                            >
+                              <span className="text-2xl">{t.thumb}</span>
+                              {t.name}
+                            </button>
+                          ))}
+                        </div>
                         <p className="text-xs text-slate-500 font-medium tracking-wide">Generate and manage official society credentials</p>
                     </div>
                 </div>
@@ -1129,7 +1333,7 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
 
                             {!isBulkMode && (
                                 <div className="relative">
-                                    <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">1. Select Recipient Member</label>
+                                    <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Recipient Member</label>
                                     <input
                                         type="text"
                                         placeholder="Search by name or member ID..."
@@ -1168,7 +1372,7 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
 
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">2. Certificate Category</label>
+                                    <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Category</label>
                                     <select
                                         value={form.category}
                                         onChange={(e) => updateDefaultDescription(e.target.value)}
@@ -1182,9 +1386,7 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
                                     </select>
                                 </div>
                                 <div>
-                                    <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">
-                                        {isBulkMode ? '1. Select Event (Required)' : '3. Event (Optional)'}
-                                    </label>
+                                    <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Associated Event</label>
                                     <select
                                         value={form.eventId}
                                         onChange={(e) => {
@@ -1217,7 +1419,7 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
                             )}
 
                             <div>
-                                <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">4. Certificate Description</label>
+                                <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Description</label>
                                 <textarea
                                     rows={3}
                                     value={form.description}
@@ -1228,17 +1430,17 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
                             </div>
 
                             <div>
-                                <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">5. Signature Name (Chairman)</label>
+                                <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Chairman Name</label>
                                 <input type="text" value={form.chairmanName} onChange={e => setForm({ ...form, chairmanName: e.target.value })} className={inputCls} />
                             </div>
 
                             <div>
-                                <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">6. Certificate Main Title</label>
+                                <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Certificate Title</label>
                                 <input type="text" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} className={inputCls} placeholder="e.g. CERTIFICATE OF MEMBERSHIP" />
                             </div>
 
                             <div>
-                                <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">7. Award Type / Designation</label>
+                                <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Award Type</label>
                                 <input type="text" value={form.awardType} onChange={e => setForm({ ...form, awardType: e.target.value })} className={inputCls} placeholder="e.g. Official Membership" />
                             </div>
                         </div>
@@ -1464,15 +1666,7 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
                         </div>
 
                         <div className="flex-1 overflow-auto p-8 sm:p-14 bg-slate-50/50 custom-scrollbar">
-                            <div className="flex justify-center min-h-[1150px] w-full">
-                                <div className="transform scale-[0.65] sm:scale-[0.8] lg:scale-[0.65] xl:scale-[0.75] origin-top h-fit shadow-[0_20px_50px_rgba(0,33,71,0.15)] ring-1 ring-slate-200 rounded-sm overflow-hidden">
-                                    <div id="cert-template-preview">
-                                        <CertificateTemplate
-                                            data={{ ...form, memberId: selectedMember, eventId: selectedEvent }}
-                                        />
-                                    </div>
-                                </div>
-                            </div>
+                            <div className="flex justify-center min-h-[1150px] w-full" />
                         </div>
 
                         <div className="px-8 py-5 bg-white border-t border-slate-100 flex flex-col sm:flex-row justify-between items-center gap-4">
@@ -1510,12 +1704,26 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
                 </div>
             )}
 
-            <div style={{ position: 'fixed', top: '-9999px', left: '-9999px', width: '794px', height: '1123px', opacity: 0, pointerEvents: 'none', zIndex: -100, overflow: 'hidden' }}>
-                {exportData && (
-                    <div id="cert-export-node">
-                        <CertificateTemplate data={exportData} />
-                    </div>
-                )}
+            {/* Unified Certificate Engine (Serves both Preview Modal and Export Capture) */}
+            <div 
+                id="cert-export-node" 
+                style={{ 
+                    position: 'fixed', 
+                    top: showPreview ? '50%' : '-9999px',
+                    left: showPreview ? '50%' : '-9999px',
+                    transform: showPreview ? 'translate(-50%, -50%) scale(0.65)' : 'none',
+                    zIndex: showPreview ? 200 : -1000,
+                    pointerEvents: showPreview ? 'auto' : 'none',
+                    opacity: showPreview ? 1 : 0,
+                    boxShadow: showPreview ? '0 20px 50px rgba(0,33,71,0.25)' : 'none',
+                    borderRadius: '4px',
+                    overflow: 'hidden',
+                    transition: 'opacity 0.2s, transform 0.2s'
+                }}
+            >
+                {selectedTemplate.id === 1 && <Template1 data={exportData || (form.memberId ? { ...form, memberId: selectedMember } : form)} id="cert-inner" />}
+                {selectedTemplate.id === 2 && <Template2 data={exportData || (form.memberId ? { ...form, memberId: selectedMember } : form)} id="cert-inner" />}
+                {selectedTemplate.id === 3 && <Template3 data={exportData || (form.memberId ? { ...form, memberId: selectedMember } : form)} id="cert-inner" />}
             </div>
         </div>
     );
