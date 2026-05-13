@@ -932,9 +932,9 @@ const MemberDashboard = () => {
 
         if (type === 'verification') {
             lines = [
-                `This document serves as official verification that Mr./Ms. ${memberName} is currently an active member in good standing of the Student Lead Society (SLS) as of ${today}.`,
+                `This document serves as official verification that Mr./Ms. ${memberName} is currently an active member in good standing of the Serve and Lead Society (SLS) as of ${today}.`,
                 "",
-                `His/Her membership remains valid and active. The member is entitled to all rights and privileges accorded under the bylaws and regulations of the Student Lead Society.`,
+                `His/Her membership remains valid and active. The member is entitled to all rights and privileges accorded under the bylaws and regulations of the Serve and Lead Society.`,
                 "",
                 `This verification is issued upon institutional request to confirm the authenticity of his/her membership status with SLS. For reference purposes, the membership ID is ${memberId}.`,
                 "",
@@ -942,7 +942,7 @@ const MemberDashboard = () => {
             ];
         } else if (type === 'reference') {
             lines = [
-                `This is to confirm that Mr./Ms. ${memberName}, holding Membership ID: ${memberId}, is an active member in good standing of the Student Lead Society (SLS).`,
+                `This is to confirm that Mr./Ms. ${memberName}, holding Membership ID: ${memberId}, is an active member in good standing of the Serve and Lead Society (SLS).`,
                 "",
                 `He/She has been associated with the organization and continues to serve as an active member. His/her membership is valid for the current session.`,
                 "",
@@ -952,7 +952,7 @@ const MemberDashboard = () => {
             ];
         } else if (type === 'recommendation') {
             lines = [
-                `It is with great pleasure that I recommend Mr./Ms. ${memberName} for his/her exemplary performance and dedication as a member of Student Lead Society (SLS).`,
+                `It is with great pleasure that I recommend Mr./Ms. ${memberName} for his/her exemplary performance and dedication as a member of Serve and Lead Society (SLS).`,
                 "",
                 `He/She has been an active member and has consistently demonstrated his/her commitment to our organization's mission of promoting leadership, professional development, and social welfare.`,
                 "",
@@ -980,7 +980,7 @@ const MemberDashboard = () => {
         doc.text("Yours sincerely,", 20, currentY + 15);
         doc.setFont("helvetica", "normal");
         doc.text("Administration Department", 20, currentY + 23);
-        doc.text("Student Lead Society (SLS)", 20, currentY + 29);
+        doc.text("Serve and Lead Society (SLS)", 20, currentY + 29);
 
         doc.save(`${type}_letter_${memberId}.pdf`);
     };
