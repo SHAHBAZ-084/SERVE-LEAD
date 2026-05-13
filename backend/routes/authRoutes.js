@@ -29,7 +29,8 @@ router.get('/me', authMiddleware, asyncHandler(async (req, res) => {
         _id: member._id.toString(),
         id: member._id.toString(),
         member_id: member.member_id || "Awaiting Approval",
-        dbId: member._id.toString()
+        dbId: member._id.toString(),
+        lettersGenerated: member.lettersGenerated || false
     });
 }));
 
