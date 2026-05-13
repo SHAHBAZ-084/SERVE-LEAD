@@ -457,7 +457,7 @@ const MemberDashboard = () => {
                 </div>
 
                 {/* Direct Action Hub (Vibrant Unique Styling) */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8 pt-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8 pt-4">
                     <button onClick={() => setActiveTab("events")} className="group p-8 sm:p-10 bg-gradient-to-br from-violet-600 to-indigo-700 rounded-[2.5rem] sm:rounded-[3rem] shadow-2xl shadow-violet-900/30 hover:-translate-y-2 transition-all duration-500 text-left relative overflow-hidden flex flex-col h-full min-h-[180px] sm:min-h-0">
                         <div className="absolute top-0 right-0 p-10 text-white/5 group-hover:scale-125 group-hover:text-white/10 transition-all duration-700"><i className="fas fa-calendar-alt text-8xl" /></div>
                         <div className="w-14 h-14 sm:w-16 sm:h-16 bg-white/20 backdrop-blur-md text-white rounded-2xl flex items-center justify-center text-xl sm:text-2xl mb-12 shadow-xl border border-white/20 group-hover:bg-white group-hover:text-violet-600 transition-all duration-500">
@@ -488,6 +488,16 @@ const MemberDashboard = () => {
                         <div className="mt-auto">
                             <h4 className="text-xl sm:text-2xl font-black text-white mb-2 tracking-tight">Society News</h4>
                             <p className="text-rose-50 text-[10px] font-bold uppercase tracking-[0.2em] opacity-70 group-hover:opacity-100 transition-opacity">Stay updated with news</p>
+                        </div>
+                    </button>
+                    <button onClick={() => setActiveTab("letters")} className="group p-8 sm:p-10 bg-gradient-to-br from-indigo-500 to-blue-700 rounded-[2.5rem] sm:rounded-[3rem] shadow-2xl shadow-blue-900/30 hover:-translate-y-2 transition-all duration-500 text-left relative overflow-hidden flex flex-col h-full min-h-[180px] sm:min-h-0">
+                        <div className="absolute top-0 right-0 p-10 text-white/5 group-hover:scale-125 group-hover:text-white/10 transition-all duration-700"><i className="fas fa-file-invoice text-8xl" /></div>
+                        <div className="w-14 h-14 sm:w-16 sm:h-16 bg-white/20 backdrop-blur-md text-white rounded-2xl flex items-center justify-center text-xl sm:text-2xl mb-12 shadow-xl border border-white/20 group-hover:bg-white group-hover:text-indigo-600 transition-all duration-500">
+                            <i className="fas fa-file-signature animate-float" />
+                        </div>
+                        <div className="mt-auto">
+                            <h4 className="text-xl sm:text-2xl font-black text-white mb-2 tracking-tight">Official Letters</h4>
+                            <p className="text-indigo-50 text-[10px] font-bold uppercase tracking-[0.2em] opacity-70 group-hover:opacity-100 transition-opacity">Verification & Reference</p>
                         </div>
                     </button>
                 </div>
