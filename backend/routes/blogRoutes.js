@@ -53,7 +53,7 @@ router.post('/', authMiddleware, isAdmin, upload.array('images', 10), asyncHandl
     const newBlog = new Blog({
         title,
         description,
-        published: published === 'true' || published === true,
+        published: published !== undefined ? (published === 'true' || published === true) : true,
         images
     });
 

@@ -3774,17 +3774,37 @@ const AdminPortal = () => {
         const [previews, setPreviews] = useState([]);
         const [submitting, setSubmitting] = useState(false);
         const [isProcessing, setIsProcessing] = useState(false);
+        const [editingBlog, setEditingBlog] = useState(null);
+        const [editForm, setEditForm] = useState({ title: "", description: "", published: true });
+        const [editFiles, setEditFiles] = useState([]);
+        const [editPreviews, setEditPreviews] = useState([]);
+        const [existingImages, setExistingImages] = useState([]);
 
-        const handleFileChange = (e) => {
+        const handleFileChange = (e, isEdit = false) => {
             const selected = Array.from(e.target.files);
-            setFiles(prev => [...prev, ...selected]);
-            const newPreviews = selected.map(file => URL.createObjectURL(file));
-            setPreviews(prev => [...prev, ...newPreviews]);
+            if (isEdit) {
+                setEditFiles(prev => [...prev, ...selected]);
+                const newPreviews = selected.map(file => URL.createObjectURL(file));
+                setEditPreviews(prev => [...prev, ...newPreviews]);
+            } else {
+                setFiles(prev => [...prev, ...selected]);
+                const newPreviews = selected.map(file => URL.createObjectURL(file));
+                setPreviews(prev => [...prev, ...newPreviews]);
+            }
         };
 
-        const removePreview = (index) => {
-            setFiles(prev => prev.filter((_, i) => i !== index));
-            setPreviews(prev => prev.filter((_, i) => i !== index));
+        const removePreview = (index, isEdit = false) => {
+            if (isEdit) {
+                setEditFiles(prev => prev.filter((_, i) => i !== index));
+                setEditPreviews(prev => prev.filter((_, i) => i !== index));
+            } else {
+                setFiles(prev => prev.filter((_, i) => i !== index));
+                setPreviews(prev => prev.filter((_, i) => i !== index));
+            }
+        };
+
+        const removeExistingImage = (url) => {
+            setExistingImages(prev => prev.filter(img => img.url !== url));
         };
 
         const createBlog = async (e) => {
@@ -3795,6 +3815,7 @@ const AdminPortal = () => {
                 const formData = new FormData();
                 formData.append("title", form.title);
                 formData.append("description", form.description);
+                formData.append("published", "true");
                 files.forEach(file => formData.append("images", file));
 
                 await api.post("blogs", formData, {
@@ -3809,6 +3830,31 @@ const AdminPortal = () => {
                 setActiveSubTab("view");
             } catch (err) {
                 notify(err.response?.data?.error || "Failed to publish blog", "error");
+            } finally {
+                setSubmitting(false);
+            }
+        };
+
+        const updateBlog = async (e) => {
+            e.preventDefault();
+            setSubmitting(true);
+            try {
+                const formData = new FormData();
+                formData.append("title", editForm.title);
+                formData.append("description", editForm.description);
+                formData.append("published", String(editForm.published));
+                formData.append("existingImages", JSON.stringify(existingImages));
+                editFiles.forEach(file => formData.append("images", file));
+
+                await api.put(`blogs/${editingBlog._id}`, formData, {
+                    headers: { ...auth.headers, "Content-Type": "multipart/form-data" }
+                });
+
+                notify("Blog updated successfully!");
+                setEditingBlog(null);
+                fetchBlogs();
+            } catch (err) {
+                notify(err.response?.data?.error || "Update failed", "error");
             } finally {
                 setSubmitting(false);
             }
@@ -3838,11 +3884,35 @@ const AdminPortal = () => {
             }
         };
 
+        const startEdit = (blog) => {
+            setEditingBlog(blog);
+            setEditForm({ title: blog.title, description: blog.description, published: blog.published });
+            setExistingImages(blog.images || []);
+            setEditFiles([]);
+            setEditPreviews([]);
+        };
+
         return (
             <div className="space-y-6 animate-fade-up">
+                {/* Stats Header */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
+                    <div className="bg-white p-5 sm:p-8 rounded-[2rem] border border-slate-100 shadow-xl shadow-slate-200/40">
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Stories</p>
+                        <p className="text-2xl sm:text-3xl font-black text-slate-800 uppercase">{blogs.length}</p>
+                    </div>
+                    <div className="bg-white p-5 sm:p-8 rounded-[2rem] border border-slate-100 shadow-xl shadow-slate-200/40">
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Published</p>
+                        <p className="text-2xl sm:text-3xl font-black text-emerald-500 uppercase">{blogs.filter(b => b.published).length}</p>
+                    </div>
+                    <div className="bg-white p-5 sm:p-8 rounded-[2rem] border border-slate-100 shadow-xl shadow-slate-200/40">
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Drafts</p>
+                        <p className="text-2xl sm:text-3xl font-black text-orange-500 uppercase">{blogs.filter(b => !b.published).length}</p>
+                    </div>
+                </div>
+
                 <div className="flex gap-4 p-2 bg-slate-100 rounded-2xl w-fit">
                     <button onClick={() => setActiveSubTab("view")} className={`py-2 px-6 text-xs font-black uppercase tracking-widest rounded-xl transition-all ${activeSubTab === "view" ? "bg-white text-[#002147] shadow-sm" : "text-slate-500 hover:text-slate-800"}`}>
-                        <i className="fas fa-list-ul mr-2" /> View Blogs
+                        <i className="fas fa-list-ul mr-2" /> Blog Registry
                     </button>
                     <button onClick={() => setActiveSubTab("create")} className={`py-2 px-6 text-xs font-black uppercase tracking-widest rounded-xl transition-all ${activeSubTab === "create" ? "bg-white text-[#002147] shadow-sm" : "text-slate-500 hover:text-slate-800"}`}>
                         <i className="fas fa-plus mr-2" /> Create Blog
@@ -3880,7 +3950,7 @@ const AdminPortal = () => {
                                         <label className="aspect-square flex flex-col items-center justify-center gap-2 bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl cursor-pointer hover:border-orange-500 hover:bg-white transition-all text-slate-400">
                                             <i className="fas fa-plus-circle text-2xl" />
                                             <span className="text-[10px] font-black uppercase tracking-widest">Add Image</span>
-                                            <input type="file" accept="image/*" multiple onChange={handleFileChange} className="hidden" />
+                                            <input type="file" accept="image/*" multiple onChange={(e) => handleFileChange(e)} className="hidden" />
                                         </label>
                                     </div>
                                 </div>
@@ -3895,36 +3965,137 @@ const AdminPortal = () => {
                 )}
 
                 {activeSubTab === "view" && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 animate-fade-in">
-                        {blogs.length === 0 ? (
-                            <div className="col-span-full py-24 text-center bg-white rounded-[3rem] border-2 border-dashed border-slate-100">
-                                <i className="fas fa-newspaper text-6xl text-slate-100 mb-4" />
-                                <p className="text-slate-400 font-black uppercase tracking-widest">No blog posts found</p>
+                    <div className="bg-white rounded-[2.5rem] border border-slate-200 shadow-2xl overflow-hidden animate-fade-in">
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-sm">
+                                <thead>
+                                    <tr className="bg-slate-50 border-b border-slate-100 text-left">
+                                        <th className="px-8 py-5 text-xs font-black text-slate-400 uppercase tracking-widest">Story Info</th>
+                                        <th className="px-8 py-5 text-xs font-black text-slate-400 uppercase tracking-widest">Preview Content</th>
+                                        <th className="px-8 py-5 text-xs font-black text-slate-400 uppercase tracking-widest">Created On</th>
+                                        <th className="px-8 py-5 text-xs font-black text-slate-400 uppercase tracking-widest">Status</th>
+                                        <th className="px-8 py-5 text-xs font-black text-slate-400 uppercase tracking-widest text-right">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-50">
+                                    {blogs.length === 0 ? (
+                                        <tr>
+                                            <td colSpan={5} className="text-center py-24 text-slate-300">
+                                                <i className="fas fa-newspaper text-5xl mb-4 block opacity-10" />
+                                                <p className="text-xs font-bold uppercase tracking-widest">No stories found in registry.</p>
+                                            </td>
+                                        </tr>
+                                    ) : blogs.map((blog) => (
+                                        <tr key={blog._id} className="hover:bg-slate-50/50 transition-colors">
+                                            <td className="px-8 py-6">
+                                                <div className="flex items-center gap-4">
+                                                    <div className="w-12 h-12 rounded-xl bg-slate-100 overflow-hidden shrink-0 border border-slate-200 shadow-inner">
+                                                        {blog.images?.[0]?.url && <img src={getImgUrl(blog.images[0].url)} className="w-full h-full object-cover" />}
+                                                    </div>
+                                                    <div>
+                                                        <p className="font-black text-slate-800 leading-tight line-clamp-1 uppercase tracking-tight">{blog.title}</p>
+                                                        <p className="text-[10px] text-slate-400 font-bold mt-1 uppercase tracking-widest">{blog.images?.length || 0} Images Included</p>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="px-8 py-6">
+                                                <p className="text-xs text-slate-500 font-medium italic line-clamp-1 max-w-[200px]">"{blog.description}"</p>
+                                            </td>
+                                            <td className="px-8 py-6">
+                                                <p className="text-xs font-bold text-slate-600">{new Date(blog.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
+                                            </td>
+                                            <td className="px-8 py-6">
+                                                <button onClick={() => togglePublish(blog)} className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest transition-all ${blog.published ? "bg-emerald-50 text-emerald-600 border border-emerald-100" : "bg-slate-100 text-slate-400 border border-slate-200"}`}>
+                                                    {blog.published ? "Published" : "Draft"}
+                                                </button>
+                                            </td>
+                                            <td className="px-8 py-6 text-right">
+                                                <div className="flex justify-end gap-2">
+                                                    <button onClick={() => startEdit(blog)} className="w-9 h-9 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center hover:bg-[#002147] hover:text-white transition-all shadow-sm">
+                                                        <i className="fas fa-edit" />
+                                                    </button>
+                                                    <button onClick={() => deleteBlog(blog._id)} className="w-9 h-9 bg-rose-50 text-rose-500 rounded-xl flex items-center justify-center hover:bg-rose-500 hover:text-white transition-all shadow-sm">
+                                                        <i className="fas fa-trash-alt" />
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                )}
+
+                {/* Edit Modal */}
+                {editingBlog && (
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in" onClick={() => setEditingBlog(null)}>
+                        <div className="bg-white rounded-[2.5rem] w-full max-w-2xl shadow-2xl border border-slate-100 overflow-hidden animate-zoom-in max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+                            <div className="bg-[#002147] p-8 text-white relative">
+                                <button onClick={() => setEditingBlog(null)} className="absolute top-8 right-8 text-white/40 hover:text-white transition-all transform hover:rotate-90">
+                                    <i className="fas fa-times text-xl" />
+                                </button>
+                                <h3 className="text-2xl font-black tracking-tight uppercase">Update Blog Post</h3>
+                                <p className="text-blue-300 text-[10px] font-black uppercase tracking-[0.3em] mt-2">Content Revision Portal</p>
                             </div>
-                        ) : blogs.map((blog) => (
-                            <div key={blog._id} className="bg-white rounded-[2rem] border border-slate-100 shadow-sm hover:shadow-xl transition-all overflow-hidden flex flex-col">
-                                <div className="aspect-video relative overflow-hidden bg-slate-100">
-                                    {blog.images?.[0]?.url && <img src={getImgUrl(blog.images[0].url)} className="w-full h-full object-cover" />}
-                                    <div className="absolute top-4 left-4 flex gap-2">
-                                        <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${blog.published ? "bg-emerald-500 text-white" : "bg-slate-500 text-white"}`}>
-                                            {blog.published ? "Published" : "Draft"}
-                                        </span>
+
+                            <form onSubmit={updateBlog} className="p-8 space-y-6 overflow-y-auto custom-scrollbar flex-1">
+                                <div>
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block ml-1">Story Title</label>
+                                    <input type="text" value={editForm.title} onChange={e => setEditForm({ ...editForm, title: e.target.value })} className={inputCls} required />
+                                </div>
+                                <div>
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block ml-1">Content / Body</label>
+                                    <textarea value={editForm.description} onChange={e => setEditForm({ ...editForm, description: e.target.value })} rows={5} className={`${inputCls} resize-none`} required />
+                                </div>
+                                
+                                <div>
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 block ml-1">Manage Images</label>
+                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                                        {/* Existing Images */}
+                                        {existingImages.map((img, i) => (
+                                            <div key={`exist-${i}`} className="relative aspect-square rounded-2xl overflow-hidden border border-slate-100 group">
+                                                <img src={getImgUrl(img.url)} className="w-full h-full object-cover" />
+                                                <button type="button" onClick={() => removeExistingImage(img.url)} className="absolute top-2 right-2 w-6 h-6 bg-rose-500 text-white rounded-full flex items-center justify-center text-[10px] opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    <i className="fas fa-times" />
+                                                </button>
+                                                <div className="absolute inset-0 bg-emerald-500/10 border-2 border-emerald-500/20 rounded-2xl pointer-events-none" />
+                                            </div>
+                                        ))}
+                                        {/* New Previews */}
+                                        {editPreviews.map((src, i) => (
+                                            <div key={`new-${i}`} className="relative aspect-square rounded-2xl overflow-hidden border-2 border-indigo-200 group">
+                                                <img src={src} className="w-full h-full object-cover" />
+                                                <button type="button" onClick={() => removePreview(i, true)} className="absolute top-2 right-2 w-6 h-6 bg-rose-500 text-white rounded-full flex items-center justify-center text-[10px] opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    <i className="fas fa-times" />
+                                                </button>
+                                            </div>
+                                        ))}
+                                        {/* Upload More Button */}
+                                        <label className="aspect-square flex flex-col items-center justify-center gap-2 bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl cursor-pointer hover:border-[#002147] transition-all text-slate-400">
+                                            <i className="fas fa-plus-circle text-xl" />
+                                            <span className="text-[9px] font-black uppercase tracking-widest">Add More</span>
+                                            <input type="file" accept="image/*" multiple onChange={(e) => handleFileChange(e, true)} className="hidden" />
+                                        </label>
                                     </div>
                                 </div>
-                                <div className="p-6 flex-1 flex flex-col">
-                                    <h4 className="text-lg font-black text-slate-800 line-clamp-1 mb-2 uppercase tracking-tight">{blog.title}</h4>
-                                    <p className="text-xs text-slate-500 line-clamp-2 mb-6 font-medium italic">"{blog.description}"</p>
-                                    <div className="mt-auto flex gap-2">
-                                        <button onClick={() => togglePublish(blog)} className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${blog.published ? "bg-slate-100 text-slate-600 hover:bg-slate-200" : "bg-emerald-50 text-emerald-600 hover:bg-emerald-100"}`}>
-                                            {blog.published ? "Unpublish" : "Publish"}
-                                        </button>
-                                        <button onClick={() => deleteBlog(blog._id)} className="w-12 bg-rose-50 text-rose-500 rounded-xl flex items-center justify-center hover:bg-rose-500 hover:text-white transition-all">
-                                            <i className="fas fa-trash-alt" />
-                                        </button>
-                                    </div>
+
+                                <div className="flex items-center gap-4 py-4 border-t border-slate-50">
+                                    <label className="relative inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" checked={editForm.published} onChange={(e) => setEditForm({ ...editForm, published: e.target.checked })} className="sr-only peer" />
+                                        <div className="w-11 h-6 bg-slate-200 rounded-full peer peer-checked:bg-emerald-500 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full shadow-inner" />
+                                    </label>
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">{editForm.published ? "Published & Visible" : "Save as Private Draft"}</span>
                                 </div>
-                            </div>
-                        ))}
+
+                                <div className="flex gap-3 pt-2">
+                                    <button type="button" onClick={() => setEditingBlog(null)} className="flex-1 px-6 py-4 bg-slate-100 text-slate-500 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-200 transition-all">Cancel</button>
+                                    <button type="submit" disabled={submitting} className="flex-[2] px-6 py-4 bg-[#002147] text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 transition-all shadow-xl shadow-blue-900/20 disabled:opacity-50">
+                                        {submitting ? "Processing..." : "Save Changes"}
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
                     </div>
                 )}
             </div>
