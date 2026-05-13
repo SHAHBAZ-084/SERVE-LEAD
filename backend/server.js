@@ -98,6 +98,7 @@ app.use('/api/settings', require('./routes/settingsRoutes'));
 app.use('/api/certificates', require('./routes/certificateRoutes'));
 app.use('/api/contact', require('./routes/contactRoutes'));
 app.use('/api/tasks', require('./routes/taskRoutes'));
+app.use('/api/blogs', require('./routes/blogRoutes'));
 
 // Root
 app.get('/', (req, res) => res.json({ status: 'active', env: process.env.NODE_ENV }));

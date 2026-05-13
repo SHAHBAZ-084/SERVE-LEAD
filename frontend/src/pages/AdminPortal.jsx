@@ -1862,6 +1862,7 @@ const AdminPortal = () => {
     const [loading, setLoading] = useState(false);
     const [search, setSearch] = useState("");
     const [events, setEvents] = useState([]);
+    const [blogs, setBlogs] = useState([]);
     const [toast, setToast] = useState(null);
     const [mobileNav, setMobileNav] = useState(false);
     const [issuedCertificates, setIssuedCertificates] = useState([]);
@@ -1913,6 +1914,10 @@ const AdminPortal = () => {
         try { const r = await api.get("announcements", auth); setAnnouncements(r.data); } catch { }
     }, [auth]);
 
+    const fetchBlogs = useCallback(async () => {
+        try { const r = await api.get("blogs", auth); setBlogs(r.data); } catch { }
+    }, [auth]);
+
     const fetchCertificates = useCallback(async () => {
         try {
             const r = await api.get("certificates/admin/all", auth);
@@ -1939,10 +1944,11 @@ const AdminPortal = () => {
         if (activeTab === "events" ||
             activeTab === "certificates") fetchEvents();
         if (activeTab === "announcements") fetchAnnouncements();
+        if (activeTab === "blogs") fetchBlogs();
         if (activeTab === "certificates" ||
             activeTab === "batches") fetchCertificates();
     }, [activeTab, isSuper, fetchStats, fetchMembers, fetchAllMembers,
-        fetchPendingMembers, fetchEvents, fetchAnnouncements, fetchCertificates, setSearchParams]);
+        fetchPendingMembers, fetchEvents, fetchAnnouncements, fetchBlogs, fetchCertificates, setSearchParams]);
 
     // Separate effect ONLY for pagination:
     useEffect(() => {
@@ -1983,6 +1989,7 @@ const AdminPortal = () => {
         { id: "members", label: "Members", icon: "fa-users" },
         { id: "pending", label: "Pending", icon: "fa-user-clock" },
         { id: "events", label: "Events", icon: "fa-calendar-alt" },
+        { id: "blogs", label: "Blogs", icon: "fa-newspaper" },
         { id: "announcements", label: "Announcements", icon: "fa-bullhorn" },
         { id: "certificates", label: "Certificates", icon: "fa-medal" },
         { id: "batches", label: "Batches", icon: "fa-layer-group" },
@@ -3759,6 +3766,170 @@ const AdminPortal = () => {
         );
     };
 
+    // ── Blogs Tab ───────────────────────────────────────────
+    const BlogsTab = ({ blogs, fetchBlogs, api, auth, notify, getImgUrl, inputCls }) => {
+        const [activeSubTab, setActiveSubTab] = useState("view");
+        const [form, setForm] = useState({ title: "", description: "" });
+        const [files, setFiles] = useState([]);
+        const [previews, setPreviews] = useState([]);
+        const [submitting, setSubmitting] = useState(false);
+        const [isProcessing, setIsProcessing] = useState(false);
+
+        const handleFileChange = (e) => {
+            const selected = Array.from(e.target.files);
+            setFiles(prev => [...prev, ...selected]);
+            const newPreviews = selected.map(file => URL.createObjectURL(file));
+            setPreviews(prev => [...prev, ...newPreviews]);
+        };
+
+        const removePreview = (index) => {
+            setFiles(prev => prev.filter((_, i) => i !== index));
+            setPreviews(prev => prev.filter((_, i) => i !== index));
+        };
+
+        const createBlog = async (e) => {
+            e.preventDefault();
+            if (files.length === 0) return notify("Please upload at least one image", "error");
+            setSubmitting(true);
+            try {
+                const formData = new FormData();
+                formData.append("title", form.title);
+                formData.append("description", form.description);
+                files.forEach(file => formData.append("images", file));
+
+                await api.post("blogs", formData, {
+                    headers: { ...auth.headers, "Content-Type": "multipart/form-data" }
+                });
+
+                notify("Blog post published successfully!");
+                setForm({ title: "", description: "" });
+                setFiles([]);
+                setPreviews([]);
+                fetchBlogs();
+                setActiveSubTab("view");
+            } catch (err) {
+                notify(err.response?.data?.error || "Failed to publish blog", "error");
+            } finally {
+                setSubmitting(false);
+            }
+        };
+
+        const deleteBlog = async (id) => {
+            if (!window.confirm("Are you sure you want to delete this blog post?")) return;
+            setIsProcessing(true);
+            try {
+                await api.delete(`blogs/${id}`, auth);
+                notify("Blog deleted");
+                fetchBlogs();
+            } catch {
+                notify("Delete failed", "error");
+            } finally {
+                setIsProcessing(false);
+            }
+        };
+
+        const togglePublish = async (blog) => {
+            try {
+                await api.put(`blogs/${blog._id}`, { published: !blog.published }, auth);
+                notify(`Blog ${blog.published ? "unpublished" : "published"}`);
+                fetchBlogs();
+            } catch {
+                notify("Failed to update status", "error");
+            }
+        };
+
+        return (
+            <div className="space-y-6 animate-fade-up">
+                <div className="flex gap-4 p-2 bg-slate-100 rounded-2xl w-fit">
+                    <button onClick={() => setActiveSubTab("view")} className={`py-2 px-6 text-xs font-black uppercase tracking-widest rounded-xl transition-all ${activeSubTab === "view" ? "bg-white text-[#002147] shadow-sm" : "text-slate-500 hover:text-slate-800"}`}>
+                        <i className="fas fa-list-ul mr-2" /> View Blogs
+                    </button>
+                    <button onClick={() => setActiveSubTab("create")} className={`py-2 px-6 text-xs font-black uppercase tracking-widest rounded-xl transition-all ${activeSubTab === "create" ? "bg-white text-[#002147] shadow-sm" : "text-slate-500 hover:text-slate-800"}`}>
+                        <i className="fas fa-plus mr-2" /> Create Blog
+                    </button>
+                </div>
+
+                {activeSubTab === "create" && (
+                    <div className="bg-white border border-slate-200 rounded-[2.5rem] p-10 shadow-xl relative overflow-hidden animate-fade-in">
+                        <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-orange-500 to-rose-600" />
+                        <h3 className="text-2xl font-black text-slate-800 mb-8 flex items-center gap-4">
+                            <div className="w-12 h-12 bg-orange-50 text-orange-600 rounded-2xl flex items-center justify-center text-xl shadow-inner"><i className="fas fa-newspaper" /></div>
+                            Publish New Blog Post
+                        </h3>
+                        <form onSubmit={createBlog} className="space-y-8">
+                            <div className="space-y-6">
+                                <div>
+                                    <label className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 block ml-1">Blog Title *</label>
+                                    <input type="text" placeholder="Engaging Title for the Story" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} className={inputCls} required />
+                                </div>
+                                <div>
+                                    <label className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 block ml-1">Content / Description *</label>
+                                    <textarea placeholder="Write the full blog content here..." value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} rows={6} className={`${inputCls} resize-none`} required />
+                                </div>
+                                <div>
+                                    <label className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 block ml-1">Images (Multiple Allowed) *</label>
+                                    <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-4">
+                                        {previews.map((src, i) => (
+                                            <div key={i} className="relative aspect-square rounded-2xl overflow-hidden border-2 border-slate-100 group">
+                                                <img src={src} className="w-full h-full object-cover" />
+                                                <button type="button" onClick={() => removePreview(i)} className="absolute top-2 right-2 w-6 h-6 bg-rose-500 text-white rounded-full flex items-center justify-center text-[10px] opacity-0 group-hover:opacity-100 transition-opacity shadow-lg">
+                                                    <i className="fas fa-times" />
+                                                </button>
+                                            </div>
+                                        ))}
+                                        <label className="aspect-square flex flex-col items-center justify-center gap-2 bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl cursor-pointer hover:border-orange-500 hover:bg-white transition-all text-slate-400">
+                                            <i className="fas fa-plus-circle text-2xl" />
+                                            <span className="text-[10px] font-black uppercase tracking-widest">Add Image</span>
+                                            <input type="file" accept="image/*" multiple onChange={handleFileChange} className="hidden" />
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="flex justify-end pt-4 border-t border-slate-50">
+                                <button type="submit" disabled={submitting} className={`px-12 py-4 rounded-2xl text-xs font-black uppercase tracking-[0.3em] transition-all shadow-xl ${submitting ? "bg-slate-100 text-slate-400 cursor-not-allowed" : "bg-orange-600 text-white hover:bg-orange-700 shadow-orange-900/20 active:scale-95"}`}>
+                                    {submitting ? "Publishing..." : "Release Post"}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                )}
+
+                {activeSubTab === "view" && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 animate-fade-in">
+                        {blogs.length === 0 ? (
+                            <div className="col-span-full py-24 text-center bg-white rounded-[3rem] border-2 border-dashed border-slate-100">
+                                <i className="fas fa-newspaper text-6xl text-slate-100 mb-4" />
+                                <p className="text-slate-400 font-black uppercase tracking-widest">No blog posts found</p>
+                            </div>
+                        ) : blogs.map((blog) => (
+                            <div key={blog._id} className="bg-white rounded-[2rem] border border-slate-100 shadow-sm hover:shadow-xl transition-all overflow-hidden flex flex-col">
+                                <div className="aspect-video relative overflow-hidden bg-slate-100">
+                                    {blog.images?.[0]?.url && <img src={getImgUrl(blog.images[0].url)} className="w-full h-full object-cover" />}
+                                    <div className="absolute top-4 left-4 flex gap-2">
+                                        <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${blog.published ? "bg-emerald-500 text-white" : "bg-slate-500 text-white"}`}>
+                                            {blog.published ? "Published" : "Draft"}
+                                        </span>
+                                    </div>
+                                </div>
+                                <div className="p-6 flex-1 flex flex-col">
+                                    <h4 className="text-lg font-black text-slate-800 line-clamp-1 mb-2 uppercase tracking-tight">{blog.title}</h4>
+                                    <p className="text-xs text-slate-500 line-clamp-2 mb-6 font-medium italic">"{blog.description}"</p>
+                                    <div className="mt-auto flex gap-2">
+                                        <button onClick={() => togglePublish(blog)} className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${blog.published ? "bg-slate-100 text-slate-600 hover:bg-slate-200" : "bg-emerald-50 text-emerald-600 hover:bg-emerald-100"}`}>
+                                            {blog.published ? "Unpublish" : "Publish"}
+                                        </button>
+                                        <button onClick={() => deleteBlog(blog._id)} className="w-12 bg-rose-50 text-rose-500 rounded-xl flex items-center justify-center hover:bg-rose-500 hover:text-white transition-all">
+                                            <i className="fas fa-trash-alt" />
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
+        );
+
     return (
         <div className="min-h-screen bg-[#F1F5F9] flex font-sans text-slate-900 max-w-full overflow-x-hidden">
 
@@ -3872,6 +4043,7 @@ const AdminPortal = () => {
                         />
                     )}
                     {activeTab === "announcements" && <AnnouncementsTab announcements={announcements} fetchAnnouncements={fetchAnnouncements} api={api} auth={auth} notify={notify} inputCls={inputCls} />}
+                    {activeTab === "blogs" && <BlogsTab blogs={blogs} fetchBlogs={fetchBlogs} api={api} auth={auth} notify={notify} getImgUrl={getImgUrl} inputCls={inputCls} />}
                     {activeTab === "certificates" && <CertificatesTab auth={auth} notify={notify} api={api} members={allMembers} events={events} />}
                     {activeTab === "batches" && !searchParams.get("dossier") && <BatchesTab members={allMembers} issuedCertificates={issuedCertificates} auth={auth} api={api} notify={notify} setSearchParams={setSearchParams} />}
                     {activeTab === "batches" && searchParams.get("dossier") && <DossierView memberId={searchParams.get("dossier")} members={allMembers} onBack={() => setSearchParams({ tab: 'batches' })} />}

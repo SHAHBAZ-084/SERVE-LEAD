@@ -15,6 +15,7 @@ import ResetPassword from './pages/ResetPassword';
 import MemberVerification from './pages/MemberVerification';
 import FloatingWhatsApp from './components/FloatingWhatsApp';
 import ExecutiveRegisterPage from './pages/ExecutiveRegisterPage';
+import BlogsPage from './pages/BlogsPage';
 
 function App() {
 
@@ -26,6 +27,7 @@ function App() {
         <Route path="/about" element={<AboutPage />} />
         <Route path='/verification' element={<Verification />} />
         <Route path='/verify' element={<MemberVerification />} />
+        <Route path="/blogs" element={<BlogsPage />} />
         
         {/* Guest Only Routes (Redirect if already logged in) */}
         <Route path="/register" element={

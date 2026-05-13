@@ -17,6 +17,7 @@ export default function Navbar() {
     { name: "Events", path: "/#events" },
     { name: "Contact", path: "/#contact" },
     { name: "Donate", path: "/donate" },
+    { name: "Blogs", path: "/blogs" },
     { name: "Verify", path: "/verify" },
   ];
 
