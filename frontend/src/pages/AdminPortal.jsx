@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import api, { getImgUrl, API_BASE as API_BASE_URL } from "../api";
 import CountdownTimer from "../components/common/CountdownTimer";
@@ -233,6 +233,7 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
         img: ""
     });
     const [submitting, setSubmitting] = useState(false);
+    const [waLink, setWaLink] = useState("");
 
     // Admin Promotion State
     const [adminSearch, setAdminSearch] = useState("");
@@ -270,6 +271,7 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
                 }
             }
         });
+        api.get("settings/whatsapp-link").then(r => setWaLink(r.data.link || ""));
     }, [api]);
 
     useEffect(() => {
@@ -297,6 +299,15 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
             }, auth);
             notify("System customization updated successfully!");
         } catch { notify("Failed to update settings", "error"); }
+        finally { setSubmitting(false); }
+    };
+
+    const saveWaLink = async () => {
+        setSubmitting(true);
+        try {
+            await api.put("settings/whatsapp-link", { link: waLink }, auth);
+            notify("WhatsApp link updated!");
+        } catch { notify("Failed to update WhatsApp link", "error"); }
         finally { setSubmitting(false); }
     };
 
@@ -447,6 +458,21 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
                                         </div>
                                     </div>
                                 ))}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* WhatsApp Group Link Setting */}
+                    <div className="p-8 md:p-10 border-t border-slate-100 bg-slate-50/30">
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
+                            <div className="flex-1 w-full">
+                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 block">WhatsApp Group Link (For Success Screen)</label>
+                                <div className="flex gap-3">
+                                    <input type="text" placeholder="https://chat.whatsapp.com/..." value={waLink} onChange={e => setWaLink(e.target.value)} className={inputCls} />
+                                    <button type="button" onClick={saveWaLink} disabled={submitting} className="px-6 py-3 bg-emerald-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-600 transition-all shadow-md disabled:opacity-50">
+                                        Update
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -1845,27 +1871,34 @@ const AdminPortal = () => {
     const token = localStorage.getItem("adminToken");
     const [adminUser, setAdminUser] = useState(localStorage.getItem("adminUser"));
     const isSuper = localStorage.getItem("adminIsSuper") === "1";
-    const auth = { headers: { Authorization: `Bearer ${token}` } };
+    const auth = useMemo(() => ({
+        headers: { Authorization: `Bearer ${token}` }
+    }), [token]);
 
     useEffect(() => {
-        const restrictedTabs = ["admins", "customization", "logs"];
-        if (restrictedTabs.includes(activeTab) && !isSuper) {
-            setActiveTab("dashboard");
+        const restricted = ["admins", "customization", "logs"];
+        if (restricted.includes(activeTab) && !isSuper) {
+            setSearchParams({ tab: "dashboard" }); // use setSearchParams not setActiveTab
             return;
         }
-
         if (activeTab === "dashboard") fetchStats();
         if (activeTab === "members") fetchMembers();
-        if (activeTab === "admins" || activeTab === "certificates" || activeTab === "batches") fetchAllMembers();
+        if (activeTab === "admins" ||
+            activeTab === "certificates" ||
+            activeTab === "batches") fetchAllMembers();
         if (activeTab === "pending") fetchPendingMembers();
-        if (activeTab === "events" || activeTab === "certificates") fetchEvents();
+        if (activeTab === "events" ||
+            activeTab === "certificates") fetchEvents();
         if (activeTab === "announcements") fetchAnnouncements();
-        if (activeTab === "certificates" || activeTab === "batches") fetchCertificates();
-    }, [activeTab, isSuper]);
+        if (activeTab === "certificates" ||
+            activeTab === "batches") fetchCertificates();
+    }, [activeTab, isSuper, fetchStats, fetchMembers, fetchAllMembers,
+        fetchPendingMembers, fetchEvents, fetchAnnouncements, fetchCertificates, setSearchParams]);
 
+    // Separate effect ONLY for pagination:
     useEffect(() => {
         if (activeTab === "members") fetchMembers();
-    }, [membersPage]);
+    }, [membersPage]); // membersPage only — not activeTab
 
     // Back-Button Trap: Force the browser to stay on this page
     useEffect(() => {
@@ -1886,10 +1919,11 @@ const AdminPortal = () => {
         setTimeout(() => setToast(null), 4000);
     };
 
-    const fetchStats = async () => {
+    const fetchStats = useCallback(async () => {
         try { const r = await api.get("admin/dashboard", auth); setStats(r.data); } catch { }
-    };
-    const fetchMembers = async () => {
+    }, [auth]);
+
+    const fetchMembers = useCallback(async () => {
         setLoading(true);
         try {
             const r = await api.get(`admin/members?search=${search}&page=${membersPage}&limit=10`, auth);
@@ -1898,37 +1932,42 @@ const AdminPortal = () => {
         }
         catch (err) { console.error(err); }
         finally { setLoading(false); }
-    };
-    const fetchAllMembers = async () => {
+    }, [search, membersPage, auth]);
+
+    const fetchAllMembers = useCallback(async () => {
         try {
             const r = await api.get(`admin/members?limit=1000`, auth);
             setAllMembers(r.data.members || []);
         } catch (err) {
             console.error("Fetch All Members Error:", err);
         }
-    };
-    const fetchPendingMembers = async () => {
+    }, [auth]);
+
+    const fetchPendingMembers = useCallback(async () => {
         setLoading(true);
         try { const r = await api.get(`admin/pending-members`, auth); setPendingMembers(r.data); }
         catch { } finally { setLoading(false); }
-    };
-    const fetchEvents = async () => {
+    }, [auth]);
+
+    const fetchEvents = useCallback(async () => {
         try { const r = await api.get("events/admin", auth); setEvents(r.data); } catch { }
-    };
-    const fetchAnnouncements = async () => {
+    }, [auth]);
+
+    const fetchAnnouncements = useCallback(async () => {
         try { const r = await api.get("announcements", auth); setAnnouncements(r.data); } catch { }
-    };
-    const fetchCertificates = async () => {
-        try { 
-            const r = await api.get("certificates/admin/all", auth); 
+    }, [auth]);
+
+    const fetchCertificates = useCallback(async () => {
+        try {
+            const r = await api.get("certificates/admin/all", auth);
             // Filter out certificates issued to Admins or Superusers
             const nonAdminCerts = r.data.filter(c => {
                 const role = c.memberId?.role;
                 return role && role !== 'Admin' && role !== 'Superuser';
             });
-            setIssuedCertificates(nonAdminCerts); 
+            setIssuedCertificates(nonAdminCerts);
         } catch { }
-    };
+    }, [auth]);
 
     const logout = async () => {
         try {
@@ -2017,6 +2056,7 @@ const DashboardTab = ({ adminUser, setActiveTab, stats, isSuper, tabs, Spinner, 
         const [interviewTarget, setInterviewTarget] = useState(null);
         const [interviewForm, setInterviewForm] = useState({ venue: "SLS Society HQ, Campus Block B", message: "" });
         const [sendingCall, setSendingCall] = useState(false);
+        const [viewMember, setViewMember] = useState(null);
 
         const filtered = (pendingMembers || []).filter(m =>
             m.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -2155,7 +2195,10 @@ const DashboardTab = ({ adminUser, setActiveTab, stats, isSuper, tabs, Spinner, 
                                         )}
                                     </div>
 
-                                    <div className="flex gap-2">
+                                        <button onClick={() => setViewMember(m)}
+                                            className="flex-1 text-[9px] bg-slate-50 text-slate-600 border border-slate-100 py-2 rounded-lg font-black uppercase tracking-widest transition-all hover:bg-slate-100">
+                                            Details
+                                        </button>
                                         <button onClick={() => setInterviewTarget(m)}
                                             className={`flex-1 text-[9px] py-2 rounded-lg font-black uppercase tracking-widest border transition-all ${m.interview_called ? "bg-amber-50 text-amber-600 border-amber-100" : "bg-blue-50 text-blue-600 border-blue-100"
                                                 }`}>
@@ -2217,6 +2260,10 @@ const DashboardTab = ({ adminUser, setActiveTab, stats, isSuper, tabs, Spinner, 
                                                 <td className="px-5 py-3.5 text-slate-500">{m.email}</td>
                                                 <td className="px-5 py-3.5 font-bold text-slate-400 font-mono tracking-tighter">{m.joining_year}</td>
                                                 <td className="px-5 py-3.5 text-right flex justify-end gap-2">
+                                                    <button onClick={() => setViewMember(m)}
+                                                        className="text-xs px-4 py-2 rounded-xl transition-all font-bold uppercase tracking-widest flex items-center gap-1.5 shadow-sm border border-slate-200 text-slate-600 hover:bg-slate-50">
+                                                        <i className="fas fa-eye" /> Details
+                                                    </button>
                                                     <button onClick={() => setInterviewTarget(m)}
                                                         className={`text-xs px-4 py-2 rounded-xl transition-all font-bold uppercase tracking-widest flex items-center gap-1.5 shadow-sm border ${m.interview_called
                                                                 ? "bg-amber-50 text-amber-600 border-amber-200 hover:bg-amber-100"
@@ -2306,9 +2353,67 @@ const DashboardTab = ({ adminUser, setActiveTab, stats, isSuper, tabs, Spinner, 
                         </div>
                     </div>
                 )}
+
+                {viewMember && (
+                    <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-md animate-fade-in" onClick={() => setViewMember(null)}>
+                        <div className="bg-white rounded-[3rem] w-full max-w-2xl shadow-2xl border border-white/20 overflow-hidden animate-zoom-in max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+                            <div className="bg-gradient-to-br from-[#002147] to-blue-900 p-8 md:p-10 text-white relative flex-shrink-0">
+                                <button onClick={() => setViewMember(null)} className="absolute top-8 right-8 w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center hover:bg-white/20 transition-all">
+                                    <i className="fas fa-times" />
+                                </button>
+                                <div className="flex items-center gap-6">
+                                    <div className="w-20 h-20 bg-white/10 rounded-[2rem] flex items-center justify-center text-3xl font-black border border-white/20 backdrop-blur-xl">
+                                        {viewMember.name?.charAt(0)}
+                                    </div>
+                                    <div>
+                                        <h3 className="text-3xl font-black tracking-tight leading-tight uppercase">{viewMember.name}</h3>
+                                        <p className="text-blue-200 text-xs font-bold uppercase tracking-[0.3em] mt-1">Full Applicant Profile</p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div className="p-8 md:p-10 overflow-y-auto custom-scrollbar flex-1 space-y-8">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                    <DetailItem label="Full Name" value={viewMember.name} icon="fa-user" />
+                                    <DetailItem label="Father Name" value={viewMember.father_name} icon="fa-user-friends" />
+                                    <DetailItem label="Email Address" value={viewMember.email} icon="fa-envelope" />
+                                    <DetailItem label="WhatsApp Number" value={viewMember.whatsapp} icon="fa-phone" />
+                                    <DetailItem label="University" value={viewMember.university} icon="fa-university" />
+                                    <DetailItem label="Degree Program" value={viewMember.program} icon="fa-graduation-cap" />
+                                    <DetailItem label="Home City" value={viewMember.city} icon="fa-city" />
+                                    <DetailItem label="Joining Year" value={viewMember.joining_year} icon="fa-calendar-check" />
+                                    <DetailItem label="Passing Year" value={viewMember.passing_year} icon="fa-calendar-alt" />
+                                </div>
+                                <div className="pt-6 border-t border-slate-100">
+                                    <DetailItem label="Current Address" value={viewMember.address} icon="fa-location-dot" fullWidth />
+                                </div>
+                            </div>
+
+                            <div className="p-6 bg-slate-50 border-t border-slate-100 flex justify-end gap-3">
+                                <button onClick={() => setViewMember(null)} className="px-8 py-3.5 bg-white border border-slate-200 text-slate-500 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-100 transition-all shadow-sm">
+                                    Close Portal
+                                </button>
+                                <button onClick={() => { approveSingle(viewMember._id); setViewMember(null); }} className="px-8 py-3.5 bg-emerald-500 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-600 transition-all shadow-lg shadow-emerald-900/20">
+                                    Approve Member
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
         );
     };
+
+    const DetailItem = ({ label, value, icon, fullWidth }) => (
+        <div className={fullWidth ? "col-span-full" : "col-span-1"}>
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-2">
+                <i className={`fas ${icon} text-[#002147]/40`} /> {label}
+            </label>
+            <p className="text-sm font-bold text-slate-700 leading-relaxed bg-slate-50 p-4 rounded-2xl border border-slate-100/50">
+                {value || "Not provided"}
+            </p>
+        </div>
+    );
 
     // ── Events Tab ───────────────────────────────────────────
 // ── Events Tab (Moved Outside to fix Search Strokes) ────────

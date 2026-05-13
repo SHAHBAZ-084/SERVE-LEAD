@@ -67,4 +67,25 @@ router.put('/', authMiddleware, isSuperuser, async (req, res) => {
   }
 });
 
+// Add a GET route (public) to fetch the link:
+router.get('/whatsapp-link', async (req, res) => {
+  try {
+    const setting = await SystemSetting.findOne();
+    res.json({ link: setting?.whatsappGroupLink || "" });
+  } catch (error) {
+    res.status(500).json({ error: 'Server Error' });
+  }
+});
+
+// Add a PUT route (admin only) to update it:
+router.put('/whatsapp-link', authMiddleware, async (req, res) => {
+  try {
+    const { link } = req.body;
+    await SystemSetting.findOneAndUpdate({}, { whatsappGroupLink: link }, { upsert: true });
+    res.json({ message: "WhatsApp link updated." });
+  } catch (error) {
+    res.status(500).json({ error: 'Server Error' });
+  }
+});
+
 module.exports = router;

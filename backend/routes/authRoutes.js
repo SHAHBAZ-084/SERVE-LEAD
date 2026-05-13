@@ -145,13 +145,14 @@ router.post('/verify-otp', asyncHandler(async (req, res) => {
     if (!otp) {
         return res.status(400).json({ error: 'Invalid or expired verification code.' });
     }
-    await OTP.deleteMany({ email: email.toLowerCase() });
+    // Mark as verified instead of deleting immediately, so /register can check it
+    otp.code = "VERIFIED";
+    await otp.save();
     res.status(200).json({ message: 'Email verified successfully.' });
 }));
 
 // Final Registration
 router.post('/register', asyncHandler(async (req, res) => {
-    // Extract only safe fields to prevent Mass Assignment
     const {
         name,
         email: rawEmail,
@@ -168,9 +169,19 @@ router.post('/register', asyncHandler(async (req, res) => {
     } = req.body;
 
     const email = rawEmail?.toLowerCase();
-
     if (!email) return res.status(400).json({ error: 'Email is required' });
     if (!password) return res.status(400).json({ error: 'Password is required' });
+
+    // ✅ Re-verify OTP on backend (prevent direct API bypass)
+    // We check for the "VERIFIED" flag set by the /verify-otp route
+    const otpRecord = await OTP.findOne({ email, code: "VERIFIED" });
+    if (!otpRecord) {
+        return res.status(400).json({
+            error: 'Email not verified. Please complete OTP verification first.'
+        });
+    }
+    // ✅ Delete OTP after confirming (one-time use)
+    await OTP.deleteMany({ email });
 
     const hashedPassword = await bcrypt.hash(password, 12);
 

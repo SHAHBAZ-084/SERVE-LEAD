@@ -76,4 +76,27 @@
       transform: translateY(-20px);
     }
   }
+
+  .btn-whatsapp {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background-color: #25D366;
+    color: white;
+    padding: 1rem 2rem;
+    border-radius: 1.5rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-size: 0.75rem;
+    transition: all 0.3s ease;
+    box-shadow: 0 10px 15px -3px rgba(37, 211, 102, 0.2);
+    margin-top: 1.5rem;
+  }
+
+  .btn-whatsapp:hover {
+    background-color: #128C7E;
+    transform: translateY(-2px);
+    box-shadow: 0 20px 25px -5px rgba(37, 211, 102, 0.3);
+  }
 }

@@ -43,6 +43,7 @@ export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [otpSent, setOtpSent] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
+  const [waLink, setWaLink] = useState("");
 
   const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
 
@@ -87,7 +88,21 @@ export default function RegisterPage() {
     if (err) { setError(err); return; }
 
     if (step === 1) {
-       // Validation already handled at start of handleNext
+      setLoading(true);
+      try {
+        await api.post("auth/verify-otp", {
+          email: formData.email,
+          code: formData.otp
+        });
+        // OTP is valid — clear it from state (security)
+        setFormData(prev => ({ ...prev, otp: "" }));
+      } catch (err) {
+        setError(err.response?.data?.error || "Invalid verification code.");
+        setLoading(false);
+        return;
+      } finally {
+        setLoading(false);
+      }
     }
 
     setError(null);
@@ -108,8 +123,12 @@ export default function RegisterPage() {
 
     try {
       await api.post("auth/register", formData);
+      try {
+        const settingRes = await api.get("settings/whatsapp-link");
+        setWaLink(settingRes.data.link || "");
+      } catch (e) { console.error("Error fetching WA link:", e); }
       setSuccess(true);
-      setTimeout(() => navigate("/"), 4000);
+      setTimeout(() => navigate("/"), 15000); // Extended timeout to allow joining group
     } catch (err) {
       setError(err.response?.data?.error || "Submission failed. Check your info.");
     } finally {
@@ -166,9 +185,14 @@ export default function RegisterPage() {
                 <i className="fas fa-shield-check" />
               </div>
               <h3 className="text-4xl font-black text-slate-900 mb-5 tracking-tight uppercase">Application Received</h3>
-              <p className="text-slate-400 text-sm font-bold uppercase tracking-widest leading-loose max-w-xs mx-auto">
-                Login pending approval by the management. Check your email soon.
+              <p className="text-slate-400 text-sm font-bold uppercase tracking-widest leading-loose max-w-xs mx-auto mb-6">
+                Aapki application successfully submit ho gai hai. Hamari team jald aapse contact karegi.
               </p>
+              {waLink && (
+                <a href={waLink} target="_blank" rel="noopener noreferrer" className="btn-whatsapp">
+                  <i className="fab fa-whatsapp text-lg" /> Join WhatsApp Group
+                </a>
+              )}
               <div className="mt-14 space-y-4">
                 <div className="w-12 h-1.5 bg-slate-100 rounded-full mx-auto overflow-hidden">
                   <div className="h-full bg-emerald-500 animate-loading-bar" />

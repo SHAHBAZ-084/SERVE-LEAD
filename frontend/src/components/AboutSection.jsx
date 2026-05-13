@@ -29,22 +29,12 @@ export default function AboutSection() {
           </p>
         </div>
 
-        <div className="reveal delay-200 mt-10">
-          <h3 className="text-2xl font-bold mb-4 text-cyan-600">Advantages</h3>
-          <p className="text-gray-700 leading-relaxed text-base">
-            Our vision is to empower students by creating a dynamic platform where potential meets
-            opportunity. We are dedicated to providing meaningful internships, job placements, and
-            career counseling sessions that guide students toward success and self-discovery. Beyond
-            professional growth, we are equally committed to student welfare — supporting deserving
-            individuals by helping with university fees, ensuring that no financial challenge hinders
-            their educational journey.
+        <div className="reveal delay-200 mt-10 text-gray-700 leading-relaxed text-base space-y-6">
+          <p>
+            Our vision is to serve students through a strong welfare-driven platform where potential is nurtured and opportunities are created. We are a non-political organization working across Punjab, Pakistan, dedicated to the overall welfare and development of students. We strive to provide meaningful support in the form of internships, job placements, and career counseling sessions, helping students make informed decisions and move confidently toward their future.
           </p>
-          <p className="text-gray-700 leading-relaxed text-base mt-6">
-            In addition, we aim to organize industrial tours and educational trips that bridge the gap
-            between academic learning and practical experience, inspiring students to explore, learn,
-            and grow beyond the classroom. Through these collective efforts, we aspire to cultivate a
-            generation of capable, confident, and compassionate students who not only achieve personal
-            success but also contribute positively to the community around them.
+          <p>
+            A core part of our mission is student welfare and financial assistance. We are committed to supporting deserving students by contributing to their university fees and educational expenses, ensuring that financial limitations do not become a barrier to their academic journey. We also focus on practical exposure and learning beyond the classroom by organizing industrial tours and educational trips, enabling students to connect theoretical knowledge with real-world experience. Through these efforts, our goal is to build a community of capable, confident, and compassionate individuals who not only succeed in their careers but also give back to society and contribute positively to the development of their communities.
           </p>
         </div>
 
