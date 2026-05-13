@@ -156,9 +156,7 @@ export default function BlogsPage() {
 
                         <div className="mt-10 space-y-6">
                            <div className="flex items-center gap-4">
-                              <span className="text-[10px] font-black uppercase tracking-widest text-[#002147] bg-[#002147]/5 px-4 py-2 rounded-xl">
-                                 Official Story
-                              </span>
+
                               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
                                  {new Date(blog.createdAt).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}
                               </span>
@@ -182,14 +180,7 @@ export default function BlogsPage() {
                                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none">Verified Author</p>
                                  </div>
                               </div>
-                              <div className="flex gap-2">
-                                 <button className="w-10 h-10 rounded-xl bg-slate-50 text-slate-400 hover:bg-[#002147] hover:text-white transition-all flex items-center justify-center border border-slate-100">
-                                    <i className="fab fa-twitter" />
-                                 </button>
-                                 <button className="w-10 h-10 rounded-xl bg-slate-50 text-slate-400 hover:bg-emerald-500 hover:text-white transition-all flex items-center justify-center border border-slate-100">
-                                    <i className="fab fa-whatsapp" />
-                                 </button>
-                              </div>
+
                            </div>
                         </div>
                      </motion.article>
