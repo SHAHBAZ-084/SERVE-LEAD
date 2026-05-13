@@ -29,18 +29,17 @@ app.use(cors({
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH']
 }));
 
-app.use((req, res, next) => {
-    res.locals.nonce = require('crypto').randomBytes(16).toString('base64');
-    next();
-});
-
 app.use(helmet({
     crossOriginResourcePolicy: { policy: "cross-origin" },
     contentSecurityPolicy: {
         directives: {
             ...helmet.contentSecurityPolicy.getDefaultDirectives(),
-            "script-src": ["'self'", (req, res) => `'nonce-${res.locals.nonce}'`, "'unsafe-eval'"],
-            "img-src": ["'self'", "data:", "https:", "blob:"],
+            "script-src": ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https:", "blob:"],
+            "style-src": ["'self'", "'unsafe-inline'", "https:", "fonts.googleapis.com"],
+            "font-src": ["'self'", "https:", "data:", "fonts.gstatic.com", "cdnjs.cloudflare.com"],
+            "img-src": ["'self'", "data:", "https:", "blob:", "https://serveandlead.org"],
+            "connect-src": ["'self'", "https:", "http://localhost:5000", "ws://localhost:5173", "http://localhost:5173"],
+            "frame-src": ["'self'", "https:"],
         },
     },
 })); 
