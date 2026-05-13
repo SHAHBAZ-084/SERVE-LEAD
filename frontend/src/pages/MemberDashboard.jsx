@@ -888,6 +888,140 @@ const MemberDashboard = () => {
         </div>
     );
 
+    const generateLetter = (type) => {
+        const doc = new jsPDF();
+        const pageWidth = doc.internal.pageSize.getWidth();
+        const today = new Date().toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' });
+        const memberName = user.name;
+        const memberId = user.id;
+
+        // --- Header Section ---
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(10);
+        doc.text(`Date: ${today}`, pageWidth - 20, 20, { align: "right" });
+
+        doc.setFontSize(18);
+        doc.setTextColor(0, 33, 71); // SLS Navy Blue
+        let title = "";
+        if (type === 'verification') title = "MEMBERSHIP VERIFICATION LETTER";
+        else if (type === 'reference') title = "REFERENCE LETTER";
+        else if (type === 'recommendation') title = "RECOMMENDATION LETTER";
+        
+        doc.text(title, pageWidth / 2, 45, { align: "center" });
+
+        // --- Salutation ---
+        doc.setFontSize(11);
+        doc.setTextColor(0, 0, 0);
+        doc.text("To Whom It May Concern,", 20, 65);
+
+        // --- Body Text ---
+        doc.setFont("helvetica", "normal");
+        const bodyY = 80;
+        const lineSpacing = 8;
+        let lines = [];
+
+        if (type === 'verification') {
+            lines = [
+                `This document serves as official verification that Mr./Ms. ${memberName} is currently an active member in good standing of the Student Lead Society (SLS) as of ${today}.`,
+                "",
+                `His/Her membership remains valid and active. The member is entitled to all rights and privileges accorded under the bylaws and regulations of the Student Lead Society.`,
+                "",
+                `This verification is issued upon institutional request to confirm the authenticity of his/her membership status with SLS. For reference purposes, the membership ID is ${memberId}.`,
+                "",
+                "The membership is active as of today."
+            ];
+        } else if (type === 'reference') {
+            lines = [
+                `This is to confirm that Mr./Ms. ${memberName}, holding Membership ID: ${memberId}, is an active member in good standing of the Student Lead Society (SLS).`,
+                "",
+                `He/She has been associated with the organization and continues to serve as an active member. His/her membership is valid for the current session.`,
+                "",
+                `Throughout his/her ongoing association with SLS, Mr./Ms. ${memberName} has demonstrated a strong commitment to the organization's mission of promoting leadership, social awareness, and community service across Pakistan.`,
+                "",
+                `This letter is issued as a matter of reference to verify his/her ongoing and verified membership with the organization.`
+            ];
+        } else if (type === 'recommendation') {
+            lines = [
+                `It is with great pleasure that I recommend Mr./Ms. ${memberName} for his/her exemplary performance and dedication as a member of Student Lead Society (SLS).`,
+                "",
+                `He/She has been an active member and has consistently demonstrated his/her commitment to our organization's mission of promoting leadership, professional development, and social welfare.`,
+                "",
+                `During his/her tenure, he/she has shown exceptional qualities of leadership, integrity, and dedication to public service. He/she has actively participated in our programs and contributed significantly to our initiatives.`,
+                "",
+                `Mr./Ms. ${memberName} has demonstrated strong analytical skills, a keen understanding of collaborative principles, and a genuine commitment to social justice. His/her contributions have been particularly noteworthy.`,
+                "",
+                `I am confident that Mr./Ms. ${memberName} will continue to excel in all his/her future endeavors and will be a valuable asset to any organization or institution.`
+            ];
+        }
+
+        let currentY = bodyY;
+        lines.forEach(line => {
+            if (line === "") {
+                currentY += 4;
+            } else {
+                const wrappedLines = doc.splitTextToSize(line, pageWidth - 40);
+                doc.text(wrappedLines, 20, currentY);
+                currentY += (wrappedLines.length * 6) + 4;
+            }
+        });
+
+        // --- Closing ---
+        doc.setFont("helvetica", "bold");
+        doc.text("Yours sincerely,", 20, currentY + 15);
+        doc.setFont("helvetica", "normal");
+        doc.text("Administration Department", 20, currentY + 23);
+        doc.text("Student Lead Society (SLS)", 20, currentY + 29);
+
+        doc.save(`${type}_letter_${memberId}.pdf`);
+    };
+
+    const renderLetters = () => (
+        <div className="animate-fade-up space-y-10">
+            <div className="relative p-10 sm:p-12 rounded-[3rem] overflow-hidden border border-slate-100 bg-white shadow-2xl shadow-slate-200/40">
+                <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/5 blur-[100px] -mr-32 -mt-32" />
+                <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+                    <div>
+                        <h2 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight leading-tight">Official Letters</h2>
+                        <p className="text-slate-400 text-[10px] font-bold uppercase tracking-[0.4em] mt-3">Verified Documentation & Credentials</p>
+                    </div>
+                    <div className="w-16 h-16 bg-indigo-50 text-indigo-600 rounded-3xl flex items-center justify-center text-2xl shadow-inner border border-indigo-100">
+                        <i className="fas fa-file-invoice" />
+                    </div>
+                </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                {[
+                    { id: 'verification', title: 'Membership Verification', icon: 'fa-shield-check', desc: 'Confirm your status as an active verified member of SLS.' },
+                    { id: 'reference', title: 'Reference Letter', icon: 'fa-user-check', desc: 'Formal document verifying your association and service history.' },
+                    { id: 'recommendation', title: 'Recommendation', icon: 'fa-star-shooting', desc: 'Endorsement letter highlighting your leadership and performance.' }
+                ].map((letter) => (
+                    <div key={letter.id} className="bg-white p-8 rounded-[2.5rem] shadow-xl shadow-slate-200/40 border border-slate-100 hover:-translate-y-2 transition-all duration-500 group flex flex-col">
+                        <div className="w-14 h-14 bg-slate-50 text-slate-400 rounded-2xl flex items-center justify-center text-xl mb-8 group-hover:bg-[#002147] group-hover:text-white transition-all duration-500 shadow-inner">
+                            <i className={`fas ${letter.icon}`} />
+                        </div>
+                        <h3 className="text-xl font-bold text-slate-800 mb-3 group-hover:text-[#002147] transition-colors">{letter.title}</h3>
+                        <p className="text-slate-400 text-[11px] font-medium leading-relaxed mb-8 flex-1">{letter.desc}</p>
+                        <button 
+                            onClick={() => generateLetter(letter.id)}
+                            className="w-full bg-[#002147] text-white py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 transition-all shadow-lg shadow-blue-900/20 active:scale-95 flex items-center justify-center gap-3"
+                        >
+                            <i className="fas fa-download text-xs" /> Download PDF
+                        </button>
+                    </div>
+                ))}
+            </div>
+
+            {/* Disclaimer */}
+            <div className="bg-amber-50/50 border border-amber-100 rounded-3xl p-6 flex items-start gap-4">
+                <i className="fas fa-circle-info text-amber-500 mt-1" />
+                <p className="text-[10px] font-bold text-amber-700 uppercase tracking-widest leading-loose">
+                    These letters are generated based on your verified profile data. If you notice any discrepancies in your Name or Member ID, please update your profile in the settings tab before downloading.
+                </p>
+            </div>
+        </div>
+    );
+
     const renderSettings = () => (
         <div className="animate-fade-up max-w-2xl space-y-8">
             <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-3">
@@ -977,6 +1111,7 @@ const MemberDashboard = () => {
         { id: 'events', label: 'Society Events', icon: 'fa-calendar-alt' },
         { id: 'announcements', label: 'Announcements', icon: 'fa-bullhorn' },
         { id: 'certificates', label: 'My Certificates', icon: 'fa-medal' },
+        { id: 'letters', label: 'Official Letters', icon: 'fa-file-invoice' },
     ];
 
     return (
@@ -1060,6 +1195,7 @@ const MemberDashboard = () => {
                                 {activeTab === 'events' && renderEvents()}
                                 {activeTab === 'announcements' && renderAnnouncements()}
                                 {activeTab === 'certificates' && renderCertificates()}
+                                {activeTab === 'letters' && renderLetters()}
                                 {activeTab === 'settings' && renderSettings()}
                             </>
                         )}
