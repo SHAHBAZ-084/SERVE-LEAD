@@ -166,9 +166,21 @@ export default function BlogsPage() {
                               {blog.title}
                            </h2>
 
-                           <p className="text-slate-500 leading-relaxed font-medium whitespace-pre-wrap">
-                              {blog.description}
-                           </p>
+                           <div className="relative">
+                              <p className="text-slate-500 leading-relaxed font-medium whitespace-pre-wrap">
+                                 {blog.isExpanded ? blog.description : (blog.description.length > 300 ? blog.description.substring(0, 300) + "..." : blog.description)}
+                              </p>
+                              {blog.description.length > 300 && (
+                                 <button 
+                                    onClick={() => {
+                                       setBlogs(prev => prev.map(b => b._id === blog._id ? { ...b, isExpanded: !b.isExpanded } : b));
+                                    }}
+                                    className="mt-4 text-[#002147] font-black uppercase tracking-widest text-[10px] hover:underline"
+                                 >
+                                    {blog.isExpanded ? "Read Less" : "Read More"}
+                                 </button>
+                              )}
+                           </div>
 
                            <div className="pt-8 border-t border-slate-50 flex items-center justify-between">
                               <div className="flex items-center gap-3">
