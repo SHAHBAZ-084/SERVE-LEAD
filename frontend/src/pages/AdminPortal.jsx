@@ -1875,6 +1875,55 @@ const AdminPortal = () => {
         headers: { Authorization: `Bearer ${token}` }
     }), [token]);
 
+    const fetchStats = useCallback(async () => {
+        try { const r = await api.get("admin/dashboard", auth); setStats(r.data); } catch { }
+    }, [auth]);
+
+    const fetchMembers = useCallback(async () => {
+        setLoading(true);
+        try {
+            const r = await api.get(`admin/members?search=${search}&page=${membersPage}&limit=10`, auth);
+            setMembers(r.data.members || []);
+            setMembersTotalPages(r.data.totalPages || 1);
+        }
+        catch (err) { console.error(err); }
+        finally { setLoading(false); }
+    }, [search, membersPage, auth]);
+
+    const fetchAllMembers = useCallback(async () => {
+        try {
+            const r = await api.get(`admin/members?limit=1000`, auth);
+            setAllMembers(r.data.members || []);
+        } catch (err) {
+            console.error("Fetch All Members Error:", err);
+        }
+    }, [auth]);
+
+    const fetchPendingMembers = useCallback(async () => {
+        setLoading(true);
+        try { const r = await api.get(`admin/pending-members`, auth); setPendingMembers(r.data); }
+        catch { } finally { setLoading(false); }
+    }, [auth]);
+
+    const fetchEvents = useCallback(async () => {
+        try { const r = await api.get("events/admin", auth); setEvents(r.data); } catch { }
+    }, [auth]);
+
+    const fetchAnnouncements = useCallback(async () => {
+        try { const r = await api.get("announcements", auth); setAnnouncements(r.data); } catch { }
+    }, [auth]);
+
+    const fetchCertificates = useCallback(async () => {
+        try {
+            const r = await api.get("certificates/admin/all", auth);
+            const nonAdminCerts = r.data.filter(c => {
+                const role = c.memberId?.role;
+                return role && role !== 'Admin' && role !== 'Superuser';
+            });
+            setIssuedCertificates(nonAdminCerts);
+        } catch { }
+    }, [auth]);
+
     useEffect(() => {
         const restricted = ["admins", "customization", "logs"];
         if (restricted.includes(activeTab) && !isSuper) {
@@ -1918,56 +1967,6 @@ const AdminPortal = () => {
         setToast({ text, type });
         setTimeout(() => setToast(null), 4000);
     };
-
-    const fetchStats = useCallback(async () => {
-        try { const r = await api.get("admin/dashboard", auth); setStats(r.data); } catch { }
-    }, [auth]);
-
-    const fetchMembers = useCallback(async () => {
-        setLoading(true);
-        try {
-            const r = await api.get(`admin/members?search=${search}&page=${membersPage}&limit=10`, auth);
-            setMembers(r.data.members || []);
-            setMembersTotalPages(r.data.totalPages || 1);
-        }
-        catch (err) { console.error(err); }
-        finally { setLoading(false); }
-    }, [search, membersPage, auth]);
-
-    const fetchAllMembers = useCallback(async () => {
-        try {
-            const r = await api.get(`admin/members?limit=1000`, auth);
-            setAllMembers(r.data.members || []);
-        } catch (err) {
-            console.error("Fetch All Members Error:", err);
-        }
-    }, [auth]);
-
-    const fetchPendingMembers = useCallback(async () => {
-        setLoading(true);
-        try { const r = await api.get(`admin/pending-members`, auth); setPendingMembers(r.data); }
-        catch { } finally { setLoading(false); }
-    }, [auth]);
-
-    const fetchEvents = useCallback(async () => {
-        try { const r = await api.get("events/admin", auth); setEvents(r.data); } catch { }
-    }, [auth]);
-
-    const fetchAnnouncements = useCallback(async () => {
-        try { const r = await api.get("announcements", auth); setAnnouncements(r.data); } catch { }
-    }, [auth]);
-
-    const fetchCertificates = useCallback(async () => {
-        try {
-            const r = await api.get("certificates/admin/all", auth);
-            // Filter out certificates issued to Admins or Superusers
-            const nonAdminCerts = r.data.filter(c => {
-                const role = c.memberId?.role;
-                return role && role !== 'Admin' && role !== 'Superuser';
-            });
-            setIssuedCertificates(nonAdminCerts);
-        } catch { }
-    }, [auth]);
 
     const logout = async () => {
         try {
