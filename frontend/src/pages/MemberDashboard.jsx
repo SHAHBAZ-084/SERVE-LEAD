@@ -457,49 +457,64 @@ const MemberDashboard = () => {
                 </div>
 
                 {/* Direct Action Hub (Vibrant Unique Styling) */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8 pt-4">
-                    <button onClick={() => setActiveTab("events")} className="group p-8 sm:p-10 bg-gradient-to-br from-violet-600 to-indigo-700 rounded-[2.5rem] sm:rounded-[3rem] shadow-2xl shadow-violet-900/30 hover:-translate-y-2 transition-all duration-500 text-left relative overflow-hidden flex flex-col h-full min-h-[180px] sm:min-h-0">
-                        <div className="absolute top-0 right-0 p-10 text-white/5 group-hover:scale-125 group-hover:text-white/10 transition-all duration-700"><i className="fas fa-calendar-alt text-8xl" /></div>
-                        <div className="w-14 h-14 sm:w-16 sm:h-16 bg-white/20 backdrop-blur-md text-white rounded-2xl flex items-center justify-center text-xl sm:text-2xl mb-12 shadow-xl border border-white/20 group-hover:bg-white group-hover:text-violet-600 transition-all duration-500">
-                            <i className="fas fa-calendar-star animate-float" />
+                {/* Direct Action Hub (Sleek Professional Redesign) */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-10 pt-6">
+                    <button onClick={() => setActiveTab("events")} className="group relative flex items-center gap-6 p-8 bg-white rounded-[3rem] shadow-xl shadow-slate-200/50 border border-slate-100 hover:border-violet-200 hover:-translate-y-2 transition-all duration-500 overflow-hidden">
+                        <div className="absolute top-0 left-0 w-2 h-full bg-violet-600 group-hover:w-3 transition-all duration-500" />
+                        <div className="w-16 h-16 bg-violet-50 text-violet-600 rounded-3xl flex items-center justify-center text-2xl shrink-0 group-hover:scale-110 group-hover:bg-violet-600 group-hover:text-white transition-all duration-500 shadow-inner">
+                            <i className="fas fa-calendar-star" />
                         </div>
-                        <div className="mt-auto">
-                            <h4 className="text-xl sm:text-2xl font-black text-white mb-2 tracking-tight">Explore Events</h4>
-                            <p className="text-violet-100 text-[10px] font-bold uppercase tracking-[0.2em] opacity-70 group-hover:opacity-100 transition-opacity">Browse upcoming events</p>
+                        <div className="flex-1">
+                            <h4 className="text-2xl font-black text-slate-800 tracking-tight group-hover:text-violet-700 transition-colors">Explore Events</h4>
+                            <p className="text-slate-400 text-[10px] font-bold uppercase tracking-[0.2em] mt-1 group-hover:text-slate-500 transition-colors">Browse Upcoming Programs</p>
                         </div>
-                    </button>
-
-                    <button onClick={() => setActiveTab("certificates")} className="group p-8 sm:p-10 bg-gradient-to-br from-amber-400 to-orange-600 rounded-[2.5rem] sm:rounded-[3rem] shadow-2xl shadow-orange-900/30 hover:-translate-y-2 transition-all duration-500 text-left relative overflow-hidden flex flex-col h-full min-h-[180px] sm:min-h-0">
-                        <div className="absolute top-0 right-0 p-10 text-white/5 group-hover:scale-125 group-hover:text-white/10 transition-all duration-700"><i className="fas fa-certificate text-8xl" /></div>
-                        <div className="w-14 h-14 sm:w-16 sm:h-16 bg-white/20 backdrop-blur-md text-white rounded-2xl flex items-center justify-center text-xl sm:text-2xl mb-12 shadow-xl border border-white/20 group-hover:bg-white group-hover:text-amber-600 transition-all duration-500">
-                            <i className="fas fa-award-simple animate-float" />
-                        </div>
-                        <div className="mt-auto">
-                            <h4 className="text-xl sm:text-2xl font-black text-white mb-2 tracking-tight">My Portfolio</h4>
-                            <p className="text-amber-50 text-[10px] font-bold uppercase tracking-[0.2em] opacity-70 group-hover:opacity-100 transition-opacity">Access your credentials</p>
+                        <div className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center text-slate-300 group-hover:bg-violet-50 group-hover:text-violet-400 transition-all">
+                            <i className="fas fa-chevron-right text-xs" />
                         </div>
                     </button>
 
-                    <button onClick={() => setActiveTab("announcements")} className="group p-8 sm:p-10 bg-gradient-to-br from-rose-500 to-pink-600 rounded-[2.5rem] sm:rounded-[3rem] shadow-2xl shadow-rose-900/30 hover:-translate-y-2 transition-all duration-500 text-left relative overflow-hidden flex flex-col h-full min-h-[180px] sm:min-h-0">
-                        <div className="absolute top-0 right-0 p-10 text-white/5 group-hover:scale-125 group-hover:text-white/10 transition-all duration-700"><i className="fas fa-bell text-8xl" /></div>
-                        <div className="w-14 h-14 sm:w-16 sm:h-16 bg-white/20 backdrop-blur-md text-white rounded-2xl flex items-center justify-center text-xl sm:text-2xl mb-12 shadow-xl border border-white/20 group-hover:bg-white group-hover:text-rose-600 transition-all duration-500">
-                            <i className="fas fa-bullhorn animate-float" />
+                    <button onClick={() => setActiveTab("certificates")} className="group relative flex items-center gap-6 p-8 bg-white rounded-[3rem] shadow-xl shadow-slate-200/50 border border-slate-100 hover:border-amber-200 hover:-translate-y-2 transition-all duration-500 overflow-hidden">
+                        <div className="absolute top-0 left-0 w-2 h-full bg-amber-500 group-hover:w-3 transition-all duration-500" />
+                        <div className="w-16 h-16 bg-amber-50 text-amber-600 rounded-3xl flex items-center justify-center text-2xl shrink-0 group-hover:scale-110 group-hover:bg-amber-500 group-hover:text-white transition-all duration-500 shadow-inner">
+                            <i className="fas fa-award-simple" />
                         </div>
-                        <div className="mt-auto">
-                            <h4 className="text-xl sm:text-2xl font-black text-white mb-2 tracking-tight">Society News</h4>
-                            <p className="text-rose-50 text-[10px] font-bold uppercase tracking-[0.2em] opacity-70 group-hover:opacity-100 transition-opacity">Stay updated with news</p>
+                        <div className="flex-1">
+                            <h4 className="text-2xl font-black text-slate-800 tracking-tight group-hover:text-amber-700 transition-colors">My Portfolio</h4>
+                            <p className="text-slate-400 text-[10px] font-bold uppercase tracking-[0.2em] mt-1 group-hover:text-slate-500 transition-colors">Access Your Credentials</p>
                         </div>
-                    </button>
-                    <button onClick={() => setActiveTab("letters")} className="group p-8 sm:p-10 bg-gradient-to-br from-indigo-500 to-blue-700 rounded-[2.5rem] sm:rounded-[3rem] shadow-2xl shadow-blue-900/30 hover:-translate-y-2 transition-all duration-500 text-left relative overflow-hidden flex flex-col h-full min-h-[180px] sm:min-h-0">
-                        <div className="absolute top-0 right-0 p-10 text-white/5 group-hover:scale-125 group-hover:text-white/10 transition-all duration-700"><i className="fas fa-file-invoice text-8xl" /></div>
-                        <div className="w-14 h-14 sm:w-16 sm:h-16 bg-white/20 backdrop-blur-md text-white rounded-2xl flex items-center justify-center text-xl sm:text-2xl mb-12 shadow-xl border border-white/20 group-hover:bg-white group-hover:text-indigo-600 transition-all duration-500">
-                            <i className="fas fa-file-signature animate-float" />
-                        </div>
-                        <div className="mt-auto">
-                            <h4 className="text-xl sm:text-2xl font-black text-white mb-2 tracking-tight">Official Letters</h4>
-                            <p className="text-indigo-50 text-[10px] font-bold uppercase tracking-[0.2em] opacity-70 group-hover:opacity-100 transition-opacity">Verification & Reference</p>
+                        <div className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center text-slate-300 group-hover:bg-amber-50 group-hover:text-amber-400 transition-all">
+                            <i className="fas fa-chevron-right text-xs" />
                         </div>
                     </button>
+
+                    <button onClick={() => setActiveTab("announcements")} className="group relative flex items-center gap-6 p-8 bg-white rounded-[3rem] shadow-xl shadow-slate-200/50 border border-slate-100 hover:border-rose-200 hover:-translate-y-2 transition-all duration-500 overflow-hidden">
+                        <div className="absolute top-0 left-0 w-2 h-full bg-rose-500 group-hover:w-3 transition-all duration-500" />
+                        <div className="w-16 h-16 bg-rose-50 text-rose-600 rounded-3xl flex items-center justify-center text-2xl shrink-0 group-hover:scale-110 group-hover:bg-rose-500 group-hover:text-white transition-all duration-500 shadow-inner">
+                            <i className="fas fa-bullhorn" />
+                        </div>
+                        <div className="flex-1">
+                            <h4 className="text-2xl font-black text-slate-800 tracking-tight group-hover:text-rose-700 transition-colors">Society News</h4>
+                            <p className="text-slate-400 text-[10px] font-bold uppercase tracking-[0.2em] mt-1 group-hover:text-slate-500 transition-colors">Stay Updated with Updates</p>
+                        </div>
+                        <div className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center text-slate-300 group-hover:bg-rose-50 group-hover:text-rose-400 transition-all">
+                            <i className="fas fa-chevron-right text-xs" />
+                        </div>
+                    </button>
+
+                    <button onClick={() => setActiveTab("letters")} className="group relative flex items-center gap-6 p-8 bg-white rounded-[3rem] shadow-xl shadow-slate-200/50 border border-slate-100 hover:border-blue-200 hover:-translate-y-2 transition-all duration-500 overflow-hidden">
+                        <div className="absolute top-0 left-0 w-2 h-full bg-[#002147] group-hover:w-3 transition-all duration-500" />
+                        <div className="w-16 h-16 bg-blue-50 text-[#002147] rounded-3xl flex items-center justify-center text-2xl shrink-0 group-hover:scale-110 group-hover:bg-[#002147] group-hover:text-white transition-all duration-500 shadow-inner">
+                            <i className="fas fa-file-signature" />
+                        </div>
+                        <div className="flex-1">
+                            <h4 className="text-2xl font-black text-slate-800 tracking-tight group-hover:text-blue-700 transition-colors">Official Letters</h4>
+                            <p className="text-slate-400 text-[10px] font-bold uppercase tracking-[0.2em] mt-1 group-hover:text-slate-500 transition-colors">Verification & Reference</p>
+                        </div>
+                        <div className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center text-slate-300 group-hover:bg-blue-50 group-hover:text-blue-400 transition-all">
+                            <i className="fas fa-chevron-right text-xs" />
+                        </div>
+                    </button>
+                </div>
                 </div>
 
                 {/* Joined Events Table */}
