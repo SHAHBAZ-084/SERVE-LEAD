@@ -93,7 +93,7 @@ const MemberDashboard = () => {
     const [events, setEvents] = useState([]);
     const [announcements, setAnnouncements] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [user, setUser] = useState({ name: "", email: "", id: "", dbId: "", role: "General Member", rawRole: "General", year: "20XX", lettersGenerated: false });
+    const [user, setUser] = useState({ name: "", email: "", id: "", dbId: "", role: "General Member", rawRole: "General", year: "20XX" });
     const [profileForm, setProfileForm] = useState({ name: "", email: "", password: "" });
     const [profileMsg, setProfileMsg] = useState(null);
     const [mobileNav, setMobileNav] = useState(false);
@@ -162,8 +162,7 @@ const MemberDashboard = () => {
                     rawRole: member.role,
                     year: member.joining_year || "20XX",
                     status: member.status,
-                    interview_called: member.interview_called,
-                    lettersGenerated: member.lettersGenerated
+                    interview_called: member.interview_called
                 });
                 if (member.status === "pending") setLoading(false);
                 else fetchAllData();
@@ -616,23 +615,8 @@ const MemberDashboard = () => {
         );
     };
 
-    const renderCertificates = () => {
-        if (user.status !== 'approved' || !user.id || user.id === "Awaiting Approval") {
-            return (
-                <div className="animate-fade-up flex flex-col items-center justify-center py-20 bg-white rounded-[3rem] border border-slate-100 shadow-xl">
-                    <div className="w-20 h-20 bg-amber-50 text-amber-500 rounded-[2rem] flex items-center justify-center text-3xl mb-6 shadow-inner">
-                        <i className="fas fa-lock" />
-                    </div>
-                    <h3 className="text-xl font-bold text-slate-800 mb-2">Certificates Locked</h3>
-                    <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest text-center max-w-xs">
-                        Your certificates will be available here once your membership is approved and an Official ID is assigned.
-                    </p>
-                </div>
-            );
-        }
-
-        return (
-            <div className="animate-fade-up space-y-6">
+    const renderCertificates = () => (
+        <div className="animate-fade-up space-y-6">
 
             {certificates.length === 0 ? (
                 <div className="text-center py-24 bg-white rounded-[2.5rem] border border-dashed border-slate-200 shadow-sm">
@@ -1001,24 +985,9 @@ const MemberDashboard = () => {
         doc.save(`${type}_letter_${memberId}.pdf`);
     };
 
-    const renderLetters = () => {
-        if (!user.lettersGenerated) {
-            return (
-                <div className="animate-fade-up flex flex-col items-center justify-center py-20 bg-white rounded-[3rem] border border-slate-100 shadow-xl">
-                    <div className="w-20 h-20 bg-indigo-50 text-indigo-500 rounded-[2rem] flex items-center justify-center text-3xl mb-6 shadow-inner">
-                        <i className="fas fa-file-lock" />
-                    </div>
-                    <h3 className="text-xl font-bold text-slate-800 mb-2">Letters Unavailable</h3>
-                    <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest text-center max-w-xs">
-                        Official letters will be automatically generated and available here once your membership is approved by the administration.
-                    </p>
-                </div>
-            );
-        }
-
-        return (
-            <div className="animate-fade-up space-y-10">
-                <div className="relative p-10 sm:p-12 rounded-[3rem] overflow-hidden border border-slate-100 bg-white shadow-2xl shadow-slate-200/40">
+    const renderLetters = () => (
+        <div className="animate-fade-up space-y-10">
+            <div className="relative p-10 sm:p-12 rounded-[3rem] overflow-hidden border border-slate-100 bg-white shadow-2xl shadow-slate-200/40">
                 <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/5 blur-[100px] -mr-32 -mt-32" />
                 <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
                     <div>

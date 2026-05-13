@@ -219,7 +219,6 @@ router.post('/approve-member/:id', authMiddleware, isAdmin, asyncHandler(async (
     const nextMemberId = `${year}-SLS-${String(counter.seq).padStart(4, '0')}`;
     member.status = 'approved';
     member.member_id = nextMemberId;
-    member.lettersGenerated = true; // Automatically enable letters on approval
     await member.save();
 
     sendWelcomeEmail(member.email, member.name, nextMemberId).catch(console.error);
