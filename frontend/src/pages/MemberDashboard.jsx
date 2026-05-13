@@ -515,7 +515,6 @@ const MemberDashboard = () => {
                         </div>
                     </button>
                 </div>
-                </div>
 
                 {/* Joined Events Table */}
                 <div className="mt-12 bg-white rounded-[3rem] p-8 md:p-12 shadow-2xl shadow-slate-200/40 border border-slate-100 relative overflow-hidden">
