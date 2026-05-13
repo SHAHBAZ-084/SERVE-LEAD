@@ -3929,6 +3929,7 @@ const AdminPortal = () => {
                 )}
             </div>
         );
+    };
 
     return (
         <div className="min-h-screen bg-[#F1F5F9] flex font-sans text-slate-900 max-w-full overflow-x-hidden">
