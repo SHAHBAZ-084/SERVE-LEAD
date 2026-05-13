@@ -59,8 +59,9 @@ router.put('/profile', authMiddleware, asyncHandler(async (req, res) => {
 
 // Verify Email availability
 router.post('/check-email', asyncHandler(async (req, res) => {
-    const { email } = req.body;
-    const existing = await Member.findOne({ email: email.toLowerCase() });
+    const { email: rawEmail } = req.body;
+    const email = rawEmail?.trim().toLowerCase();
+    const existing = await Member.findOne({ email });
     if (existing) {
         return res.status(400).json({ error: 'This Gmail is already registered.' });
     }
@@ -70,8 +71,9 @@ router.post('/check-email', asyncHandler(async (req, res) => {
 // Send Registration OTP
 router.post('/send-otp', otpLimiter, async (req, res) => {
     try {
-        const { email } = req.body;
-        if (!email) return res.status(400).json({ error: 'Email is required.' });
+        const { email: rawEmail } = req.body;
+        if (!rawEmail) return res.status(400).json({ error: 'Email is required.' });
+        const email = rawEmail.trim().toLowerCase();
 
         // 1. Basic Regex for Gmail
         const gmailRegex = /^[a-zA-Z0-9._%+-]+@gmail\.com$/;
@@ -113,7 +115,8 @@ router.post('/send-otp', otpLimiter, async (req, res) => {
 
 // Resend OTP
 router.post('/resend-otp', otpLimiter, asyncHandler(async (req, res) => {
-    const { email } = req.body;
+    const { email: rawEmail } = req.body;
+    const email = rawEmail?.trim().toLowerCase();
     
     if (!email) return res.status(400).json({ error: 'Email is required.' });
     
@@ -128,8 +131,8 @@ router.post('/resend-otp', otpLimiter, asyncHandler(async (req, res) => {
     }
 
     const otpCode = crypto.randomInt(100000, 1000000).toString();
-    await OTP.deleteMany({ email: email.toLowerCase() });
-    await OTP.create({ email: email.toLowerCase(), code: otpCode });
+    await OTP.deleteMany({ email });
+    await OTP.create({ email, code: otpCode });
     
     const result = await sendOTPEmail(email, otpCode);
     if (!result.success) {
@@ -140,13 +143,15 @@ router.post('/resend-otp', otpLimiter, asyncHandler(async (req, res) => {
 
 // Verify OTP
 router.post('/verify-otp', asyncHandler(async (req, res) => {
-    const { email, code } = req.body;
-    const otp = await OTP.findOne({ email: email.toLowerCase(), code });
+    const { email: rawEmail, code } = req.body;
+    const email = rawEmail?.trim().toLowerCase();
+    const otp = await OTP.findOne({ email, code });
     if (!otp) {
         return res.status(400).json({ error: 'Invalid or expired verification code.' });
     }
     // Mark as verified instead of deleting immediately, so /register can check it
     otp.code = "VERIFIED";
+    otp.createdAt = new Date(); // Refresh TTL to give user more time to finish form
     await otp.save();
     res.status(200).json({ message: 'Email verified successfully.' });
 }));
@@ -168,7 +173,7 @@ router.post('/register', asyncHandler(async (req, res) => {
         city
     } = req.body;
 
-    const email = rawEmail?.toLowerCase();
+    const email = rawEmail?.trim().toLowerCase();
     if (!email) return res.status(400).json({ error: 'Email is required' });
     if (!password) return res.status(400).json({ error: 'Password is required' });
 
@@ -228,7 +233,7 @@ router.post('/register-executive', asyncHandler(async (req, res) => {
         cnic_number
     } = req.body;
 
-    const email = rawEmail?.toLowerCase();
+    const email = rawEmail?.trim().toLowerCase();
     if (!email) return res.status(400).json({ error: 'Email is required' });
     if (!password) return res.status(400).json({ error: 'Password is required' });
 

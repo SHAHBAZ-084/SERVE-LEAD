@@ -75,7 +75,7 @@ export default function ExecutiveRegisterPage() {
     setError(null);
     setIsVerifying(true);
     try {
-        await api.post("auth/send-otp", { email });
+        await api.post("auth/send-otp", { email: email.trim() });
         setOtpSent(true);
         setError(null);
     } catch (err) {
@@ -93,8 +93,8 @@ export default function ExecutiveRegisterPage() {
       setLoading(true);
       try {
         await api.post("auth/verify-otp", {
-          email: formData.email,
-          code: formData.otp
+          email: formData.email.trim(),
+          code: formData.otp.trim()
         });
         // OTP is valid — clear it from state (security)
         setFormData(prev => ({ ...prev, otp: "" }));
@@ -124,7 +124,8 @@ export default function ExecutiveRegisterPage() {
     setLoading(true);
 
     try {
-      await api.post("auth/register-executive", formData);
+      const payload = { ...formData, email: formData.email.trim() };
+      await api.post("auth/register-executive", payload);
       try {
         const settingRes = await api.get("settings/whatsapp-link");
         setWaLink(settingRes.data.link || "");
