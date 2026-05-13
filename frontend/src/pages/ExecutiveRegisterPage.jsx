@@ -318,17 +318,40 @@ export default function ExecutiveRegisterPage() {
                       <input name="city" placeholder="E.G. LAHORE" value={formData.city} onChange={handleChange} className="w-full bg-slate-50 border border-slate-100 rounded-[1.25rem] md:rounded-[1.5rem] px-5 py-4 md:px-6 md:py-5 text-sm font-bold text-slate-800 placeholder:text-slate-200 placeholder:font-black focus:ring-8 focus:ring-blue-500/5 focus:border-[#002147] outline-none transition-all shadow-inner" />
                     </div>
 
-                    <div className="flex items-center gap-3 px-4 py-2 bg-slate-50 rounded-2xl border border-slate-100">
-                      <input 
-                        type="checkbox" 
-                        id="tnc" 
-                        checked={acceptedTerms} 
-                        onChange={(e) => setAcceptedTerms(e.target.checked)}
-                        className="w-5 h-5 rounded border-slate-300 text-[#002147] focus:ring-[#002147] cursor-pointer"
-                      />
-                      <label htmlFor="tnc" className="text-[10px] font-black uppercase tracking-widest text-slate-500 cursor-pointer select-none">
-                        I agree to the <a href="/terms" target="_blank" className="text-[#002147] underline">Terms and Conditions</a>
-                      </label>
+                    {/* Premium Acknowledgement Card */}
+                    <div 
+                      onClick={() => setAcceptedTerms(!acceptedTerms)}
+                      className={`group relative overflow-hidden flex items-center gap-5 px-6 py-5 rounded-[2rem] border-2 transition-all duration-500 cursor-pointer ${
+                        acceptedTerms 
+                        ? 'bg-emerald-50/50 border-emerald-500/30 shadow-lg shadow-emerald-900/5' 
+                        : 'bg-white border-slate-100 hover:border-[#002147]/20 hover:bg-slate-50/50 shadow-xl shadow-slate-200/20'
+                      }`}
+                    >
+                      <div className={`flex-shrink-0 w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-500 ${
+                        acceptedTerms ? 'bg-emerald-500 text-white rotate-[360deg]' : 'bg-slate-100 text-slate-400 group-hover:bg-[#002147]/5 group-hover:text-[#002147]'
+                      }`}>
+                        {acceptedTerms ? (
+                          <i className="fas fa-check text-lg" />
+                        ) : (
+                          <i className="fas fa-shield-halved text-lg" />
+                        )}
+                      </div>
+
+                      <div className="flex-1">
+                        <p className={`text-[10px] font-black uppercase tracking-[0.2em] mb-1 transition-colors ${acceptedTerms ? 'text-emerald-700' : 'text-slate-400'}`}>
+                          Legal Compliance
+                        </p>
+                        <label className={`text-[11px] font-bold uppercase tracking-widest cursor-pointer select-none transition-colors ${acceptedTerms ? 'text-emerald-900' : 'text-slate-600'}`}>
+                          I agree to the <a href="/terms" target="_blank" onClick={(e) => e.stopPropagation()} className="text-[#002147] underline decoration-2 underline-offset-4 hover:text-blue-600 transition-colors">Terms and Conditions</a>
+                        </label>
+                      </div>
+
+                      {/* Animated checkmark indicator */}
+                      <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all duration-500 ${
+                        acceptedTerms ? 'bg-emerald-500 border-emerald-500 scale-110' : 'border-slate-200 bg-white'
+                      }`}>
+                        <div className={`w-2 h-2 rounded-full bg-white transition-all duration-500 ${acceptedTerms ? 'scale-100 opacity-100' : 'scale-0 opacity-0'}`} />
+                      </div>
                     </div>
 
                     <div className="flex gap-5">
