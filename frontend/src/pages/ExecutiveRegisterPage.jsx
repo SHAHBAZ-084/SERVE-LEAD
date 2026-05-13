@@ -39,6 +39,8 @@ export default function ExecutiveRegisterPage() {
     sls_official_id: "",
     cnic_number: "",
   });
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
+
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -120,6 +122,8 @@ export default function ExecutiveRegisterPage() {
     if (e) e.preventDefault();
     const err = validateStep();
     if (err) { setError(err); return; }
+    if (!acceptedTerms) { setError("You must agree to the Terms and Conditions to proceed."); return; }
+
     setError(null);
     setLoading(true);
 
@@ -313,11 +317,31 @@ export default function ExecutiveRegisterPage() {
                       <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 ml-2 group-focus-within:text-[#002147] transition-colors">Your City</label>
                       <input name="city" placeholder="E.G. LAHORE" value={formData.city} onChange={handleChange} className="w-full bg-slate-50 border border-slate-100 rounded-[1.25rem] md:rounded-[1.5rem] px-5 py-4 md:px-6 md:py-5 text-sm font-bold text-slate-800 placeholder:text-slate-200 placeholder:font-black focus:ring-8 focus:ring-blue-500/5 focus:border-[#002147] outline-none transition-all shadow-inner" />
                     </div>
+
+                    <div className="flex items-center gap-3 px-4 py-2 bg-slate-50 rounded-2xl border border-slate-100">
+                      <input 
+                        type="checkbox" 
+                        id="tnc" 
+                        checked={acceptedTerms} 
+                        onChange={(e) => setAcceptedTerms(e.target.checked)}
+                        className="w-5 h-5 rounded border-slate-300 text-[#002147] focus:ring-[#002147] cursor-pointer"
+                      />
+                      <label htmlFor="tnc" className="text-[10px] font-black uppercase tracking-widest text-slate-500 cursor-pointer select-none">
+                        I agree to the <a href="/terms" target="_blank" className="text-[#002147] underline">Terms and Conditions</a>
+                      </label>
+                    </div>
+
                     <div className="flex gap-5">
+
                       <button onClick={prevStep} className="flex-1 bg-slate-50 text-slate-400 py-6 rounded-[2rem] text-xs font-bold uppercase tracking-widest hover:bg-slate-100 transition-all">Back</button>
-                      <button onClick={handleRegister} disabled={loading} className="flex-[2] bg-[#002147] text-white py-6 rounded-[2rem] text-xs font-bold uppercase tracking-[0.4em] hover:bg-emerald-600 transition-all shadow-2xl shadow-emerald-900/20 flex items-center justify-center gap-4 active:scale-[0.98]">
+                      <button 
+                        onClick={handleRegister} 
+                        disabled={loading || !acceptedTerms} 
+                        className={`flex-[2] py-6 rounded-[2rem] text-xs font-bold uppercase tracking-[0.4em] transition-all flex items-center justify-center gap-4 active:scale-[0.98] ${loading || !acceptedTerms ? 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none' : 'bg-[#002147] text-white hover:bg-emerald-600 shadow-2xl shadow-emerald-900/20'}`}
+                      >
                         {loading ? <i className="fas fa-circle-notch fa-spin" /> : <i className="fas fa-check-double shadow-md" />} Finish Executive Registration
                       </button>
+
                     </div>
                   </div>
                 )}

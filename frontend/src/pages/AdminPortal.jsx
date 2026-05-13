@@ -234,6 +234,8 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
     });
     const [submitting, setSubmitting] = useState(false);
     const [waLink, setWaLink] = useState("");
+    const [tnc, setTnc] = useState("");
+
 
     // Admin Promotion State
     const [adminSearch, setAdminSearch] = useState("");
@@ -272,7 +274,9 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
             }
         });
         api.get("settings/whatsapp-link").then(r => setWaLink(r.data.link || ""));
+        api.get("settings/terms").then(r => setTnc(r.data.terms || ""));
     }, [api]);
+
 
     useEffect(() => {
         if (adminSearch.length > 2) {
@@ -310,6 +314,16 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
         } catch { notify("Failed to update WhatsApp link", "error"); }
         finally { setSubmitting(false); }
     };
+
+    const saveTnc = async () => {
+        setSubmitting(true);
+        try {
+            await api.put("settings/terms", { terms: tnc }, auth);
+            notify("Terms & Conditions updated!");
+        } catch { notify("Failed to update Terms & Conditions", "error"); }
+        finally { setSubmitting(false); }
+    };
+
 
     const saveLeadership = async (e) => {
         if (e) e.preventDefault();
@@ -463,7 +477,7 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
                     </div>
 
                     {/* WhatsApp Group Link Setting */}
-                    <div className="p-8 md:p-10 border-t border-slate-100 bg-slate-50/30">
+                    <div className="p-8 md:p-10 border-t border-slate-100 bg-slate-50/30 space-y-8">
                         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
                             <div className="flex-1 w-full">
                                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 block">WhatsApp Group Link (For Success Screen)</label>
@@ -475,7 +489,28 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
                                 </div>
                             </div>
                         </div>
+
+                        <div className="flex flex-col items-start gap-6 pt-6 border-t border-slate-100">
+                            <div className="flex-1 w-full">
+                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 block">Registration Terms & Conditions</label>
+                                <div className="space-y-4">
+                                    <textarea 
+                                        rows={6} 
+                                        placeholder="Enter Terms and Conditions text here..." 
+                                        value={tnc} 
+                                        onChange={e => setTnc(e.target.value)} 
+                                        className={`${inputCls} resize-none`} 
+                                    />
+                                    <div className="flex justify-end">
+                                        <button type="button" onClick={saveTnc} disabled={submitting} className="px-8 py-3 bg-indigo-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-[#002147] transition-all shadow-md disabled:opacity-50">
+                                            Update Terms
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
+
                 </div>
             )}
 

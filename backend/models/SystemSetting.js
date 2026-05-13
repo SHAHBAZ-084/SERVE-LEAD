@@ -13,7 +13,8 @@ const systemSettingSchema = new mongoose.Schema({
   description: {
     type: String
   },
-  whatsappGroupLink: { type: String, default: "" }
+  whatsappGroupLink: { type: String, default: "" },
+  termsAndConditions: { type: String, default: "" }
 }, { timestamps: true });
 
 module.exports = mongoose.model('SystemSetting', systemSettingSchema);
