@@ -14,6 +14,7 @@ import MemberLogin from './pages/MemberLogin';
 import ResetPassword from './pages/ResetPassword';
 import MemberVerification from './pages/MemberVerification';
 import FloatingWhatsApp from './components/FloatingWhatsApp';
+import ExecutiveRegisterPage from './pages/ExecutiveRegisterPage';
 
 function App() {
 
@@ -30,6 +31,11 @@ function App() {
         <Route path="/register" element={
           <GuestRoute role="Member">
             <RegisterPage />
+          </GuestRoute>
+        } />
+        <Route path="/executive-register" element={
+          <GuestRoute role="Member">
+            <ExecutiveRegisterPage />
           </GuestRoute>
         } />
         <Route path="/login" element={

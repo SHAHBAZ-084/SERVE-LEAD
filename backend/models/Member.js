@@ -77,6 +77,8 @@ const memberSchema = new mongoose.Schema({
   },
   resetPasswordToken: String,
   resetPasswordExpire: Date,
+  sls_official_id: { type: String, default: "" },
+  cnic_number:     { type: String, default: "" },
 }, { timestamps: true });
 
 module.exports = mongoose.model('Member', memberSchema);

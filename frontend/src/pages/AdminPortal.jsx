@@ -2394,6 +2394,8 @@ const AdminPortal = () => {
                                     <DetailItem label="Home City" value={viewMember.city} icon="fa-city" />
                                     <DetailItem label="Joining Year" value={viewMember.joining_year} icon="fa-calendar-check" />
                                     <DetailItem label="Passing Year" value={viewMember.passing_year} icon="fa-calendar-alt" />
+                                    {viewMember.sls_official_id && <DetailItem label="SLS Official ID" value={viewMember.sls_official_id} icon="fa-id-card" />}
+                                    {viewMember.cnic_number && <DetailItem label="CNIC Number" value={viewMember.cnic_number} icon="fa-address-card" />}
                                 </div>
                                 <div className="pt-6 border-t border-slate-100">
                                     <DetailItem label="Current Address" value={viewMember.address} icon="fa-location-dot" fullWidth />

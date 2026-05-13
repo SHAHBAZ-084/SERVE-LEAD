@@ -209,6 +209,66 @@ router.post('/register', asyncHandler(async (req, res) => {
     });
 }));
 
+// Executive Registration (Internal/Hidden link use)
+router.post('/register-executive', asyncHandler(async (req, res) => {
+    const {
+        name,
+        email: rawEmail,
+        password,
+        joining_year,
+        father_name,
+        whatsapp,
+        education_level,
+        program,
+        passing_year,
+        university,
+        address,
+        city,
+        sls_official_id,
+        cnic_number
+    } = req.body;
+
+    const email = rawEmail?.toLowerCase();
+    if (!email) return res.status(400).json({ error: 'Email is required' });
+    if (!password) return res.status(400).json({ error: 'Password is required' });
+
+    // ✅ Re-verify OTP on backend
+    const otpRecord = await OTP.findOne({ email, code: "VERIFIED" });
+    if (!otpRecord) {
+        return res.status(400).json({
+            error: 'Email not verified. Please complete OTP verification first.'
+        });
+    }
+    await OTP.deleteMany({ email });
+
+    const hashedPassword = await bcrypt.hash(password, 12);
+
+    const member = await Member.create({
+        name,
+        email,
+        password: hashedPassword,
+        joining_year,
+        father_name,
+        whatsapp,
+        education_level,
+        program,
+        passing_year,
+        university,
+        address,
+        city,
+        sls_official_id,
+        cnic_number,
+        status: 'pending',
+        role: 'Executive' // Sets role to Executive
+    });
+
+    res.status(201).json({
+        _id: member._id,
+        name: member.name,
+        email: member.email
+    });
+}));
+
 // Member Login
 router.post('/login', asyncHandler(async (req, res) => {
     const { email, password } = req.body;

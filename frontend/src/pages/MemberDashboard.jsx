@@ -93,7 +93,7 @@ const MemberDashboard = () => {
     const [events, setEvents] = useState([]);
     const [announcements, setAnnouncements] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [user, setUser] = useState({ name: "", email: "", id: "", dbId: "", role: "General", year: "20XX" });
+    const [user, setUser] = useState({ name: "", email: "", id: "", dbId: "", role: "General Member", rawRole: "General", year: "20XX" });
     const [profileForm, setProfileForm] = useState({ name: "", email: "", password: "" });
     const [profileMsg, setProfileMsg] = useState(null);
     const [mobileNav, setMobileNav] = useState(false);
@@ -159,6 +159,7 @@ const MemberDashboard = () => {
                     id: member.member_id || "Awaiting Approval",
                     dbId: member._id,
                     role: `${member.role} Member`,
+                    rawRole: member.role,
                     year: member.joining_year || "20XX",
                     status: member.status,
                     interview_called: member.interview_called
@@ -421,7 +422,20 @@ const MemberDashboard = () => {
                     <div className="absolute top-0 right-0 w-64 h-64 sm:w-96 sm:h-96 bg-[#002147]/5 blur-[80px] sm:blur-[120px] -mr-32 -mt-32 sm:-mr-48 sm:-mt-48 transition-transform duration-1000" />
                     <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-6 sm:gap-8">
                         <div>
-                            <h2 className="text-3xl sm:text-5xl font-bold text-slate-900 leading-tight tracking-tight text-shadow-sm">Welcome back, <span className="text-[#002147]">{user.name === "System Admin" ? "Member" : user.name}</span> <span className="inline-block animate-bounce shadow-xl">👋</span></h2>
+                            <div className="flex flex-wrap items-center gap-3">
+                                <h2 className="text-3xl sm:text-5xl font-bold text-slate-900 leading-tight tracking-tight text-shadow-sm">
+                                    Welcome back, <span className="text-[#002147]">{user.name === "System Admin" ? "Member" : user.name}</span> <span className="inline-block animate-bounce shadow-xl">👋</span>
+                                </h2>
+                                {user.rawRole === 'Executive' ? (
+                                    <span className="px-4 py-1.5 bg-indigo-50 text-indigo-600 rounded-full text-[10px] font-black uppercase tracking-widest border border-indigo-100 shadow-sm flex items-center gap-2">
+                                        <i className="fas fa-crown text-[10px]" /> Executive Member
+                                    </span>
+                                ) : (
+                                    <span className="px-4 py-1.5 bg-slate-50 text-slate-500 rounded-full text-[10px] font-black uppercase tracking-widest border border-slate-100 shadow-sm flex items-center gap-2">
+                                        <i className="fas fa-user text-[10px]" /> General Member
+                                    </span>
+                                )}
+                            </div>
                             <p className="text-slate-400 text-[9px] sm:text-[10px] font-semibold uppercase tracking-[0.4em] mt-2 sm:mt-3">SLS Society Member Portal</p>
                         </div>
                         <div className="flex -space-x-3 sm:-space-x-4">
