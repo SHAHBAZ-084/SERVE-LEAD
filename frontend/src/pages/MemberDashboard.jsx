@@ -571,9 +571,14 @@ const MemberDashboard = () => {
                             <h3 className="font-bold text-2xl text-slate-800 mb-2 leading-tight">
                                 {cert.eventId?.title || "Society Award"}
                             </h3>
-                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-6">
-                                Awarded: {new Date(cert.createdAt).toLocaleDateString()}
-                            </p>
+                            <div className="flex justify-between items-center mb-6">
+                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                                    Awarded: {new Date(cert.createdAt).toLocaleDateString()}
+                                </p>
+                                <span className="text-[8px] font-black bg-slate-50 text-slate-400 px-2 py-1 rounded-md uppercase border border-slate-100">
+                                    Template {cert.templateId || 1}
+                                </span>
+                            </div>
 
                             <button
                                 onClick={() => downloadPDF(cert)}

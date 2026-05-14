@@ -878,8 +878,8 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
         await new Promise(r => setTimeout(r, 600));
 
         try {
-            const activeTemplateId = certData.templateId || selectedTemplate.id;
-            const activeTemplate = CERT_TEMPLATES.find(t => t.id === Number(activeTemplateId)) || selectedTemplate;
+            const activeTemplateId = Number(certData.templateId || 1);
+            const activeTemplate = CERT_TEMPLATES.find(t => t.id === activeTemplateId) || CERT_TEMPLATES[0];
             const isLandscape = activeTemplate.orientation === 'landscape';
             const W = isLandscape ? 1123 : 794;
             const H = isLandscape ? 794 : 1123;
@@ -1375,6 +1375,11 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
                                                         <span className="text-[10px] text-[#002147] font-black uppercase tracking-widest leading-none">
                                                             {cert.memberId?.member_id || cert.member_id_str || "N/A"}
                                                             {!cert.memberId && <span className="ml-2 text-rose-400 font-bold opacity-60">[HISTORICAL]</span>}
+                                                            <div className="mt-1">
+                                                                <span className="text-[8px] font-black bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded uppercase tracking-tighter">
+                                                                    ID: {cert.templateId || 1}
+                                                                </span>
+                                                            </div>
                                                         </span>
                                                     </div>
                                                 </td>
@@ -3198,9 +3203,11 @@ const AdminPortal = () => {
                                             </td>)}
                                             <td className="px-8 py-6">
                                                 <p className="font-black text-slate-800 leading-tight mb-2">{ann.title}</p>
-                                                <span className={`px-3 py-1 rounded-lg text-xs font-black uppercase tracking-widest shadow-sm ${ann.type === 'Urgent' ? 'bg-rose-50 text-rose-600' :
-                                                    ann.type === 'Success' ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-blue-600'
-                                                    }`}>{ann.type}</span>
+                                                <div className="flex items-center gap-2 mt-1">
+                                                    <span className={`px-3 py-1 rounded-lg text-xs font-black uppercase tracking-widest shadow-sm ${ann.type === 'Urgent' ? 'bg-rose-50 text-rose-600' :
+                                                        ann.type === 'Success' ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-blue-600'
+                                                        }`}>{ann.type}</span>
+                                                </div>
                                             </td>
                                             <td className="px-8 py-6">
                                                 <div className="bg-slate-50/50 px-4 py-2 rounded-xl border border-slate-100 max-w-sm">
