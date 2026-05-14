@@ -38,6 +38,9 @@ export default function Footer() {
                             <button onClick={() => navigate('/donate')} className="text-slate-400 hover:text-cyan-400 text-sm font-bold transition-colors flex items-center gap-2 group justify-center md:justify-start">
                                 <span className="w-1.5 h-1.5 bg-slate-700 rounded-full group-hover:bg-cyan-500 transition-colors" /> Donate
                             </button>
+                            <button onClick={() => navigate('/terms')} className="text-slate-400 hover:text-cyan-400 text-sm font-bold transition-colors flex items-center gap-2 group justify-center md:justify-start">
+                                <span className="w-1.5 h-1.5 bg-slate-700 rounded-full group-hover:bg-cyan-500 transition-colors" /> Terms & Conditions
+                            </button>
                         </div>
                     </div>
 

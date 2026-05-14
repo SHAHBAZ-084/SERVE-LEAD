@@ -27,7 +27,7 @@ const isAdmin = async (req, res, next) => {
 // 1. POST /api/certificates - Issue a new certificate (Admin only)
 router.post('/', authMiddleware, isAdmin, async (req, res) => {
   try {
-    const { memberId, eventId, category, customCategory, description, chairmanName, title, awardType } = req.body;
+    const { memberId, eventId, category, customCategory, description, chairmanName, title, awardType, templateId } = req.body;
 
     if (!memberId) {
       console.error('Issuance Fail: Missing memberId');
@@ -77,7 +77,8 @@ router.post('/', authMiddleware, isAdmin, async (req, res) => {
       chairmanName,
       title: title || 'CERTIFICATE OF ATTENDANCE',
       awardType: awardType || 'Official Recognition',
-      issuedBy: req.user.memberId
+      issuedBy: req.user.memberId,
+      templateId: templateId || 1
     });
 
     await newCert.save();
@@ -93,7 +94,7 @@ router.post('/', authMiddleware, isAdmin, async (req, res) => {
 // POST /api/certificates/bulk - Bulk issue certificates for an event (Admin only)
 router.post('/bulk', authMiddleware, isAdmin, async (req, res) => {
   try {
-    const { eventId, category, customCategory, description, chairmanName, title, awardType } = req.body;
+    const { eventId, category, customCategory, description, chairmanName, title, awardType, templateId } = req.body;
 
     if (!eventId) {
       return res.status(400).json({ error: 'Event ID is required for bulk issuance.' });
@@ -146,7 +147,8 @@ router.post('/bulk', authMiddleware, isAdmin, async (req, res) => {
         awardType,
         description,
         chairmanName,
-        issuedBy: req.user.memberId
+        issuedBy: req.user.memberId,
+        templateId: templateId || 1
       });
       issuedCount++;
     }

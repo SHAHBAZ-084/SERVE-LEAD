@@ -49,6 +49,10 @@ const certificateSchema = new mongoose.Schema({
     ref: 'Member', // Admin who issued it
     required: true,
   },
+  templateId: {
+    type: Number,
+    default: 1,
+  },
 }, { timestamps: true });
 
 // Ensure unique certificate per user per event, if it's tied to an event. 
