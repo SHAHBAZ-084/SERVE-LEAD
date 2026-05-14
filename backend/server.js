@@ -90,7 +90,11 @@ mongoose.connect(process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/slsuet')
 
 // Setup Routes
 app.use('/api/auth', require('./routes/authRoutes'));
-app.use('/api/admin', require('./routes/adminRoutes'));
+app.use('/api/admin', require('./routes/admin/authAdmin'));
+app.use('/api/admin', require('./routes/admin/dashboard'));
+app.use('/api/admin', require('./routes/admin/members'));
+app.use('/api/admin', require('./routes/admin/logs'));
+app.use('/api/admin', require('./routes/admin/backup'));
 app.use('/api/events', require('./routes/eventRoutes'));
 app.use('/api/announcements', require('./routes/announcementRoutes'));
 app.use('/api/settings', require('./routes/settingsRoutes'));
