@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import api, { getImgUrl, API_BASE as API_BASE_URL } from "../api";
 import CountdownTimer from "../components/common/CountdownTimer";
-import { Template1, Template2, Template3 } from "./CertTemplates";
+import { Template1, Template2, Template3, logo, sealImg } from "./CertTemplates";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 
