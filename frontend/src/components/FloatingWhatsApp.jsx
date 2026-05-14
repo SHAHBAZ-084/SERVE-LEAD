@@ -18,7 +18,7 @@ export default function FloatingWhatsApp() {
             href="https://wa.me/923141683402?text=Hello%20SLS!%20I%20have%20a%20query%20regarding%20the%20society." 
             target="_blank" 
             rel="noopener noreferrer"
-            className="fixed bottom-8 right-8 z-[9999] group"
+            className="fixed bottom-20 right-6 md:bottom-8 md:right-8 z-[9999] group"
             aria-label="Contact SLS on WhatsApp"
         >
             <div className="relative">

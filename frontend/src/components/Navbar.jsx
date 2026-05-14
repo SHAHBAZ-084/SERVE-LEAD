@@ -107,7 +107,7 @@ export default function Navbar() {
 
 
   const getLinkClass = (path, isMobile = false) => `
-    ${isMobile ? "w-full text-center py-4 text-base" : "px-4 py-2 text-sm"} 
+    ${isMobile ? "w-full text-center py-2.5 text-base" : "px-4 py-2 text-sm"} 
     rounded-full transition-all duration-300 border-2 font-medium
     ${isLinkActive(path)
       ? "border-slate-900 text-slate-900 font-bold bg-slate-50"
@@ -173,7 +173,7 @@ export default function Navbar() {
 
       {/* Mobile Menu - Premium Drawer Layout */}
       <div
-        className={`lg:hidden absolute top-full left-0 w-full bg-white shadow-2xl border-t border-slate-50 flex flex-col px-8 overflow-hidden transition-all duration-500 ease-in-out ${isOpen ? "max-h-[600px] opacity-100 py-10" : "max-h-0 opacity-0 py-0"
+        className={`lg:hidden absolute top-full left-0 w-full bg-white shadow-2xl border-t border-slate-50 flex flex-col px-8 overflow-y-auto transition-all duration-500 ease-in-out ${isOpen ? "max-h-[90vh] opacity-100 py-10" : "max-h-0 opacity-0 py-0"
           }`}
       >
         <div className="flex flex-col space-y-4">
@@ -188,29 +188,29 @@ export default function Navbar() {
             </button>
           ))}
 
-          <div className="pt-6 mt-4 border-t border-slate-50">
+          <div className="pt-6 mt-2 border-t border-slate-100 flex flex-col space-y-3">
             {isLoggedIn ? (
               <button
                 onClick={() => { setIsOpen(false); navigate("/dashboard"); }}
-                className="w-full bg-slate-900 text-white text-center py-4 rounded-3xl text-sm font-black uppercase tracking-widest hover:bg-cyan-600 transition-all duration-300 shadow-xl shadow-slate-900/20 flex items-center justify-center gap-3"
+                className="w-full bg-slate-900 text-white text-center py-4 rounded-2xl text-sm font-black uppercase tracking-widest hover:bg-cyan-600 transition-all duration-300 shadow-xl shadow-slate-900/20 flex items-center justify-center gap-3"
               >
                 <i className="fas fa-user-circle text-cyan-400" /> Member Portal
               </button>
             ) : (
-              <div className="grid grid-cols-2 gap-4">
+              <>
                 <button
                    onClick={() => { setIsOpen(false); navigate("/login"); }}
-                   className="bg-slate-50 text-slate-900 text-center py-4 rounded-3xl text-xs font-black uppercase tracking-widest border border-slate-100"
+                   className="w-full bg-slate-50 text-slate-900 text-center py-4 rounded-2xl text-sm font-black uppercase tracking-widest border border-slate-200 hover:bg-slate-100 transition-all"
                 >
-                  Login
+                  Login to Account
                 </button>
                 <button
                    onClick={() => { setIsOpen(false); navigate("/register"); }}
-                   className="bg-slate-900 text-white text-center py-4 rounded-3xl text-xs font-black uppercase tracking-widest shadow-lg shadow-slate-900/10"
+                   className="w-full bg-slate-900 text-white text-center py-4 rounded-2xl text-sm font-black uppercase tracking-widest shadow-lg shadow-slate-900/20 hover:bg-cyan-600 transition-all"
                 >
-                  Join SLS
+                  Join the Society
                 </button>
-              </div>
+              </>
             )}
           </div>
         </div>

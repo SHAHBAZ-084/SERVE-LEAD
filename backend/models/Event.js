@@ -15,11 +15,14 @@ const eventSchema = new mongoose.Schema({
   date: {
     type: Date,
     required: true,
-    index: true,
+    index: true, // Represents event start date
   },
   endDate: {
     type: Date,
-    required: true,
+    required: true, // Represents event completion date
+  },
+  registrationDeadline: {
+    type: Date, // Optional deadline for member signups
   },
   location: {
     type: String,

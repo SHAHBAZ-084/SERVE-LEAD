@@ -16,6 +16,7 @@ const OTP = require('../models/OTP');
 const { sendOTPEmail, sendResetPasswordEmail } = require('../utils/emailService');
 const asyncHandler = require('../middlewares/asyncHandler');
 const authMiddleware = require('../middlewares/authMiddleware');
+const { validateRequest, schemas } = require('../middlewares/validationMiddleware');
 
 // Current Member Profile
 router.get('/me', authMiddleware, asyncHandler(async (req, res) => {
@@ -151,13 +152,14 @@ router.post('/verify-otp', asyncHandler(async (req, res) => {
     }
     // Mark as verified instead of deleting immediately, so /register can check it
     otp.code = "VERIFIED";
-    otp.createdAt = new Date(); // Refresh TTL to give user more time to finish form
+    // Shorten TTL for verified record to 2 minutes (300s - 180s = 120s)
+    otp.createdAt = new Date(Date.now() - 180000); 
     await otp.save();
     res.status(200).json({ message: 'Email verified successfully.' });
 }));
 
 // Final Registration
-router.post('/register', asyncHandler(async (req, res) => {
+router.post('/register', validateRequest(schemas.register), asyncHandler(async (req, res) => {
     const {
         name,
         email: rawEmail,
@@ -275,7 +277,8 @@ router.post('/register-executive', asyncHandler(async (req, res) => {
 }));
 
 // Member Login
-router.post('/login', asyncHandler(async (req, res) => {
+// Member Login
+router.post('/login', validateRequest(schemas.login), asyncHandler(async (req, res) => {
     const { email, password } = req.body;
 
     if (!email || !password) {
@@ -382,9 +385,22 @@ router.post('/reset-password', asyncHandler(async (req, res) => {
 
     const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
 
-    const member = await Member.findOne({
-        resetPasswordToken: hashedToken,
+    // Security: Use timingSafeEqual to prevent timing attacks
+    // We find all members with active expiry and then compare in memory
+    const activeMembers = await Member.find({
         resetPasswordExpire: { $gt: Date.now() }
+    }).select('resetPasswordToken password');
+
+    const member = activeMembers.find(m => {
+        if (!m.resetPasswordToken) return false;
+        try {
+            return crypto.timingSafeEqual(
+                Buffer.from(m.resetPasswordToken, 'hex'),
+                Buffer.from(hashedToken, 'hex')
+            );
+        } catch (e) {
+            return false;
+        }
     });
 
     if (!member) return res.status(400).json({ error: 'Invalid or expired reset token.' });

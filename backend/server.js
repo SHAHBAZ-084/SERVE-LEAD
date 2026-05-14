@@ -3,12 +3,12 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const helmet = require('helmet');
-const mongoSanitize = require('express-mongo-sanitize');
 const morgan = require('morgan');
 const cookieParser = require('cookie-parser');
 const rateLimit = require('express-rate-limit');
 const compression = require('compression');
 const logger = require('./utils/logger');
+const mongoSanitize = require('./middlewares/mongoSanitize');
 require('dotenv').config({ path: __dirname + '/.env' });
 
 const path = require('path');
@@ -34,8 +34,8 @@ app.use(helmet({
     contentSecurityPolicy: {
         directives: {
             ...helmet.contentSecurityPolicy.getDefaultDirectives(),
-            "script-src": ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https:", "blob:"],
-            "style-src": ["'self'", "'unsafe-inline'", "https:", "fonts.googleapis.com"],
+            "script-src": ["'self'", "https:", "blob:"],
+            "style-src": ["'self'", "https:", "fonts.googleapis.com"],
             "font-src": ["'self'", "https:", "data:", "fonts.gstatic.com", "cdnjs.cloudflare.com"],
             "img-src": ["'self'", "data:", "https:", "blob:", "https://serveandlead.org"],
             "connect-src": ["'self'", "https:", "http://localhost:5000", "ws://localhost:5173", "http://localhost:5173"],
@@ -46,11 +46,21 @@ app.use(helmet({
 app.use(compression()); // Gzip compression
 app.use(express.json({ limit: '10kb' })); 
 app.use(express.urlencoded({ extended: true, limit: '10kb' }));
-// app.use(mongoSanitize({ replaceWith: '_' })); // Broken with Express 5 - causes 500 on req.query
+app.use(mongoSanitize);
 app.use(cookieParser());
 
-// Logging
-app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev', {
+// Logging with IP Anonymization for Production
+morgan.token('remote-addr-anon', (req) => {
+    const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '';
+    if (ip.includes(':')) return ip.split(':').slice(0, 3).join(':') + '::'; // IPv6
+    return ip.split('.').slice(0, 3).join('.') + '.0'; // IPv4
+});
+
+const morganFormat = process.env.NODE_ENV === 'production' 
+    ? ':remote-addr-anon - :remote-user [:date[clf]] ":method :url HTTP/:http-version" :status :res[content-length] ":referrer" ":user-agent"'
+    : 'dev';
+
+app.use(morgan(morganFormat, {
     stream: { write: (message) => logger.info(message.trim()) }
 }));
 

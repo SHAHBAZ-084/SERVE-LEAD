@@ -69,8 +69,18 @@ router.post('/:id/join', authMiddleware, asyncHandler(async (req, res) => {
     const event = await Event.findById(req.params.id);
     if (!event) return res.status(404).json({ error: 'Event not found' });
 
+    // Use registrationDeadline if set, otherwise fallback to event start date
+    const joinDeadline = event.registrationDeadline || event.date;
+    if (new Date() > new Date(joinDeadline)) {
+        return res.status(400).json({ 
+            error: event.registrationDeadline 
+                ? 'Registration deadline has passed.' 
+                : 'Registration closed (Event has already started).' 
+        });
+    }
+
     if (new Date() > new Date(event.endDate)) {
-        return res.status(400).json({ error: 'This event has ended.' });
+        return res.status(400).json({ error: 'This event has concluded.' });
     }
 
     const alreadyJoined = event.participants.some(p => p.memberId.toString() === req.user.memberId);
@@ -87,7 +97,20 @@ router.post('/', authMiddleware, isAdmin, upload.single('image'), asyncHandler(a
     const image_url = getFileUrl(req.file, 'events');
 
     try {
-        if (!title) return res.status(400).json({ error: 'Event title is required.' });
+        if (!title || !date) return res.status(400).json({ error: 'Title and Start Date are required.' });
+        
+        const start = new Date(date);
+        const end = new Date(endDate || date);
+        const deadline = registrationDeadline ? new Date(registrationDeadline) : null;
+
+        if (end < start) {
+            return res.status(400).json({ error: 'End Date cannot be before the Start Date.' });
+        }
+
+        if (deadline && deadline > start) {
+             return res.status(400).json({ error: 'Registration deadline must be before or on the event start date.' });
+        }
+
         let slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
         
         // Ensure slug uniqueness before saving
@@ -97,7 +120,7 @@ router.post('/', authMiddleware, isAdmin, upload.single('image'), asyncHandler(a
         }
 
         const newEvent = new Event({ 
-            title, slug, description, date, endDate: endDate || date,
+            title, slug, description, date: start, endDate: end, registrationDeadline: deadline,
             location, is_active: is_active === 'true' || is_active === true, 
             image_url, time 
         });

@@ -9,8 +9,10 @@ const contactLimiter = rateLimit({
     message: { error: 'Too many inquiries sent from this IP. Please try again after 15 minutes.' }
 });
 
+const { validateRequest, schemas } = require('../middlewares/validationMiddleware');
+
 // POST /api/contact - Handle Homepage Inquiries
-router.post('/', contactLimiter, async (req, res) => {
+router.post('/', contactLimiter, validateRequest(schemas.contact), async (req, res) => {
   try {
     const { name, email, message } = req.body;
 
@@ -18,7 +20,7 @@ router.post('/', contactLimiter, async (req, res) => {
       return res.status(400).json({ error: 'Please provide all details (Name, Email, Message).' });
     }
 
-    const success = await sendContactEmail(name, email, message);
+    const { success } = await sendContactEmail(name, email, message);
 
     if (!success) {
       return res.status(500).json({ error: 'Failed to dispatch email. Please try again later.' });

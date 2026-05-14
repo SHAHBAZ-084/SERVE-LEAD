@@ -7,9 +7,10 @@ const authMiddleware = require('../../middlewares/authMiddleware');
 const asyncHandler = require('../../middlewares/asyncHandler');
 const { isAdmin } = require('../../middlewares/adminMiddlewares');
 const logActivity = require('../../utils/activityLogger');
+const { validateRequest, schemas } = require('../../middlewares/validationMiddleware');
 
 // Admin Login
-router.post('/login', asyncHandler(async (req, res) => {
+router.post('/login', validateRequest(schemas.login), asyncHandler(async (req, res) => {
     const { email, password } = req.body;
     const member = await Member.findOne({ email: email.toLowerCase() });
 
@@ -44,7 +45,7 @@ router.get('/profile', authMiddleware, isAdmin, asyncHandler(async (req, res) =>
     res.json(admin);
 }));
 
-router.put('/profile', authMiddleware, isAdmin, asyncHandler(async (req, res) => {
+router.put('/profile', authMiddleware, isAdmin, validateRequest(schemas.profileUpdate), asyncHandler(async (req, res) => {
     const { name, oldPassword, newPassword } = req.body;
     const admin = await Member.findById(req.user.memberId);
     if (!admin) return res.status(404).json({ error: 'Administrator record not found.' });
