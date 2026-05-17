@@ -93,7 +93,7 @@ router.post('/:id/join', authMiddleware, asyncHandler(async (req, res) => {
 
 // POST Create an event (Admin only)
 router.post('/', authMiddleware, isAdmin, upload.single('image'), asyncHandler(async (req, res) => {
-    const { title, description, date, endDate, location, is_active, time } = req.body;
+    const { title, description, date, endDate, registrationDeadline, location, is_active, time } = req.body;
     const image_url = getFileUrl(req.file, 'events');
 
     try {
