@@ -118,9 +118,8 @@ export const Template1 = ({ data, certAssets, id }) => {
       <div style={{ position: 'absolute', top: '135px', left: '50px', fontSize: '11.5px', color: '#475569', fontFamily: 'sans-serif' }}>
         Date of Issue: {issueDate}
       </div>
-
       {/* Centered Main Title Content */}
-      <div style={{ paddingTop: '80px', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
+      <div style={{ paddingTop: '135px', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
         <h1 style={{ fontSize: '54px', fontWeight: '900', color: '#003366', letterSpacing: '0.04em', textTransform: 'uppercase', lineHeight: 1, margin: 0 }}>
           CERTIFICATE
         </h1>
@@ -133,14 +132,14 @@ export const Template1 = ({ data, certAssets, id }) => {
       </div>
 
       {/* Recipient Name (Centered with clear underline frame) */}
-      <div style={{ textAlign: 'center', marginTop: '25px', padding: '0 60px' }}>
+      <div style={{ textAlign: 'center', marginTop: '45px', padding: '0 60px' }}>
         <h2 style={{ fontSize: '38px', fontWeight: 'bold', color: '#0f172a', fontFamily: '"Playfair Display", serif', textTransform: 'none', borderBottom: '1.2px solid #002b49', display: 'inline-block', paddingBottom: '6px', minWidth: '460px' }}>
           {data.memberId?.name || data.memberName || "Member Name"}
         </h2>
       </div>
 
       {/* Body Text Blocks */}
-      <div style={{ textAlign: 'center', marginTop: '25px', padding: '0 120px', fontFamily: 'sans-serif', fontSize: '12.5px', lineHeight: 1.8, color: '#475569', fontStyle: 'italic' }}>
+      <div style={{ textAlign: 'center', marginTop: '45px', padding: '0 120px', fontFamily: 'sans-serif', fontSize: '12.5px', lineHeight: 1.8, color: '#475569', fontStyle: 'italic' }}>
         {data.description ? (
           <p style={{ whiteSpace: 'pre-wrap', margin: 0 }}>{data.description}</p>
         ) : (
@@ -281,6 +280,26 @@ export const Template2 = ({ data, certAssets, id }) => {
         </svg>
       </div>
 
+      {/* Top-Right Mesh */}
+      <div style={{ position: 'absolute', top: 0, right: 0, width: '220px', height: '220px', pointerEvents: 'none', transform: 'scale(-1)' }}>
+        <svg width="220" height="220" viewBox="0 0 340 340" style={{ display: 'block' }}>
+          <polygon points="0,340 60,340 30,290" fill="#003366" />
+          <polygon points="60,340 120,340 90,290" fill="#1a8cff" opacity="0.9" />
+          <polygon points="120,340 180,340 150,290" fill="#66b3ff" opacity="0.6" />
+          <polygon points="30,290 90,290 60,230" fill="#005082" />
+          <polygon points="90,290 150,290 120,230" fill="#1a8cff" opacity="0.85" />
+          <polygon points="150,290 210,290 180,230" fill="#002b49" opacity="0.15" />
+          <polygon points="0,340 30,290 0,270" fill="#007acc" />
+          <polygon points="0,270 60,230 0,200" fill="#00a2e8" />
+          <polygon points="60,230 120,230 90,160" fill="#005082" />
+          <polygon points="120,230 180,230 150,160" fill="#1a8cff" opacity="0.75" />
+          <polygon points="0,200 90,160 40,100" fill="#002b49" />
+          <polygon points="90,160 150,160 130,90" fill="#3399ff" opacity="0.5" />
+          <polygon points="0,200 40,100 0,80" fill="#1a8cff" opacity="0.4" />
+          <polygon points="40,100 130,90 80,30" fill="#005082" />
+          <polygon points="0,80 80,30 0,10" fill="#3399ff" opacity="0.3" />
+        </svg>
+      </div>
 
       {/* Bottom-Right Mesh */}
       <div style={{ position: 'absolute', bottom: 0, right: 0, width: '220px', height: '220px', pointerEvents: 'none', transform: 'scaleX(-1)' }}>
@@ -303,13 +322,13 @@ export const Template2 = ({ data, certAssets, id }) => {
         </svg>
       </div>
 
-      {/* Logo Top-Right */}
-      <div style={{ position: 'absolute', top: '35px', right: '55px', display: 'flex', alignItems: 'center' }}>
-        <img src={certAssets?.logo || logo} alt="Logo" style={{ height: '65px', objectFit: 'contain' }} />
+      {/* Logo Top-Center */}
+      <div style={{ position: 'absolute', top: '35px', left: '50%', transform: 'translateX(-50%)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
+        <img src={certAssets?.logo || logo} alt="Logo" style={{ height: '70px', objectFit: 'contain' }} />
       </div>
 
       {/* Title & Header Section Centered */}
-      <div style={{ position: 'absolute', top: '70px', left: '150px', right: '150px', textAlign: 'center' }}>
+      <div style={{ position: 'absolute', top: '145px', left: '150px', right: '150px', textAlign: 'center' }}>
         <h1 style={{ fontSize: '46px', fontWeight: '900', color: '#002b49', textTransform: 'uppercase', letterSpacing: '0.02em', lineHeight: 1, margin: 0 }}>
           Certificate
         </h1>
@@ -322,14 +341,14 @@ export const Template2 = ({ data, certAssets, id }) => {
       </div>
 
       {/* Recipient Name Panel (Centered) */}
-      <div style={{ position: 'absolute', top: '230px', left: '150px', right: '150px', textAlign: 'center' }}>
+      <div style={{ position: 'absolute', top: '305px', left: '150px', right: '150px', textAlign: 'center' }}>
         <h2 style={{ fontSize: '36px', fontWeight: 'bold', color: '#0f172a', fontFamily: '"Playfair Display", serif', margin: 0, textTransform: 'none', borderBottom: '1.5px solid #002b49', display: 'inline-block', paddingBottom: '6px', minWidth: '400px' }}>
           {data.memberId?.name || data.memberName || "Member Name"}
         </h2>
       </div>
 
       {/* Body Content (Centered) */}
-      <div style={{ position: 'absolute', top: '330px', left: '150px', right: '150px', textAlign: 'center', fontSize: '12.5px', lineHeight: 1.8, color: '#475569', fontStyle: 'italic' }}>
+      <div style={{ position: 'absolute', top: '410px', left: '150px', right: '150px', textAlign: 'center', fontSize: '12.5px', lineHeight: 1.8, color: '#475569', fontStyle: 'italic' }}>
         {data.description ? (
           <p style={{ whiteSpace: 'pre-wrap', margin: 0 }}>{data.description}</p>
         ) : (
@@ -478,25 +497,25 @@ export const Template3 = ({ data, certAssets, id }) => {
       </div>
 
       {/* Title block */}
-      <div style={{ position: 'absolute', top: '130px', left: '50px', width: '650px' }}>
+      <div style={{ position: 'absolute', top: '135px', left: 0, width: '743px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
         <h1 style={{ fontSize: '42px', fontWeight: '900', color: '#0f172a', textTransform: 'uppercase', letterSpacing: '0.02em', lineHeight: 1.1, margin: 0 }}>
           CERTIFICATE OF PARTICIPATION
         </h1>
-        <p style={{ fontSize: '15px', color: '#475569', marginTop: '12px', fontWeight: 'bold', tracking: '0.05em' }}>
+        <p style={{ fontSize: '15px', color: '#475569', marginTop: '12px', fontWeight: 'bold', letterSpacing: '0.05em' }}>
           This Certificate Is Proudly Presented To
         </p>
       </div>
 
       {/* Recipient Name with underline */}
-      <div style={{ position: 'absolute', top: '250px', left: '50px', width: '650px' }}>
+      <div style={{ position: 'absolute', top: '260px', left: 0, width: '743px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
         <h2 style={{ fontSize: '38px', fontWeight: 'bold', color: '#0f172a', fontFamily: '"Playfair Display", serif', margin: '0 0 10px 0', textTransform: 'none' }}>
           {data.memberId?.name || data.memberName || "Member Name"}
         </h2>
-        <div style={{ width: '80%', height: '1.2px', backgroundColor: '#0f172a' }} />
+        <div style={{ width: '460px', height: '1.2px', backgroundColor: '#0f172a' }} />
       </div>
 
       {/* Body Description */}
-      <div style={{ position: 'absolute', top: '350px', left: '50px', width: '600px', fontSize: '13px', lineHeight: 1.8, color: '#475569', fontWeight: '500' }}>
+      <div style={{ position: 'absolute', top: '360px', left: 0, width: '743px', padding: '0 80px', boxSizing: 'border-box', textAlign: 'center', fontSize: '13px', lineHeight: 1.8, color: '#475569', fontWeight: '500' }}>
         {data.description ? (
           <p style={{ whiteSpace: 'pre-wrap', margin: 0 }}>{data.description}</p>
         ) : (
@@ -521,9 +540,9 @@ export const Template3 = ({ data, certAssets, id }) => {
       </div>
 
       {/* Footer / Signature and Date section */}
-      <div style={{ position: 'absolute', bottom: '65px', left: '50px', width: '500px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+      <div style={{ position: 'absolute', bottom: '65px', left: '50px', width: '643px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
         {/* Signature */}
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '220px' }}>
           <div style={{ height: '65px', display: 'flex', alignItems: 'flex-end', marginBottom: '4px' }}>
             {certAssets?.signature ? (
               <img src={certAssets.signature} alt="Signature" style={{ height: '55px', objectFit: 'contain' }} />
@@ -543,7 +562,7 @@ export const Template3 = ({ data, certAssets, id }) => {
         </div>
 
         {/* Date Line */}
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '180px' }}>
           <div style={{ height: '65px', display: 'flex', alignItems: 'flex-end', marginBottom: '4px' }}>
             <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#0f172a', paddingBottom: '5px' }}>
               {eventDate}
