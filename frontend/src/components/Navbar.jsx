@@ -121,7 +121,7 @@ export default function Navbar() {
 
         {/* Logo */}
         <div className="flex items-center cursor-pointer transition-transform active:scale-95" onClick={() => handleNavigation("/")}>
-          <img src={logo} alt="Serve & Lead" className="h-10 sm:h-14 -my-3 object-contain" />
+          <img src={logo} alt="Serve & Lead" className="h-8 sm:h-10 object-contain" />
         </div>
 
         {/* Desktop Links */}
