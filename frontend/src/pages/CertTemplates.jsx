@@ -64,8 +64,8 @@ export const Template1 = ({ data, certAssets, id }) => {
       overflow: 'hidden', boxSizing: 'border-box', color: '#0f172a'
     }}>
       {/* Top-Right Premium Dense Triangulation Geometric Mesh (SVG - Scaled and Positioned for Landscape) */}
-      <div style={{ position: 'absolute', top: 0, right: 0, width: '380px', height: '380px', pointerEvents: 'none' }}>
-        <svg width="380" height="380" viewBox="0 0 340 340" style={{ display: 'block' }}>
+      <div style={{ position: 'absolute', top: 0, right: 0, width: '240px', height: '240px', pointerEvents: 'none' }}>
+        <svg width="240" height="240" viewBox="0 0 340 340" style={{ display: 'block' }}>
           <polygon points="340,0 280,0 310,50" fill="#003366" />
           <polygon points="280,0 220,0 250,50" fill="#1a8cff" opacity="0.9" />
           <polygon points="220,0 160,0 190,50" fill="#66b3ff" opacity="0.6" />
@@ -85,8 +85,8 @@ export const Template1 = ({ data, certAssets, id }) => {
       </div>
 
       {/* Bottom-Left Premium Dense Triangulation Geometric Mesh (SVG - Scaled and Positioned for Landscape) */}
-      <div style={{ position: 'absolute', bottom: 0, left: 0, width: '380px', height: '380px', pointerEvents: 'none' }}>
-        <svg width="380" height="380" viewBox="0 0 340 340" style={{ display: 'block' }}>
+      <div style={{ position: 'absolute', bottom: 0, left: 0, width: '240px', height: '240px', pointerEvents: 'none' }}>
+        <svg width="240" height="240" viewBox="0 0 340 340" style={{ display: 'block' }}>
           <polygon points="0,340 60,340 30,290" fill="#003366" />
           <polygon points="60,340 120,340 90,290" fill="#1a8cff" opacity="0.9" />
           <polygon points="120,340 180,340 150,290" fill="#66b3ff" opacity="0.6" />
@@ -168,7 +168,7 @@ export const Template1 = ({ data, certAssets, id }) => {
       </div>
 
       {/* Bottom Footer Section: CEO Signature & Verified Stamp */}
-      <div style={{ position: 'absolute', bottom: '65px', left: '100px', right: '100px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+      <div style={{ position: 'absolute', bottom: '65px', left: '160px', right: '160px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
         {/* CEO Signature Block */}
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
           <div style={{ height: '70px', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', marginBottom: '5px' }}>
@@ -230,9 +230,9 @@ export const Template2 = ({ data, certAssets, id }) => {
           <polygon points="0,0 200,0 80,130 0,80" fill="#00a8ff" opacity="0.85" />
           {/* Left abstract geometric fold overlay */}
           <polygon points="0,150 70,200 50,380 0,320" fill="#0c213d" opacity="0.08" />
-          {/* Bottom-left geometric block */}
-          <polygon points="0,580 140,670 90,794 0,794" fill="#003366" />
-          <polygon points="0,640 100,700 60,794 0,794" fill="#00a8ff" opacity="0.85" />
+          {/* Bottom-left geometric block (Narrowed to prevent overlap with signature) */}
+          <polygon points="0,580 115,670 70,794 0,794" fill="#003366" />
+          <polygon points="0,640 80,700 50,794 0,794" fill="#00a8ff" opacity="0.85" />
         </svg>
       </div>
 
@@ -298,8 +298,8 @@ export const Template2 = ({ data, certAssets, id }) => {
         )}
       </div>
 
-      {/* Bottom Footer Section (Perfectly aligned with centered design) */}
-      <div style={{ position: 'absolute', bottom: '65px', left: '100px', width: '570px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+      {/* Bottom Footer Section (Perfectly aligned and shifted right to prevent overlap) */}
+      <div style={{ position: 'absolute', bottom: '65px', left: '150px', width: '520px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
         {/* Signature */}
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
           <div style={{ height: '65px', display: 'flex', alignItems: 'flex-end', marginBottom: '4px' }}>
@@ -335,7 +335,7 @@ export const Template2 = ({ data, certAssets, id }) => {
       </div>
 
       {/* Footer Text */}
-      <div style={{ position: 'absolute', bottom: '25px', left: '100px', width: '570px', textAlign: 'center', fontSize: '10.5px', color: '#64748b', fontStyle: 'italic', fontWeight: 'bold' }}>
+      <div style={{ position: 'absolute', bottom: '25px', left: '150px', width: '520px', textAlign: 'center', fontSize: '10.5px', color: '#64748b', fontStyle: 'italic', fontWeight: 'bold' }}>
         Verify Through SLS Website by Using Membership ID
       </div>
     </div>
