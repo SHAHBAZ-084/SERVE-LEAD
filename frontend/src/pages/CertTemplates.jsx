@@ -63,45 +63,73 @@ export const Template1 = ({ data, certAssets, id }) => {
       backgroundColor: '#ffffff', fontFamily: 'sans-serif',
       overflow: 'hidden', boxSizing: 'border-box', color: '#0f172a'
     }}>
-      {/* Top-Right Premium Dense Triangulation Geometric Mesh (SVG - Scaled and Positioned for Landscape) */}
-      <div style={{ position: 'absolute', top: 0, right: 0, width: '240px', height: '240px', pointerEvents: 'none' }}>
-        <svg width="240" height="240" viewBox="0 0 340 340" style={{ display: 'block' }}>
-          <polygon points="340,0 280,0 310,50" fill="#003366" />
-          <polygon points="280,0 220,0 250,50" fill="#1a8cff" opacity="0.9" />
-          <polygon points="220,0 160,0 190,50" fill="#66b3ff" opacity="0.6" />
-          <polygon points="310,50 250,50 280,110" fill="#005082" />
-          <polygon points="250,50 190,50 220,110" fill="#1a8cff" opacity="0.85" />
-          <polygon points="190,50 130,50 160,110" fill="#002b49" opacity="0.15" />
-          <polygon points="340,0 310,50 340,70" fill="#007acc" />
-          <polygon points="340,70 280,110 340,140" fill="#00a2e8" />
-          <polygon points="280,110 220,110 250,180" fill="#005082" />
-          <polygon points="220,110 160,110 190,180" fill="#1a8cff" opacity="0.75" />
-          <polygon points="340,140 250,180 300,240" fill="#002b49" />
-          <polygon points="250,180 190,180 210,250" fill="#3399ff" opacity="0.5" />
-          <polygon points="340,140 300,240 340,260" fill="#1a8cff" opacity="0.4" />
-          <polygon points="300,240 210,250 260,310" fill="#005082" />
-          <polygon points="340,260 260,310 340,330" fill="#3399ff" opacity="0.3" />
+      {/* Top-Right Premium Isometric Cube Mesh */}
+      <div style={{ position: 'absolute', top: 0, right: 0, width: '280px', height: '280px', pointerEvents: 'none' }}>
+        <svg width="280" height="280" viewBox="0 0 340 340" style={{ display: 'block' }}>
+          {/* Wireframe Mesh */}
+          <g stroke="#7dd3fc" strokeWidth="1.5" fill="none">
+            <polygon points="40,0 -10,86.6 90,86.6" />
+            <polygon points="-10,86.6 40,173.2 90,86.6" />
+            <polygon points="90,86.6 40,173.2 140,173.2" />
+            <polygon points="40,173.2 -10,259.8 90,259.8" />
+            <polygon points="40,173.2 90,259.8 140,173.2" />
+            <polygon points="90,259.8 40,346.4 140,346.4" />
+            <polygon points="190,259.8 140,346.4 240,346.4" />
+            <polygon points="240,259.8 240,346.4 290,346.4" />
+            <polygon points="290,173.2 240,259.8 340,259.8" />
+            <polygon points="340,259.8 240,259.8 290,346.4" />
+            <polygon points="290,346.4 340,346.4 340,259.8" />
+            <polygon points="-60,173.2 -10,259.8 40,173.2" />
+            <polygon points="-10,259.8 -60,346.4 40,346.4" />
+            <polygon points="-10,259.8 40,346.4 90,259.8" />
+          </g>
+
+          {/* Solid Polygons */}
+          <g stroke="#ffffff" strokeWidth="1">
+            <polygon points="340,0 240,0 240,86.6 340,86.6" fill="#1e3a8a" />
+            <polygon points="240,0 140,0 90,86.6 140,173.2 240,173.2 240,86.6" fill="#0ea5e9" />
+            <polygon points="340,86.6 240,86.6 190,173.2 290,173.2" fill="#3b82f6" />
+            <polygon points="340,86.6 290,173.2 340,259.8" fill="#0ea5e9" />
+            <polygon points="140,0 40,0 90,86.6" fill="#1e3a8a" />
+            <polygon points="140,173.2 90,259.8 190,259.8" fill="#3b82f6" />
+            <polygon points="290,173.2 190,173.2 240,259.8" fill="#1e3a8a" />
+            <polygon points="240,259.8 190,259.8 140,346.4 190,346.4" fill="#0ea5e9" />
+          </g>
         </svg>
       </div>
 
-      {/* Bottom-Left Premium Dense Triangulation Geometric Mesh (SVG - Scaled and Positioned for Landscape) */}
-      <div style={{ position: 'absolute', bottom: 0, left: 0, width: '240px', height: '240px', pointerEvents: 'none' }}>
-        <svg width="240" height="240" viewBox="0 0 340 340" style={{ display: 'block' }}>
-          <polygon points="0,340 60,340 30,290" fill="#003366" />
-          <polygon points="60,340 120,340 90,290" fill="#1a8cff" opacity="0.9" />
-          <polygon points="120,340 180,340 150,290" fill="#66b3ff" opacity="0.6" />
-          <polygon points="30,290 90,290 60,230" fill="#005082" />
-          <polygon points="90,290 150,290 120,230" fill="#1a8cff" opacity="0.85" />
-          <polygon points="150,290 210,290 180,230" fill="#002b49" opacity="0.15" />
-          <polygon points="0,340 30,290 0,270" fill="#007acc" />
-          <polygon points="0,270 60,230 0,200" fill="#00a2e8" />
-          <polygon points="60,230 120,230 90,160" fill="#005082" />
-          <polygon points="120,230 180,230 150,160" fill="#1a8cff" opacity="0.75" />
-          <polygon points="0,200 90,160 40,100" fill="#002b49" />
-          <polygon points="90,160 150,160 130,90" fill="#3399ff" opacity="0.5" />
-          <polygon points="0,200 40,100 0,80" fill="#1a8cff" opacity="0.4" />
-          <polygon points="40,100 130,90 80,30" fill="#005082" />
-          <polygon points="0,80 80,30 0,10" fill="#3399ff" opacity="0.3" />
+      {/* Bottom-Left Premium Isometric Cube Mesh (Mirrored) */}
+      <div style={{ position: 'absolute', bottom: 0, left: 0, width: '280px', height: '280px', pointerEvents: 'none', transform: 'scale(-1)' }}>
+        <svg width="280" height="280" viewBox="0 0 340 340" style={{ display: 'block' }}>
+          {/* Wireframe Mesh */}
+          <g stroke="#7dd3fc" strokeWidth="1.5" fill="none">
+            <polygon points="40,0 -10,86.6 90,86.6" />
+            <polygon points="-10,86.6 40,173.2 90,86.6" />
+            <polygon points="90,86.6 40,173.2 140,173.2" />
+            <polygon points="40,173.2 -10,259.8 90,259.8" />
+            <polygon points="40,173.2 90,259.8 140,173.2" />
+            <polygon points="90,259.8 40,346.4 140,346.4" />
+            <polygon points="190,259.8 140,346.4 240,346.4" />
+            <polygon points="240,259.8 240,346.4 290,346.4" />
+            <polygon points="290,173.2 240,259.8 340,259.8" />
+            <polygon points="340,259.8 240,259.8 290,346.4" />
+            <polygon points="290,346.4 340,346.4 340,259.8" />
+            <polygon points="-60,173.2 -10,259.8 40,173.2" />
+            <polygon points="-10,259.8 -60,346.4 40,346.4" />
+            <polygon points="-10,259.8 40,346.4 90,259.8" />
+          </g>
+
+          {/* Solid Polygons */}
+          <g stroke="#ffffff" strokeWidth="1">
+            <polygon points="340,0 240,0 240,86.6 340,86.6" fill="#1e3a8a" />
+            <polygon points="240,0 140,0 90,86.6 140,173.2 240,173.2 240,86.6" fill="#0ea5e9" />
+            <polygon points="340,86.6 240,86.6 190,173.2 290,173.2" fill="#3b82f6" />
+            <polygon points="340,86.6 290,173.2 340,259.8" fill="#0ea5e9" />
+            <polygon points="140,0 40,0 90,86.6" fill="#1e3a8a" />
+            <polygon points="140,173.2 90,259.8 190,259.8" fill="#3b82f6" />
+            <polygon points="290,173.2 190,173.2 240,259.8" fill="#1e3a8a" />
+            <polygon points="240,259.8 190,259.8 140,346.4 190,346.4" fill="#0ea5e9" />
+          </g>
         </svg>
       </div>
 
@@ -220,6 +248,10 @@ export const Template2 = ({ data, certAssets, id }) => {
   const eventDate = data.eventId?.date 
     ? new Date(data.eventId.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
     : '28 February 2026';
+
+  const issueDate = data.issueDate 
+    ? new Date(data.issueDate).toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' })
+    : '1 March 2026';
 
   // Handle double 'Chairman SLS' text fallback
   const chairmanName = data.chairmanName || "M Farooq Ahmad";
