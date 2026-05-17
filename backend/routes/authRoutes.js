@@ -152,8 +152,8 @@ router.post('/verify-otp', asyncHandler(async (req, res) => {
     }
     // Mark as verified instead of deleting immediately, so /register can check it
     otp.code = "VERIFIED";
-    // Shorten TTL for verified record to 2 minutes (300s - 180s = 120s)
-    otp.createdAt = new Date(Date.now() - 180000); 
+    // Extend TTL for verified record to 10 minutes so user has time to finish the form
+    otp.createdAt = new Date(Date.now() + 300000); 
     await otp.save();
     res.status(200).json({ message: 'Email verified successfully.' });
 }));
