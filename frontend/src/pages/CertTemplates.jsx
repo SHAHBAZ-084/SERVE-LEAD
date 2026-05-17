@@ -208,7 +208,7 @@ export const Template1 = ({ data, certAssets, id }) => {
       </div>
 
       {/* Bottom Footer Section: CEO Signature & Verified Stamp */}
-      <div style={{ position: 'absolute', bottom: '65px', left: '160px', right: '160px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+      <div style={{ position: 'absolute', bottom: '65px', left: '280px', right: '280px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
         {/* CEO Signature Block */}
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
           <div style={{ height: '70px', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', marginBottom: '5px' }}>
