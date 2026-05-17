@@ -1068,7 +1068,6 @@ const MemberDashboard = () => {
         { id: 'announcements', label: 'Announcements', icon: 'fa-bullhorn' },
         { id: 'certificates', label: 'My Certificates', icon: 'fa-medal' },
         { id: 'letters', label: 'Official Letters', icon: 'fa-file-invoice' },
-        { id: 'terms', label: 'Terms & Conditions', icon: 'fa-shield-halved' },
     ];
 
     return (
@@ -1154,7 +1153,6 @@ const MemberDashboard = () => {
                                 {activeTab === 'certificates' && renderCertificates()}
                                 {activeTab === 'letters' && renderLetters()}
                                 {activeTab === 'settings' && renderSettings()}
-                                {activeTab === 'terms' && <div className="animate-fade-up"><iframe src="/terms" className="w-full h-[80vh] rounded-[2.5rem] border border-slate-100 shadow-inner" /></div>}
                             </>
                         )}
                     </div>
