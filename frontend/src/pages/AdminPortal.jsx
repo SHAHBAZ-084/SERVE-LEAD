@@ -773,7 +773,7 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
         category: "Appreciation",
         customCategory: "",
         description: "For their outstanding contribution and dedication to the society's goals and initiatives.",
-        chairmanName: "Chairman SLS",
+        chairmanName: "Muhammad Farooq Ahmad",
         title: "CERTIFICATE OF MEMBERSHIP",
         awardType: "Official Membership"
     });
@@ -831,7 +831,7 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
                 category: "Appreciation",
                 customCategory: "",
                 description: "For their outstanding contribution and dedication to the society's goals and initiatives.",
-                chairmanName: "Chairman SLS",
+                chairmanName: "Muhammad Farooq Ahmad",
                 title: "CERTIFICATE OF MEMBERSHIP",
                 awardType: "Official Membership"
             });
@@ -857,7 +857,7 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
                 category: "Appreciation",
                 customCategory: "",
                 description: "For their outstanding contribution and dedication to the society's goals and initiatives.",
-                chairmanName: "Chairman SLS",
+                chairmanName: "Muhammad Farooq Ahmad",
                 title: "CERTIFICATE OF MEMBERSHIP",
                 awardType: "Official Membership"
             });
