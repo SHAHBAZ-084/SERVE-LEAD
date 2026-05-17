@@ -265,45 +265,41 @@ export const Template2 = ({ data, certAssets, id }) => {
       backgroundColor: '#ffffff', fontFamily: 'sans-serif',
       overflow: 'hidden', boxSizing: 'border-box', color: '#0f172a'
     }}>
-      {/* Top-Right Premium Dense Triangulation Geometric Mesh (SVG - Scaled and Positioned for Landscape) */}
-      <div style={{ position: 'absolute', top: 0, right: 0, width: '240px', height: '240px', pointerEvents: 'none' }}>
-        <svg width="240" height="240" viewBox="0 0 340 340" style={{ display: 'block' }}>
-          <polygon points="340,0 280,0 310,50" fill="#003366" />
-          <polygon points="280,0 220,0 250,50" fill="#1a8cff" opacity="0.9" />
-          <polygon points="220,0 160,0 190,50" fill="#66b3ff" opacity="0.6" />
-          <polygon points="310,50 250,50 280,110" fill="#005082" />
-          <polygon points="250,50 190,50 220,110" fill="#1a8cff" opacity="0.85" />
-          <polygon points="190,50 130,50 160,110" fill="#002b49" opacity="0.15" />
-          <polygon points="340,0 310,50 340,70" fill="#007acc" />
-          <polygon points="340,70 280,110 340,140" fill="#00a2e8" />
-          <polygon points="280,110 220,110 250,180" fill="#005082" />
-          <polygon points="220,110 160,110 190,180" fill="#1a8cff" opacity="0.75" />
-          <polygon points="340,140 250,180 300,240" fill="#002b49" />
-          <polygon points="250,180 190,180 210,250" fill="#3399ff" opacity="0.5" />
-          <polygon points="340,140 300,240 340,260" fill="#1a8cff" opacity="0.4" />
-          <polygon points="300,240 210,250 260,310" fill="#005082" />
-          <polygon points="340,260 260,310 340,330" fill="#3399ff" opacity="0.3" />
+      {/* Top-Left Minimalist Diagonal Band Mesh (Rotated) */}
+      <div style={{ position: 'absolute', top: 0, left: 0, width: '300px', height: '300px', pointerEvents: 'none', transform: 'rotate(180deg)' }}>
+        <svg width="300" height="300" viewBox="0 0 400 400" style={{ display: 'block' }}>
+          {/* Subtle Grey Geometric Background */}
+          <g opacity="0.6">
+            <polygon points="100,0 400,150 250,400" fill="#f1f5f9" />
+            <polygon points="0,150 250,400 50,400" fill="#e2e8f0" />
+            <polygon points="0,0 100,0 0,150" fill="#f8fafc" />
+            <polygon points="100,0 400,0 400,150" fill="#e2e8f0" />
+          </g>
+          {/* Light Blue Diagonal Band */}
+          <polygon points="0,400 0,310 400,170 400,400" fill="#38bdf8" />
+          {/* Dark Blue Diagonal Band */}
+          <polygon points="0,400 0,360 400,240 400,400" fill="#1e40af" />
+          {/* Medium Blue Vertical Bar (in front) */}
+          <polygon points="330,50 400,20 400,400 330,400" fill="#2563eb" />
         </svg>
       </div>
 
-      {/* Bottom-Left Premium Dense Triangulation Geometric Mesh (SVG - Scaled and Positioned for Landscape) */}
-      <div style={{ position: 'absolute', bottom: 0, left: 0, width: '240px', height: '240px', pointerEvents: 'none' }}>
-        <svg width="240" height="240" viewBox="0 0 340 340" style={{ display: 'block' }}>
-          <polygon points="0,340 60,340 30,290" fill="#003366" />
-          <polygon points="60,340 120,340 90,290" fill="#1a8cff" opacity="0.9" />
-          <polygon points="120,340 180,340 150,290" fill="#66b3ff" opacity="0.6" />
-          <polygon points="30,290 90,290 60,230" fill="#005082" />
-          <polygon points="90,290 150,290 120,230" fill="#1a8cff" opacity="0.85" />
-          <polygon points="150,290 210,290 180,230" fill="#002b49" opacity="0.15" />
-          <polygon points="0,340 30,290 0,270" fill="#007acc" />
-          <polygon points="0,270 60,230 0,200" fill="#00a2e8" />
-          <polygon points="60,230 120,230 90,160" fill="#005082" />
-          <polygon points="120,230 180,230 150,160" fill="#1a8cff" opacity="0.75" />
-          <polygon points="0,200 90,160 40,100" fill="#002b49" />
-          <polygon points="90,160 150,160 130,90" fill="#3399ff" opacity="0.5" />
-          <polygon points="0,200 40,100 0,80" fill="#1a8cff" opacity="0.4" />
-          <polygon points="40,100 130,90 80,30" fill="#005082" />
-          <polygon points="0,80 80,30 0,10" fill="#3399ff" opacity="0.3" />
+      {/* Bottom-Right Minimalist Diagonal Band Mesh */}
+      <div style={{ position: 'absolute', bottom: 0, right: 0, width: '300px', height: '300px', pointerEvents: 'none' }}>
+        <svg width="300" height="300" viewBox="0 0 400 400" style={{ display: 'block' }}>
+          {/* Subtle Grey Geometric Background */}
+          <g opacity="0.6">
+            <polygon points="100,0 400,150 250,400" fill="#f1f5f9" />
+            <polygon points="0,150 250,400 50,400" fill="#e2e8f0" />
+            <polygon points="0,0 100,0 0,150" fill="#f8fafc" />
+            <polygon points="100,0 400,0 400,150" fill="#e2e8f0" />
+          </g>
+          {/* Light Blue Diagonal Band */}
+          <polygon points="0,400 0,310 400,170 400,400" fill="#38bdf8" />
+          {/* Dark Blue Diagonal Band */}
+          <polygon points="0,400 0,360 400,240 400,400" fill="#1e40af" />
+          {/* Medium Blue Vertical Bar (in front) */}
+          <polygon points="330,50 400,20 400,400 330,400" fill="#2563eb" />
         </svg>
       </div>
 
@@ -311,20 +307,20 @@ export const Template2 = ({ data, certAssets, id }) => {
       <div style={{ position: 'absolute', top: '15px', bottom: '15px', left: '15px', right: '15px', border: '1.5px solid #002b49', pointerEvents: 'none' }} />
       <div style={{ position: 'absolute', top: '20px', bottom: '20px', left: '20px', right: '20px', border: '0.8px solid #002b49', pointerEvents: 'none' }} />
 
-      {/* Logo Top-Left */}
-      <div style={{ position: 'absolute', top: '45px', left: '50px' }}>
+      {/* Logo Top-Center */}
+      <div style={{ position: 'absolute', top: '45px', left: '50%', transform: 'translateX(-50%)' }}>
         <img src={certAssets?.logo || logo} alt="Logo" style={{ height: '70px', objectFit: 'contain' }} />
       </div>
 
       {/* Date of Issue below logo */}
-      <div style={{ position: 'absolute', top: '135px', left: '50px', fontSize: '11.5px', color: '#475569', fontFamily: 'sans-serif' }}>
+      <div style={{ position: 'absolute', top: '135px', left: '50%', transform: 'translateX(-50%)', fontSize: '11.5px', color: '#475569', fontFamily: 'sans-serif', fontWeight: 'bold' }}>
         Date of Issue: {issueDate}
       </div>
 
-      {/* Centered Main Content Block (Mathematically centered horizontally & vertically) */}
+      {/* Centered Main Content Block */}
       <div style={{
         position: 'absolute',
-        top: '380px',
+        top: '400px',
         left: '50%',
         transform: 'translate(-50%, -50%)',
         width: '850px',
@@ -382,36 +378,33 @@ export const Template2 = ({ data, certAssets, id }) => {
         </div>
       </div>
 
-      {/* Bottom Footer Section: CEO Signature & Verified Stamp */}
-      <div style={{ position: 'absolute', bottom: '65px', left: '160px', right: '160px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
-        {/* CEO Signature Block */}
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
-          <div style={{ height: '70px', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', marginBottom: '5px' }}>
-            {certAssets?.signature ? (
-              <img src={certAssets.signature} alt="Signature" style={{ height: '60px', objectFit: 'contain' }} />
-            ) : (
-              <span style={{ fontSize: '26px', fontFamily: '"Dancing Script", cursive', color: '#0f172a' }}>
-                {finalChairmanName}
-              </span>
-            )}
-          </div>
-          <div style={{ width: '170px', height: '1px', backgroundColor: '#0f172a', marginBottom: '5px' }} />
-          <p style={{ fontWeight: 'bold', fontSize: '13px', color: '#0f172a', margin: 0 }}>
-            {finalChairmanName}
-          </p>
-          <p style={{ fontSize: '10.5px', color: '#64748b', margin: 0, fontStyle: 'italic' }}>
-            CEO of Society
-          </p>
+      {/* CEO Signature Block (Bottom Left) */}
+      <div style={{ position: 'absolute', bottom: '65px', left: '160px', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
+        <div style={{ height: '70px', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', marginBottom: '5px' }}>
+          {certAssets?.signature ? (
+            <img src={certAssets.signature} alt="Signature" style={{ height: '60px', objectFit: 'contain' }} />
+          ) : (
+            <span style={{ fontSize: '26px', fontFamily: '"Dancing Script", cursive', color: '#0f172a' }}>
+              {finalChairmanName}
+            </span>
+          )}
         </div>
+        <div style={{ width: '170px', height: '1px', backgroundColor: '#0f172a', marginBottom: '5px' }} />
+        <p style={{ fontWeight: 'bold', fontSize: '13px', color: '#0f172a', margin: 0 }}>
+          {finalChairmanName}
+        </p>
+        <p style={{ fontSize: '10.5px', color: '#64748b', margin: 0, fontStyle: 'italic' }}>
+          CEO of Society
+        </p>
+      </div>
 
-        {/* Dynamic Vector Verified Stamp (Black as Mockup) */}
-        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-          <VerifiedStamp color="#002b49" id="t2" />
-        </div>
+      {/* Dynamic Vector Verified Stamp (Bottom Center) */}
+      <div style={{ position: 'absolute', bottom: '65px', left: '50%', transform: 'translateX(-50%)', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+        <VerifiedStamp color="#002b49" id="t2" />
       </div>
 
       {/* Footer Text */}
-      <div style={{ position: 'absolute', bottom: '25px', left: '150px', right: '150px', textAlign: 'center', fontSize: '10.5px', color: '#64748b', fontStyle: 'italic', fontWeight: 'bold' }}>
+      <div style={{ position: 'absolute', bottom: '25px', left: '50%', transform: 'translateX(-50%)', textAlign: 'center', fontSize: '10.5px', color: '#64748b', fontStyle: 'italic', fontWeight: 'bold', whiteSpace: 'nowrap' }}>
         Verify Through SLS Website by Using Membership ID
       </div>
     </div>
