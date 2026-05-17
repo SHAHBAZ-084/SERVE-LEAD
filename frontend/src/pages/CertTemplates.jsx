@@ -118,52 +118,65 @@ export const Template1 = ({ data, certAssets, id }) => {
       <div style={{ position: 'absolute', top: '135px', left: '50px', fontSize: '11.5px', color: '#475569', fontFamily: 'sans-serif' }}>
         Date of Issue: {issueDate}
       </div>
-      {/* Centered Main Title Content */}
-      <div style={{ paddingTop: '135px', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
+      {/* Centered Main Content Block (Mathematically centered horizontally & vertically) */}
+      <div style={{
+        position: 'absolute',
+        top: '380px',
+        left: '50%',
+        transform: 'translate(-50%, -50%)',
+        width: '850px',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        textAlign: 'center',
+        zIndex: 5
+      }}>
+        {/* Title */}
         <h1 style={{ fontSize: '54px', fontWeight: '900', color: '#003366', letterSpacing: '0.04em', textTransform: 'uppercase', lineHeight: 1, margin: 0 }}>
           CERTIFICATE
         </h1>
-        <p style={{ fontSize: '24px', color: '#003366', margin: '6px 0 0', fontStyle: 'italic', fontWeight: 'bold' }}>
+        {/* Subtitle */}
+        <p style={{ fontSize: '24px', color: '#003366', margin: '8px 0 0', fontStyle: 'italic', fontWeight: 'bold' }}>
           {data.awardType || "Of Participation"}
         </p>
         <p style={{ fontSize: '13px', fontStyle: 'italic', color: '#64748b', marginTop: '12px', letterSpacing: '0.05em' }}>
           This certificate is presented to
         </p>
-      </div>
 
-      {/* Recipient Name (Centered with clear underline frame) */}
-      <div style={{ textAlign: 'center', marginTop: '45px', padding: '0 60px' }}>
-        <h2 style={{ fontSize: '38px', fontWeight: 'bold', color: '#0f172a', fontFamily: '"Playfair Display", serif', textTransform: 'none', borderBottom: '1.2px solid #002b49', display: 'inline-block', paddingBottom: '6px', minWidth: '460px' }}>
-          {data.memberId?.name || data.memberName || "Member Name"}
-        </h2>
-      </div>
+        {/* Recipient Name */}
+        <div style={{ marginTop: '35px', width: '100%' }}>
+          <h2 style={{ fontSize: '38px', fontWeight: 'bold', color: '#0f172a', fontFamily: '"Playfair Display", serif', margin: 0, textTransform: 'none', borderBottom: '1.2px solid #002b49', display: 'inline-block', paddingBottom: '6px', minWidth: '460px' }}>
+            {data.memberId?.name || data.memberName || "Member Name"}
+          </h2>
+        </div>
 
-      {/* Body Text Blocks */}
-      <div style={{ textAlign: 'center', marginTop: '45px', padding: '0 120px', fontFamily: 'sans-serif', fontSize: '12.5px', lineHeight: 1.8, color: '#475569', fontStyle: 'italic' }}>
-        {data.description ? (
-          <p style={{ whiteSpace: 'pre-wrap', margin: 0 }}>{data.description}</p>
-        ) : (
-          <div>
-            <p style={{ margin: 0 }}>
-              has successfully participated in the online training session titled
-            </p>
-            <p style={{ margin: '4px 0', fontSize: '14px', fontWeight: 'bold', color: '#003366', fontStyle: 'normal' }}>
-              “{data.eventId?.title || "Orientation & How to Add References in MS Word"}”
-            </p>
-            <p style={{ margin: 0 }}>
-              held on {eventDate}.
-            </p>
-            <p style={{ margin: '8px 0 0', fontSize: '11.5px', color: '#64748b' }}>
-              The participant actively engaged in the orientation, practical demonstration, assessment, and interactive Q&A session.
-            </p>
-            <p style={{ margin: '4px 0', fontSize: '11.5px', fontWeight: 'bold', color: '#0f172a', fontStyle: 'normal' }}>
-              This certificate is issued only after the successful submission of the required assessment.
-            </p>
-            <p style={{ margin: '4px 0 0', fontSize: '11.5px', color: '#64748b' }}>
-              We appreciate the participant's commitment to academic excellence and continuous learning.
-            </p>
-          </div>
-        )}
+        {/* Body Description */}
+        <div style={{ marginTop: '35px', width: '100%', fontFamily: 'sans-serif', fontSize: '12.5px', lineHeight: 1.8, color: '#475569', fontStyle: 'italic', padding: '0 40px', boxSizing: 'border-box' }}>
+          {data.description ? (
+            <p style={{ whiteSpace: 'pre-wrap', margin: 0 }}>{data.description}</p>
+          ) : (
+            <div>
+              <p style={{ margin: 0 }}>
+                has successfully participated in the online training session titled
+              </p>
+              <p style={{ margin: '4px 0', fontSize: '14px', fontWeight: 'bold', color: '#003366', fontStyle: 'normal' }}>
+                “{data.eventId?.title || "Orientation & How to Add References in MS Word"}”
+              </p>
+              <p style={{ margin: 0 }}>
+                held on {eventDate}.
+              </p>
+              <p style={{ margin: '8px 0 0', fontSize: '11.5px', color: '#64748b' }}>
+                The participant actively engaged in the orientation, practical demonstration, assessment, and interactive Q&A session.
+              </p>
+              <p style={{ margin: '4px 0', fontSize: '11.5px', fontWeight: 'bold', color: '#0f172a', fontStyle: 'normal' }}>
+                This certificate is issued only after the successful submission of the required assessment.
+              </p>
+              <p style={{ margin: '4px 0 0', fontSize: '11.5px', color: '#64748b' }}>
+                We appreciate the participant's commitment to academic excellence and continuous learning.
+              </p>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Bottom Footer Section: CEO Signature & Verified Stamp */}
