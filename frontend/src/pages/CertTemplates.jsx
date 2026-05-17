@@ -421,28 +421,69 @@ export const Template3 = ({ data, certAssets, id }) => {
         </svg>
       </div>
 
-      {/* Decorative Gold & Blue Accent Dots (Behind right panel) */}
-      <div style={{ position: 'absolute', top: '15px', right: '360px', display: 'grid', gridTemplateColumns: 'repeat(6, 8px)', gap: '6px', opacity: 0.65 }}>
-        {Array(24).fill(0).map((_, i) => (
-          <div key={i} style={{ width: '6px', height: '6px', backgroundColor: '#c8a951', borderRadius: '50%' }} />
-        ))}
-      </div>
-
       {/* Right-Edge Advanced Premium Diagonal Fold Overlay (SVG) */}
       <div style={{ position: 'absolute', top: 0, right: 0, width: '380px', height: '100%', pointerEvents: 'none' }}>
         <svg width="380" height="794" viewBox="0 0 380 794" style={{ display: 'block' }}>
-          {/* Bright blue accent fold */}
-          <polygon points="380,0 100,0 230,397 100,794 380,794" fill="#00a8ff" />
-          {/* Deep Navy front fold */}
-          <polygon points="380,0 130,0 250,397 130,794 380,794" fill="#0c213d" />
-          {/* Darker blue inner shadow */}
-          <polygon points="380,0 160,0 265,397 160,794 380,794" fill="#08162b" />
-          {/* Gold diagonal border stripe */}
-          <polyline points="130,0 250,397 130,794" fill="none" stroke="#c8a951" strokeWidth="8" />
-          {/* Horizontal Solid Blue Band at bottom right */}
-          <polygon points="145,744 380,744 380,794 130,794" fill="#00a8ff" />
+          {/* Premium Emerald Green/Teal Dot Grid at top-right */}
+          <g opacity="0.65">
+            <circle cx="260" cy="20" r="2.5" fill="#10b981" />
+            <circle cx="280" cy="20" r="2.5" fill="#10b981" />
+            <circle cx="300" cy="20" r="2.5" fill="#10b981" />
+            <circle cx="320" cy="20" r="2.5" fill="#10b981" />
+            <circle cx="340" cy="20" r="2.5" fill="#10b981" />
+            <circle cx="360" cy="20" r="2.5" fill="#10b981" />
+
+            <circle cx="250" cy="40" r="2.5" fill="#10b981" />
+            <circle cx="270" cy="40" r="2.5" fill="#10b981" />
+            <circle cx="290" cy="40" r="2.5" fill="#10b981" />
+            <circle cx="310" cy="40" r="2.5" fill="#10b981" />
+            <circle cx="330" cy="40" r="2.5" fill="#10b981" />
+            <circle cx="350" cy="40" r="2.5" fill="#10b981" />
+
+            <circle cx="260" cy="60" r="2.5" fill="#10b981" />
+            <circle cx="280" cy="60" r="2.5" fill="#10b981" />
+            <circle cx="300" cy="60" r="2.5" fill="#10b981" />
+            <circle cx="320" cy="60" r="2.5" fill="#10b981" />
+            <circle cx="340" cy="60" r="2.5" fill="#10b981" />
+            <circle cx="360" cy="60" r="2.5" fill="#10b981" />
+
+            <circle cx="270" cy="80" r="2.5" fill="#10b981" />
+            <circle cx="290" cy="80" r="2.5" fill="#10b981" />
+            <circle cx="310" cy="80" r="2.5" fill="#10b981" />
+            <circle cx="330" cy="80" r="2.5" fill="#10b981" />
+            <circle cx="350" cy="80" r="2.5" fill="#10b981" />
+
+            <circle cx="280" cy="100" r="2.5" fill="#10b981" />
+            <circle cx="300" cy="100" r="2.5" fill="#10b981" />
+            <circle cx="320" cy="100" r="2.5" fill="#10b981" />
+            <circle cx="340" cy="100" r="2.5" fill="#10b981" />
+          </g>
+
+          {/* Top Cyan Ribbon */}
+          <polygon points="380,0 220,0 50,170 380,500" fill="#00a8ff" />
+          {/* Top Gold Stripe */}
+          <line x1="220" y1="0" x2="50" y2="170" stroke="#c8a951" strokeWidth="8.5" />
+          {/* Top Parallel Green Line */}
+          <line x1="180" y1="0" x2="10" y2="170" stroke="#0c3d25" strokeWidth="2.5" />
+
+          {/* Bottom Cyan Ribbon */}
+          <polygon points="380,340 50,624 220,794 380,794" fill="#00a8ff" />
+          {/* Bottom Gold Stripe */}
+          <line x1="50" y1="624" x2="220" y2="794" stroke="#c8a951" strokeWidth="8.5" />
+          {/* Bottom Parallel Green Line */}
+          <line x1="10" y1="624" x2="180" y2="794" stroke="#0c3d25" strokeWidth="2.5" />
+
+          {/* Deep Navy front fold pointing left */}
+          <polygon points="380,140 100,420 380,700" fill="#0c213d" />
+          
           {/* White dot in the navy chevron */}
-          <circle cx="240" cy="397" r="6" fill="#ffffff" />
+          <circle cx="260" cy="420" r="7" fill="#ffffff" />
+
+          {/* Gold Corner Fold at the bottom right */}
+          <polygon points="380,720 306,794 380,794" fill="#c8a951" />
+
+          {/* Horizontal Solid Blue Band at bottom right */}
+          <rect x="145" y="744" width="235" height="50" fill="#00a8ff" />
         </svg>
       </div>
 
