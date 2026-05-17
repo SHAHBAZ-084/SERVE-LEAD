@@ -234,9 +234,9 @@ const MemberDashboard = () => {
 
         try {
             const activeTemplateId = Number(certData.templateId || 1);
-            const isLandscape = activeTemplateId === 2 || activeTemplateId === 3;
-            const W = isLandscape ? 1123 : 794;
-            const H = isLandscape ? 794 : 1123;
+            const isLandscape = true; // All templates (1, 2, 3) are now Landscape
+            const W = 1123;
+            const H = 794;
 
             // 1. Create a hidden iframe sandbox
             const iframe = document.createElement('iframe');

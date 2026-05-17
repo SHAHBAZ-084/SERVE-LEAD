@@ -41,7 +41,7 @@ export const VerifiedStamp = ({ color = "#002b49", id }) => (
   </svg>
 );
 
-// Template 1 (Portrait - First Image)
+// Template 1 (Landscape - First Image adapted to Landscape)
 export const Template1 = ({ data, certAssets, id }) => {
   const issueDate = data.createdAt 
     ? new Date(data.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
@@ -59,13 +59,13 @@ export const Template1 = ({ data, certAssets, id }) => {
 
   return (
     <div id={id} style={{
-      position: 'relative', width: '794px', height: '1123px',
-      backgroundColor: '#ffffff', fontFamily: '"Playfair Display", serif',
+      position: 'relative', width: '1123px', height: '794px',
+      backgroundColor: '#ffffff', fontFamily: 'sans-serif',
       overflow: 'hidden', boxSizing: 'border-box', color: '#0f172a'
     }}>
-      {/* Top-Right Premium Dense Triangulation Geometric Mesh (SVG) */}
-      <div style={{ position: 'absolute', top: 0, right: 0, width: '340px', height: '340px', pointerEvents: 'none' }}>
-        <svg width="340" height="340" viewBox="0 0 340 340" style={{ display: 'block' }}>
+      {/* Top-Right Premium Dense Triangulation Geometric Mesh (SVG - Scaled and Positioned for Landscape) */}
+      <div style={{ position: 'absolute', top: 0, right: 0, width: '380px', height: '380px', pointerEvents: 'none' }}>
+        <svg width="380" height="380" viewBox="0 0 340 340" style={{ display: 'block' }}>
           <polygon points="340,0 280,0 310,50" fill="#003366" />
           <polygon points="280,0 220,0 250,50" fill="#1a8cff" opacity="0.9" />
           <polygon points="220,0 160,0 190,50" fill="#66b3ff" opacity="0.6" />
@@ -84,9 +84,9 @@ export const Template1 = ({ data, certAssets, id }) => {
         </svg>
       </div>
 
-      {/* Bottom-Left Premium Dense Triangulation Geometric Mesh (SVG) */}
-      <div style={{ position: 'absolute', bottom: 0, left: 0, width: '340px', height: '340px', pointerEvents: 'none' }}>
-        <svg width="340" height="340" viewBox="0 0 340 340" style={{ display: 'block' }}>
+      {/* Bottom-Left Premium Dense Triangulation Geometric Mesh (SVG - Scaled and Positioned for Landscape) */}
+      <div style={{ position: 'absolute', bottom: 0, left: 0, width: '380px', height: '380px', pointerEvents: 'none' }}>
+        <svg width="380" height="380" viewBox="0 0 340 340" style={{ display: 'block' }}>
           <polygon points="0,340 60,340 30,290" fill="#003366" />
           <polygon points="60,340 120,340 90,290" fill="#1a8cff" opacity="0.9" />
           <polygon points="120,340 180,340 150,290" fill="#66b3ff" opacity="0.6" />
@@ -110,37 +110,37 @@ export const Template1 = ({ data, certAssets, id }) => {
       <div style={{ position: 'absolute', top: '20px', bottom: '20px', left: '20px', right: '20px', border: '0.8px solid #002b49', pointerEvents: 'none' }} />
 
       {/* Logo Top-Left */}
-      <div style={{ position: 'absolute', top: '45px', left: '45px' }}>
+      <div style={{ position: 'absolute', top: '45px', left: '50px' }}>
         <img src={certAssets?.logo || logo} alt="Logo" style={{ height: '70px', objectFit: 'contain' }} />
       </div>
 
-      {/* Date of Issue below logo (Clean non-bold style matching mockup) */}
-      <div style={{ position: 'absolute', top: '135px', left: '45px', fontSize: '11.5px', color: '#475569', fontFamily: 'sans-serif' }}>
+      {/* Date of Issue below logo */}
+      <div style={{ position: 'absolute', top: '135px', left: '50px', fontSize: '11.5px', color: '#475569', fontFamily: 'sans-serif' }}>
         Date of Issue: {issueDate}
       </div>
 
       {/* Centered Main Title Content */}
-      <div style={{ paddingTop: '150px', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
-        <h1 style={{ fontSize: '58px', fontWeight: '900', color: '#003366', letterSpacing: '0.04em', textTransform: 'uppercase', lineHeight: 1, margin: 0 }}>
+      <div style={{ paddingTop: '80px', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
+        <h1 style={{ fontSize: '54px', fontWeight: '900', color: '#003366', letterSpacing: '0.04em', textTransform: 'uppercase', lineHeight: 1, margin: 0 }}>
           CERTIFICATE
         </h1>
-        <p style={{ fontSize: '26px', color: '#003366', margin: '6px 0 0', fontStyle: 'italic', fontWeight: 'bold' }}>
+        <p style={{ fontSize: '24px', color: '#003366', margin: '6px 0 0', fontStyle: 'italic', fontWeight: 'bold' }}>
           {data.awardType || "Of Participation"}
         </p>
-        <p style={{ fontSize: '13px', fontStyle: 'italic', color: '#64748b', marginTop: '15px', letterSpacing: '0.05em' }}>
+        <p style={{ fontSize: '13px', fontStyle: 'italic', color: '#64748b', marginTop: '12px', letterSpacing: '0.05em' }}>
           This certificate is presented to
         </p>
       </div>
 
       {/* Recipient Name (Centered with clear underline frame) */}
-      <div style={{ textAlign: 'center', marginTop: '35px', padding: '0 60px' }}>
-        <h2 style={{ fontSize: '38px', fontWeight: 'bold', color: '#0f172a', fontFamily: '"Playfair Display", serif', textTransform: 'none', borderBottom: '1.2px solid #002b49', display: 'inline-block', paddingBottom: '8px', minWidth: '460px' }}>
+      <div style={{ textAlign: 'center', marginTop: '25px', padding: '0 60px' }}>
+        <h2 style={{ fontSize: '38px', fontWeight: 'bold', color: '#0f172a', fontFamily: '"Playfair Display", serif', textTransform: 'none', borderBottom: '1.2px solid #002b49', display: 'inline-block', paddingBottom: '6px', minWidth: '460px' }}>
           {data.memberId?.name || data.memberName || "Member Name"}
         </h2>
       </div>
 
       {/* Body Text Blocks */}
-      <div style={{ textAlign: 'center', marginTop: '35px', padding: '0 85px', fontFamily: 'sans-serif', fontSize: '12.5px', lineHeight: 1.8, color: '#475569', fontStyle: 'italic' }}>
+      <div style={{ textAlign: 'center', marginTop: '25px', padding: '0 120px', fontFamily: 'sans-serif', fontSize: '12.5px', lineHeight: 1.8, color: '#475569', fontStyle: 'italic' }}>
         {data.description ? (
           <p style={{ whiteSpace: 'pre-wrap', margin: 0 }}>{data.description}</p>
         ) : (
@@ -168,7 +168,7 @@ export const Template1 = ({ data, certAssets, id }) => {
       </div>
 
       {/* Bottom Footer Section: CEO Signature & Verified Stamp */}
-      <div style={{ position: 'absolute', bottom: '85px', left: '85px', right: '85px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div style={{ position: 'absolute', bottom: '65px', left: '100px', right: '100px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
         {/* CEO Signature Block */}
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
           <div style={{ height: '70px', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', marginBottom: '5px' }}>
@@ -196,7 +196,7 @@ export const Template1 = ({ data, certAssets, id }) => {
       </div>
 
       {/* Footer Text */}
-      <div style={{ position: 'absolute', bottom: 35, left: 0, width: '100%', textAlign: 'center', fontSize: '10.5px', color: '#64748b', fontStyle: 'italic', fontWeight: 'bold', letterSpacing: '0.02em' }}>
+      <div style={{ position: 'absolute', bottom: 25, left: 0, width: '100%', textAlign: 'center', fontSize: '10.5px', color: '#64748b', fontStyle: 'italic', fontWeight: 'bold', letterSpacing: '0.02em' }}>
         Verify Through SLS Website by Using Membership ID
       </div>
     </div>
@@ -344,6 +344,10 @@ export const Template2 = ({ data, certAssets, id }) => {
 
 // Template 3 (Landscape - Second Image)
 export const Template3 = ({ data, certAssets, id }) => {
+  const eventDate = data.eventId?.date 
+    ? new Date(data.eventId.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
+    : '28 February 2026';
+
   // Handle double 'Chairman SLS' text fallback
   const chairmanName = data.chairmanName || "Muhammad Farooq Ahmad";
   const finalChairmanName = (chairmanName.toLowerCase().includes("chairman") || chairmanName.toLowerCase().includes("ceo")) 
@@ -424,10 +428,19 @@ export const Template3 = ({ data, certAssets, id }) => {
         ) : (
           <div>
             <p style={{ margin: 0 }}>
-              In recognition of active participation in the <strong style={{ color: '#002b49' }}>“{data.eventId?.title || "Linkedin Profile Development Session"}”</strong>
+              has successfully participated in the online training session titled
             </p>
-            <p style={{ margin: '8px 0 0', color: '#475569' }}>
-              Your dedication to personal branding & professional growth is truly appreciated. We commend your commitment to enhancing your digital presence & career development.
+            <p style={{ margin: '4px 0', fontSize: '14px', fontWeight: 'bold', color: '#002b49', fontStyle: 'normal' }}>
+              “{data.eventId?.title || "Orientation & How to Add References in MS Word"}”
+            </p>
+            <p style={{ margin: 0 }}>
+              held on {eventDate}.
+            </p>
+            <p style={{ margin: '8px 0 0', fontSize: '11.5px', color: '#64748b' }}>
+              The participant actively engaged in the orientation, practical demonstration, assessment, and interactive Q&A session.
+            </p>
+            <p style={{ margin: '4px 0', fontSize: '11.5px', fontWeight: 'bold', color: '#0f172a', fontStyle: 'normal' }}>
+              This certificate is issued only after the successful submission of the required assessment.
             </p>
           </div>
         )}

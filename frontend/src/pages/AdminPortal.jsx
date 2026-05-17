@@ -737,7 +737,7 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
         id: 1,
         name: "Classic Blue",
         thumb: "🔵",
-        orientation: "portrait",   // 794 × 1123
+        orientation: "landscape",   // 1123 × 794
         bgColor: "#ffffff",
         accentColor: "#003366",
         textColor: "#0f172a",
