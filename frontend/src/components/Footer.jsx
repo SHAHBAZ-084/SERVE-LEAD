@@ -15,9 +15,7 @@ export default function Footer() {
                     footer_address: r.data.footer_address || FOOTER_DEFAULTS.footer_address,
                     footer_phone1: r.data.footer_phone1 || FOOTER_DEFAULTS.footer_phone1,
                     footer_phone2: r.data.footer_phone2 || FOOTER_DEFAULTS.footer_phone2,
-                    footer_copyright: r.data.footer_copyright || FOOTER_DEFAULTS.footer_copyright,
                     footer_org_name: r.data.footer_org_name || FOOTER_DEFAULTS.footer_org_name,
-                    footer_developer_credits: r.data.footer_developer_credits || FOOTER_DEFAULTS.footer_developer_credits,
                     footer_extra_text: r.data.footer_extra_text || FOOTER_DEFAULTS.footer_extra_text,
                 });
             })
@@ -107,14 +105,12 @@ export default function Footer() {
                 <div className="pt-10 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-8 text-center md:text-left">
                     <div className="flex flex-col">
                         <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest">
-                            {footer.footer_copyright}
+                            {FOOTER_DEFAULTS.footer_copyright}
                         </p>
-                        {footer.footer_developer_credits && (
-                            <p className="text-slate-400 text-[8px] font-black uppercase tracking-[0.4em] mt-3 flex items-center justify-center md:justify-start gap-3 opacity-60 hover:opacity-100 transition-all duration-700">
-                                <span className="w-1.5 h-1.5 bg-cyan-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(6,182,212,0.6)]" />
-                                {footer.footer_developer_credits}
-                            </p>
-                        )}
+                        <p className="text-slate-400 text-[8px] font-black uppercase tracking-[0.4em] mt-3 flex items-center justify-center md:justify-start gap-3 opacity-60 hover:opacity-100 transition-all duration-700">
+                            <span className="w-1.5 h-1.5 bg-cyan-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(6,182,212,0.6)]" />
+                            {FOOTER_DEFAULTS.footer_developer_credits}
+                        </p>
                     </div>
                     <div className="flex gap-6">
                         <a href="https://www.facebook.com/share/15vTx4Y1r6/" target="_blank" rel="noopener noreferrer" className="w-11 h-11 rounded-2xl bg-white/5 flex items-center justify-center text-slate-400 hover:bg-cyan-500 hover:text-white transition-all shadow-xl">

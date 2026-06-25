@@ -235,7 +235,9 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
     const [submitting, setSubmitting] = useState(false);
     const [waLink, setWaLink] = useState("");
     const [tnc, setTnc] = useState("");
-    const [footer, setFooter] = useState({ ...FOOTER_DEFAULTS });
+    const [footer, setFooter] = useState(
+        Object.fromEntries(FOOTER_FIELDS.map(({ key }) => [key, FOOTER_DEFAULTS[key]]))
+    );
 
 
     // Admin Promotion State
@@ -273,16 +275,11 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
                     });
                 }
             }
-            setFooter({
-                footer_email: r.data.footer_email || FOOTER_DEFAULTS.footer_email,
-                footer_address: r.data.footer_address || FOOTER_DEFAULTS.footer_address,
-                footer_phone1: r.data.footer_phone1 || FOOTER_DEFAULTS.footer_phone1,
-                footer_phone2: r.data.footer_phone2 || FOOTER_DEFAULTS.footer_phone2,
-                footer_copyright: r.data.footer_copyright || FOOTER_DEFAULTS.footer_copyright,
-                footer_org_name: r.data.footer_org_name || FOOTER_DEFAULTS.footer_org_name,
-                footer_developer_credits: r.data.footer_developer_credits || FOOTER_DEFAULTS.footer_developer_credits,
-                footer_extra_text: r.data.footer_extra_text || FOOTER_DEFAULTS.footer_extra_text,
-            });
+            setFooter(
+                Object.fromEntries(
+                    FOOTER_FIELDS.map(({ key }) => [key, r.data[key] || FOOTER_DEFAULTS[key]])
+                )
+            );
         });
         api.get("settings/whatsapp-link").then(r => setWaLink(r.data.link || ""));
         api.get("settings/terms").then(r => setTnc(r.data.terms || ""));

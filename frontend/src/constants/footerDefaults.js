@@ -17,6 +17,4 @@ export const FOOTER_FIELDS = [
   { key: "footer_address", label: "Address", placeholder: "Ghoray Shah Road Near UET Lahore", multiline: true },
   { key: "footer_phone1", label: "Phone Number 1", placeholder: "0314-1683402" },
   { key: "footer_phone2", label: "Phone Number 2", placeholder: "0325-6604404" },
-  { key: "footer_copyright", label: "Copyright Text", placeholder: "© 2025 Serve & Lead Society. All rights reserved." },
-  { key: "footer_developer_credits", label: "Developer Credits", placeholder: "Designed & Built by Shahbaz & Ali" },
 ];
