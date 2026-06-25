@@ -44,7 +44,10 @@ app.use(helmet({
     },
 })); 
 app.use(compression()); // Gzip compression
-app.use(express.json({ limit: '10kb' })); 
+app.use((req, res, next) => {
+    const jsonLimit = req.path === '/api/blogs/upload-image-data' ? '8mb' : '10kb';
+    express.json({ limit: jsonLimit })(req, res, next);
+});
 app.use(express.urlencoded({ extended: true, limit: '10kb' }));
 app.use(mongoSanitize);
 app.use(cookieParser());

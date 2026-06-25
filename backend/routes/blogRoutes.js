@@ -4,7 +4,7 @@ const Blog = require('../models/Blog');
 const Member = require('../models/Member');
 const authMiddleware = require('../middlewares/authMiddleware');
 const asyncHandler = require('../middlewares/asyncHandler');
-const { createUpload, getFileUrl, deleteFile } = require('../utils/storage');
+const { createUpload, getFileUrl, deleteFile, saveBufferAsImage } = require('../utils/storage');
 
 const isAdmin = asyncHandler(async (req, res, next) => {
     if (req.user && (req.user.role === 'Admin' || req.user.role === 'Superuser')) {
@@ -49,6 +49,30 @@ router.get('/', asyncHandler(async (req, res) => {
 router.get('/admin/all', authMiddleware, isAdmin, asyncHandler(async (req, res) => {
     const blogs = await Blog.find().sort({ createdAt: -1 }).lean();
     res.json(blogs);
+}));
+
+// POST upload a single blog image as base64 JSON (Admin Only) — avoids multipart proxy issues
+router.post('/upload-image-data', authMiddleware, isAdmin, asyncHandler(async (req, res) => {
+    const { dataUrl, filename } = req.body;
+
+    if (!dataUrl || typeof dataUrl !== 'string') {
+        return res.status(400).json({ error: 'No image data provided.' });
+    }
+
+    const match = dataUrl.match(/^data:(image\/[\w.+-]+);base64,(.+)$/);
+    if (!match) {
+        return res.status(400).json({ error: 'Invalid image data format.' });
+    }
+
+    const contentType = match[1];
+    const buffer = Buffer.from(match[2], 'base64');
+
+    if (buffer.length > 5 * 1024 * 1024) {
+        return res.status(400).json({ error: 'Each image must be 5MB or smaller.' });
+    }
+
+    const url = await saveBufferAsImage(buffer, contentType, filename || 'blog-image.jpg', 'blogs');
+    res.json({ url });
 }));
 
 // POST upload a single blog image (Admin Only)

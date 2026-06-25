@@ -1,5 +1,5 @@
 const multer = require('multer');
-const { S3Client, DeleteObjectCommand } = require('@aws-sdk/client-s3');
+const { S3Client, DeleteObjectCommand, PutObjectCommand } = require('@aws-sdk/client-s3');
 const multerS3 = require('multer-s3');
 const path = require('path');
 const fs = require('fs');
@@ -8,7 +8,7 @@ const fs = require('fs');
  * AWS S3 Client Configuration
  */
 const s3 = new S3Client({
-    region: process.env.AWS_REGION || 'eu-north-1',
+    region: process.env.AWS_REGION || 'ap-south-1',
     credentials: {
         accessKeyId: process.env.AWS_ACCESS_KEY_ID,
         secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
@@ -76,13 +76,47 @@ const createUpload = (subfolder) => {
         storage: getStorage(subfolder),
         limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
         fileFilter: (req, file, cb) => {
-            const filetypes = /jpeg|jpg|png|webp/;
+            const filetypes = /jpeg|jpg|png|webp|heic|heif/;
             const extname = filetypes.test(path.extname(file.originalname).toLowerCase());
-            const mimetype = filetypes.test(file.mimetype);
+            const mimetype = /image\/(jpeg|jpg|png|webp|heic|heif|pjpeg)/i.test(file.mimetype || '');
             if (extname || mimetype) return cb(null, true);
-            cb(new Error(`Only images (jpg, png, webp) are allowed. Detected: Ext=${path.extname(file.originalname)}, Type=${file.mimetype}`));
+            cb(new Error(`Only images (jpg, png, webp, heic) are allowed. Detected: Ext=${path.extname(file.originalname)}, Type=${file.mimetype}`));
         }
     });
+};
+
+const getPublicFileUrl = (subfolder, key) => {
+    const useS3 = process.env.AWS_ACCESS_KEY_ID && process.env.AWS_S3_BUCKET_NAME;
+    if (useS3) {
+        const region = process.env.AWS_REGION || 'ap-south-1';
+        return `https://${process.env.AWS_S3_BUCKET_NAME}.s3.${region}.amazonaws.com/${key}`;
+    }
+    return `/uploads/${subfolder}/${path.basename(key)}`;
+};
+
+const saveBufferAsImage = async (buffer, contentType, originalName, subfolder = 'general') => {
+    const useS3 = process.env.AWS_ACCESS_KEY_ID && process.env.AWS_S3_BUCKET_NAME;
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const cleanName = (originalName || 'image.jpg').replace(/[^a-zA-Z0-9.]/g, '_');
+    const key = `${subfolder}/${uniqueSuffix}-${cleanName}`;
+
+    if (useS3) {
+        await s3.send(new PutObjectCommand({
+            Bucket: process.env.AWS_S3_BUCKET_NAME,
+            Key: key,
+            Body: buffer,
+            ContentType: contentType || 'image/jpeg',
+        }));
+        return getPublicFileUrl(subfolder, key);
+    }
+
+    const uploadDir = path.join(__dirname, '..', 'uploads', subfolder);
+    if (!fs.existsSync(uploadDir)) {
+        fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    const filename = `${uniqueSuffix}-${cleanName}`;
+    fs.writeFileSync(path.join(uploadDir, filename), buffer);
+    return `/uploads/${subfolder}/${filename}`;
 };
 
 /**
@@ -128,4 +162,4 @@ const deleteFile = async (fileUrl) => {
     }
 };
 
-module.exports = { createUpload, getFileUrl, deleteFile };
+module.exports = { createUpload, getFileUrl, deleteFile, saveBufferAsImage };

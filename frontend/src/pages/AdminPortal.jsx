@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import api, { getImgUrl, withMultipartAuth, API_BASE as API_BASE_URL } from "../api";
+import api, { getImgUrl, API_BASE as API_BASE_URL } from "../api";
 import CountdownTimer from "../components/common/CountdownTimer";
 import { Template1, Template2, Template3, logo, sealImg } from "./CertTemplates";
 import jsPDF from "jspdf";
@@ -3903,10 +3903,19 @@ const AdminPortal = () => {
             setExistingImages(prev => prev.filter(img => img.url !== url));
         };
 
+        const fileToDataUrl = (file) => new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = () => reject(new Error("Could not read image file"));
+            reader.readAsDataURL(file);
+        });
+
         const uploadBlogImage = async (file) => {
-            const formData = new FormData();
-            formData.append("image", file);
-            const response = await api.post("blogs/upload-image", formData, withMultipartAuth(auth));
+            const dataUrl = await fileToDataUrl(file);
+            const response = await api.post("blogs/upload-image-data", {
+                dataUrl,
+                filename: file.name,
+            }, auth);
             return response.data.url;
         };
 
@@ -3935,9 +3944,7 @@ const AdminPortal = () => {
                 fetchBlogs();
                 setActiveSubTab("view");
             } catch (err) {
-                const message = err.response?.data?.error
-                    || (err.message === "Network Error" ? "Upload failed. Check your connection and try again." : null)
-                    || "Failed to publish blog";
+                const message = err.response?.data?.error || err.message || "Failed to publish blog";
                 notify(message, "error");
             } finally {
                 setSubmitting(false);
@@ -3965,9 +3972,7 @@ const AdminPortal = () => {
                 setEditingBlog(null);
                 fetchBlogs();
             } catch (err) {
-                const message = err.response?.data?.error
-                    || (err.message === "Network Error" ? "Upload failed. Check your connection and try again." : null)
-                    || "Update failed";
+                const message = err.response?.data?.error || err.message || "Update failed";
                 notify(message, "error");
             } finally {
                 setSubmitting(false);
