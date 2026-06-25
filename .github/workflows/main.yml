@@ -18,7 +18,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22.22.3'
 
       # --- Backend ---
       - name: Install Backend Dependencies
@@ -70,13 +70,20 @@ jobs:
           name: frontend-dist
           path: frontend/dist
 
+      # Pin Node to avoid firebase-tools "Premature close" auth failures on newer runtimes
+      # https://github.com/nodejs/node/issues/63989
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.22.3'
+
       - name: Firebase Deploy
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
           firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
           channelId: live
-          projectId: ${{ secrets.FIREBASE_PROJECT_ID }}
+          projectId: serveandleadsociety-1fbd7
           entryPoint: ./frontend
 
   deploy-backend:
