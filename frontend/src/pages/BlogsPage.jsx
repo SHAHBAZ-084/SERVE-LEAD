@@ -16,7 +16,7 @@ const BlogSlideshow = ({ images }) => {
   }, [images.length]);
 
   if (!images || images.length === 0) return (
-    <div className="w-full aspect-[4/3] max-h-72 bg-slate-50 flex items-center justify-center rounded-3xl border border-slate-100">
+    <div className="w-full aspect-square bg-slate-50 flex items-center justify-center rounded-2xl border border-slate-100">
       <i className="fas fa-image text-slate-300 text-4xl" />
     </div>
   );
@@ -25,7 +25,7 @@ const BlogSlideshow = ({ images }) => {
   const prev = () => setIndex((prev) => (prev - 1 + images.length) % images.length);
 
   return (
-    <div className="relative w-full aspect-[4/3] max-h-72 overflow-hidden rounded-3xl group bg-slate-50 border border-slate-100">
+    <div className="relative w-full aspect-square overflow-hidden rounded-2xl group bg-slate-50 border border-slate-100">
       <AnimatePresence mode="wait">
         <motion.img
           key={index}
@@ -38,14 +38,11 @@ const BlogSlideshow = ({ images }) => {
           className="absolute inset-0 w-full h-full object-contain"
         />
       </AnimatePresence>
-      
-      {/* Overlay Gradient */}
-      <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-50 pointer-events-none" />
 
       {/* Caption Badge */}
       {images[index].caption && (
-        <div className="absolute bottom-6 left-6 right-12 z-10">
-           <p className="text-white text-xs font-bold uppercase tracking-widest bg-black/20 backdrop-blur-md px-4 py-2 rounded-xl inline-block border border-white/10">
+        <div className="absolute bottom-3 left-3 right-10 z-10">
+           <p className="text-white text-[10px] font-bold uppercase tracking-widest bg-black/50 backdrop-blur-md px-3 py-1.5 rounded-lg inline-block border border-white/10">
              {images[index].caption}
            </p>
         </div>
@@ -71,7 +68,7 @@ const BlogSlideshow = ({ images }) => {
 
       {/* Indicators */}
       {images.length > 1 && (
-        <div className="absolute bottom-6 right-6 flex gap-2 z-20">
+        <div className="absolute bottom-3 right-3 flex gap-1.5 z-20">
           {images.map((_, i) => (
             <div 
               key={i} 
@@ -142,19 +139,19 @@ export default function BlogsPage() {
                   <p className="text-slate-400 font-bold uppercase tracking-widest text-sm">No stories shared yet.</p>
                </div>
             ) : (
-               <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 sm:gap-16">
+               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6 md:gap-8">
                   {blogs.map((blog, idx) => (
                      <motion.article 
                         key={blog._id}
                         initial={{ opacity: 0, y: 30 }}
                         whileInView={{ opacity: 1, y: 0 }}
                         viewport={{ once: true }}
-                        transition={{ delay: idx % 2 * 0.1 }}
-                        className="bg-white rounded-[3rem] p-6 sm:p-10 shadow-[0_30px_100px_-20px_rgba(0,0,0,0.06)] border border-slate-100 hover:shadow-2xl hover:-translate-y-2 transition-all duration-500"
+                        transition={{ delay: idx % 3 * 0.1 }}
+                        className="bg-white rounded-2xl p-4 sm:p-5 shadow-lg shadow-slate-200/40 border border-slate-100 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col"
                      >
                         <BlogSlideshow images={blog.images} />
 
-                        <div className="mt-10 space-y-6">
+                        <div className="mt-4 sm:mt-5 space-y-3 flex-1 flex flex-col">
                            <div className="flex items-center gap-4">
 
                               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
@@ -162,34 +159,34 @@ export default function BlogsPage() {
                               </span>
                            </div>
 
-                           <h2 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tight leading-tight">
+                           <h2 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight leading-snug line-clamp-2">
                               {blog.title}
                            </h2>
 
-                           <div className="relative">
-                              <p className="text-slate-500 leading-relaxed font-medium whitespace-pre-wrap">
-                                 {blog.isExpanded ? blog.description : (blog.description.length > 300 ? blog.description.substring(0, 300) + "..." : blog.description)}
+                           <div className="relative flex-1">
+                              <p className={`text-slate-500 text-sm leading-relaxed font-medium whitespace-pre-wrap ${blog.isExpanded ? "" : "line-clamp-4"}`}>
+                                 {blog.isExpanded ? blog.description : (blog.description.length > 200 ? blog.description.substring(0, 200) + "..." : blog.description)}
                               </p>
-                              {blog.description.length > 300 && (
+                              {blog.description.length > 200 && (
                                  <button 
                                     onClick={() => {
                                        setBlogs(prev => prev.map(b => b._id === blog._id ? { ...b, isExpanded: !b.isExpanded } : b));
                                     }}
-                                    className="mt-4 text-[#002147] font-black uppercase tracking-widest text-[10px] hover:underline"
+                                    className="mt-2 text-[#002147] font-black uppercase tracking-widest text-[10px] hover:underline"
                                  >
                                     {blog.isExpanded ? "Read Less" : "Read More"}
                                  </button>
                               )}
                            </div>
 
-                           <div className="pt-8 border-t border-slate-50 flex items-center justify-between">
-                              <div className="flex items-center gap-3">
-                                 <div className="w-10 h-10 bg-[#002147] rounded-xl flex items-center justify-center text-white shadow-lg">
-                                    <i className="fas fa-signature" />
+                           <div className="pt-4 border-t border-slate-50 flex items-center justify-between mt-auto">
+                              <div className="flex items-center gap-2">
+                                 <div className="w-8 h-8 bg-[#002147] rounded-lg flex items-center justify-center text-white shadow-md">
+                                    <i className="fas fa-signature text-xs" />
                                  </div>
                                  <div>
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-900 leading-none mb-1">Society Admin</p>
-                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none">Verified Author</p>
+                                    <p className="text-[9px] font-black uppercase tracking-widest text-slate-900 leading-none mb-0.5">Society Admin</p>
+                                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest leading-none">Verified Author</p>
                                  </div>
                               </div>
 
