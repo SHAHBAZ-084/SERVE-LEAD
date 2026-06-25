@@ -7,6 +7,7 @@ import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 
 import { inputCls, useCountUp, StatCard, Spinner } from "../components/common/AdminUiComponents";
+import { FOOTER_DEFAULTS, FOOTER_FIELDS } from "../constants/footerDefaults";
 
 // ── Batches Tab (Refactored Standalone) ───────────────────
 const BatchesTab = ({ members, issuedCertificates, auth, api, notify, setSearchParams }) => {
@@ -234,6 +235,7 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
     const [submitting, setSubmitting] = useState(false);
     const [waLink, setWaLink] = useState("");
     const [tnc, setTnc] = useState("");
+    const [footer, setFooter] = useState({ ...FOOTER_DEFAULTS });
 
 
     // Admin Promotion State
@@ -271,6 +273,16 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
                     });
                 }
             }
+            setFooter({
+                footer_email: r.data.footer_email || FOOTER_DEFAULTS.footer_email,
+                footer_address: r.data.footer_address || FOOTER_DEFAULTS.footer_address,
+                footer_phone1: r.data.footer_phone1 || FOOTER_DEFAULTS.footer_phone1,
+                footer_phone2: r.data.footer_phone2 || FOOTER_DEFAULTS.footer_phone2,
+                footer_copyright: r.data.footer_copyright || FOOTER_DEFAULTS.footer_copyright,
+                footer_org_name: r.data.footer_org_name || FOOTER_DEFAULTS.footer_org_name,
+                footer_developer_credits: r.data.footer_developer_credits || FOOTER_DEFAULTS.footer_developer_credits,
+                footer_extra_text: r.data.footer_extra_text || FOOTER_DEFAULTS.footer_extra_text,
+            });
         });
         api.get("settings/whatsapp-link").then(r => setWaLink(r.data.link || ""));
         api.get("settings/terms").then(r => setTnc(r.data.terms || ""));
@@ -322,6 +334,21 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
         } catch { notify("Failed to update Terms & Conditions", "error"); }
         finally { setSubmitting(false); }
     };
+
+    const saveFooter = async (e) => {
+        if (e) e.preventDefault();
+        setSubmitting(true);
+        try {
+            await api.put("settings", footer, auth);
+            notify("Footer settings updated successfully!");
+        } catch {
+            notify("Failed to update footer settings", "error");
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    const updateFooter = (key, value) => setFooter({ ...footer, [key]: value });
 
 
     const saveLeadership = async (e) => {
@@ -393,7 +420,7 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
 
     return (
         <div className="max-w-4xl mx-auto space-y-8 animate-fade-up pb-20">
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4 p-2 bg-slate-200/50 rounded-2xl w-full sm:w-fit">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-4 p-2 bg-slate-200/50 rounded-2xl w-full sm:w-fit">
                 <button onClick={() => setActiveSubTab("donation")} className={`py-2.5 px-4 sm:px-6 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all flex items-center justify-center gap-2 ${activeSubTab === "donation" ? "bg-white text-cyan-600 shadow-sm" : "text-slate-500 hover:text-slate-800"}`}>
                     <i className="fas fa-money-check-dollar"></i> <span className="sm:inline">Financials</span>
                 </button>
@@ -402,6 +429,9 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
                 </button>
                 <button onClick={() => setActiveSubTab("vision")} className={`py-2.5 px-4 sm:px-6 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all flex items-center justify-center gap-2 ${activeSubTab === "vision" ? "bg-white text-emerald-600 shadow-sm" : "text-slate-500 hover:text-slate-800"}`}>
                     <i className="fas fa-eye"></i> <span className="sm:inline">Vision Section</span>
+                </button>
+                <button onClick={() => setActiveSubTab("footer")} className={`py-2.5 px-4 sm:px-6 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all flex items-center justify-center gap-2 ${activeSubTab === "footer" ? "bg-white text-orange-600 shadow-sm" : "text-slate-500 hover:text-slate-800"}`}>
+                    <i className="fas fa-align-justify"></i> <span className="sm:inline">Footer</span>
                 </button>
                 {auth.is_superuser && (
                     <button onClick={() => setActiveSubTab("admins")} className={`py-2.5 px-4 sm:px-6 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all flex items-center justify-center gap-2 ${activeSubTab === "admins" ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500 hover:text-slate-800"}`}>
@@ -695,6 +725,55 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
                             </div>
                         </div>
                     </div>
+                </div>
+            )}
+
+            {activeSubTab === "footer" && (
+                <div className="bg-white border border-slate-200 rounded-[2.5rem] shadow-xl overflow-hidden relative animate-fade-in">
+                    <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-orange-500 to-amber-600" />
+                    <form onSubmit={saveFooter} className="p-8 md:p-10">
+                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+                            <div className="flex items-center gap-4">
+                                <div className="w-12 h-12 bg-orange-50 text-orange-600 rounded-2xl flex items-center justify-center text-xl shadow-inner">
+                                    <i className="fas fa-align-justify" />
+                                </div>
+                                <div>
+                                    <h3 className="text-xl font-black text-slate-800 tracking-tight">Footer Settings</h3>
+                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Website footer contact and branding text</p>
+                                </div>
+                            </div>
+                            <button type="submit" disabled={submitting}
+                                className="w-full sm:w-auto px-6 py-3 bg-[#002147] text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 transition-all shadow-md disabled:opacity-50 flex items-center justify-center gap-2">
+                                {submitting ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <i className="fas fa-save" />}
+                                Save Footer
+                            </button>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            {FOOTER_FIELDS.map(({ key, label, placeholder, multiline }) => (
+                                <div key={key} className={multiline ? "sm:col-span-2" : "col-span-1"}>
+                                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">{label}</label>
+                                    {multiline ? (
+                                        <textarea
+                                            rows={3}
+                                            value={footer[key]}
+                                            onChange={(e) => updateFooter(key, e.target.value)}
+                                            placeholder={placeholder}
+                                            className={`${inputCls} resize-none`}
+                                        />
+                                    ) : (
+                                        <input
+                                            type="text"
+                                            value={footer[key]}
+                                            onChange={(e) => updateFooter(key, e.target.value)}
+                                            placeholder={placeholder}
+                                            className={inputCls}
+                                        />
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    </form>
                 </div>
             )}
 

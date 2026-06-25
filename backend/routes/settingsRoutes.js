@@ -6,6 +6,18 @@ const fs = require('fs');
 const SystemSetting = require('../models/SystemSetting');
 const authMiddleware = require('../middlewares/authMiddleware');
 
+const FOOTER_DEFAULTS = {
+  footer_email: 'serveandleadsociety@serveandlead.org',
+  footer_address: 'Ghoray Shah Road Near UET Lahore',
+  footer_phone1: '0314-1683402',
+  footer_phone2: '0325-6604404',
+  footer_copyright: '© 2025 Serve & Lead Society. All rights reserved.',
+  footer_org_name: 'Serve & Lead Society',
+  footer_developer_credits: 'Designed & Built by Shahbaz & Ali',
+  footer_extra_text:
+    'Building a strong community of motivated individuals who learn, serve, and lead for a better future.',
+};
+
 const { createUpload, getFileUrl } = require('../utils/storage');
 
 // Multer Config (Hybrid: Local/Cloud)
@@ -27,6 +39,9 @@ router.get('/', async (req, res) => {
     const settingsMap = {};
     settings.forEach(s => {
       settingsMap[s.key] = s.value;
+    });
+    Object.entries(FOOTER_DEFAULTS).forEach(([key, value]) => {
+      if (!settingsMap[key]) settingsMap[key] = value;
     });
     res.json(settingsMap);
   } catch (error) {

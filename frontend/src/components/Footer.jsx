@@ -1,8 +1,28 @@
-import React from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import api from '../api';
+import { FOOTER_DEFAULTS } from '../constants/footerDefaults';
 
 export default function Footer() {
     const navigate = useNavigate();
+    const [footer, setFooter] = useState(FOOTER_DEFAULTS);
+
+    useEffect(() => {
+        api.get('settings')
+            .then((r) => {
+                setFooter({
+                    footer_email: r.data.footer_email || FOOTER_DEFAULTS.footer_email,
+                    footer_address: r.data.footer_address || FOOTER_DEFAULTS.footer_address,
+                    footer_phone1: r.data.footer_phone1 || FOOTER_DEFAULTS.footer_phone1,
+                    footer_phone2: r.data.footer_phone2 || FOOTER_DEFAULTS.footer_phone2,
+                    footer_copyright: r.data.footer_copyright || FOOTER_DEFAULTS.footer_copyright,
+                    footer_org_name: r.data.footer_org_name || FOOTER_DEFAULTS.footer_org_name,
+                    footer_developer_credits: r.data.footer_developer_credits || FOOTER_DEFAULTS.footer_developer_credits,
+                    footer_extra_text: r.data.footer_extra_text || FOOTER_DEFAULTS.footer_extra_text,
+                });
+            })
+            .catch(() => {});
+    }, []);
 
     return (
         <footer className="bg-slate-950 pt-20 pb-10 text-white relative overflow-hidden border-t border-white/5">
@@ -18,10 +38,10 @@ export default function Footer() {
                             <div className="w-10 h-10 bg-cyan-500 rounded-xl flex items-center justify-center shadow-lg shadow-cyan-500/20">
                                 <i className="fas fa-crown text-white" />
                             </div>
-                            <h2 className="text-xl font-black tracking-tight">Serve & <span className="text-cyan-400">Lead Society</span></h2>
+                            <h2 className="text-xl font-black tracking-tight">{footer.footer_org_name}</h2>
                         </div>
                         <p className="text-slate-400 text-sm leading-relaxed font-medium max-w-xs">
-                            Building a strong community of motivated individuals who learn, serve, and lead for a better future.
+                            {footer.footer_extra_text}
                         </p>
                     </div>
 
@@ -64,10 +84,22 @@ export default function Footer() {
                     <div className="space-y-6 flex flex-col items-center md:items-start">
                         <h3 className="text-xs font-black uppercase tracking-widest text-slate-500">Contact Info</h3>
                         <div className="space-y-4 text-sm font-bold text-slate-400">
-                            <p className="flex items-center gap-3 justify-center md:justify-start"><i className="fas fa-envelope text-cyan-500" /> serveandleadsociety@serveandlead.org</p>
-                            <p className="flex items-center gap-3 justify-center md:justify-start"><i className="fas fa-location-dot text-cyan-500" /> Ghoray Shah Road Near UET Lahore</p>
-                            <p className="flex items-center gap-3 justify-center md:justify-start"><i className="fas fa-phone text-cyan-500" /> 0314-1683402</p>
-                            <p className="flex items-center gap-3 justify-center md:justify-start"><i className="fas fa-phone text-cyan-500" /> 0325-6604404</p>
+                            <p className="flex items-center gap-3 justify-center md:justify-start">
+                                <i className="fas fa-envelope text-cyan-500" /> {footer.footer_email}
+                            </p>
+                            <p className="flex items-center gap-3 justify-center md:justify-start">
+                                <i className="fas fa-location-dot text-cyan-500" /> {footer.footer_address}
+                            </p>
+                            {footer.footer_phone1 && (
+                                <p className="flex items-center gap-3 justify-center md:justify-start">
+                                    <i className="fas fa-phone text-cyan-500" /> {footer.footer_phone1}
+                                </p>
+                            )}
+                            {footer.footer_phone2 && (
+                                <p className="flex items-center gap-3 justify-center md:justify-start">
+                                    <i className="fas fa-phone text-cyan-500" /> {footer.footer_phone2}
+                                </p>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -75,12 +107,14 @@ export default function Footer() {
                 <div className="pt-10 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-8 text-center md:text-left">
                     <div className="flex flex-col">
                         <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest">
-                            © 2025 Serve & Lead Society. All rights reserved.
+                            {footer.footer_copyright}
                         </p>
-                        <p className="text-slate-400 text-[8px] font-black uppercase tracking-[0.4em] mt-3 flex items-center justify-center md:justify-start gap-3 opacity-60 hover:opacity-100 transition-all duration-700">
-                            <span className="w-1.5 h-1.5 bg-cyan-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(6,182,212,0.6)]" />
-                            Designed & Built by <span className="text-white font-black tracking-[0.2em]">Shahbaz & Ali</span>
-                        </p>
+                        {footer.footer_developer_credits && (
+                            <p className="text-slate-400 text-[8px] font-black uppercase tracking-[0.4em] mt-3 flex items-center justify-center md:justify-start gap-3 opacity-60 hover:opacity-100 transition-all duration-700">
+                                <span className="w-1.5 h-1.5 bg-cyan-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(6,182,212,0.6)]" />
+                                {footer.footer_developer_credits}
+                            </p>
+                        )}
                     </div>
                     <div className="flex gap-6">
                         <a href="https://www.facebook.com/share/15vTx4Y1r6/" target="_blank" rel="noopener noreferrer" className="w-11 h-11 rounded-2xl bg-white/5 flex items-center justify-center text-slate-400 hover:bg-cyan-500 hover:text-white transition-all shadow-xl">
