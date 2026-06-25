@@ -18,6 +18,18 @@ const FOOTER_DEFAULTS = {
     'Building a strong community of motivated individuals who learn, serve, and lead for a better future.',
 };
 
+const ABOUT_DEFAULTS = {
+  about_badge: 'Who We Are',
+  about_title: 'About Us',
+  about_subtitle: 'Building Leaders Through Service and Growth.',
+  about_section_heading: 'Advantages',
+  about_paragraph_1:
+    'Our vision is to empower students by creating a dynamic platform where potential meets opportunity. We are dedicated to providing meaningful internships, job placements, and career counseling sessions that guide students toward success and self-discovery. Beyond professional growth, we are equally committed to student welfare — supporting deserving individuals by helping with university fees, ensuring that no financial challenge hinders their educational journey.',
+  about_paragraph_2:
+    'In addition, we aim to organize industrial tours and educational trips that bridge the gap between academic learning and practical experience, inspiring students to explore, learn, and grow beyond the classroom. Through these collective efforts, we aspire to cultivate a generation of capable, confident, and compassionate students who not only achieve personal success but also contribute positively to the community around them.',
+  about_tags: 'Internships, Career Counseling, Welfare Support, Industrial Tours, Leadership',
+};
+
 const { createUpload, getFileUrl } = require('../utils/storage');
 
 // Multer Config (Hybrid: Local/Cloud)
@@ -41,6 +53,11 @@ router.get('/', async (req, res) => {
       settingsMap[s.key] = s.value;
     });
     Object.entries(FOOTER_DEFAULTS).forEach(([key, value]) => {
+      if (settingsMap[key] === undefined || settingsMap[key] === null) {
+        settingsMap[key] = value;
+      }
+    });
+    Object.entries(ABOUT_DEFAULTS).forEach(([key, value]) => {
       if (settingsMap[key] === undefined || settingsMap[key] === null) {
         settingsMap[key] = value;
       }
