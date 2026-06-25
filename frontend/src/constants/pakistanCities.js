@@ -1,5 +1,3 @@
-export { ADMIN_TEHSIL_FILTER_OPTIONS } from "./pakistanLocations";
-
 export const MEMBER_TYPE_FILTER_OPTIONS = [
   { value: "All", label: "All Types" },
   { value: "General", label: "General" },

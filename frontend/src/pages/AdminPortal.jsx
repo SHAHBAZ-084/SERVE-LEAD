@@ -10,7 +10,8 @@ import { compressImage } from "../utils/compressImage";
 import { inputCls, useCountUp, StatCard, Spinner } from "../components/common/AdminUiComponents";
 import { FOOTER_DEFAULTS, FOOTER_FIELDS, parseFooterSettings } from "../constants/footerDefaults";
 import { ABOUT_DEFAULTS, ABOUT_FIELDS, parseAboutSettings } from "../constants/aboutDefaults";
-import { ADMIN_TEHSIL_FILTER_OPTIONS, MEMBER_TYPE_FILTER_OPTIONS } from "../constants/pakistanCities";
+import { MEMBER_TYPE_FILTER_OPTIONS } from "../constants/pakistanCities";
+import AdminLocationFilters, { DEFAULT_ADMIN_LOCATION_FILTER, appendLocationFilterParams, matchesAdminLocationFilter } from "../components/common/AdminLocationFilters";
 
 const adminFilterSelectCls =
   "bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold text-slate-700 outline-none focus:border-[#002147] min-w-[140px]";
@@ -1787,7 +1788,7 @@ const DossierView = ({ memberId, members, onBack }) => {
 // ── Settings Tab (SELF-MANAGEMENT) ───────────────────────
 
 // ── Members Tab (Moved Outside to fix Search Strokes) ────────
-const MembersTab = ({ members, fetchMembers, loading, search, setSearch, auth, notify, Spinner, adminUser, api, inputCls, page, setPage, totalPages, tehsilFilter, setTehsilFilter, roleFilter, setRoleFilter }) => {
+const MembersTab = ({ members, fetchMembers, loading, search, setSearch, auth, notify, Spinner, adminUser, api, inputCls, page, setPage, totalPages, locationFilter, setLocationFilter, roleFilter, setRoleFilter }) => {
     const [selectedIds, setSelectedIds] = useState([]);
     const [isProcessing, setIsProcessing] = useState(false);
     const [bulkMode, setBulkMode] = useState(false);
@@ -1873,15 +1874,12 @@ const MembersTab = ({ members, fetchMembers, loading, search, setSearch, auth, n
             </div>
 
             <div className="flex flex-wrap gap-3">
-                <select
-                    value={tehsilFilter}
-                    onChange={(e) => { setPage(1); setTehsilFilter(e.target.value); }}
-                    className={adminFilterSelectCls}
-                >
-                    {ADMIN_TEHSIL_FILTER_OPTIONS.map((tehsil) => (
-                        <option key={tehsil} value={tehsil}>{tehsil}</option>
-                    ))}
-                </select>
+                <AdminLocationFilters
+                    filter={locationFilter}
+                    onChange={setLocationFilter}
+                    onFilterChange={() => setPage(1)}
+                    selectCls={adminFilterSelectCls}
+                />
                 <select
                     value={roleFilter}
                     onChange={(e) => { setPage(1); setRoleFilter(e.target.value); }}
@@ -2062,7 +2060,7 @@ const AdminPortal = () => {
     const [issuedCertificates, setIssuedCertificates] = useState([]);
     const [membersPage, setMembersPage] = useState(1);
     const [membersTotalPages, setMembersTotalPages] = useState(1);
-    const [membersTehsilFilter, setMembersTehsilFilter] = useState("All Tehsils");
+    const [membersLocationFilter, setMembersLocationFilter] = useState({ ...DEFAULT_ADMIN_LOCATION_FILTER });
     const [membersRoleFilter, setMembersRoleFilter] = useState("All");
 
     const token = localStorage.getItem("adminToken");
@@ -2084,7 +2082,7 @@ const AdminPortal = () => {
                 page: String(membersPage),
                 limit: "10",
             });
-            if (membersTehsilFilter !== "All Tehsils") params.set("tehsil", membersTehsilFilter);
+            appendLocationFilterParams(params, membersLocationFilter);
             if (membersRoleFilter !== "All") params.set("role", membersRoleFilter);
             const r = await api.get(`admin/members?${params.toString()}`, auth);
             setMembers(r.data.members || []);
@@ -2092,7 +2090,7 @@ const AdminPortal = () => {
         }
         catch (err) { console.error(err); }
         finally { setLoading(false); }
-    }, [search, membersPage, membersTehsilFilter, membersRoleFilter, auth]);
+    }, [search, membersPage, membersLocationFilter, membersRoleFilter, auth]);
 
     const fetchAllMembers = useCallback(async () => {
         try {
@@ -2155,7 +2153,7 @@ const AdminPortal = () => {
 
     useEffect(() => {
         if (activeTab === "members") fetchMembers();
-    }, [membersPage, membersTehsilFilter, membersRoleFilter, fetchMembers, activeTab]);
+    }, [membersPage, membersLocationFilter, membersRoleFilter, fetchMembers, activeTab]);
 
     // Back-Button Trap: Force the browser to stay on this page
     useEffect(() => {
@@ -2276,7 +2274,7 @@ const AdminPortal = () => {
         const [interviewForm, setInterviewForm] = useState({ venue: "SLS Society HQ, Campus Block B", message: "" });
         const [sendingCall, setSendingCall] = useState(false);
         const [viewMember, setViewMember] = useState(null);
-        const [tehsilFilter, setTehsilFilter] = useState("All Tehsils");
+        const [locationFilter, setLocationFilter] = useState({ ...DEFAULT_ADMIN_LOCATION_FILTER });
         const [memberTypeFilter, setMemberTypeFilter] = useState("All");
 
         const getRequestedRoleLabel = (member) => {
@@ -2289,10 +2287,9 @@ const AdminPortal = () => {
                 m.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 m.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 m.joining_year?.toString().includes(searchTerm);
-            const matchesTehsil = tehsilFilter === "All Tehsils" || m.tehsil === tehsilFilter || m.city === tehsilFilter;
             const memberRole = m.requestedRole || m.role || "General";
             const matchesType = memberTypeFilter === "All" || memberRole === memberTypeFilter;
-            return matchesSearch && matchesTehsil && matchesType;
+            return matchesSearch && matchesAdminLocationFilter(m, locationFilter) && matchesType;
         });
 
         const handleSelectAll = (e) => setSelectedIds(e.target.checked ? filtered.map(m => m._id) : []);
@@ -2386,25 +2383,24 @@ const AdminPortal = () => {
                         <h2 className="text-xl font-bold text-slate-800">Pending Approvals</h2>
                         <p className="text-slate-400 text-sm mt-1">{filtered.length} of {(pendingMembers || []).length} in queue</p>
                     </div>
-                    <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-                        <select
-                            value={tehsilFilter}
-                            onChange={(e) => setTehsilFilter(e.target.value)}
-                            className={adminFilterSelectCls}
-                        >
-                            {ADMIN_TEHSIL_FILTER_OPTIONS.map((tehsil) => (
-                                <option key={tehsil} value={tehsil}>{tehsil}</option>
-                            ))}
-                        </select>
-                        <select
-                            value={memberTypeFilter}
-                            onChange={(e) => setMemberTypeFilter(e.target.value)}
-                            className={adminFilterSelectCls}
-                        >
-                            {MEMBER_TYPE_FILTER_OPTIONS.map(({ value, label }) => (
-                                <option key={value} value={value}>{label}</option>
-                            ))}
-                        </select>
+                    <div className="flex flex-col gap-3 w-full sm:w-auto">
+                        <div className="flex flex-wrap gap-3">
+                            <AdminLocationFilters
+                                filter={locationFilter}
+                                onChange={setLocationFilter}
+                                selectCls={adminFilterSelectCls}
+                            />
+                            <select
+                                value={memberTypeFilter}
+                                onChange={(e) => setMemberTypeFilter(e.target.value)}
+                                className={adminFilterSelectCls}
+                            >
+                                {MEMBER_TYPE_FILTER_OPTIONS.map(({ value, label }) => (
+                                    <option key={value} value={value}>{label}</option>
+                                ))}
+                            </select>
+                        </div>
+                        <div className="flex flex-col sm:flex-row gap-3">
                         <button onClick={() => { setBulkMode(!bulkMode); setSelectedIds([]); }} className={`px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-widest transition-all ${bulkMode ? 'bg-[#002147] text-white shadow-sm' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>
                             <i className="fas fa-layer-group mr-2" /> {bulkMode ? "Done" : "Select"}
                         </button>
@@ -2413,6 +2409,7 @@ const AdminPortal = () => {
                             <input type="text" placeholder="Filter applicants..." value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                                 className="w-full bg-white border border-slate-200 rounded-xl pl-11 pr-4 py-2.5 text-slate-800 focus:ring-0  outline-none text-sm shadow-sm" />
+                        </div>
                         </div>
                     </div>
                 </div>
@@ -4477,8 +4474,8 @@ const AdminPortal = () => {
                             page={membersPage}
                             setPage={setMembersPage}
                             totalPages={membersTotalPages}
-                            tehsilFilter={membersTehsilFilter}
-                            setTehsilFilter={setMembersTehsilFilter}
+                            locationFilter={membersLocationFilter}
+                            setLocationFilter={setMembersLocationFilter}
                             roleFilter={membersRoleFilter}
                             setRoleFilter={setMembersRoleFilter}
                         />

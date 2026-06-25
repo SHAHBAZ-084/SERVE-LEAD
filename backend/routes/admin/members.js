@@ -84,9 +84,13 @@ router.post('/members/bulk-delete', authMiddleware, isAdmin, asyncHandler(async 
 
 // GET all approved members (with pagination and search)
 router.get('/members', authMiddleware, isAdmin, asyncHandler(async (req, res) => {
-    let { search, page = 1, limit = 10, tehsil, city, role } = req.query;
+    let { search, page = 1, limit = 10, province, district, tehsil, city, role } = req.query;
     page = parseInt(page, 10) || 1;
     limit = parseInt(limit, 10) || 10;
+
+    const escapeRegex = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const exactRegex = (s) => new RegExp(`^${escapeRegex(s)}$`, 'i');
+    const isActiveFilter = (value, allLabel) => value && value !== allLabel;
 
     let query = { status: req.user.role === 'Superuser' ? { $in: ['approved', 'blocked'] } : 'approved' };
     
@@ -97,11 +101,21 @@ router.get('/members', authMiddleware, isAdmin, asyncHandler(async (req, res) =>
             { member_id: new RegExp(search, 'i') }
         ];
     }
-    const filterTehsil = tehsil || (city && city !== 'All Cities' && city !== 'All Tehsils' ? city : null);
-    if (filterTehsil) {
-        const tehsilRegex = new RegExp(`^${filterTehsil.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i');
+    const filterTehsil = isActiveFilter(tehsil, 'All Tehsils')
+        ? tehsil
+        : (city && city !== 'All Cities' && city !== 'All Tehsils' ? city : null);
+
+    if (isActiveFilter(province, 'All Provinces')) {
         query.$and = query.$and || [];
-        query.$and.push({ $or: [{ tehsil: tehsilRegex }, { city: tehsilRegex }] });
+        query.$and.push({ province: exactRegex(province) });
+    }
+    if (isActiveFilter(district, 'All Districts')) {
+        query.$and = query.$and || [];
+        query.$and.push({ district: exactRegex(district) });
+    }
+    if (filterTehsil) {
+        query.$and = query.$and || [];
+        query.$and.push({ $or: [{ tehsil: exactRegex(filterTehsil) }, { city: exactRegex(filterTehsil) }] });
     }
     if (role && role !== 'All' && ['General', 'Executive'].includes(role)) {
         query.role = role;
