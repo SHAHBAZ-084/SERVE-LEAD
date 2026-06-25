@@ -6,6 +6,7 @@ import { Template1, Template2, Template3, logo, sealImg } from "./CertTemplates"
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 
+import { compressImage } from "../utils/compressImage";
 import { inputCls, useCountUp, StatCard, Spinner } from "../components/common/AdminUiComponents";
 import { FOOTER_DEFAULTS, FOOTER_FIELDS, parseFooterSettings } from "../constants/footerDefaults";
 
@@ -3903,19 +3904,14 @@ const AdminPortal = () => {
             setExistingImages(prev => prev.filter(img => img.url !== url));
         };
 
-        const fileToDataUrl = (file) => new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(reader.result);
-            reader.onerror = () => reject(new Error("Could not read image file"));
-            reader.readAsDataURL(file);
-        });
-
         const uploadBlogImage = async (file) => {
-            const dataUrl = await fileToDataUrl(file);
-            const response = await api.post("blogs/upload-image-data", {
-                dataUrl,
-                filename: file.name,
-            }, auth);
+            const imageFile = await compressImage(file);
+            const formData = new FormData();
+            formData.append("image", imageFile);
+            const response = await api.post("blogs/upload-image", formData, {
+                ...auth,
+                timeout: 120000,
+            });
             return response.data.url;
         };
 
@@ -3925,8 +3921,9 @@ const AdminPortal = () => {
             setSubmitting(true);
             try {
                 const images = [];
-                for (const file of files) {
-                    const url = await uploadBlogImage(file);
+                for (let i = 0; i < files.length; i++) {
+                    notify(`Uploading image ${i + 1} of ${files.length}...`, "info");
+                    const url = await uploadBlogImage(files[i]);
                     images.push({ url, caption: "" });
                 }
 
@@ -3956,8 +3953,9 @@ const AdminPortal = () => {
             setSubmitting(true);
             try {
                 const uploadedImages = [];
-                for (const file of editFiles) {
-                    const url = await uploadBlogImage(file);
+                for (let i = 0; i < editFiles.length; i++) {
+                    notify(`Uploading image ${i + 1} of ${editFiles.length}...`, "info");
+                    const url = await uploadBlogImage(editFiles[i]);
                     uploadedImages.push({ url, caption: "" });
                 }
 
