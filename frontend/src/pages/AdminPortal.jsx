@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import api, { getImgUrl, API_BASE as API_BASE_URL } from "../api";
+import api, { getImgUrl, withMultipartAuth, API_BASE as API_BASE_URL } from "../api";
 import CountdownTimer from "../components/common/CountdownTimer";
 import { Template1, Template2, Template3, logo, sealImg } from "./CertTemplates";
 import jsPDF from "jspdf";
@@ -2007,7 +2007,7 @@ const AdminPortal = () => {
     }, [auth]);
 
     const fetchBlogs = useCallback(async () => {
-        try { const r = await api.get("blogs", auth); setBlogs(r.data); } catch { }
+        try { const r = await api.get("blogs/admin/all", auth); setBlogs(r.data); } catch { }
     }, [auth]);
 
     const fetchCertificates = useCallback(async () => {
@@ -3903,20 +3903,30 @@ const AdminPortal = () => {
             setExistingImages(prev => prev.filter(img => img.url !== url));
         };
 
+        const uploadBlogImage = async (file) => {
+            const formData = new FormData();
+            formData.append("image", file);
+            const response = await api.post("blogs/upload-image", formData, withMultipartAuth(auth));
+            return response.data.url;
+        };
+
         const createBlog = async (e) => {
             e.preventDefault();
             if (files.length === 0) return notify("Please upload at least one image", "error");
             setSubmitting(true);
             try {
-                const formData = new FormData();
-                formData.append("title", form.title);
-                formData.append("description", form.description);
-                formData.append("published", "true");
-                files.forEach(file => formData.append("images", file));
+                const images = [];
+                for (const file of files) {
+                    const url = await uploadBlogImage(file);
+                    images.push({ url, caption: "" });
+                }
 
-                await api.post("blogs", formData, {
-                    headers: auth.headers
-                });
+                await api.post("blogs", {
+                    title: form.title,
+                    description: form.description,
+                    published: true,
+                    images,
+                }, auth);
 
                 notify("Blog post published successfully!");
                 setForm({ title: "", description: "" });
@@ -3925,7 +3935,10 @@ const AdminPortal = () => {
                 fetchBlogs();
                 setActiveSubTab("view");
             } catch (err) {
-                notify(err.response?.data?.error || "Failed to publish blog", "error");
+                const message = err.response?.data?.error
+                    || (err.message === "Network Error" ? "Upload failed. Check your connection and try again." : null)
+                    || "Failed to publish blog";
+                notify(message, "error");
             } finally {
                 setSubmitting(false);
             }
@@ -3935,22 +3948,27 @@ const AdminPortal = () => {
             e.preventDefault();
             setSubmitting(true);
             try {
-                const formData = new FormData();
-                formData.append("title", editForm.title);
-                formData.append("description", editForm.description);
-                formData.append("published", String(editForm.published));
-                formData.append("existingImages", JSON.stringify(existingImages));
-                editFiles.forEach(file => formData.append("images", file));
+                const uploadedImages = [];
+                for (const file of editFiles) {
+                    const url = await uploadBlogImage(file);
+                    uploadedImages.push({ url, caption: "" });
+                }
 
-                await api.put(`blogs/${editingBlog._id}`, formData, {
-                    headers: auth.headers
-                });
+                await api.put(`blogs/${editingBlog._id}`, {
+                    title: editForm.title,
+                    description: editForm.description,
+                    published: editForm.published,
+                    images: [...existingImages, ...uploadedImages],
+                }, auth);
 
                 notify("Blog updated successfully!");
                 setEditingBlog(null);
                 fetchBlogs();
             } catch (err) {
-                notify(err.response?.data?.error || "Update failed", "error");
+                const message = err.response?.data?.error
+                    || (err.message === "Network Error" ? "Upload failed. Check your connection and try again." : null)
+                    || "Update failed";
+                notify(message, "error");
             } finally {
                 setSubmitting(false);
             }

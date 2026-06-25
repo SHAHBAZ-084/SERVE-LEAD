@@ -36,4 +36,12 @@ export const getImgUrl = (path) => {
 };
 
 export { API_BASE };
+
+export const withMultipartAuth = (auth) => {
+  const headers = { ...(auth?.headers || {}) };
+  delete headers['Content-Type'];
+  delete headers['content-type'];
+  return { ...auth, headers };
+};
+
 export default api;

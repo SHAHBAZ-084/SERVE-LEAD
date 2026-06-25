@@ -20,14 +20,11 @@ const isAdmin = asyncHandler(async (req, res, next) => {
 
 const upload = createUpload('blogs');
 
-const handleImageUpload = (req, res, next) => {
-    upload.array('images', 10)(req, res, (err) => {
+const handleSingleImageUpload = (req, res, next) => {
+    upload.single('image')(req, res, (err) => {
         if (err) {
             if (err.code === 'LIMIT_FILE_SIZE') {
                 return res.status(400).json({ error: 'Each image must be 5MB or smaller.' });
-            }
-            if (err.code === 'LIMIT_UNEXPECTED_FILE') {
-                return res.status(400).json({ error: 'Too many images. Maximum 10 allowed.' });
             }
             return res.status(400).json({ error: err.message || 'Image upload failed.' });
         }
@@ -35,10 +32,31 @@ const handleImageUpload = (req, res, next) => {
     });
 };
 
+const normalizeImages = (images) => {
+    if (!Array.isArray(images)) return [];
+    return images
+        .filter((img) => img && img.url)
+        .map((img) => ({ url: img.url, caption: img.caption || '' }));
+};
+
 // GET all published blogs (Public)
 router.get('/', asyncHandler(async (req, res) => {
     const blogs = await Blog.find({ published: true }).sort({ createdAt: -1 }).lean();
     res.json(blogs);
+}));
+
+// GET all blogs including drafts (Admin)
+router.get('/admin/all', authMiddleware, isAdmin, asyncHandler(async (req, res) => {
+    const blogs = await Blog.find().sort({ createdAt: -1 }).lean();
+    res.json(blogs);
+}));
+
+// POST upload a single blog image (Admin Only)
+router.post('/upload-image', authMiddleware, isAdmin, handleSingleImageUpload, asyncHandler(async (req, res) => {
+    if (!req.file) {
+        return res.status(400).json({ error: 'No image uploaded.' });
+    }
+    res.json({ url: getFileUrl(req.file, 'blogs') });
 }));
 
 // GET single blog (Public)
@@ -49,31 +67,22 @@ router.get('/:id', asyncHandler(async (req, res) => {
 }));
 
 // POST Create blog (Admin Only)
-router.post('/', authMiddleware, isAdmin, handleImageUpload, asyncHandler(async (req, res) => {
-    const { title, description, published, captions } = req.body;
+router.post('/', authMiddleware, isAdmin, asyncHandler(async (req, res) => {
+    const { title, description, published, images } = req.body;
+    const normalizedImages = normalizeImages(images);
 
-    if (!req.files || req.files.length === 0) {
+    if (!title || !description) {
+        return res.status(400).json({ error: 'Title and description are required.' });
+    }
+    if (normalizedImages.length === 0) {
         return res.status(400).json({ error: 'Please upload at least one image.' });
     }
-    
-    // Parse captions if sent as a JSON string or handle as array
-    let parsedCaptions = [];
-    try {
-        parsedCaptions = typeof captions === 'string' ? JSON.parse(captions) : captions || [];
-    } catch (e) {
-        parsedCaptions = [];
-    }
-
-    const images = req.files ? req.files.map((file, index) => ({
-        url: getFileUrl(file, 'blogs'),
-        caption: parsedCaptions[index] || ""
-    })) : [];
 
     const newBlog = new Blog({
         title,
         description,
         published: published !== undefined ? (published === 'true' || published === true) : true,
-        images
+        images: normalizedImages,
     });
 
     await newBlog.save();
@@ -81,42 +90,32 @@ router.post('/', authMiddleware, isAdmin, handleImageUpload, asyncHandler(async 
 }));
 
 // PUT Update blog (Admin Only)
-router.put('/:id', authMiddleware, isAdmin, handleImageUpload, asyncHandler(async (req, res) => {
-    const { title, description, published, captions, existingImages } = req.body;
+router.put('/:id', authMiddleware, isAdmin, asyncHandler(async (req, res) => {
     const blog = await Blog.findById(req.params.id);
     if (!blog) return res.status(404).json({ error: 'Blog not found.' });
 
-    // Handle existing images (to keep)
-    let keptImages = [];
-    try {
-        keptImages = typeof existingImages === 'string' ? JSON.parse(existingImages) : existingImages || [];
-    } catch (e) {
-        keptImages = [];
+    const { title, description, published, images } = req.body;
+
+    if (title !== undefined) blog.title = title;
+    if (description !== undefined) blog.description = description;
+    if (published !== undefined) {
+        blog.published = published === 'true' || published === true;
     }
 
-    // Identify images to delete from storage
-    const imagesToDelete = blog.images.filter(img => !keptImages.find(ki => ki.url === img.url));
-    for (const img of imagesToDelete) {
-        await deleteFile(img.url);
+    if (images !== undefined) {
+        const normalizedImages = normalizeImages(images);
+        if (normalizedImages.length === 0) {
+            return res.status(400).json({ error: 'A blog must have at least one image.' });
+        }
+
+        const imagesToDelete = blog.images.filter(
+            (img) => !normalizedImages.find((ki) => ki.url === img.url)
+        );
+        for (const img of imagesToDelete) {
+            await deleteFile(img.url);
+        }
+        blog.images = normalizedImages;
     }
-
-    // Handle new images
-    let parsedCaptions = [];
-    try {
-        parsedCaptions = typeof captions === 'string' ? JSON.parse(captions) : captions || [];
-    } catch (e) {
-        parsedCaptions = [];
-    }
-
-    const newImages = req.files ? req.files.map((file, index) => ({
-        url: getFileUrl(file, 'blogs'),
-        caption: parsedCaptions[index] || ""
-    })) : [];
-
-    blog.title = title || blog.title;
-    blog.description = description || blog.description;
-    blog.published = published !== undefined ? (published === 'true' || published === true) : blog.published;
-    blog.images = [...keptImages, ...newImages];
 
     await blog.save();
     res.json(blog);
@@ -127,7 +126,6 @@ router.delete('/:id', authMiddleware, isAdmin, asyncHandler(async (req, res) => 
     const blog = await Blog.findById(req.params.id);
     if (!blog) return res.status(404).json({ error: 'Blog not found.' });
 
-    // Delete all associated images
     for (const img of blog.images) {
         await deleteFile(img.url);
     }
