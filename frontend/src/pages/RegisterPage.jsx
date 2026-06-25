@@ -23,6 +23,7 @@ export default function RegisterPage() {
 
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
+    requestedRole: "General",
     name: "",
     father_name: "",
     whatsapp: "",
@@ -36,6 +37,8 @@ export default function RegisterPage() {
     city: "",
     joining_year: new Date().getFullYear().toString(),
     otp: "",
+    sls_official_id: "",
+    cnic_number: "",
   });
   const [acceptedTerms, setAcceptedTerms] = useState(false);
 
@@ -50,9 +53,13 @@ export default function RegisterPage() {
   const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
 
   const validateStep = () => {
-    const { name, father_name, whatsapp, email, password, otp, program, passing_year, address, city } = formData;
+    const { name, father_name, whatsapp, email, password, otp, program, passing_year, address, city, requestedRole, sls_official_id, cnic_number } = formData;
     if (step === 1) {
+      if (!requestedRole) return "Please select a membership type.";
       if (!name || !father_name || !whatsapp || !email || !password) return "All personal fields are mandatory.";
+      if (requestedRole === "Executive" && (!sls_official_id?.trim() || !cnic_number?.trim())) {
+        return "SLS Official ID and CNIC are required for Executive membership.";
+      }
       if (whatsapp.length !== 11 || !/^\d+$/.test(whatsapp)) return "WhatsApp must be exactly 11 numeric digits.";
       if (!email.toLowerCase().endsWith("@gmail.com")) return "Only official @gmail.com accounts are permitted.";
       if (password.length < 6) return "Portal password must be at least 6 characters.";
@@ -126,7 +133,14 @@ export default function RegisterPage() {
     setLoading(true);
 
     try {
-      const payload = { ...formData, email: formData.email.trim() };
+      const { otp, ...rest } = formData;
+      const payload = {
+        ...rest,
+        email: formData.email.trim(),
+        requestedRole: formData.requestedRole,
+        sls_official_id: formData.requestedRole === "Executive" ? formData.sls_official_id.trim() : "",
+        cnic_number: formData.requestedRole === "Executive" ? formData.cnic_number.trim() : "",
+      };
       await api.post("auth/register", payload);
       try {
         const settingRes = await api.get("settings/whatsapp-link");
@@ -191,7 +205,7 @@ export default function RegisterPage() {
               </div>
               <h3 className="text-4xl font-black text-slate-900 mb-5 tracking-tight uppercase">Registration Successful</h3>
               <p className="text-slate-400 text-sm font-bold uppercase tracking-widest leading-loose max-w-xs mx-auto mb-6">
-                Your application has been successfully submitted. Our team will contact you shortly for further processing.
+                Your {formData.requestedRole === "Executive" ? "executive " : ""}application has been successfully submitted. Our team will contact you shortly for further processing.
               </p>
               {waLink && (
                 <a href={waLink} target="_blank" rel="noopener noreferrer" className="btn-whatsapp">
@@ -212,6 +226,41 @@ export default function RegisterPage() {
               <div className="transition-all duration-700">
                 {step === 1 && (
                   <div className="space-y-7 animate-fade-up">
+                    <div className="p-5 bg-slate-50 border border-slate-100 rounded-[1.5rem] space-y-4">
+                      <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest ml-2">Membership Type</label>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {[
+                          { value: "General", label: "General Member", icon: "fa-user" },
+                          { value: "Executive", label: "Executive Member", icon: "fa-crown" },
+                        ].map(({ value, label, icon }) => (
+                          <button
+                            key={value}
+                            type="button"
+                            onClick={() => setFormData({ ...formData, requestedRole: value })}
+                            className={`px-5 py-4 rounded-[1.25rem] border-2 text-left transition-all ${
+                              formData.requestedRole === value
+                                ? "border-[#002147] bg-white shadow-md"
+                                : "border-slate-100 bg-white/70 hover:border-slate-200"
+                            }`}
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+                                formData.requestedRole === value ? "bg-[#002147] text-white" : "bg-slate-100 text-slate-400"
+                              }`}>
+                                <i className={`fas ${icon}`} />
+                              </div>
+                              <div>
+                                <p className="text-sm font-black text-slate-800">{label}</p>
+                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                                  {value === "Executive" ? "Leadership track" : "Standard membership"}
+                                </p>
+                              </div>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-7">
                       <div className="md:col-span-2 group">
                         <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 ml-2 group-focus-within:text-[#002147] transition-colors">01. Full Name</label>
@@ -221,12 +270,24 @@ export default function RegisterPage() {
                         <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 ml-2 group-focus-within:text-[#002147] transition-colors">02. Father Name</label>
                         <input name="father_name" placeholder="FATHER NAME" value={formData.father_name} onChange={handleChange} className="w-full bg-slate-50 border border-slate-100 rounded-[1.25rem] md:rounded-[1.5rem] px-5 py-4 md:px-6 md:py-5 text-sm font-bold text-slate-800 placeholder:text-slate-200 placeholder:font-black focus:ring-8 focus:ring-blue-500/5 focus:border-[#002147] outline-none transition-all shadow-inner" />
                       </div>
+                      {formData.requestedRole === "Executive" && (
+                        <>
+                          <div className="group">
+                            <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 ml-2 group-focus-within:text-[#002147] transition-colors">03. SLS Official ID</label>
+                            <input name="sls_official_id" placeholder="SLS-XXX-XXXX" value={formData.sls_official_id} onChange={handleChange} className="w-full bg-slate-50 border border-slate-100 rounded-[1.25rem] md:rounded-[1.5rem] px-5 py-4 md:px-6 md:py-5 text-sm font-bold text-slate-800 placeholder:text-slate-200 placeholder:font-black focus:ring-8 focus:ring-blue-500/5 focus:border-[#002147] outline-none transition-all shadow-inner" />
+                          </div>
+                          <div className="group">
+                            <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 ml-2 group-focus-within:text-[#002147] transition-colors">04. CNIC Number</label>
+                            <input name="cnic_number" placeholder="XXXXX-XXXXXXX-X" value={formData.cnic_number} onChange={handleChange} className="w-full bg-slate-50 border border-slate-100 rounded-[1.25rem] md:rounded-[1.5rem] px-5 py-4 md:px-6 md:py-5 text-sm font-bold text-slate-800 placeholder:text-slate-200 placeholder:font-black focus:ring-8 focus:ring-blue-500/5 focus:border-[#002147] outline-none transition-all shadow-inner" />
+                          </div>
+                        </>
+                      )}
                       <div className="group">
-                        <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 ml-2 group-focus-within:text-[#002147] transition-colors">03. WhatsApp (11 Digits)</label>
+                        <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 ml-2 group-focus-within:text-[#002147] transition-colors">{formData.requestedRole === "Executive" ? "05" : "03"}. WhatsApp (11 Digits)</label>
                         <input name="whatsapp" maxLength="11" placeholder="03XXXXXXXXX" value={formData.whatsapp} onChange={handleChange} className="w-full bg-slate-50 border border-slate-100 rounded-[1.25rem] md:rounded-[1.5rem] px-5 py-4 md:px-6 md:py-5 text-sm font-bold text-slate-800 placeholder:text-slate-200 placeholder:font-black focus:ring-8 focus:ring-blue-500/5 focus:border-[#002147] outline-none transition-all shadow-inner" />
                       </div>
                       <div className="md:col-span-2 group">
-                        <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 ml-2 group-focus-within:text-[#002147] transition-colors">04. Gmail Address</label>
+                        <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 ml-2 group-focus-within:text-[#002147] transition-colors">{formData.requestedRole === "Executive" ? "06" : "04"}. Gmail Address</label>
                         <div className="flex flex-col sm:flex-row gap-4">
                           <input type="email" name="email" placeholder="USER@GMAIL.COM" value={formData.email} onChange={(e) => { setOtpSent(false); handleChange(e); }} className="flex-1 bg-slate-50 border border-slate-100 rounded-[1.25rem] md:rounded-[1.5rem] px-5 py-4 md:px-6 md:py-5 text-sm font-bold text-slate-800 placeholder:text-slate-200 placeholder:font-black focus:ring-8 focus:ring-blue-500/5 focus:border-[#002147] outline-none transition-all shadow-inner" />
                           {!otpSent && (
@@ -247,7 +308,7 @@ export default function RegisterPage() {
                       )}
 
                       <div className="md:col-span-2 group">
-                        <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 ml-2 group-focus-within:text-[#002147] transition-colors">05. Password (Min 6)</label>
+                        <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 ml-2 group-focus-within:text-[#002147] transition-colors">{formData.requestedRole === "Executive" ? "07" : "05"}. Password (Min 6)</label>
                         <div className="relative">
                           <input type={showPassword ? "text" : "password"} name="password" value={formData.password} onChange={handleChange} className="w-full bg-slate-50 border border-slate-100 rounded-[1.25rem] md:rounded-[1.5rem] px-5 py-4 md:px-6 md:py-5 text-sm font-bold text-slate-800 placeholder:text-slate-200 placeholder:font-black focus:ring-8 focus:ring-blue-500/5 focus:border-[#002147] outline-none transition-all pr-16 shadow-inner" placeholder="••••••••" />
                           <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-6 top-1/2 -translate-y-1/2 text-slate-200 hover:text-[#002147] transition-colors">

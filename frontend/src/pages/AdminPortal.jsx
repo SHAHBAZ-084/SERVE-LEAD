@@ -2244,6 +2244,11 @@ const AdminPortal = () => {
         const [sendingCall, setSendingCall] = useState(false);
         const [viewMember, setViewMember] = useState(null);
 
+        const getRequestedRoleLabel = (member) => {
+            const role = member.requestedRole || member.role || "General";
+            return role === "Executive" ? "Executive Member" : "General Member";
+        };
+
         const filtered = (pendingMembers || []).filter(m =>
             m.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
             m.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -2372,6 +2377,7 @@ const AdminPortal = () => {
                                             <div>
                                                 <h4 className="font-bold text-slate-800 leading-none mb-1 text-xs">{m.name}</h4>
                                                 <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest leading-none">Class {m.joining_year}</p>
+                                                <p className="text-[8px] font-black text-purple-600 uppercase tracking-widest mt-1">{getRequestedRoleLabel(m)}</p>
                                             </div>
                                         </div>
                                         {m.interview_called ? (
@@ -2415,12 +2421,13 @@ const AdminPortal = () => {
                                             <th className="px-5 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-widest">Applicant Name</th>
                                             <th className="px-5 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-widest">Email Record</th>
                                             <th className="px-5 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-widest">Entry Year</th>
+                                            <th className="px-5 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-widest">Requested Role</th>
                                             <th className="px-5 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-widest text-right">Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-100">
                                         {filtered.length === 0 ? (
-                                            <tr><td colSpan={5} className="text-center py-20 text-slate-400">
+                                            <tr><td colSpan={6} className="text-center py-20 text-slate-400">
                                                 <i className="fas fa-check-circle text-4xl mb-4 block text-emerald-300/50" />
                                                 <p className="text-xs font-black uppercase tracking-widest">No pending members</p>
                                             </td></tr>
@@ -2446,6 +2453,15 @@ const AdminPortal = () => {
                                                 </td>
                                                 <td className="px-5 py-3.5 text-slate-500">{m.email}</td>
                                                 <td className="px-5 py-3.5 font-bold text-slate-400 font-mono tracking-tighter">{m.joining_year}</td>
+                                                <td className="px-5 py-3.5">
+                                                    <span className={`text-xs font-black uppercase tracking-widest px-2 py-1 rounded border ${
+                                                        (m.requestedRole || m.role) === "Executive"
+                                                            ? "text-purple-700 bg-purple-50 border-purple-100"
+                                                            : "text-blue-700 bg-blue-50 border-blue-100"
+                                                    }`}>
+                                                        {getRequestedRoleLabel(m)}
+                                                    </span>
+                                                </td>
                                                 <td className="px-5 py-3.5 text-right flex justify-end gap-2">
                                                     <button onClick={() => setViewMember(m)}
                                                         className="text-xs px-4 py-2 rounded-xl transition-all font-bold uppercase tracking-widest flex items-center gap-1.5 shadow-sm border border-slate-200 text-slate-600 hover:bg-slate-50">
@@ -2568,6 +2584,7 @@ const AdminPortal = () => {
                                     <DetailItem label="University" value={viewMember.university} icon="fa-university" />
                                     <DetailItem label="Degree Program" value={viewMember.program} icon="fa-graduation-cap" />
                                     <DetailItem label="Home City" value={viewMember.city} icon="fa-city" />
+                                    <DetailItem label="Requested Role" value={getRequestedRoleLabel(viewMember)} icon="fa-user-tag" />
                                     <DetailItem label="Joining Year" value={viewMember.joining_year} icon="fa-calendar-check" />
                                     <DetailItem label="Passing Year" value={viewMember.passing_year} icon="fa-calendar-alt" />
                                     {viewMember.sls_official_id && <DetailItem label="SLS Official ID" value={viewMember.sls_official_id} icon="fa-id-card" />}

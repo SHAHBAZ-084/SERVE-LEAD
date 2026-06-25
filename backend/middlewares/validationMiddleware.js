@@ -24,7 +24,11 @@ const schemas = {
         passing_year: Joi.number().integer().optional().allow(null),
         university: Joi.string().optional().allow(''),
         address: Joi.string().max(200).optional().allow(''),
-        city: Joi.string().max(50).optional().allow('')
+        city: Joi.string().max(50).optional().allow(''),
+        requestedRole: Joi.string().valid('General', 'Executive').default('General'),
+        sls_official_id: Joi.string().max(50).optional().allow(''),
+        cnic_number: Joi.string().max(20).optional().allow(''),
+        referredBy: Joi.string().max(30).optional().allow(''),
     }),
     login: Joi.object({
         email: Joi.string().email().required(),

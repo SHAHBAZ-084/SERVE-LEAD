@@ -139,7 +139,12 @@ router.post('/approve-member/:id', authMiddleware, isAdmin, asyncHandler(async (
     );
 
     const nextMemberId = `${year}-SLS-${String(counter.seq).padStart(4, '0')}`;
+    const approvedRole =
+        member.requestedRole === 'Executive' || (!member.requestedRole && member.role === 'Executive')
+            ? 'Executive'
+            : 'General';
     member.status = 'approved';
+    member.role = approvedRole;
     member.member_id = nextMemberId;
     await member.save();
 

@@ -158,7 +158,7 @@ router.post('/verify-otp', asyncHandler(async (req, res) => {
     res.status(200).json({ message: 'Email verified successfully.' });
 }));
 
-// Final Registration
+// Final Registration (General + Executive via requestedRole)
 router.post('/register', validateRequest(schemas.register), asyncHandler(async (req, res) => {
     const {
         name,
@@ -172,107 +172,78 @@ router.post('/register', validateRequest(schemas.register), asyncHandler(async (
         passing_year,
         university,
         address,
-        city
-    } = req.body;
-
-    const email = rawEmail?.trim().toLowerCase();
-    if (!email) return res.status(400).json({ error: 'Email is required' });
-    if (!password) return res.status(400).json({ error: 'Password is required' });
-
-    // ✅ Re-verify OTP on backend (prevent direct API bypass)
-    // We check for the "VERIFIED" flag set by the /verify-otp route
-    const otpRecord = await OTP.findOne({ email, code: "VERIFIED" });
-    if (!otpRecord) {
-        return res.status(400).json({
-            error: 'Email not verified. Please complete OTP verification first.'
-        });
-    }
-    // ✅ Delete OTP after confirming (one-time use)
-    await OTP.deleteMany({ email });
-
-    const hashedPassword = await bcrypt.hash(password, 12);
-
-    const member = await Member.create({
-        name,
-        email,
-        password: hashedPassword,
-        joining_year,
-        father_name,
-        whatsapp,
-        education_level,
-        program,
-        passing_year,
-        university,
-        address,
         city,
-        status: 'pending',
-        role: 'General' // Explicitly enforce default role
-    });
-
-    res.status(201).json({
-        _id: member._id,
-        name: member.name,
-        email: member.email
-    });
-}));
-
-// Executive Registration (Internal/Hidden link use)
-router.post('/register-executive', asyncHandler(async (req, res) => {
-    const {
-        name,
-        email: rawEmail,
-        password,
-        joining_year,
-        father_name,
-        whatsapp,
-        education_level,
-        program,
-        passing_year,
-        university,
-        address,
-        city,
-        sls_official_id,
-        cnic_number
-    } = req.body;
-
-    const email = rawEmail?.trim().toLowerCase();
-    if (!email) return res.status(400).json({ error: 'Email is required' });
-    if (!password) return res.status(400).json({ error: 'Password is required' });
-
-    // ✅ Re-verify OTP on backend
-    const otpRecord = await OTP.findOne({ email, code: "VERIFIED" });
-    if (!otpRecord) {
-        return res.status(400).json({
-            error: 'Email not verified. Please complete OTP verification first.'
-        });
-    }
-    await OTP.deleteMany({ email });
-
-    const hashedPassword = await bcrypt.hash(password, 12);
-
-    const member = await Member.create({
-        name,
-        email,
-        password: hashedPassword,
-        joining_year,
-        father_name,
-        whatsapp,
-        education_level,
-        program,
-        passing_year,
-        university,
-        address,
-        city,
+        requestedRole: rawRequestedRole,
         sls_official_id,
         cnic_number,
+        referredBy,
+    } = req.body;
+
+    const email = rawEmail?.trim().toLowerCase();
+    if (!email) return res.status(400).json({ error: 'Email is required' });
+    if (!password) return res.status(400).json({ error: 'Password is required' });
+
+    const requestedRole = rawRequestedRole === 'Executive' ? 'Executive' : 'General';
+
+    if (requestedRole === 'Executive') {
+        if (!sls_official_id?.trim() || !cnic_number?.trim()) {
+            return res.status(400).json({ error: 'SLS Official ID and CNIC are required for Executive membership.' });
+        }
+    }
+
+    let referred_by = null;
+    if (referredBy?.trim()) {
+        const referrer = await Member.findOne({
+            member_id: referredBy.trim().toUpperCase(),
+            status: 'approved',
+        });
+        if (!referrer) {
+            return res.status(400).json({ error: 'Invalid referrer member ID.' });
+        }
+        if (referrer.role === 'General' && requestedRole === 'General') {
+            return res.status(403).json({
+                error: 'General members cannot sponsor General membership applications.',
+            });
+        }
+        referred_by = referrer._id;
+    }
+
+    const otpRecord = await OTP.findOne({ email, code: "VERIFIED" });
+    if (!otpRecord) {
+        return res.status(400).json({
+            error: 'Email not verified. Please complete OTP verification first.'
+        });
+    }
+    await OTP.deleteMany({ email });
+
+    const hashedPassword = await bcrypt.hash(password, 12);
+
+    const member = await Member.create({
+        name,
+        email,
+        password: hashedPassword,
+        joining_year,
+        father_name,
+        whatsapp,
+        education_level,
+        program,
+        passing_year,
+        university,
+        address,
+        city,
+        requestedRole,
+        sls_official_id: requestedRole === 'Executive' ? sls_official_id?.trim() : '',
+        cnic_number: requestedRole === 'Executive' ? cnic_number?.trim() : '',
+        referred_by,
         status: 'pending',
-        role: 'Executive' // Sets role to Executive
+        role: 'General',
     });
 
     res.status(201).json({
         _id: member._id,
         name: member.name,
-        email: member.email
+        email: member.email,
+        requestedRole: member.requestedRole,
     });
 }));
 

@@ -34,6 +34,16 @@ const memberSchema = new mongoose.Schema({
     default: 'General',
     index: true,
   },
+  requestedRole: {
+    type: String,
+    enum: ['General', 'Executive'],
+    default: 'General',
+  },
+  referred_by: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Member',
+    default: null,
+  },
   status: {
     type: String,
     enum: ['pending', 'approved', 'blocked'],

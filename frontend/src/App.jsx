@@ -1,5 +1,5 @@
 import './App.css'
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import AboutPage from './pages/AboutPage';
 import Home from './pages/Home';
 import Verification from './pages/Verification';
@@ -14,7 +14,6 @@ import MemberLogin from './pages/MemberLogin';
 import ResetPassword from './pages/ResetPassword';
 import MemberVerification from './pages/MemberVerification';
 import FloatingWhatsApp from './components/FloatingWhatsApp';
-import ExecutiveRegisterPage from './pages/ExecutiveRegisterPage';
 import BlogsPage from './pages/BlogsPage';
 import TermsPage from './pages/TermsPage';
 
@@ -39,11 +38,7 @@ function App() {
             <RegisterPage />
           </GuestRoute>
         } />
-        <Route path="/executive-register" element={
-          <GuestRoute role="Member">
-            <ExecutiveRegisterPage />
-          </GuestRoute>
-        } />
+        <Route path="/executive-register" element={<Navigate to="/register" replace />} />
         <Route path="/login" element={
           <GuestRoute role="Member">
             <MemberLogin />
