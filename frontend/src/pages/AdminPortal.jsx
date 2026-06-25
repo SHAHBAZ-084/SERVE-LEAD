@@ -7,7 +7,7 @@ import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 
 import { inputCls, useCountUp, StatCard, Spinner } from "../components/common/AdminUiComponents";
-import { FOOTER_DEFAULTS, FOOTER_FIELDS } from "../constants/footerDefaults";
+import { FOOTER_DEFAULTS, FOOTER_FIELDS, parseFooterSettings } from "../constants/footerDefaults";
 
 // ── Batches Tab (Refactored Standalone) ───────────────────
 const BatchesTab = ({ members, issuedCertificates, auth, api, notify, setSearchParams }) => {
@@ -275,11 +275,7 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
                     });
                 }
             }
-            setFooter(
-                Object.fromEntries(
-                    FOOTER_FIELDS.map(({ key }) => [key, r.data[key] || FOOTER_DEFAULTS[key]])
-                )
-            );
+            setFooter(parseFooterSettings(r.data));
         });
         api.get("settings/whatsapp-link").then(r => setWaLink(r.data.link || ""));
         api.get("settings/terms").then(r => setTnc(r.data.terms || ""));
@@ -307,7 +303,8 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
                 donation_channels: JSON.stringify(channels),
                 team_structure: JSON.stringify(teamStructure),
                 team_leadership: JSON.stringify(leadership),
-                vision_section: JSON.stringify(vision)
+                vision_section: JSON.stringify(vision),
+                ...footer,
             }, auth);
             notify("System customization updated successfully!");
         } catch { notify("Failed to update settings", "error"); }
@@ -337,9 +334,11 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
         setSubmitting(true);
         try {
             await api.put("settings", footer, auth);
+            const r = await api.get("settings");
+            setFooter(parseFooterSettings(r.data));
             notify("Footer settings updated successfully!");
-        } catch {
-            notify("Failed to update footer settings", "error");
+        } catch (err) {
+            notify(err.response?.data?.error || "Failed to update footer settings", "error");
         } finally {
             setSubmitting(false);
         }
@@ -737,6 +736,7 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
                                 <div>
                                     <h3 className="text-xl font-black text-slate-800 tracking-tight">Footer Settings</h3>
                                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Website footer contact and branding text</p>
+                                    <p className="text-[9px] font-bold text-slate-400 mt-1">Use &quot;Save Footer&quot; or &quot;Apply All Changes&quot; to publish updates on the website.</p>
                                 </div>
                             </div>
                             <button type="submit" disabled={submitting}

@@ -18,3 +18,8 @@ export const FOOTER_FIELDS = [
   { key: "footer_phone1", label: "Phone Number 1", placeholder: "0314-1683402" },
   { key: "footer_phone2", label: "Phone Number 2", placeholder: "0325-6604404" },
 ];
+
+export const parseFooterSettings = (data = {}) =>
+  Object.fromEntries(
+    FOOTER_FIELDS.map(({ key }) => [key, data[key] ?? FOOTER_DEFAULTS[key]])
+  );

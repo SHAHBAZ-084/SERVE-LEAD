@@ -1,26 +1,26 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api';
-import { FOOTER_DEFAULTS } from '../constants/footerDefaults';
+import { FOOTER_DEFAULTS, parseFooterSettings } from '../constants/footerDefaults';
 
 export default function Footer() {
     const navigate = useNavigate();
-    const [footer, setFooter] = useState(FOOTER_DEFAULTS);
+    const [footer, setFooter] = useState(() => parseFooterSettings());
+
+    const loadFooterSettings = useCallback(async () => {
+        try {
+            const r = await api.get('settings', { params: { _t: Date.now() } });
+            setFooter(parseFooterSettings(r.data));
+        } catch (err) {
+            console.error('Failed to load footer settings:', err);
+        }
+    }, []);
 
     useEffect(() => {
-        api.get('settings')
-            .then((r) => {
-                setFooter({
-                    footer_email: r.data.footer_email || FOOTER_DEFAULTS.footer_email,
-                    footer_address: r.data.footer_address || FOOTER_DEFAULTS.footer_address,
-                    footer_phone1: r.data.footer_phone1 || FOOTER_DEFAULTS.footer_phone1,
-                    footer_phone2: r.data.footer_phone2 || FOOTER_DEFAULTS.footer_phone2,
-                    footer_org_name: r.data.footer_org_name || FOOTER_DEFAULTS.footer_org_name,
-                    footer_extra_text: r.data.footer_extra_text || FOOTER_DEFAULTS.footer_extra_text,
-                });
-            })
-            .catch(() => {});
-    }, []);
+        loadFooterSettings();
+        window.addEventListener('focus', loadFooterSettings);
+        return () => window.removeEventListener('focus', loadFooterSettings);
+    }, [loadFooterSettings]);
 
     return (
         <footer className="bg-slate-950 pt-20 pb-10 text-white relative overflow-hidden border-t border-white/5">

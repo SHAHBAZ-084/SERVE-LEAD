@@ -41,7 +41,9 @@ router.get('/', async (req, res) => {
       settingsMap[s.key] = s.value;
     });
     Object.entries(FOOTER_DEFAULTS).forEach(([key, value]) => {
-      if (!settingsMap[key]) settingsMap[key] = value;
+      if (settingsMap[key] === undefined || settingsMap[key] === null) {
+        settingsMap[key] = value;
+      }
     });
     res.json(settingsMap);
   } catch (error) {
@@ -69,8 +71,8 @@ router.put('/', authMiddleware, isSuperuser, async (req, res) => {
     for (const [key, value] of Object.entries(updates)) {
       const setting = await SystemSetting.findOneAndUpdate(
         { key },
-        { value },
-        { upsert: true, new: true }
+        { $set: { key, value: String(value ?? '') } },
+        { upsert: true, new: true, runValidators: true }
       );
       results.push(setting);
     }
