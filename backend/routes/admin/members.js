@@ -84,7 +84,7 @@ router.post('/members/bulk-delete', authMiddleware, isAdmin, asyncHandler(async 
 
 // GET all approved members (with pagination and search)
 router.get('/members', authMiddleware, isAdmin, asyncHandler(async (req, res) => {
-    let { search, page = 1, limit = 10 } = req.query;
+    let { search, page = 1, limit = 10, city, role } = req.query;
     page = parseInt(page, 10) || 1;
     limit = parseInt(limit, 10) || 10;
 
@@ -96,6 +96,12 @@ router.get('/members', authMiddleware, isAdmin, asyncHandler(async (req, res) =>
             { name: new RegExp(search, 'i') },
             { member_id: new RegExp(search, 'i') }
         ];
+    }
+    if (city && city !== 'All Cities') {
+        query.city = new RegExp(`^${city.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i');
+    }
+    if (role && role !== 'All' && ['General', 'Executive'].includes(role)) {
+        query.role = role;
     }
 
     const members = await Member.find(query)
