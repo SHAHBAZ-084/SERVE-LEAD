@@ -96,7 +96,7 @@ export default function EventsSection() {
                                     style={{ animationDelay: `${idx * 150}ms` }}
                                 >
                                     <div className="glass rounded-[2.5rem] overflow-hidden border border-slate-200/50 card-hover h-full flex flex-col shadow-xl">
-                                        <div className="relative h-64 overflow-hidden">
+                                        <div className="relative aspect-square overflow-hidden">
                                             <img
                                                 src={getImgUrl(event.image_url) || defaultImg}
                                                 alt={event.title}

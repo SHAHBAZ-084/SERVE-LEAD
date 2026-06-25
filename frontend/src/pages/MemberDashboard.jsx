@@ -647,7 +647,7 @@ const MemberDashboard = () => {
 
                         return (
                             <div key={index} className="bg-white rounded-[2.5rem] overflow-hidden shadow-2xl shadow-slate-200/50 border border-slate-100 hover:-translate-y-2 transition-all duration-500 group relative flex flex-col min-w-0">
-                                <div className="relative h-64 overflow-hidden">
+                                <div className="relative aspect-square overflow-hidden">
                                     <img
                                         src={getImgUrl(event.image_url)}
                                         alt={event.title}
@@ -735,7 +735,7 @@ const MemberDashboard = () => {
                             <i className="fas fa-times" />
                         </button>
 
-                        <div className="h-64 sm:h-72 overflow-hidden flex-shrink-0 relative">
+                        <div className="aspect-square overflow-hidden flex-shrink-0 relative">
                             <img src={getImgUrl(selectedEvent.image_url)} className="w-full h-full object-cover" alt="" />
                             <div className="absolute inset-0 bg-gradient-to-t from-white via-transparent to-transparent opacity-40" />
                         </div>

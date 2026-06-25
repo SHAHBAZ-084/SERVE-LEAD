@@ -25,7 +25,7 @@ const BlogSlideshow = ({ images }) => {
   const prev = () => setIndex((prev) => (prev - 1 + images.length) % images.length);
 
   return (
-    <div className="relative w-full h-80 sm:h-96 overflow-hidden rounded-3xl group">
+    <div className="relative w-full aspect-square overflow-hidden rounded-3xl group">
       <AnimatePresence mode="wait">
         <motion.img
           key={index}

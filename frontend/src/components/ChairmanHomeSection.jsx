@@ -56,7 +56,7 @@ export default function ChairmanHomeSection() {
                             <img
                                 src={vision.img ? getImgUrl(vision.img) : farooq}
                                 alt={`${vision.badgeName} - Chairman`}
-                                className="w-full aspect-[4/5] object-cover shadow-2xl relative z-10 group-hover:scale-[1.02] transition-all duration-700 rounded-3xl grayscale group-hover:grayscale-0"
+                                className="w-full h-full aspect-square object-cover shadow-2xl relative z-10 group-hover:scale-[1.02] transition-all duration-700 rounded-3xl grayscale group-hover:grayscale-0"
                             />
 
                             {/* Floating title badge */}

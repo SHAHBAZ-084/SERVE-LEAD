@@ -652,7 +652,7 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
                             <div className="space-y-8">
                                 {/* Image & Badge Section */}
                                 <div className="p-4 sm:p-6 bg-slate-50/50 rounded-3xl border border-slate-100 flex flex-col items-center md:flex-row gap-6 sm:gap-8">
-                                    <div className="w-full max-w-[200px] aspect-[4/5] sm:w-48 sm:h-60 rounded-2xl bg-white border border-slate-200 overflow-hidden relative group flex-shrink-0 animate-fade-up">
+                                    <div className="w-full max-w-[200px] aspect-square sm:w-48 sm:h-48 rounded-2xl bg-white border border-slate-200 overflow-hidden relative group flex-shrink-0 animate-fade-up">
                                         {vision.img ? <img src={getImgUrl(vision.img)} className="w-full h-full object-cover" /> :
                                             <div className="w-full h-full flex flex-col items-center justify-center text-slate-300 bg-slate-50">
                                                 <i className="fas fa-image text-3xl mb-2" />

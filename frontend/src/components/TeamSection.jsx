@@ -57,10 +57,10 @@ export default function TeamSection({ memberData = "none", hide = false }) {
             {displayTeam.map((member, idx) => (
               <div
                 key={idx}
-                className={`${idx % 2 === 0 ? "reveal-left" : "reveal-right"} delay-${(idx + 1) * 100} flex flex-col ${idx % 2 === 0 ? "md:flex-row" : "md:flex-row-reverse"} items-stretch bg-white rounded-[2.5rem] md:rounded-[3rem] shadow-2xl shadow-slate-200/50 overflow-hidden card-hover border border-slate-100`}
+                className={`${idx % 2 === 0 ? "reveal-left" : "reveal-right"} delay-${(idx + 1) * 100} flex flex-col ${idx % 2 === 0 ? "md:flex-row" : "md:flex-row-reverse"} items-center bg-white rounded-[2.5rem] md:rounded-[3rem] shadow-2xl shadow-slate-200/50 overflow-hidden card-hover border border-slate-100`}
               >
                 {/* Image Section - High Impact Full-Bleed */}
-                <div className="w-full md:w-[35%] lg:w-[30%] flex-shrink-0 overflow-hidden bg-slate-100 relative min-h-[300px] sm:min-h-[400px] md:min-h-0">
+                <div className="w-full md:w-[35%] lg:w-[30%] flex-shrink-0 overflow-hidden bg-slate-100 relative aspect-square">
                   <img
                     src={getImgUrl(member.img)}
                     alt={member.name}
@@ -148,9 +148,9 @@ export default function TeamSection({ memberData = "none", hide = false }) {
                 <div
                   key={member.id}
                   className={`${idx % 2 === 0 ? "reveal-left" : "reveal-right"} delay-${(idx + 1) * 100} flex flex-col ${idx % 2 === 0 ? "md:flex-row-reverse" : "md:flex-row"
-                    } items-stretch bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/40 overflow-hidden card-hover border border-slate-100 md:h-72`}
+                    } items-center bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/40 overflow-hidden card-hover border border-slate-100`}
                 >
-                  <div className="w-full md:w-1/3 flex-shrink-0 overflow-hidden bg-slate-100 relative min-h-[250px] md:min-h-0">
+                  <div className="w-full md:w-1/3 flex-shrink-0 overflow-hidden bg-slate-100 relative aspect-square">
                     {member.img ? (
                       <img
                         src={getImgUrl(member.img)}
