@@ -4,12 +4,21 @@ import api from "../api";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 
+import { PROVINCES, getDistricts, getTehsils, getDefaultDistrict, getDefaultTehsil } from "../constants/pakistanLocations";
+
 const pakistaniUniversities = [
   "University of the Punjab", "Quaid-i-Azam University", "NUST", "UET Lahore", "UET Peshawar", 
   "UET Taxila", "COMSATS", "LUMS", "Aga Khan University", "FAST-NUCES", "PIEAS", "University of Karachi",
   "GCU Lahore", "FC College", "University of Agriculture, Faisalabad", "Peshawar University",
   "SZABIST", "IBA Karachi", "Bahria University", "Air University", "Habib University", "Other"
 ].sort();
+
+const DEFAULT_PROVINCE = "Punjab";
+const DEFAULT_DISTRICT = getDefaultDistrict(DEFAULT_PROVINCE);
+const DEFAULT_TEHSIL = getDefaultTehsil(DEFAULT_PROVINCE, DEFAULT_DISTRICT);
+
+const selectCls =
+  "w-full bg-white border-2 border-slate-100 rounded-[1.25rem] md:rounded-[1.5rem] px-5 py-4 md:px-6 md:py-5 text-sm font-black text-slate-800 focus:bg-slate-50 transition-all appearance-none cursor-pointer outline-none focus:border-[#002147]";
 
 export default function RegisterPage() {
   const navigate = useNavigate();
@@ -33,8 +42,10 @@ export default function RegisterPage() {
     program: "",
     passing_year: new Date().getFullYear().toString(),
     university: "UET Lahore",
+    province: DEFAULT_PROVINCE,
+    district: DEFAULT_DISTRICT,
+    tehsil: DEFAULT_TEHSIL,
     address: "",
-    city: "",
     joining_year: new Date().getFullYear().toString(),
     otp: "",
     sls_official_id: "",
@@ -52,8 +63,34 @@ export default function RegisterPage() {
 
   const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
 
+  const handleLocationChange = (e) => {
+    const { name, value } = e.target;
+    if (name === "province") {
+      const district = getDefaultDistrict(value);
+      setFormData({
+        ...formData,
+        province: value,
+        district,
+        tehsil: getDefaultTehsil(value, district),
+      });
+      return;
+    }
+    if (name === "district") {
+      setFormData({
+        ...formData,
+        district: value,
+        tehsil: getDefaultTehsil(formData.province, value),
+      });
+      return;
+    }
+    setFormData({ ...formData, [name]: value });
+  };
+
+  const districtOptions = getDistricts(formData.province);
+  const tehsilOptions = getTehsils(formData.province, formData.district);
+
   const validateStep = () => {
-    const { name, father_name, whatsapp, email, password, otp, program, passing_year, address, city, requestedRole, sls_official_id, cnic_number } = formData;
+    const { name, father_name, whatsapp, email, password, otp, program, passing_year, address, province, district, tehsil, requestedRole, sls_official_id, cnic_number } = formData;
     if (step === 1) {
       if (!requestedRole) return "Please select a membership type.";
       if (!name || !father_name || !whatsapp || !email || !password) return "All personal fields are mandatory.";
@@ -68,7 +105,8 @@ export default function RegisterPage() {
     } else if (step === 2) {
       if (!program || !passing_year) return "Education details are required.";
     } else if (step === 3) {
-      if (!address || !city) return "Address details are required.";
+      if (!province || !district || !tehsil) return "Please select province, district, and tehsil.";
+      if (!address?.trim()) return "Residential address is required.";
     }
     return null;
   };
@@ -138,6 +176,7 @@ export default function RegisterPage() {
         ...rest,
         email: formData.email.trim(),
         requestedRole: formData.requestedRole,
+        city: formData.tehsil,
         sls_official_id: formData.requestedRole === "Executive" ? formData.sls_official_id.trim() : "",
         cnic_number: formData.requestedRole === "Executive" ? formData.cnic_number.trim() : "",
       };
@@ -332,7 +371,7 @@ export default function RegisterPage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-7">
                       <div className="group">
                         <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 ml-2 group-focus-within:text-[#002147] transition-colors">Education Level</label>
-                        <select name="education_level" value={formData.education_level} onChange={handleChange} className="w-full bg-white border-2 border-slate-100 rounded-[1.5rem] px-6 py-5 text-sm font-black text-slate-800 focus:bg-slate-50 transition-all appearance-none cursor-pointer outline-none focus:border-[#002147]">
+                        <select name="education_level" value={formData.education_level} onChange={handleChange} className={selectCls}>
                           {['Matric', 'Inter', 'Bachelor', 'Master', 'PhD', 'Other'].map(l => <option key={l} value={l}>{l.toUpperCase()}</option>)}
                         </select>
                       </div>
@@ -346,7 +385,7 @@ export default function RegisterPage() {
                       </div>
                       <div className="group">
                         <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 ml-2 group-focus-within:text-[#002147] transition-colors">Institution</label>
-                        <select name="university" value={formData.university} onChange={handleChange} className="w-full bg-white border-2 border-slate-100 rounded-[1.25rem] md:rounded-[1.5rem] px-5 py-4 md:px-6 md:py-5 text-sm font-black text-slate-800 focus:bg-slate-50 transition-all appearance-none cursor-pointer outline-none focus:border-[#002147]">
+                        <select name="university" value={formData.university} onChange={handleChange} className={selectCls}>
                           {pakistaniUniversities.map(u => <option key={u} value={u}>{u.toUpperCase()}</option>)}
                         </select>
                       </div>
@@ -360,13 +399,36 @@ export default function RegisterPage() {
 
                 {step === 3 && (
                   <div className="space-y-8 animate-fade-up">
-                    <div className="group">
-                      <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 ml-2 group-focus-within:text-[#002147] transition-colors">Home Address</label>
-                      <input name="address" placeholder="HOUSE, STREET, SECTOR, AREA" value={formData.address} onChange={handleChange} className="w-full bg-slate-50 border border-slate-100 rounded-[1.25rem] md:rounded-[1.5rem] px-5 py-4 md:px-6 md:py-5 text-sm font-bold text-slate-800 placeholder:text-slate-200 placeholder:font-black focus:ring-8 focus:ring-blue-500/5 focus:border-[#002147] outline-none transition-all shadow-inner" />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-7">
+                      <div className="group">
+                        <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 ml-2 group-focus-within:text-[#002147] transition-colors">Province</label>
+                        <select name="province" value={formData.province} onChange={handleLocationChange} className={selectCls}>
+                          {PROVINCES.map((p) => <option key={p} value={p}>{p.toUpperCase()}</option>)}
+                        </select>
+                      </div>
+                      <div className="group">
+                        <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 ml-2 group-focus-within:text-[#002147] transition-colors">District</label>
+                        <select name="district" value={formData.district} onChange={handleLocationChange} className={selectCls} disabled={!formData.province}>
+                          {districtOptions.map((d) => <option key={d} value={d}>{d.toUpperCase()}</option>)}
+                        </select>
+                      </div>
+                      <div className="md:col-span-2 group">
+                        <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 ml-2 group-focus-within:text-[#002147] transition-colors">Tehsil</label>
+                        <select name="tehsil" value={formData.tehsil} onChange={handleLocationChange} className={selectCls} disabled={!formData.district}>
+                          {tehsilOptions.map((t) => <option key={t} value={t}>{t.toUpperCase()}</option>)}
+                        </select>
+                      </div>
                     </div>
                     <div className="group">
-                      <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 ml-2 group-focus-within:text-[#002147] transition-colors">Your City</label>
-                      <input name="city" placeholder="E.G. LAHORE" value={formData.city} onChange={handleChange} className="w-full bg-slate-50 border border-slate-100 rounded-[1.25rem] md:rounded-[1.5rem] px-5 py-4 md:px-6 md:py-5 text-sm font-bold text-slate-800 placeholder:text-slate-200 placeholder:font-black focus:ring-8 focus:ring-blue-500/5 focus:border-[#002147] outline-none transition-all shadow-inner" />
+                      <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 ml-2 group-focus-within:text-[#002147] transition-colors">Complete Residential Address</label>
+                      <textarea
+                        name="address"
+                        rows={3}
+                        placeholder="HOUSE NO, STREET, MOHALLA, NEAR LANDMARK"
+                        value={formData.address}
+                        onChange={handleChange}
+                        className="w-full bg-slate-50 border border-slate-100 rounded-[1.25rem] md:rounded-[1.5rem] px-5 py-4 md:px-6 md:py-5 text-sm font-bold text-slate-800 placeholder:text-slate-200 placeholder:font-black focus:ring-8 focus:ring-blue-500/5 focus:border-[#002147] outline-none transition-all shadow-inner resize-none"
+                      />
                     </div>
 
                     {/* Premium Acknowledgement Card */}

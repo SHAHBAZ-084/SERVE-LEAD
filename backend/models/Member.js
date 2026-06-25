@@ -82,6 +82,15 @@ const memberSchema = new mongoose.Schema({
   address: {
     type: String,
   },
+  province: {
+    type: String,
+  },
+  district: {
+    type: String,
+  },
+  tehsil: {
+    type: String,
+  },
   city: {
     type: String,
   },

@@ -173,6 +173,9 @@ router.post('/register', validateRequest(schemas.register), asyncHandler(async (
         university,
         address,
         city,
+        province,
+        district,
+        tehsil,
         requestedRole: rawRequestedRole,
         sls_official_id,
         cnic_number,
@@ -189,6 +192,13 @@ router.post('/register', validateRequest(schemas.register), asyncHandler(async (
         if (!sls_official_id?.trim() || !cnic_number?.trim()) {
             return res.status(400).json({ error: 'SLS Official ID and CNIC are required for Executive membership.' });
         }
+    }
+
+    if (!address?.trim()) {
+        return res.status(400).json({ error: 'Residential address is required.' });
+    }
+    if (!province?.trim() || !district?.trim() || !tehsil?.trim()) {
+        return res.status(400).json({ error: 'Province, district, and tehsil are required.' });
     }
 
     let referred_by = null;
@@ -229,8 +239,11 @@ router.post('/register', validateRequest(schemas.register), asyncHandler(async (
         program,
         passing_year,
         university,
-        address,
-        city,
+        address: address?.trim(),
+        province: province?.trim(),
+        district: district?.trim(),
+        tehsil: tehsil?.trim(),
+        city: (city || tehsil)?.trim(),
         requestedRole,
         sls_official_id: requestedRole === 'Executive' ? sls_official_id?.trim() : '',
         cnic_number: requestedRole === 'Executive' ? cnic_number?.trim() : '',

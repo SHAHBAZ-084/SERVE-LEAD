@@ -1720,7 +1720,7 @@ const DossierView = ({ memberId, members, onBack }) => {
                         </div>
                         <div className="sm:col-span-2 md:col-span-1">
                             <p className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Residential Address</p>
-                            <p className="text-xs sm:text-sm font-bold text-slate-800 leading-relaxed uppercase">{member.address ? `${member.address}, ${member.city || ''}` : 'N/A'}</p>
+                            <p className="text-xs sm:text-sm font-bold text-slate-800 leading-relaxed uppercase">{member.address ? [member.address, member.tehsil || member.city, member.district, member.province].filter(Boolean).join(", ") : 'N/A'}</p>
                         </div>
                     </div>
                 </div>
@@ -2583,7 +2583,9 @@ const AdminPortal = () => {
                                     <DetailItem label="WhatsApp Number" value={viewMember.whatsapp} icon="fa-phone" />
                                     <DetailItem label="University" value={viewMember.university} icon="fa-university" />
                                     <DetailItem label="Degree Program" value={viewMember.program} icon="fa-graduation-cap" />
-                                    <DetailItem label="Home City" value={viewMember.city} icon="fa-city" />
+                                    <DetailItem label="Province" value={viewMember.province} icon="fa-map" />
+                                    <DetailItem label="District" value={viewMember.district} icon="fa-map-location-dot" />
+                                    <DetailItem label="Tehsil" value={viewMember.tehsil || viewMember.city} icon="fa-location-crosshairs" />
                                     <DetailItem label="Requested Role" value={getRequestedRoleLabel(viewMember)} icon="fa-user-tag" />
                                     <DetailItem label="Joining Year" value={viewMember.joining_year} icon="fa-calendar-check" />
                                     <DetailItem label="Passing Year" value={viewMember.passing_year} icon="fa-calendar-alt" />
@@ -2591,7 +2593,12 @@ const AdminPortal = () => {
                                     {viewMember.cnic_number && <DetailItem label="CNIC Number" value={viewMember.cnic_number} icon="fa-address-card" />}
                                 </div>
                                 <div className="pt-6 border-t border-slate-100">
-                                    <DetailItem label="Current Address" value={viewMember.address} icon="fa-location-dot" fullWidth />
+                                    <DetailItem
+                                        label="Residential Address"
+                                        value={[viewMember.address, viewMember.tehsil || viewMember.city, viewMember.district, viewMember.province].filter(Boolean).join(", ")}
+                                        icon="fa-location-dot"
+                                        fullWidth
+                                    />
                                 </div>
                             </div>
 
