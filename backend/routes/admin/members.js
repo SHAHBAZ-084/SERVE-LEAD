@@ -84,7 +84,7 @@ router.post('/members/bulk-delete', authMiddleware, isAdmin, asyncHandler(async 
 
 // GET all approved members (with pagination and search)
 router.get('/members', authMiddleware, isAdmin, asyncHandler(async (req, res) => {
-    let { search, page = 1, limit = 10, city, role } = req.query;
+    let { search, page = 1, limit = 10, tehsil, city, role } = req.query;
     page = parseInt(page, 10) || 1;
     limit = parseInt(limit, 10) || 10;
 
@@ -97,8 +97,11 @@ router.get('/members', authMiddleware, isAdmin, asyncHandler(async (req, res) =>
             { member_id: new RegExp(search, 'i') }
         ];
     }
-    if (city && city !== 'All Cities') {
-        query.city = new RegExp(`^${city.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i');
+    const filterTehsil = tehsil || (city && city !== 'All Cities' && city !== 'All Tehsils' ? city : null);
+    if (filterTehsil) {
+        const tehsilRegex = new RegExp(`^${filterTehsil.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i');
+        query.$and = query.$and || [];
+        query.$and.push({ $or: [{ tehsil: tehsilRegex }, { city: tehsilRegex }] });
     }
     if (role && role !== 'All' && ['General', 'Executive'].includes(role)) {
         query.role = role;

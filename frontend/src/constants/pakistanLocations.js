@@ -930,3 +930,15 @@ export const getTehsils = (province, district) => {
 export const getDefaultDistrict = (province) => getDistricts(province)[0] || "";
 
 export const getDefaultTehsil = (province, district) => getTehsils(province, district)[0] || "";
+
+export const getAllTehsils = () => {
+  const tehsils = new Set();
+  Object.values(PAKISTAN_LOCATIONS).forEach((districts) => {
+    Object.values(districts).forEach((list) => {
+      list.forEach((tehsil) => tehsils.add(tehsil));
+    });
+  });
+  return [...tehsils].sort((a, b) => a.localeCompare(b));
+};
+
+export const ADMIN_TEHSIL_FILTER_OPTIONS = ["All Tehsils", ...getAllTehsils()];

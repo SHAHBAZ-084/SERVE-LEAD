@@ -1,5 +1,4 @@
 const Joi = require('joi');
-const { PAKISTAN_CITIES } = require('../constants/pakistanCities');
 
 const validateRequest = (schema) => {
     return (req, res, next) => {
@@ -25,7 +24,6 @@ const schemas = {
         passing_year: Joi.number().integer().optional().allow(null),
         university: Joi.string().optional().allow(''),
         address: Joi.string().max(300).required(),
-        city: Joi.string().valid(...PAKISTAN_CITIES).required(),
         province: Joi.string().max(80).required(),
         district: Joi.string().max(80).required(),
         tehsil: Joi.string().max(80).required(),

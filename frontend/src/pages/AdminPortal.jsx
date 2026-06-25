@@ -10,7 +10,7 @@ import { compressImage } from "../utils/compressImage";
 import { inputCls, useCountUp, StatCard, Spinner } from "../components/common/AdminUiComponents";
 import { FOOTER_DEFAULTS, FOOTER_FIELDS, parseFooterSettings } from "../constants/footerDefaults";
 import { ABOUT_DEFAULTS, ABOUT_FIELDS, parseAboutSettings } from "../constants/aboutDefaults";
-import { ADMIN_CITY_FILTER_OPTIONS, MEMBER_TYPE_FILTER_OPTIONS } from "../constants/pakistanCities";
+import { ADMIN_TEHSIL_FILTER_OPTIONS, MEMBER_TYPE_FILTER_OPTIONS } from "../constants/pakistanCities";
 
 const adminFilterSelectCls =
   "bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold text-slate-700 outline-none focus:border-[#002147] min-w-[140px]";
@@ -1787,7 +1787,7 @@ const DossierView = ({ memberId, members, onBack }) => {
 // ── Settings Tab (SELF-MANAGEMENT) ───────────────────────
 
 // ── Members Tab (Moved Outside to fix Search Strokes) ────────
-const MembersTab = ({ members, fetchMembers, loading, search, setSearch, auth, notify, Spinner, adminUser, api, inputCls, page, setPage, totalPages, cityFilter, setCityFilter, roleFilter, setRoleFilter }) => {
+const MembersTab = ({ members, fetchMembers, loading, search, setSearch, auth, notify, Spinner, adminUser, api, inputCls, page, setPage, totalPages, tehsilFilter, setTehsilFilter, roleFilter, setRoleFilter }) => {
     const [selectedIds, setSelectedIds] = useState([]);
     const [isProcessing, setIsProcessing] = useState(false);
     const [bulkMode, setBulkMode] = useState(false);
@@ -1874,12 +1874,12 @@ const MembersTab = ({ members, fetchMembers, loading, search, setSearch, auth, n
 
             <div className="flex flex-wrap gap-3">
                 <select
-                    value={cityFilter}
-                    onChange={(e) => { setPage(1); setCityFilter(e.target.value); }}
+                    value={tehsilFilter}
+                    onChange={(e) => { setPage(1); setTehsilFilter(e.target.value); }}
                     className={adminFilterSelectCls}
                 >
-                    {ADMIN_CITY_FILTER_OPTIONS.map((city) => (
-                        <option key={city} value={city}>{city}</option>
+                    {ADMIN_TEHSIL_FILTER_OPTIONS.map((tehsil) => (
+                        <option key={tehsil} value={tehsil}>{tehsil}</option>
                     ))}
                 </select>
                 <select
@@ -2062,7 +2062,7 @@ const AdminPortal = () => {
     const [issuedCertificates, setIssuedCertificates] = useState([]);
     const [membersPage, setMembersPage] = useState(1);
     const [membersTotalPages, setMembersTotalPages] = useState(1);
-    const [membersCityFilter, setMembersCityFilter] = useState("All Cities");
+    const [membersTehsilFilter, setMembersTehsilFilter] = useState("All Tehsils");
     const [membersRoleFilter, setMembersRoleFilter] = useState("All");
 
     const token = localStorage.getItem("adminToken");
@@ -2084,7 +2084,7 @@ const AdminPortal = () => {
                 page: String(membersPage),
                 limit: "10",
             });
-            if (membersCityFilter !== "All Cities") params.set("city", membersCityFilter);
+            if (membersTehsilFilter !== "All Tehsils") params.set("tehsil", membersTehsilFilter);
             if (membersRoleFilter !== "All") params.set("role", membersRoleFilter);
             const r = await api.get(`admin/members?${params.toString()}`, auth);
             setMembers(r.data.members || []);
@@ -2092,7 +2092,7 @@ const AdminPortal = () => {
         }
         catch (err) { console.error(err); }
         finally { setLoading(false); }
-    }, [search, membersPage, membersCityFilter, membersRoleFilter, auth]);
+    }, [search, membersPage, membersTehsilFilter, membersRoleFilter, auth]);
 
     const fetchAllMembers = useCallback(async () => {
         try {
@@ -2155,7 +2155,7 @@ const AdminPortal = () => {
 
     useEffect(() => {
         if (activeTab === "members") fetchMembers();
-    }, [membersPage, membersCityFilter, membersRoleFilter, fetchMembers, activeTab]);
+    }, [membersPage, membersTehsilFilter, membersRoleFilter, fetchMembers, activeTab]);
 
     // Back-Button Trap: Force the browser to stay on this page
     useEffect(() => {
@@ -2276,7 +2276,7 @@ const AdminPortal = () => {
         const [interviewForm, setInterviewForm] = useState({ venue: "SLS Society HQ, Campus Block B", message: "" });
         const [sendingCall, setSendingCall] = useState(false);
         const [viewMember, setViewMember] = useState(null);
-        const [cityFilter, setCityFilter] = useState("All Cities");
+        const [tehsilFilter, setTehsilFilter] = useState("All Tehsils");
         const [memberTypeFilter, setMemberTypeFilter] = useState("All");
 
         const getRequestedRoleLabel = (member) => {
@@ -2289,10 +2289,10 @@ const AdminPortal = () => {
                 m.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 m.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 m.joining_year?.toString().includes(searchTerm);
-            const matchesCity = cityFilter === "All Cities" || m.city === cityFilter;
+            const matchesTehsil = tehsilFilter === "All Tehsils" || m.tehsil === tehsilFilter || m.city === tehsilFilter;
             const memberRole = m.requestedRole || m.role || "General";
             const matchesType = memberTypeFilter === "All" || memberRole === memberTypeFilter;
-            return matchesSearch && matchesCity && matchesType;
+            return matchesSearch && matchesTehsil && matchesType;
         });
 
         const handleSelectAll = (e) => setSelectedIds(e.target.checked ? filtered.map(m => m._id) : []);
@@ -2388,12 +2388,12 @@ const AdminPortal = () => {
                     </div>
                     <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
                         <select
-                            value={cityFilter}
-                            onChange={(e) => setCityFilter(e.target.value)}
+                            value={tehsilFilter}
+                            onChange={(e) => setTehsilFilter(e.target.value)}
                             className={adminFilterSelectCls}
                         >
-                            {ADMIN_CITY_FILTER_OPTIONS.map((city) => (
-                                <option key={city} value={city}>{city}</option>
+                            {ADMIN_TEHSIL_FILTER_OPTIONS.map((tehsil) => (
+                                <option key={tehsil} value={tehsil}>{tehsil}</option>
                             ))}
                         </select>
                         <select
@@ -2435,7 +2435,7 @@ const AdminPortal = () => {
                                             <div>
                                                 <h4 className="font-bold text-slate-800 leading-none mb-1 text-xs">{m.name}</h4>
                                                 <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest leading-none">Class {m.joining_year}</p>
-                                                <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mt-1">{m.city || "No City"}</p>
+                                                <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mt-1">{m.tehsil || m.city || "No Tehsil"}</p>
                                                 <p className="text-[8px] font-black text-purple-600 uppercase tracking-widest mt-1">{getRequestedRoleLabel(m)}</p>
                                             </div>
                                         </div>
@@ -2480,7 +2480,7 @@ const AdminPortal = () => {
                                             <th className="px-5 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-widest">Applicant Name</th>
                                             <th className="px-5 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-widest">Email Record</th>
                                             <th className="px-5 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-widest">Entry Year</th>
-                                            <th className="px-5 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-widest">City</th>
+                                            <th className="px-5 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-widest">Tehsil</th>
                                             <th className="px-5 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-widest">Requested Role</th>
                                             <th className="px-5 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-widest text-right">Actions</th>
                                         </tr>
@@ -2513,7 +2513,7 @@ const AdminPortal = () => {
                                                 </td>
                                                 <td className="px-5 py-3.5 text-slate-500">{m.email}</td>
                                                 <td className="px-5 py-3.5 font-bold text-slate-400 font-mono tracking-tighter">{m.joining_year}</td>
-                                                <td className="px-5 py-3.5 text-slate-600 font-bold">{m.city || "—"}</td>
+                                                <td className="px-5 py-3.5 text-slate-600 font-bold">{m.tehsil || m.city || "—"}</td>
                                                 <td className="px-5 py-3.5">
                                                     <span className={`text-xs font-black uppercase tracking-widest px-2 py-1 rounded border ${
                                                         (m.requestedRole || m.role) === "Executive"
@@ -2644,7 +2644,6 @@ const AdminPortal = () => {
                                     <DetailItem label="WhatsApp Number" value={viewMember.whatsapp} icon="fa-phone" />
                                     <DetailItem label="University" value={viewMember.university} icon="fa-university" />
                                     <DetailItem label="Degree Program" value={viewMember.program} icon="fa-graduation-cap" />
-                                    <DetailItem label="City" value={viewMember.city} icon="fa-city" />
                                     <DetailItem label="Province" value={viewMember.province} icon="fa-map" />
                                     <DetailItem label="District" value={viewMember.district} icon="fa-map-location-dot" />
                                     <DetailItem label="Tehsil" value={viewMember.tehsil || viewMember.city} icon="fa-location-crosshairs" />
@@ -4478,8 +4477,8 @@ const AdminPortal = () => {
                             page={membersPage}
                             setPage={setMembersPage}
                             totalPages={membersTotalPages}
-                            cityFilter={membersCityFilter}
-                            setCityFilter={setMembersCityFilter}
+                            tehsilFilter={membersTehsilFilter}
+                            setTehsilFilter={setMembersTehsilFilter}
                             roleFilter={membersRoleFilter}
                             setRoleFilter={setMembersRoleFilter}
                         />

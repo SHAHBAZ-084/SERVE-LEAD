@@ -13,7 +13,6 @@ const otpLimiter = rateLimit({
 
 const Member = require('../models/Member');
 const OTP = require('../models/OTP');
-const { PAKISTAN_CITIES } = require('../constants/pakistanCities');
 const { sendOTPEmail, sendResetPasswordEmail } = require('../utils/emailService');
 const asyncHandler = require('../middlewares/asyncHandler');
 const authMiddleware = require('../middlewares/authMiddleware');
@@ -173,7 +172,6 @@ router.post('/register', validateRequest(schemas.register), asyncHandler(async (
         passing_year,
         university,
         address,
-        city,
         province,
         district,
         tehsil,
@@ -201,9 +199,8 @@ router.post('/register', validateRequest(schemas.register), asyncHandler(async (
     if (!province?.trim() || !district?.trim() || !tehsil?.trim()) {
         return res.status(400).json({ error: 'Province, district, and tehsil are required.' });
     }
-    if (!city?.trim() || !PAKISTAN_CITIES.includes(city.trim())) {
-        return res.status(400).json({ error: 'Please select a valid city.' });
-    }
+
+    const tehsilName = tehsil.trim();
 
     let referred_by = null;
     if (referredBy?.trim()) {
@@ -246,8 +243,8 @@ router.post('/register', validateRequest(schemas.register), asyncHandler(async (
         address: address?.trim(),
         province: province?.trim(),
         district: district?.trim(),
-        tehsil: tehsil?.trim(),
-        city: city.trim(),
+        tehsil: tehsilName,
+        city: tehsilName,
         requestedRole,
         sls_official_id: requestedRole === 'Executive' ? sls_official_id?.trim() : '',
         cnic_number: requestedRole === 'Executive' ? cnic_number?.trim() : '',

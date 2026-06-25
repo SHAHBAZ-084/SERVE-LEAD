@@ -5,7 +5,6 @@ import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 
 import { PROVINCES, getDistricts, getTehsils, getDefaultDistrict, getDefaultTehsil } from "../constants/pakistanLocations";
-import { PAKISTAN_CITIES } from "../constants/pakistanCities";
 
 const pakistaniUniversities = [
   "University of the Punjab", "Quaid-i-Azam University", "NUST", "UET Lahore", "UET Peshawar", 
@@ -46,7 +45,6 @@ export default function RegisterPage() {
     province: DEFAULT_PROVINCE,
     district: DEFAULT_DISTRICT,
     tehsil: DEFAULT_TEHSIL,
-    city: "Lahore",
     address: "",
     joining_year: new Date().getFullYear().toString(),
     otp: "",
@@ -92,7 +90,7 @@ export default function RegisterPage() {
   const tehsilOptions = getTehsils(formData.province, formData.district);
 
   const validateStep = () => {
-    const { name, father_name, whatsapp, email, password, otp, program, passing_year, address, province, district, tehsil, city, requestedRole, sls_official_id, cnic_number } = formData;
+    const { name, father_name, whatsapp, email, password, otp, program, passing_year, address, province, district, tehsil, requestedRole, sls_official_id, cnic_number } = formData;
     if (step === 1) {
       if (!requestedRole) return "Please select a membership type.";
       if (!name || !father_name || !whatsapp || !email || !password) return "All personal fields are mandatory.";
@@ -108,7 +106,6 @@ export default function RegisterPage() {
       if (!program || !passing_year) return "Education details are required.";
     } else if (step === 3) {
       if (!province || !district || !tehsil) return "Please select province, district, and tehsil.";
-      if (!city) return "Please select your city.";
       if (!address?.trim()) return "Residential address is required.";
     }
     return null;
@@ -179,7 +176,6 @@ export default function RegisterPage() {
         ...rest,
         email: formData.email.trim(),
         requestedRole: formData.requestedRole,
-        city: formData.city,
         sls_official_id: formData.requestedRole === "Executive" ? formData.sls_official_id.trim() : "",
         cnic_number: formData.requestedRole === "Executive" ? formData.cnic_number.trim() : "",
       };
@@ -419,12 +415,6 @@ export default function RegisterPage() {
                         <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 ml-2 group-focus-within:text-[#002147] transition-colors">Tehsil</label>
                         <select name="tehsil" value={formData.tehsil} onChange={handleLocationChange} className={selectCls} disabled={!formData.district}>
                           {tehsilOptions.map((t) => <option key={t} value={t}>{t.toUpperCase()}</option>)}
-                        </select>
-                      </div>
-                      <div className="md:col-span-2 group">
-                        <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 ml-2 group-focus-within:text-[#002147] transition-colors">City</label>
-                        <select name="city" value={formData.city} onChange={handleChange} className={selectCls}>
-                          {PAKISTAN_CITIES.map((c) => <option key={c} value={c}>{c.toUpperCase()}</option>)}
                         </select>
                       </div>
                     </div>
