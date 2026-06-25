@@ -16,7 +16,7 @@ const BlogSlideshow = ({ images }) => {
   }, [images.length]);
 
   if (!images || images.length === 0) return (
-    <div className="w-full h-64 bg-slate-100 flex items-center justify-center rounded-2xl">
+    <div className="w-full aspect-[4/3] max-h-72 bg-slate-50 flex items-center justify-center rounded-3xl border border-slate-100">
       <i className="fas fa-image text-slate-300 text-4xl" />
     </div>
   );
@@ -25,22 +25,22 @@ const BlogSlideshow = ({ images }) => {
   const prev = () => setIndex((prev) => (prev - 1 + images.length) % images.length);
 
   return (
-    <div className="relative w-full aspect-square overflow-hidden rounded-3xl group">
+    <div className="relative w-full aspect-[4/3] max-h-72 overflow-hidden rounded-3xl group bg-slate-50 border border-slate-100">
       <AnimatePresence mode="wait">
         <motion.img
           key={index}
           src={getImgUrl(images[index].url)}
           alt={images[index].caption || "Blog image"}
-          initial={{ opacity: 0, scale: 1.1 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: 0.95 }}
-          transition={{ duration: 0.8, ease: "circOut" }}
-          className="w-full h-full object-cover"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.5, ease: "easeOut" }}
+          className="absolute inset-0 w-full h-full object-contain"
         />
       </AnimatePresence>
       
       {/* Overlay Gradient */}
-      <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-60" />
+      <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-50 pointer-events-none" />
 
       {/* Caption Badge */}
       {images[index].caption && (
