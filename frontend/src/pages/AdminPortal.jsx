@@ -12,7 +12,7 @@ import { FOOTER_DEFAULTS, FOOTER_FIELDS, parseFooterSettings } from "../constant
 import { ABOUT_DEFAULTS, ABOUT_FIELDS, parseAboutSettings } from "../constants/aboutDefaults";
 import { MEMBER_TYPE_FILTER_OPTIONS } from "../constants/pakistanCities";
 import AdminLocationFilters, { DEFAULT_ADMIN_LOCATION_FILTER, appendLocationFilterParams, matchesAdminLocationFilter } from "../components/common/AdminLocationFilters";
-import FeeManagementTab, { getFeeApprovalBadge, canApproveMemberFee } from "../components/admin/FeeManagementTab";
+import PaymentManagementTab, { getFeeApprovalBadge, canApproveMemberFee, getInterviewBadge } from "../components/admin/PaymentManagementTab";
 
 const adminFilterSelectCls =
   "bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold text-slate-700 outline-none focus:border-[#002147] min-w-[140px]";
@@ -231,6 +231,7 @@ const BatchesTab = ({ members, issuedCertificates, auth, api, notify, setSearchP
 const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, members }) => {
     const [activeSubTab, setActiveSubTab] = useState("donation");
     const [channels, setChannels] = useState([]);
+    const [feeChannels, setFeeChannels] = useState([]);
     const [teamStructure, setTeamStructure] = useState([]);
     const [leadership, setLeadership] = useState({ name: "", role: "", program: "", desc: "", img: "", email: "", email_subject: "Inquiry regarding Serve & Lead Society", email_body: "Hello Chairman,\n\nI am reaching out to..." });
     const [vision, setVision] = useState({
@@ -247,6 +248,8 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
         Object.fromEntries(FOOTER_FIELDS.map(({ key }) => [key, FOOTER_DEFAULTS[key]]))
     );
     const [membershipFee, setMembershipFee] = useState("");
+    const [membershipValidityMonths, setMembershipValidityMonths] = useState("12");
+    const [defaultFeeDeadlineDays, setDefaultFeeDeadlineDays] = useState("7");
     const [savingFee, setSavingFee] = useState(false);
 
 
@@ -288,6 +291,11 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
             setFooter(parseFooterSettings(r.data));
             setAbout(parseAboutSettings(r.data));
             if (r.data.membership_fee !== undefined) setMembershipFee(String(r.data.membership_fee));
+            if (r.data.membership_validity_months) setMembershipValidityMonths(String(r.data.membership_validity_months));
+            if (r.data.default_fee_deadline_days) setDefaultFeeDeadlineDays(String(r.data.default_fee_deadline_days));
+            if (r.data.membership_fee_channels) {
+                try { setFeeChannels(JSON.parse(r.data.membership_fee_channels)); } catch { setFeeChannels([]); }
+            }
         });
         api.get("settings/whatsapp-link").then(r => setWaLink(r.data.link || ""));
         api.get("settings/terms").then(r => setTnc(r.data.terms || ""));
@@ -336,10 +344,15 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
     const saveMembershipFee = async () => {
         setSavingFee(true);
         try {
-            await api.put("settings", { membership_fee: membershipFee }, auth);
-            notify("Membership fee amount saved!");
+            await api.put("settings", {
+                membership_fee: membershipFee,
+                membership_fee_channels: JSON.stringify(feeChannels),
+                membership_validity_months: membershipValidityMonths,
+                default_fee_deadline_days: defaultFeeDeadlineDays,
+            }, auth);
+            notify("Membership payment settings saved!");
         } catch {
-            notify("Failed to save membership fee", "error");
+            notify("Failed to save membership settings", "error");
         } finally {
             setSavingFee(false);
         }
@@ -412,6 +425,12 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
         } catch (err) { notify(err.response?.data?.error || "Promotion failed", "error"); }
         finally { setSubmitting(false); }
     };
+
+    const addFeeChannel = (type) => {
+        setFeeChannels([...feeChannels, { id: Date.now(), type, ...(type === 'Wallet' ? { walletType: 'EasyPaisa', number: '' } : { bankName: PAK_BANKS[0], accountNumber: '', iban: '' }) }]);
+    };
+    const updateFeeChannel = (id, field, value) => setFeeChannels(feeChannels.map(c => c.id === id ? { ...c, [field]: value } : c));
+    const removeFeeChannel = (id) => setFeeChannels(feeChannels.filter(c => c.id !== id));
 
     const addChannel = (type) => {
         const newChannel = type === 'Bank'
@@ -556,12 +575,53 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
                                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Amount shown when fee is requested</p>
                             </div>
                         </div>
-                        <div className="max-w-sm space-y-3">
-                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block">Membership Fee Amount (PKR)</label>
-                            <input type="number" min="0" step="1" value={membershipFee} onChange={(e) => setMembershipFee(e.target.value)} className={inputCls} />
-                            <p className="text-xs text-slate-400">This amount is shown to members when their fee is requested.</p>
+                        <div className="max-w-2xl space-y-4">
+                            <div>
+                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1">Membership Fee Amount (PKR)</label>
+                                <input type="number" min="0" step="1" value={membershipFee} onChange={(e) => setMembershipFee(e.target.value)} className={inputCls} />
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1">Membership Validity (Months)</label>
+                                    <input type="number" min="1" value={membershipValidityMonths} onChange={(e) => setMembershipValidityMonths(e.target.value)} className={inputCls} />
+                                </div>
+                                <div>
+                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1">Default Fee Deadline (Days)</label>
+                                    <input type="number" min="1" value={defaultFeeDeadlineDays} onChange={(e) => setDefaultFeeDeadlineDays(e.target.value)} className={inputCls} />
+                                </div>
+                            </div>
+                            <p className="text-xs text-slate-400">Fee amount, validity period, and default deadline are used when requesting membership payments.</p>
+                            <div className="pt-4 border-t border-slate-100">
+                                <div className="flex justify-between items-center mb-4">
+                                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Membership Fee Payment Channels</p>
+                                    <div className="flex gap-2">
+                                        <button type="button" onClick={() => addFeeChannel('Wallet')} className="px-3 py-1.5 bg-emerald-50 text-emerald-600 rounded-lg text-[9px] font-black uppercase">+ Wallet</button>
+                                        <button type="button" onClick={() => addFeeChannel('Bank')} className="px-3 py-1.5 bg-blue-50 text-blue-600 rounded-lg text-[9px] font-black uppercase">+ Bank</button>
+                                    </div>
+                                </div>
+                                <div className="space-y-3 max-h-64 overflow-y-auto">
+                                    {feeChannels.length === 0 && <p className="text-xs text-slate-400 italic">No fee channels — donation channels will be used as fallback.</p>}
+                                    {feeChannels.map((ch) => (
+                                        <div key={ch.id} className="p-4 bg-slate-50 rounded-xl border relative">
+                                            <button type="button" onClick={() => removeFeeChannel(ch.id)} className="absolute top-2 right-2 text-slate-300 hover:text-rose-500"><i className="fas fa-trash-alt text-xs" /></button>
+                                            {ch.type === 'Wallet' ? (
+                                                <div className="grid grid-cols-2 gap-2">
+                                                    <select value={ch.walletType} onChange={e => updateFeeChannel(ch.id, 'walletType', e.target.value)} className={inputCls}><option>EasyPaisa</option><option>JazzCash</option><option>SadaPay</option></select>
+                                                    <input placeholder="Number" value={ch.number} onChange={e => updateFeeChannel(ch.id, 'number', e.target.value)} className={inputCls} />
+                                                </div>
+                                            ) : (
+                                                <div className="grid grid-cols-1 gap-2">
+                                                    <select value={ch.bankName} onChange={e => updateFeeChannel(ch.id, 'bankName', e.target.value)} className={inputCls}>{PAK_BANKS.map(b => <option key={b}>{b}</option>)}</select>
+                                                    <input placeholder="Account #" value={ch.accountNumber} onChange={e => updateFeeChannel(ch.id, 'accountNumber', e.target.value)} className={inputCls} />
+                                                    <input placeholder="IBAN" value={ch.iban} onChange={e => updateFeeChannel(ch.id, 'iban', e.target.value)} className={inputCls} />
+                                                </div>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
                             <button type="button" onClick={saveMembershipFee} disabled={savingFee} className="px-6 py-3 bg-[#002147] text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 transition-all shadow-md disabled:opacity-50">
-                                Save Fee Amount
+                                Save Membership Payment Settings
                             </button>
                         </div>
                     </div>
@@ -2174,7 +2234,7 @@ const AdminPortal = () => {
         if (activeTab === "admins" ||
             activeTab === "certificates" ||
             activeTab === "batches") fetchAllMembers();
-        if (activeTab === "pending" || activeTab === "fees") fetchPendingMembers();
+        if (activeTab === "pending" || activeTab === "payments") fetchPendingMembers();
         if (activeTab === "events" ||
             activeTab === "certificates") fetchEvents();
         if (activeTab === "announcements") fetchAnnouncements();
@@ -2221,7 +2281,7 @@ const AdminPortal = () => {
         { id: "dashboard", label: "Dashboard", icon: "fa-th-large" },
         { id: "members", label: "Members", icon: "fa-users" },
         { id: "pending", label: "Pending", icon: "fa-user-clock" },
-        { id: "fees", label: "Fee Management", icon: "fa-money-check-alt" },
+        { id: "payments", label: "Payment Management", icon: "fa-money-check-alt" },
         { id: "events", label: "Events", icon: "fa-calendar-alt" },
         { id: "blogs", label: "Blogs", icon: "fa-newspaper" },
         { id: "announcements", label: "Announcements", icon: "fa-bullhorn" },
@@ -2305,7 +2365,18 @@ const AdminPortal = () => {
         const [bulkMode, setBulkMode] = useState(false);
 
         const [interviewTarget, setInterviewTarget] = useState(null);
-        const [interviewForm, setInterviewForm] = useState({ venue: "SLS Society HQ, Campus Block B", message: "" });
+        const [interviewForm, setInterviewForm] = useState({
+            venue: "SLS Society HQ, Campus Block B",
+            message: "",
+            dressCode: "Business Formal",
+            arrivalTime: "15 minutes before scheduled time",
+            guideNotes: "",
+            focusAreas: "Leadership potential, communication, commitment to service",
+            linkUrl: "",
+        });
+        const [interviewResultTarget, setInterviewResultTarget] = useState(null);
+        const [interviewResultForm, setInterviewResultForm] = useState({ result: "passed", note: "" });
+        const [submittingResult, setSubmittingResult] = useState(false);
         const [sendingCall, setSendingCall] = useState(false);
         const [viewMember, setViewMember] = useState(null);
         const [locationFilter, setLocationFilter] = useState({ ...DEFAULT_ADMIN_LOCATION_FILTER });
@@ -2389,11 +2460,34 @@ const AdminPortal = () => {
                 await api.post(`admin/interview-call/${interviewTarget._id}`, interviewForm, auth);
                 notify(`Interview call sent to ${interviewTarget.name}!`);
                 setInterviewTarget(null);
-                setInterviewForm({ venue: "SLS Society HQ, Campus Block B", message: "" });
+                setInterviewForm({
+                    venue: "SLS Society HQ, Campus Block B",
+                    message: "",
+                    dressCode: "Business Formal",
+                    arrivalTime: "15 minutes before scheduled time",
+                    guideNotes: "",
+                    focusAreas: "Leadership potential, communication, commitment to service",
+                    linkUrl: "",
+                });
                 fetchPendingMembers();
             } catch (err) {
                 notify(err.response?.data?.error || "Failed to send interview invitation", "error");
             } finally { setSendingCall(false); }
+        };
+
+        const handleInterviewResult = async (e) => {
+            e.preventDefault();
+            if (!interviewResultTarget) return;
+            setSubmittingResult(true);
+            try {
+                const r = await api.post(`admin/interview-result/${interviewResultTarget._id}`, interviewResultForm, auth);
+                notify(r.data.message || "Interview result saved");
+                setInterviewResultTarget(null);
+                setInterviewResultForm({ result: "passed", note: "" });
+                fetchPendingMembers();
+            } catch (err) {
+                notify(err.response?.data?.error || "Failed to save interview result", "error");
+            } finally { setSubmittingResult(false); }
         };
 
         return (
@@ -2466,8 +2560,14 @@ const AdminPortal = () => {
                                             <div>
                                                 <h4 className="font-bold text-slate-800 leading-none mb-1 text-xs">{m.name}</h4>
                                                 {(() => {
+                                                    const ib = getInterviewBadge(m);
                                                     const fb = getFeeApprovalBadge(m);
-                                                    return fb ? <span className={`inline-block text-[7px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md border mb-1 ${fb.cls}`}>{fb.label}</span> : null;
+                                                    return (
+                                                        <>
+                                                            {ib && <span className={`inline-block text-[7px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md border mb-1 ${ib.cls}`}>{ib.label}</span>}
+                                                            {fb && fb.label !== ib?.label && <span className={`inline-block text-[7px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md border mb-1 ${fb.cls}`}>{fb.label}</span>}
+                                                        </>
+                                                    );
                                                 })()}
                                                 <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest leading-none">Class {m.joining_year}</p>
                                                 <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mt-1">{m.tehsil || m.city || "No Tehsil"}</p>
@@ -2491,6 +2591,12 @@ const AdminPortal = () => {
                                                 }`}>
                                             Interview
                                         </button>
+                                        {m.interview_called && (m.interviewResult?.status === "pending" || !m.interviewResult?.status) && (
+                                            <button onClick={() => { setInterviewResultTarget(m); setInterviewResultForm({ result: "passed", note: "" }); }}
+                                                className="flex-1 text-[9px] bg-indigo-50 text-indigo-600 border border-indigo-100 py-2 rounded-lg font-black uppercase tracking-widest">
+                                                Result
+                                            </button>
+                                        )}
                                         <button onClick={() => approveSingle(m._id)} disabled={isProcessing || !canApproveMemberFee(m)}
                                             title={!canApproveMemberFee(m) ? "Verify or waive fee before approving" : ""}
                                             className={`flex-1 text-[9px] border py-2 rounded-lg font-black uppercase tracking-widest ${canApproveMemberFee(m) ? "bg-emerald-50 text-emerald-600 border-emerald-100 disabled:opacity-50" : "bg-slate-50 text-slate-400 border-slate-100 opacity-40 cursor-not-allowed"}`}>
@@ -2626,15 +2732,37 @@ const AdminPortal = () => {
                                 </div>
 
                                 <div className="group">
-                                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 ml-1 group-focus-within:text-[#002147] transition-colors">Interview Description / Details</label>
+                                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 ml-1">Interview Description / Details</label>
                                     <textarea
-                                        rows="4"
+                                        rows="3"
                                         required
                                         value={interviewForm.message}
                                         onChange={e => setInterviewForm({ ...interviewForm, message: e.target.value })}
-                                        className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-5 text-sm font-bold text-slate-800 placeholder:text-slate-300 focus:bg-white focus:ring-0  outline-none transition-all resize-none shadow-sm"
-                                        placeholder="Add schedule, instructions or requirements..."
+                                        className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4 text-sm font-bold text-slate-800 placeholder:text-slate-300 focus:bg-white outline-none resize-none"
+                                        placeholder="Schedule, instructions, or requirements..."
                                     />
+                                </div>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div className="group">
+                                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Dress Code (optional)</label>
+                                        <input type="text" value={interviewForm.dressCode} onChange={e => setInterviewForm({ ...interviewForm, dressCode: e.target.value })} className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-4 py-3 text-sm font-bold" placeholder="Business Formal" />
+                                    </div>
+                                    <div className="group">
+                                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Arrival Time (optional)</label>
+                                        <input type="text" value={interviewForm.arrivalTime} onChange={e => setInterviewForm({ ...interviewForm, arrivalTime: e.target.value })} className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-4 py-3 text-sm font-bold" placeholder="15 min early" />
+                                    </div>
+                                </div>
+                                <div className="group">
+                                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Interview Guide (optional)</label>
+                                    <textarea rows="2" value={interviewForm.guideNotes} onChange={e => setInterviewForm({ ...interviewForm, guideNotes: e.target.value })} className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-4 py-3 text-sm font-bold resize-none" placeholder="What to bring, how to prepare..." />
+                                </div>
+                                <div className="group">
+                                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Interviewer Focus Areas (optional)</label>
+                                    <textarea rows="2" value={interviewForm.focusAreas} onChange={e => setInterviewForm({ ...interviewForm, focusAreas: e.target.value })} className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-4 py-3 text-sm font-bold resize-none" placeholder="Leadership, communication, service..." />
+                                </div>
+                                <div className="group">
+                                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Reference Link (optional)</label>
+                                    <input type="url" value={interviewForm.linkUrl} onChange={e => setInterviewForm({ ...interviewForm, linkUrl: e.target.value })} className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-4 py-3 text-sm font-bold" placeholder="https://maps.google.com/... or online meeting link" />
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-4 pt-2 pb-2">
@@ -2653,6 +2781,34 @@ const AdminPortal = () => {
                                         {sendingCall ? <i className="fas fa-spinner fa-spin" /> : <i className="fas fa-paper-plane" />}
                                         {sendingCall ? "Sending..." : "Confirm & Send"}
                                     </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                )}
+
+                {interviewResultTarget && (
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+                        <div className="bg-white rounded-[2.5rem] w-full max-w-lg shadow-2xl overflow-hidden">
+                            <div className="bg-indigo-700 p-8 text-white">
+                                <h3 className="text-xl font-black uppercase">Record Interview Result</h3>
+                                <p className="text-white/70 text-xs mt-1">{interviewResultTarget.name}</p>
+                            </div>
+                            <form onSubmit={handleInterviewResult} className="p-8 space-y-4">
+                                <div>
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Result</label>
+                                    <select value={interviewResultForm.result} onChange={(e) => setInterviewResultForm({ ...interviewResultForm, result: e.target.value })} className={inputCls}>
+                                        <option value="passed">Passed — Congratulations email</option>
+                                        <option value="failed">Failed — Better luck email</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Note to candidate (emailed)</label>
+                                    <textarea rows={4} required minLength={5} value={interviewResultForm.note} onChange={(e) => setInterviewResultForm({ ...interviewResultForm, note: e.target.value })} className={`${inputCls} resize-none`} placeholder="Committee feedback or next steps..." />
+                                </div>
+                                <div className="flex gap-3">
+                                    <button type="button" onClick={() => setInterviewResultTarget(null)} className="flex-1 py-3 border rounded-xl text-[10px] font-black uppercase text-slate-500">Cancel</button>
+                                    <button type="submit" disabled={submittingResult} className="flex-1 py-3 bg-indigo-700 text-white rounded-xl text-[10px] font-black uppercase disabled:opacity-50">{submittingResult ? "Saving..." : "Save & Notify"}</button>
                                 </div>
                             </form>
                         </div>
@@ -4525,7 +4681,7 @@ const AdminPortal = () => {
                         />
                     )}
                     {activeTab === "pending" && <ApprovalsTab pendingMembers={pendingMembers} fetchPendingMembers={fetchPendingMembers} loading={loading} auth={auth} notify={notify} Spinner={Spinner} api={api} />}
-                    {activeTab === "fees" && <FeeManagementTab pendingMembers={pendingMembers} fetchPendingMembers={fetchPendingMembers} auth={auth} notify={notify} api={api} Spinner={Spinner} inputCls={inputCls} />}
+                    {activeTab === "payments" && <PaymentManagementTab pendingMembers={pendingMembers} fetchPendingMembers={fetchPendingMembers} auth={auth} notify={notify} api={api} Spinner={Spinner} inputCls={inputCls} />}
                     {activeTab === "events" && !searchParams.get("eventId") && <EventsTab events={events} fetchEvents={fetchEvents} api={api} auth={auth} notify={notify} setSearchParams={setSearchParams} getImgUrl={getImgUrl} CountdownTimer={CountdownTimer} inputCls={inputCls} />}
                     {activeTab === "events" && searchParams.get("eventId") && (
                         <ParticipantsView

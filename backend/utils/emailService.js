@@ -15,9 +15,12 @@ const createTransporter = () => {
   });
 };
 
-const sendWelcomeEmail = async (email, name, memberId) => {
+const sendWelcomeEmail = async (email, name, memberId, membershipValidUntil) => {
   try {
     const transporter = createTransporter();
+    const validUntilText = membershipValidUntil
+      ? new Date(membershipValidUntil).toLocaleDateString('en-PK', { year: 'numeric', month: 'long', day: 'numeric' })
+      : null;
     const mailOptions = {
       from: `"Serve & Lead Society" <${process.env.EMAIL_USER}>`,
       to: email,
@@ -41,6 +44,7 @@ const sendWelcomeEmail = async (email, name, memberId) => {
               </div>
               
               <p style="font-size: 16px; color: #475569; margin-bottom: 30px;">You are now an official member of our community. We are excited to have you on board. Log into your member portal to view announcements, upcoming events, and connect with your team.</p>
+              ${validUntilText ? `<div style="margin: 20px 0; background:#eff6ff;border-radius:16px;padding:16px;border-left:4px solid #3b82f6;"><p style="margin:0;color:#1e40af;font-weight:600;">Your membership is valid until <strong>${validUntilText}</strong>.</p></div>` : ''}
               
               <div style="text-align: center;">
                 <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/login" style="background-color: #002147; color: #ffffff; padding: 18px 40px; border-radius: 12px; text-decoration: none; font-weight: 800; font-size: 15px; text-transform: uppercase; letter-spacing: 1px; display: inline-block; transition: all 0.3s ease; box-shadow: 0 10px 20px rgba(0,33,71,0.2);">Login to Member Portal</a>
@@ -159,7 +163,21 @@ const sendContactEmail = async (name, email, message) => {
   }
 };
 
-const sendInterviewEmail = async (email, name, venue, message) => {
+const sendInterviewEmail = async (email, name, details) => {
+  const {
+    venue = '',
+    message = '',
+    dressCode = '',
+    arrivalTime = '',
+    guideNotes = '',
+    focusAreas = '',
+    linkUrl = '',
+  } = details || {};
+
+  const optionalBlock = (label, value) => value
+    ? `<div style="margin-bottom:16px;"><p style="text-transform:uppercase;font-size:11px;font-weight:900;color:#3b82f6;letter-spacing:0.15em;margin-bottom:6px;">${label}</p><p style="margin:0;font-size:15px;color:#334155;line-height:1.7;">${value}</p></div>`
+    : '';
+
   try {
     const transporter = createTransporter();
     const mailOptions = {
@@ -167,47 +185,86 @@ const sendInterviewEmail = async (email, name, venue, message) => {
       to: email,
       replyTo: "serveandleadsociety@serveandlead.org",
       subject: 'Interview Invitation: SLS Society Recruitment',
-      text: `Dear ${name}, you are invited for an interview at ${venue}. Message: ${message}`,
+      text: `Dear ${name}, you are invited for an interview at ${venue}. ${message}`,
       html: `
         <div style="font-family: 'Segoe UI', Arial, sans-serif; padding: 20px 10px; color: #1e293b; line-height: 1.6; background-color: #f1f5f9;">
           <div style="width: 100%; max-width: 650px; margin: 0 auto; background-color: #ffffff; border-radius: 32px; overflow: hidden; box-shadow: 0 40px 100px -20px rgba(0,33,71,0.15); border: 1px solid #e2e8f0;">
-            <div style="background: linear-gradient(135deg, #002147 0%, #001a38 100%); padding: 40px 20px; text-align: center; position: relative;">
-              <h1 style="color: #ffffff; margin: 0; font-size: 32px; font-weight: 900; letter-spacing: -0.02em;">Interview Invitation</h1>
-              <p style="color: #475569; margin-top: 15px; font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.2em; color: rgba(255,255,255,0.7);">Official Recruitment Drive 2026</p>
+            <div style="background: linear-gradient(135deg, #002147 0%, #001a38 100%); padding: 40px 20px; text-align: center;">
+              <h1 style="color: #ffffff; margin: 0; font-size: 32px; font-weight: 900;">Interview Invitation</h1>
+              <p style="margin-top: 15px; font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.2em; color: rgba(255,255,255,0.7);">Official Recruitment Drive</p>
             </div>
-            <div style="padding: 30px 20px;">
+            <div style="padding: 30px 24px;">
               <h2 style="color: #0f172a; margin-top: 0; font-size: 26px; font-weight: 800;">Dear ${name},</h2>
-              <p style="font-size: 17px; color: #475569; margin-bottom: 40px;">Based on your application, we are pleased to invite you for a formal interview to assess your potential alignment with the <strong>Serve & Lead Society (SLS)</strong>.</p>
-              
-              <div style="margin: 30px 0; background-color: #f8fafc; border-radius: 24px; padding: 25px; border: 1px solid #e2e8f0; box-shadow: inset 0 2px 10px rgba(0,0,0,0.02);">
-                <div style="margin-bottom: 30px;">
-                  <p style="text-transform: uppercase; font-size: 11px; font-weight: 900; color: #3b82f6; letter-spacing: 0.15em; margin-bottom: 10px;">Scheduled Venue</p>
-                  <p style="margin: 0; font-size: 20px; color: #002147; font-weight: 800;">📍 ${venue}</p>
-                </div>
-                <div>
-                  <p style="text-transform: uppercase; font-size: 11px; font-weight: 900; color: #3b82f6; letter-spacing: 0.15em; margin-bottom: 10px;">Message from Recruitment Commitee</p>
-                  <p style="margin: 0; font-size: 16px; color: #334155; line-height: 1.8; font-style: italic;">"${message || 'Please bring your printed application and a copy of your CV.'}"</p>
-                </div>
+              <p style="font-size: 17px; color: #475569; margin-bottom: 24px;">You are invited for a formal interview with the <strong>Serve & Lead Society (SLS)</strong>.</p>
+              <div style="margin: 24px 0; background-color: #f8fafc; border-radius: 24px; padding: 25px; border: 1px solid #e2e8f0;">
+                ${optionalBlock('Venue / Location', venue ? `📍 ${venue}` : '')}
+                ${optionalBlock('Arrival Time', arrivalTime)}
+                ${optionalBlock('Dress Code', dressCode)}
+                ${optionalBlock('Interview Guide', guideNotes)}
+                ${optionalBlock('Focus Areas', focusAreas)}
+                ${linkUrl ? optionalBlock('Reference Link', `<a href="${linkUrl}" style="color:#002147;">${linkUrl}</a>`) : ''}
+                ${optionalBlock('Message from Recruitment Committee', message ? `"${message}"` : '')}
               </div>
-              
-              <div style="background-color: #eff6ff; border-radius: 16px; padding: 25px; border-left: 4px solid #3b82f6; margin-bottom: 40px;">
-                <p style="font-size: 14px; color: #1e40af; margin: 0; font-weight: 600;">
-                  📌 Preparation: Please arrive 15 minutes early. Dress code is Business Formal.
-                </p>
-              </div>
-              
-              <hr style="border: 0; border-top: 1px solid #f1f5f9; margin: 50px 0;">
-              
-              <div style="text-align: center;">
-                <p style="font-size: 14px; font-weight: 900; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.3em; margin-bottom: 8px;">Serve & Lead Society (SLS)</p>
-                <p style="font-size: 12px; color: #cbd5e1;">Official Registered Organization | Lahore, Pakistan</p>
-              </div>
+              <p style="font-size: 14px; color: #64748b; text-align: center;">Serve & Lead Society (SLS) | Lahore, Pakistan</p>
             </div>
           </div>
         </div>
       `,
     };
     await transporter.sendMail(mailOptions);
+    return { success: true };
+  } catch (error) {
+    console.error('Email Service Error:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+const sendInterviewPassedEmail = async (email, name, note) => {
+  try {
+    const transporter = createTransporter();
+    const loginUrl = `${process.env.FRONTEND_URL || 'https://serveandlead.org'}/login`;
+    await transporter.sendMail({
+      from: `"Serve & Lead Recruitment" <${process.env.EMAIL_USER}>`,
+      to: email,
+      replyTo: 'serveandleadsociety@serveandlead.org',
+      subject: 'Congratulations — Interview Passed',
+      html: emailShell('Interview Passed', `
+        <h2 style="color:#0f172a;margin-top:0;">Congratulations, ${name}!</h2>
+        <p style="font-size:16px;color:#475569;">We are pleased to inform you that you have <strong style="color:#059669;">passed</strong> your SLS membership interview.</p>
+        <div style="background:#ecfdf5;border-left:4px solid #10b981;padding:16px;border-radius:8px;margin:20px 0;">
+          <p style="margin:0;color:#065f46;"><strong>Committee note:</strong> ${note}</p>
+        </div>
+        <p style="color:#475569;">You will receive a separate email when your membership fee payment is requested. Please log in to the member portal to stay updated.</p>
+        <div style="text-align:center;margin-top:24px;">
+          <a href="${loginUrl}" style="background-color:#002147;color:#ffffff;padding:16px 32px;border-radius:12px;text-decoration:none;font-weight:800;">Member Portal</a>
+        </div>
+      `),
+    });
+    return { success: true };
+  } catch (error) {
+    console.error('Email Service Error:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+const sendInterviewFailedEmail = async (email, name, note) => {
+  try {
+    const transporter = createTransporter();
+    await transporter.sendMail({
+      from: `"Serve & Lead Recruitment" <${process.env.EMAIL_USER}>`,
+      to: email,
+      replyTo: 'serveandleadsociety@serveandlead.org',
+      subject: 'SLS Interview Outcome',
+      html: emailShell('Application Update', `
+        <h2 style="color:#0f172a;margin-top:0;">Dear ${name},</h2>
+        <p style="font-size:16px;color:#475569;">Thank you for your interest in the Serve & Lead Society and for attending the interview process.</p>
+        <p style="font-size:16px;color:#475569;">After careful review, we regret to inform you that your application will not proceed further at this time.</p>
+        <div style="background:#fff1f2;border-left:4px solid #f43f5e;padding:16px;border-radius:8px;margin:20px 0;">
+          <p style="margin:0;color:#9f1239;"><strong>Note:</strong> ${note}</p>
+        </div>
+        <p style="color:#64748b;">We appreciate your effort and wish you the very best in your future endeavors.</p>
+      `),
+    });
     return { success: true };
   } catch (error) {
     console.error('Email Service Error:', error);
@@ -288,20 +345,26 @@ const formatChannelsHtml = (channels) => {
   }).join('');
 };
 
-const sendFeeRequestedEmail = async (email, name, amount, channels) => {
+const sendFeeRequestedEmail = async (email, name, amount, channels, deadline) => {
   try {
     const transporter = createTransporter();
     const loginUrl = `${process.env.FRONTEND_URL || 'https://serveandlead.org'}/login`;
     const channelsHtml = formatChannelsHtml(channels);
+    const deadlineText = deadline
+      ? new Date(deadline).toLocaleString('en-PK', { dateStyle: 'full', timeStyle: 'short' })
+      : 'As communicated by administration';
     await transporter.sendMail({
       from: `"Serve & Lead Society" <${process.env.EMAIL_USER}>`,
       to: email,
       replyTo: 'serveandleadsociety@serveandlead.org',
       subject: 'Action Required: Membership Fee Payment',
-      text: `Dear ${name}, your membership fee of PKR ${amount} is due. Log in to submit payment proof: ${loginUrl}`,
+      text: `Dear ${name}, your membership fee of PKR ${amount} is due by ${deadlineText}. Log in: ${loginUrl}`,
       html: emailShell('Membership Fee Required', `
         <h2 style="color:#0f172a;margin-top:0;">Dear ${name},</h2>
-        <p style="font-size:16px;color:#475569;">Your interview has been completed. To proceed with membership approval, please pay the membership fee of <strong>PKR ${amount}</strong> and submit your payment proof through the member portal.</p>
+        <p style="font-size:16px;color:#475569;">Congratulations on passing your interview. To proceed, please pay the membership fee of <strong>PKR ${amount}</strong> and submit payment proof through the member portal.</p>
+        <div style="background:#fffbeb;border-left:4px solid #f59e0b;padding:16px;border-radius:8px;margin:20px 0;">
+          <p style="margin:0;color:#92400e;font-weight:700;">Payment deadline: ${deadlineText}</p>
+        </div>
         <h3 style="color:#002147;font-size:14px;text-transform:uppercase;letter-spacing:0.1em;">Payment Channels</h3>
         ${channelsHtml}
         <div style="text-align:center;margin-top:32px;">
@@ -376,4 +439,6 @@ module.exports = {
   sendFeeRequestedEmail,
   sendFeeRejectedEmail,
   sendFeeVerifiedEmail,
+  sendInterviewPassedEmail,
+  sendInterviewFailedEmail,
 };

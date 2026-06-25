@@ -4,10 +4,11 @@ const bcrypt = require('bcryptjs');
 const Member = require('../../models/Member');
 const Event = require('../../models/Event');
 const Counter = require('../../models/Counter');
+const SystemSetting = require('../../models/SystemSetting');
 const authMiddleware = require('../../middlewares/authMiddleware');
 const asyncHandler = require('../../middlewares/asyncHandler');
 const { isAdmin, isSuperuser } = require('../../middlewares/adminMiddlewares');
-const { sendWelcomeEmail, sendInterviewEmail } = require('../../utils/emailService');
+const { sendWelcomeEmail, sendInterviewEmail, sendInterviewPassedEmail, sendInterviewFailedEmail } = require('../../utils/emailService');
 const logActivity = require('../../utils/activityLogger');
 const { deleteFile } = require('../../utils/storage');
 
@@ -152,16 +153,27 @@ router.post('/approve-member/:id', authMiddleware, isAdmin, asyncHandler(async (
 
     if (member.status === 'approved') return res.status(400).json({ error: 'Already approved' });
 
-    const allowedFeeStatuses = ['verified', 'waived', 'not_requested'];
+    const allowedFeeStatuses = ['verified', 'waived'];
     if (!allowedFeeStatuses.includes(member.feeStatus || 'not_requested')) {
         return res.status(400).json({
             error: 'Cannot approve. The member\'s fee is not yet verified. Please verify their payment or waive the fee before approving.',
         });
     }
 
+    if (member.interviewResult?.status !== 'passed') {
+        return res.status(400).json({
+            error: 'Cannot approve. The member must pass the interview before membership approval.',
+        });
+    }
+
     if (!['pending', 'fee_pending'].includes(member.status)) {
         return res.status(400).json({ error: 'Member is not in a pending approval state.' });
     }
+
+    const validityDoc = await SystemSetting.findOne({ key: 'membership_validity_months' });
+    const validityMonths = parseInt(validityDoc?.value, 10) || 12;
+    const validUntil = new Date();
+    validUntil.setMonth(validUntil.getMonth() + validityMonths);
 
     // ATOMIC ID GENERATION
     const year = member.joining_year || new Date().getFullYear();
@@ -180,25 +192,77 @@ router.post('/approve-member/:id', authMiddleware, isAdmin, asyncHandler(async (
     member.status = 'approved';
     member.role = approvedRole;
     member.member_id = nextMemberId;
+    member.membershipValidUntil = validUntil;
     await member.save();
 
-    sendWelcomeEmail(member.email, member.name, nextMemberId).catch(console.error);
+    sendWelcomeEmail(member.email, member.name, nextMemberId, validUntil).catch(console.error);
     res.json({ message: 'Approved successfully', member_id: nextMemberId });
     logActivity(req.user.memberId, 'Approved Member', `Approved member: ${member.name} (${nextMemberId})`, member._id);
 }));
 
 // POST Call for interview
 router.post('/interview-call/:id', authMiddleware, isAdmin, asyncHandler(async (req, res) => {
-    const { venue, message } = req.body;
+    const { venue, message, dressCode, arrivalTime, guideNotes, focusAreas, linkUrl } = req.body;
     const member = await Member.findById(req.params.id);
     if (!member) return res.status(404).json({ error: 'Member not found' });
+    if (member.status === 'rejected') return res.status(400).json({ error: 'This application has been closed.' });
 
     member.interview_called = true;
+    member.interviewDetails = {
+        venue: venue?.trim() || '',
+        message: message?.trim() || '',
+        dressCode: dressCode?.trim() || '',
+        arrivalTime: arrivalTime?.trim() || '',
+        guideNotes: guideNotes?.trim() || '',
+        focusAreas: focusAreas?.trim() || '',
+        linkUrl: linkUrl?.trim() || '',
+    };
+    if (!member.interviewResult?.status || member.interviewResult.status === 'pending') {
+        member.interviewResult = { status: 'pending', note: '', updatedAt: null, updatedBy: '' };
+    }
     await member.save();
 
-    sendInterviewEmail(member.email, member.name, venue, message).catch(console.error);
+    sendInterviewEmail(member.email, member.name, member.interviewDetails).catch(console.error);
     res.json({ message: 'Interview call sent successfully' });
     logActivity(req.user.memberId, 'Sent Interview Call', `Invited ${member.name} for interview at ${venue}`, member._id);
+}));
+
+// POST Record interview result
+router.post('/interview-result/:id', authMiddleware, isAdmin, asyncHandler(async (req, res) => {
+    const { result, note } = req.body;
+    if (!['passed', 'failed'].includes(result)) {
+        return res.status(400).json({ error: 'Result must be passed or failed.' });
+    }
+    if (!note?.trim() || note.trim().length < 5) {
+        return res.status(400).json({ error: 'A note of at least 5 characters is required.' });
+    }
+
+    const member = await Member.findById(req.params.id);
+    if (!member) return res.status(404).json({ error: 'Member not found' });
+    if (!member.interview_called) {
+        return res.status(400).json({ error: 'Interview must be called before recording a result.' });
+    }
+
+    const admin = await Member.findById(req.user.memberId).select('name member_id');
+    member.interviewResult = {
+        status: result,
+        note: note.trim(),
+        updatedAt: new Date(),
+        updatedBy: admin?.member_id || admin?._id?.toString() || '',
+    };
+
+    if (result === 'failed') {
+        member.status = 'rejected';
+        await member.save();
+        sendInterviewFailedEmail(member.email, member.name, note.trim()).catch(console.error);
+        logActivity(req.user.memberId, 'Interview Failed', `Marked ${member.name} as failed interview`, member._id);
+        return res.json({ message: 'Interview marked as failed. Candidate notified.' });
+    }
+
+    await member.save();
+    sendInterviewPassedEmail(member.email, member.name, note.trim()).catch(console.error);
+    logActivity(req.user.memberId, 'Interview Passed', `Marked ${member.name} as passed interview`, member._id);
+    res.json({ message: 'Interview marked as passed. You may now request membership fee.' });
 }));
 
 // POST Register Admin/Member (SUPERUSER ONLY)

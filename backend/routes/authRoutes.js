@@ -277,6 +277,12 @@ router.post('/login', validateRequest(schemas.login), asyncHandler(async (req, r
     }
 
     // Check for pending or restricted application status
+    if (member.status === 'rejected') {
+        return res.status(403).json({
+            error: 'Your application was not successful following the interview process. Better luck in the future.',
+        });
+    }
+
     if (member.status === 'pending' && !member.interview_called) {
         return res.status(403).json({ 
             error: 'Your application is under processing. Access will be granted once your membership is approved.' 

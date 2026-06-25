@@ -46,13 +46,32 @@ const memberSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['pending', 'fee_pending', 'approved', 'blocked'],
+    enum: ['pending', 'fee_pending', 'approved', 'blocked', 'rejected'],
     default: 'pending',
     index: true,
   },
   interview_called: {
     type: Boolean,
     default: false,
+  },
+  interviewDetails: {
+    venue: { type: String, default: '' },
+    message: { type: String, default: '' },
+    dressCode: { type: String, default: '' },
+    arrivalTime: { type: String, default: '' },
+    guideNotes: { type: String, default: '' },
+    focusAreas: { type: String, default: '' },
+    linkUrl: { type: String, default: '' },
+  },
+  interviewResult: {
+    status: {
+      type: String,
+      enum: ['pending', 'passed', 'failed'],
+      default: 'pending',
+    },
+    note: { type: String, default: '' },
+    updatedAt: { type: Date },
+    updatedBy: { type: String, default: '' },
   },
   feeStatus: {
     type: String,
@@ -71,7 +90,9 @@ const memberSchema = new mongoose.Schema({
     waivedBy: { type: String, default: '' },
     waivedReason: { type: String, default: '' },
     amount: { type: Number },
+    deadline: { type: Date },
   },
+  membershipValidUntil: { type: Date },
   profile_pic_url: {
     type: String,
   },

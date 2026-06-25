@@ -184,10 +184,12 @@ const MemberDashboard = () => {
         const fs = feeInfo?.feeStatus || user.feeStatus;
         if (!fs || fs === "not_requested" || user.status === "approved") return null;
         if (fs === "requested") {
+            const deadlineText = feeInfo?.deadline || feeInfo?.feePayment?.deadline;
             return (
                 <div className="mb-6 p-5 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-2xl text-left">
                     <h3 className="text-sm font-black text-amber-900 uppercase tracking-widest mb-2">Membership Fee Payment Required</h3>
-                    <p className="text-sm text-amber-800/80 mb-4">Your membership fee of <strong>PKR {feeInfo?.amount ?? "—"}</strong> is due. Please submit your payment proof to complete your membership.</p>
+                    <p className="text-sm text-amber-800/80 mb-2">Your membership fee of <strong>PKR {feeInfo?.amount ?? "—"}</strong> is due.</p>
+                    {deadlineText && <p className="text-xs font-bold text-rose-600 mb-4">Deadline: {new Date(deadlineText).toLocaleString()}</p>}
                     <button type="button" onClick={() => { setShowFeeModal(true); setFeeStep(1); setFeeError(null); }} className="px-6 py-3 bg-[#002147] text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg">Submit Payment Proof</button>
                 </div>
             );
@@ -349,6 +351,7 @@ const MemberDashboard = () => {
                     status: member.status,
                     interview_called: member.interview_called,
                     feeStatus: member.feeStatus || "not_requested",
+                    interviewResult: member.interviewResult,
                 });
                 if (member.status === "pending" || member.status === "fee_pending") {
                     try {
@@ -357,8 +360,16 @@ const MemberDashboard = () => {
                     } catch { /* ignore */ }
                     try {
                         const settingsRes = await api.get("settings");
-                        const ch = settingsRes.data.donation_channels;
-                        if (ch) setDonationChannels(JSON.parse(ch));
+                        let ch = [];
+                        try {
+                            if (settingsRes.data.membership_fee_channels) {
+                                ch = JSON.parse(settingsRes.data.membership_fee_channels);
+                            }
+                            if (!ch.length && settingsRes.data.donation_channels) {
+                                ch = JSON.parse(settingsRes.data.donation_channels);
+                            }
+                        } catch { /* ignore */ }
+                        setDonationChannels(ch);
                     } catch { /* ignore */ }
                     setLoading(false);
                 } else fetchAllData();
@@ -1224,8 +1235,10 @@ const MemberDashboard = () => {
 
     if (user.status === "pending" || user.status === "fee_pending") {
         const isInterviewed = user.interview_called;
+        const ir = feeInfo?.interviewResult?.status || user.interviewResult?.status;
         const fs = feeInfo?.feeStatus || user.feeStatus;
         const feeStage = fs && fs !== "not_requested";
+        const interviewPassed = ir === "passed";
         return (
             <>
                 <Navbar />
@@ -1242,16 +1255,18 @@ const MemberDashboard = () => {
                                 <i className={`fas ${feeStage ? 'fa-money-check-alt' : isInterviewed ? 'fa-calendar-check' : 'fa-id-card-clip'} text-4xl animate-pulse`}></i>
                             </div>
                             <h2 className="text-3xl font-bold text-slate-800 mb-4 tracking-tight uppercase">
-                                {feeStage ? "Membership Fee" : isInterviewed ? "Interview Scheduled" : "Approval Pending"}
+                                {feeStage ? "Membership Fee" : interviewPassed ? "Interview Passed" : isInterviewed ? "Interview Scheduled" : "Approval Pending"}
                             </h2>
                             <p className="text-slate-500 font-medium leading-relaxed mb-10 text-sm">
                                 {fs === "requested"
-                                    ? "Please submit your membership fee payment proof using the button above."
+                                    ? "Please submit your membership fee payment proof using the button above before the deadline."
                                     : fs === "submitted" || fs === "verified" || fs === "waived"
                                     ? "Your application is progressing. See the status update above."
+                                    : interviewPassed
+                                    ? "Congratulations! You passed the interview. You will receive an email when your membership fee payment is requested."
                                     : isInterviewed
-                                    ? "Great news! You have been shortlisted for an interview. Please check your registered Gmail for the venue and time details sent by our administration."
-                                    : "Welcome to the society. Your membership details are currently being verified by our administration team. You will receive an email confirmation once your access is ready."
+                                    ? "Your interview has been scheduled. Please check your Gmail for venue, dress code, and preparation details."
+                                    : "Welcome to the society. Your membership details are currently being verified by our administration team."
                                 }
                             </p>
                             <button onClick={handleLogout} className="text-[10px] font-bold text-rose-500 uppercase tracking-[0.3em] hover:text-rose-600 transition-all flex items-center gap-2 mx-auto justify-center">
