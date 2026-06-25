@@ -71,10 +71,10 @@ const getFileUrl = (file, subfolder = 'general') => {
     return `/uploads/${subfolder}/${file.filename}`;
 };
 
-const createUpload = (subfolder) => {
+const createUpload = (subfolder, maxSizeBytes = 5 * 1024 * 1024) => {
     return multer({
         storage: getStorage(subfolder),
-        limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+        limits: { fileSize: maxSizeBytes },
         fileFilter: (req, file, cb) => {
             const filetypes = /jpeg|jpg|png|webp|heic|heif/;
             const extname = filetypes.test(path.extname(file.originalname).toLowerCase());

@@ -257,10 +257,123 @@ const sendOTPEmail = async (email, otp) => {
   }
 };
 
+const emailShell = (title, bodyHtml) => `
+  <div style="font-family: 'Segoe UI', Arial, sans-serif; padding: 20px 10px; color: #1e293b; line-height: 1.6; background-color: #f8fafc;">
+    <div style="width: 100%; max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 24px; overflow: hidden; box-shadow: 0 20px 50px rgba(0,33,71,0.1); border: 1px solid #e2e8f0;">
+      <div style="background: linear-gradient(135deg, #002147 0%, #004080 100%); padding: 32px 20px; text-align: center;">
+        <h1 style="color: #ffffff; margin: 0; font-size: 26px; font-weight: 800;">${title}</h1>
+      </div>
+      <div style="padding: 40px 32px;">${bodyHtml}</div>
+      <div style="padding: 24px; text-align: center; border-top: 1px solid #f1f5f9;">
+        <p style="font-size: 11px; color: #94a3b8; margin: 0;">Serve & Lead Society (SLS) | Lahore, Pakistan</p>
+      </div>
+    </div>
+  </div>
+`;
+
+const formatChannelsHtml = (channels) => {
+  if (!channels?.length) return '<p style="color:#64748b;">Contact administration for payment details.</p>';
+  return channels.map((ch) => {
+    if (ch.type === 'Bank') {
+      return `<div style="margin-bottom:12px;padding:12px;background:#f8fafc;border-radius:8px;border-left:4px solid #002147;">
+        <strong>${ch.bankName || 'Bank'}</strong><br/>
+        Account: ${ch.accountNumber || 'N/A'}<br/>
+        IBAN: ${ch.iban || 'N/A'}
+      </div>`;
+    }
+    return `<div style="margin-bottom:12px;padding:12px;background:#f8fafc;border-radius:8px;border-left:4px solid #10b981;">
+      <strong>${ch.walletType || 'Wallet'}</strong><br/>
+      Number: ${ch.number || 'N/A'}
+    </div>`;
+  }).join('');
+};
+
+const sendFeeRequestedEmail = async (email, name, amount, channels) => {
+  try {
+    const transporter = createTransporter();
+    const loginUrl = `${process.env.FRONTEND_URL || 'https://serveandlead.org'}/login`;
+    const channelsHtml = formatChannelsHtml(channels);
+    await transporter.sendMail({
+      from: `"Serve & Lead Society" <${process.env.EMAIL_USER}>`,
+      to: email,
+      replyTo: 'serveandleadsociety@serveandlead.org',
+      subject: 'Action Required: Membership Fee Payment',
+      text: `Dear ${name}, your membership fee of PKR ${amount} is due. Log in to submit payment proof: ${loginUrl}`,
+      html: emailShell('Membership Fee Required', `
+        <h2 style="color:#0f172a;margin-top:0;">Dear ${name},</h2>
+        <p style="font-size:16px;color:#475569;">Your interview has been completed. To proceed with membership approval, please pay the membership fee of <strong>PKR ${amount}</strong> and submit your payment proof through the member portal.</p>
+        <h3 style="color:#002147;font-size:14px;text-transform:uppercase;letter-spacing:0.1em;">Payment Channels</h3>
+        ${channelsHtml}
+        <div style="text-align:center;margin-top:32px;">
+          <a href="${loginUrl}" style="background-color:#002147;color:#ffffff;padding:16px 32px;border-radius:12px;text-decoration:none;font-weight:800;font-size:14px;text-transform:uppercase;">Log In & Submit Proof</a>
+        </div>
+      `),
+    });
+    return { success: true };
+  } catch (error) {
+    console.error('Email Service Error:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+const sendFeeRejectedEmail = async (email, name, reason) => {
+  try {
+    const transporter = createTransporter();
+    const loginUrl = `${process.env.FRONTEND_URL || 'https://serveandlead.org'}/login`;
+    await transporter.sendMail({
+      from: `"Serve & Lead Society" <${process.env.EMAIL_USER}>`,
+      to: email,
+      replyTo: 'serveandleadsociety@serveandlead.org',
+      subject: 'Fee Submission Rejected',
+      text: `Dear ${name}, your fee submission was rejected. Reason: ${reason}. Please resubmit at ${loginUrl}`,
+      html: emailShell('Fee Submission Rejected', `
+        <h2 style="color:#0f172a;margin-top:0;">Dear ${name},</h2>
+        <p style="font-size:16px;color:#475569;">Your membership fee payment proof could not be verified.</p>
+        <div style="background:#fff1f2;border-left:4px solid #f43f5e;padding:16px;border-radius:8px;margin:20px 0;">
+          <p style="margin:0;color:#9f1239;font-weight:600;">Reason: ${reason}</p>
+        </div>
+        <p style="color:#475569;">Please log in and submit corrected payment proof.</p>
+        <div style="text-align:center;margin-top:24px;">
+          <a href="${loginUrl}" style="background-color:#002147;color:#ffffff;padding:16px 32px;border-radius:12px;text-decoration:none;font-weight:800;font-size:14px;">Resubmit Payment Proof</a>
+        </div>
+      `),
+    });
+    return { success: true };
+  } catch (error) {
+    console.error('Email Service Error:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+const sendFeeVerifiedEmail = async (email, name) => {
+  try {
+    const transporter = createTransporter();
+    await transporter.sendMail({
+      from: `"Serve & Lead Society" <${process.env.EMAIL_USER}>`,
+      to: email,
+      replyTo: 'serveandleadsociety@serveandlead.org',
+      subject: 'Payment Verified — Awaiting Final Approval',
+      text: `Dear ${name}, your membership fee payment has been verified. Final approval is pending.`,
+      html: emailShell('Payment Verified', `
+        <h2 style="color:#0f172a;margin-top:0;">Dear ${name},</h2>
+        <p style="font-size:16px;color:#475569;">Your membership fee payment has been <strong style="color:#059669;">verified</strong>. Our administration team will complete your final membership approval shortly.</p>
+        <p style="color:#64748b;font-size:14px;">No further action is required from you at this time.</p>
+      `),
+    });
+    return { success: true };
+  } catch (error) {
+    console.error('Email Service Error:', error);
+    return { success: false, error: error.message };
+  }
+};
+
 module.exports = {
   sendWelcomeEmail,
   sendResetPasswordEmail,
   sendContactEmail,
   sendInterviewEmail,
-  sendOTPEmail
+  sendOTPEmail,
+  sendFeeRequestedEmail,
+  sendFeeRejectedEmail,
+  sendFeeVerifiedEmail,
 };

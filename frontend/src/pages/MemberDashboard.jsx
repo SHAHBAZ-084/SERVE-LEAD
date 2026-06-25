@@ -104,12 +104,192 @@ const MemberDashboard = () => {
     const [mobileNav, setMobileNav] = useState(false);
     const [selectedEvent, setSelectedEvent] = useState(null);
     const [joining, setJoining] = useState(false);
+    const [feeInfo, setFeeInfo] = useState(null);
+    const [donationChannels, setDonationChannels] = useState([]);
+    const [showFeeModal, setShowFeeModal] = useState(false);
+    const [feeStep, setFeeStep] = useState(1);
+    const [feeForm, setFeeForm] = useState({ transactionId: "", paymentChannel: "", accountNumber: "", otherChannel: "" });
+    const [feeScreenshot, setFeeScreenshot] = useState(null);
+    const [feePreview, setFeePreview] = useState(null);
+    const [feeSubmitting, setFeeSubmitting] = useState(false);
+    const [feeError, setFeeError] = useState(null);
+    const [feeToast, setFeeToast] = useState(null);
 
     const navigate = useNavigate();
 
     const auth = useMemo(() => ({
         headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
     }), []);
+
+    const channelOptions = useMemo(() => {
+        return donationChannels.map((ch) => {
+            if (ch.type === "Bank") {
+                const last4 = (ch.accountNumber || "").slice(-4);
+                return { label: `${ch.bankName || "Bank"} ••••${last4}`, value: ch.bankName || "Bank" };
+            }
+            const last4 = (ch.number || "").slice(-4);
+            return { label: `${ch.walletType || "Wallet"} ••••${last4}`, value: ch.walletType || "Wallet" };
+        });
+    }, [donationChannels]);
+
+    const handleFeeScreenshot = (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        if (!/\.(jpe?g|png|webp)$/i.test(file.name)) {
+            setFeeError("Only JPG, PNG, or WEBP images are allowed.");
+            return;
+        }
+        setFeeScreenshot(file);
+        setFeePreview(URL.createObjectURL(file));
+        setFeeError(null);
+    };
+
+    const submitFeeProof = async (e) => {
+        e.preventDefault();
+        setFeeError(null);
+        const channel = feeForm.paymentChannel === "Other" ? feeForm.otherChannel.trim() : feeForm.paymentChannel;
+        if (!channel) { setFeeError("Please select a payment channel."); return; }
+        if (!feeForm.transactionId.trim()) { setFeeError("Transaction ID is required."); return; }
+        if (!feeForm.accountNumber.trim()) { setFeeError("Sender account or phone is required."); return; }
+        if (!feeScreenshot) { setFeeError("Payment screenshot is required."); return; }
+
+        setFeeSubmitting(true);
+        try {
+            const formData = new FormData();
+            formData.append("transactionId", feeForm.transactionId.trim());
+            formData.append("paymentChannel", channel);
+            formData.append("accountNumber", feeForm.accountNumber.trim());
+            formData.append("screenshot", feeScreenshot);
+            await api.post("fees/submit", formData, {
+                headers: { ...auth.headers, "Content-Type": "multipart/form-data" },
+            });
+            setShowFeeModal(false);
+            setFeeStep(1);
+            setFeeForm({ transactionId: "", paymentChannel: "", accountNumber: "", otherChannel: "" });
+            setFeeScreenshot(null);
+            setFeePreview(null);
+            const feeRes = await api.get("fees/my-fee", auth);
+            setFeeInfo(feeRes.data);
+            setUser((u) => ({ ...u, feeStatus: "submitted" }));
+            setFeeToast("Payment proof submitted. Admin will verify within 24 hours.");
+            setTimeout(() => setFeeToast(null), 8000);
+        } catch (err) {
+            setFeeError(err.response?.data?.error || "Upload failed. Please try again.");
+        } finally {
+            setFeeSubmitting(false);
+        }
+    };
+
+    const renderFeeBanner = () => {
+        const fs = feeInfo?.feeStatus || user.feeStatus;
+        if (!fs || fs === "not_requested" || user.status === "approved") return null;
+        if (fs === "requested") {
+            return (
+                <div className="mb-6 p-5 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-2xl text-left">
+                    <h3 className="text-sm font-black text-amber-900 uppercase tracking-widest mb-2">Membership Fee Payment Required</h3>
+                    <p className="text-sm text-amber-800/80 mb-4">Your membership fee of <strong>PKR {feeInfo?.amount ?? "—"}</strong> is due. Please submit your payment proof to complete your membership.</p>
+                    <button type="button" onClick={() => { setShowFeeModal(true); setFeeStep(1); setFeeError(null); }} className="px-6 py-3 bg-[#002147] text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg">Submit Payment Proof</button>
+                </div>
+            );
+        }
+        if (fs === "submitted") {
+            return (
+                <div className="mb-6 p-5 bg-blue-50 border border-blue-200 rounded-2xl text-left">
+                    <p className="text-sm font-bold text-blue-800">Your payment proof is under review. You will be notified once verified.</p>
+                </div>
+            );
+        }
+        if (fs === "verified") {
+            return (
+                <div className="mb-6 p-5 bg-emerald-50 border border-emerald-200 rounded-2xl text-left">
+                    <p className="text-sm font-bold text-emerald-800">Your payment has been verified. Final approval is pending.</p>
+                </div>
+            );
+        }
+        if (fs === "waived") {
+            return (
+                <div className="mb-6 p-5 bg-purple-50 border border-purple-200 rounded-2xl text-left">
+                    <p className="text-sm font-bold text-purple-800">Your membership fee has been waived. Final approval is pending.</p>
+                </div>
+            );
+        }
+        return null;
+    };
+
+    const FeeSubmissionModal = () => {
+        if (!showFeeModal) return null;
+        return (
+            <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+                <div className="bg-white rounded-[2rem] w-full max-w-[480px] shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
+                    <div className="bg-[#002147] p-6 text-white text-center flex-shrink-0">
+                        <img src={logo} alt="SLS" className="h-10 mx-auto mb-3 object-contain bg-white/10 rounded-xl p-2" />
+                        <h3 className="text-lg font-black uppercase tracking-widest">Submit Membership Fee</h3>
+                    </div>
+                    <div className="p-6 overflow-y-auto flex-1">
+                        {feeStep === 1 ? (
+                            <div className="space-y-4">
+                                <p className="text-2xl font-black text-[#002147] text-center">PKR {feeInfo?.amount ?? "—"}</p>
+                                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Payment Channels</p>
+                                <div className="space-y-2">
+                                    {donationChannels.map((ch) => (
+                                        <div key={ch.id || ch.bankName || ch.walletType} className="p-3 bg-slate-50 rounded-xl border border-slate-100 text-sm">
+                                            {ch.type === "Bank" ? (
+                                                <>
+                                                    <p className="font-bold text-slate-800">{ch.bankName}</p>
+                                                    <p className="text-slate-500 text-xs">A/C: {ch.accountNumber}</p>
+                                                    {ch.iban && <p className="text-slate-500 text-xs">IBAN: {ch.iban}</p>}
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <p className="font-bold text-slate-800">{ch.walletType}</p>
+                                                    <p className="text-slate-500 text-xs">{ch.number}</p>
+                                                </>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                                <p className="text-xs text-slate-400">Please transfer the exact amount and keep your transaction receipt.</p>
+                                <button type="button" onClick={() => setFeeStep(2)} className="w-full py-4 bg-[#002147] text-white rounded-xl text-[10px] font-black uppercase tracking-widest">I&apos;ve Made the Payment</button>
+                            </div>
+                        ) : (
+                            <form onSubmit={submitFeeProof} className="space-y-4">
+                                <div>
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Payment Channel</label>
+                                    <select value={feeForm.paymentChannel} onChange={(e) => setFeeForm({ ...feeForm, paymentChannel: e.target.value })} className={inputCls} required>
+                                        <option value="">Select channel</option>
+                                        {channelOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                                        <option value="Other">Other</option>
+                                    </select>
+                                </div>
+                                {feeForm.paymentChannel === "Other" && (
+                                    <input type="text" placeholder="Specify payment channel" value={feeForm.otherChannel} onChange={(e) => setFeeForm({ ...feeForm, otherChannel: e.target.value })} className={inputCls} required />
+                                )}
+                                <div>
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">TID / Reference No.</label>
+                                    <input type="text" placeholder="e.g. 23849201" value={feeForm.transactionId} onChange={(e) => setFeeForm({ ...feeForm, transactionId: e.target.value })} className={inputCls} required />
+                                </div>
+                                <div>
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Sender Account or Phone</label>
+                                    <input type="text" placeholder="The account you sent from" value={feeForm.accountNumber} onChange={(e) => setFeeForm({ ...feeForm, accountNumber: e.target.value })} className={inputCls} required />
+                                </div>
+                                <div>
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Payment Screenshot</label>
+                                    <input type="file" accept="image/jpeg,image/png,image/webp" onChange={handleFeeScreenshot} className="text-sm" required={!feeScreenshot} />
+                                    {feePreview && <img src={feePreview} alt="Preview" className="mt-2 max-h-32 rounded-xl border border-slate-200 object-contain" />}
+                                </div>
+                                <p className="text-[10px] text-slate-400 leading-relaxed">By submitting, you confirm this is a genuine transaction. Fraudulent submissions will result in permanent disqualification.</p>
+                                {feeError && <p className="text-xs font-bold text-rose-500">{feeError}</p>}
+                                <button type="submit" disabled={feeSubmitting} className="w-full py-4 bg-[#002147] text-white rounded-xl text-[10px] font-black uppercase tracking-widest disabled:opacity-50 flex items-center justify-center gap-2">
+                                    {feeSubmitting ? <><i className="fas fa-spinner fa-spin" /> Uploading...</> : "Submit for Verification"}
+                                </button>
+                            </form>
+                        )}
+                    </div>
+                    <button type="button" onClick={() => { setShowFeeModal(false); setFeeStep(1); setFeeError(null); }} className="p-4 text-[10px] font-black uppercase text-slate-400 border-t border-slate-100">Close</button>
+                </div>
+            </div>
+        );
+    };
 
     const handleLogout = useCallback(async () => {
         try {
@@ -167,10 +347,21 @@ const MemberDashboard = () => {
                     rawRole: member.role,
                     year: member.joining_year || "20XX",
                     status: member.status,
-                    interview_called: member.interview_called
+                    interview_called: member.interview_called,
+                    feeStatus: member.feeStatus || "not_requested",
                 });
-                if (member.status === "pending") setLoading(false);
-                else fetchAllData();
+                if (member.status === "pending" || member.status === "fee_pending") {
+                    try {
+                        const feeRes = await api.get("fees/my-fee", auth);
+                        setFeeInfo(feeRes.data);
+                    } catch { /* ignore */ }
+                    try {
+                        const settingsRes = await api.get("settings");
+                        const ch = settingsRes.data.donation_channels;
+                        if (ch) setDonationChannels(JSON.parse(ch));
+                    } catch { /* ignore */ }
+                    setLoading(false);
+                } else fetchAllData();
             } catch (err) {
                 if (err.response?.status === 401 || err.response?.status === 404) handleLogout();
                 setLoading(false);
@@ -1031,23 +1222,34 @@ const MemberDashboard = () => {
 
     // --- MAIN RENDER ---
 
-    if (status === "pending" || user.status === "pending") {
+    if (user.status === "pending" || user.status === "fee_pending") {
         const isInterviewed = user.interview_called;
+        const fs = feeInfo?.feeStatus || user.feeStatus;
+        const feeStage = fs && fs !== "not_requested";
         return (
             <>
                 <Navbar />
+                {feeToast && (
+                    <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[300] bg-emerald-600 text-white px-6 py-3 rounded-xl text-sm font-bold shadow-xl">{feeToast}</div>
+                )}
+                <FeeSubmissionModal />
                 <div className="min-h-[80vh] flex items-center justify-center p-6 bg-slate-50">
                     <div className="bg-white rounded-[3rem] shadow-2xl shadow-slate-200/60 overflow-hidden max-w-xl w-full border border-slate-100 relative text-center">
-                        <div className={`absolute top-0 left-0 w-full h-2 bg-gradient-to-r ${isInterviewed ? 'from-emerald-400 to-teal-500' : 'from-amber-400 to-orange-500'}`} />
+                        <div className={`absolute top-0 left-0 w-full h-2 bg-gradient-to-r ${feeStage ? 'from-amber-400 to-orange-500' : isInterviewed ? 'from-emerald-400 to-teal-500' : 'from-amber-400 to-orange-500'}`} />
                         <div className="p-12">
-                            <div className={`w-24 h-24 ${isInterviewed ? 'bg-emerald-50 text-emerald-500' : 'bg-amber-50 text-amber-500'} rounded-[2rem] flex items-center justify-center mx-auto mb-8 shadow-inner`}>
-                                <i className={`fas ${isInterviewed ? 'fa-calendar-check' : 'fa-id-card-clip'} text-4xl animate-pulse`}></i>
+                            {renderFeeBanner()}
+                            <div className={`w-24 h-24 ${feeStage ? 'bg-amber-50 text-amber-500' : isInterviewed ? 'bg-emerald-50 text-emerald-500' : 'bg-amber-50 text-amber-500'} rounded-[2rem] flex items-center justify-center mx-auto mb-8 shadow-inner`}>
+                                <i className={`fas ${feeStage ? 'fa-money-check-alt' : isInterviewed ? 'fa-calendar-check' : 'fa-id-card-clip'} text-4xl animate-pulse`}></i>
                             </div>
                             <h2 className="text-3xl font-bold text-slate-800 mb-4 tracking-tight uppercase">
-                                {isInterviewed ? "Interview Scheduled" : "Approval Pending"}
+                                {feeStage ? "Membership Fee" : isInterviewed ? "Interview Scheduled" : "Approval Pending"}
                             </h2>
                             <p className="text-slate-500 font-medium leading-relaxed mb-10 text-sm">
-                                {isInterviewed
+                                {fs === "requested"
+                                    ? "Please submit your membership fee payment proof using the button above."
+                                    : fs === "submitted" || fs === "verified" || fs === "waived"
+                                    ? "Your application is progressing. See the status update above."
+                                    : isInterviewed
                                     ? "Great news! You have been shortlisted for an interview. Please check your registered Gmail for the venue and time details sent by our administration."
                                     : "Welcome to the society. Your membership details are currently being verified by our administration team. You will receive an email confirmation once your access is ready."
                                 }

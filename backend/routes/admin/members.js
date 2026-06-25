@@ -134,7 +134,7 @@ router.get('/members', authMiddleware, isAdmin, asyncHandler(async (req, res) =>
 
 // GET all pending members
 router.get('/pending-members', authMiddleware, isAdmin, asyncHandler(async (req, res) => {
-    const pending = await Member.find({ status: 'pending' })
+    const pending = await Member.find({ status: { $in: ['pending', 'fee_pending'] } })
         .select('-password')
         .sort({ createdAt: -1 })
         .lean();
@@ -151,6 +151,17 @@ router.post('/approve-member/:id', authMiddleware, isAdmin, asyncHandler(async (
     }
 
     if (member.status === 'approved') return res.status(400).json({ error: 'Already approved' });
+
+    const allowedFeeStatuses = ['verified', 'waived', 'not_requested'];
+    if (!allowedFeeStatuses.includes(member.feeStatus || 'not_requested')) {
+        return res.status(400).json({
+            error: 'Cannot approve. The member\'s fee is not yet verified. Please verify their payment or waive the fee before approving.',
+        });
+    }
+
+    if (!['pending', 'fee_pending'].includes(member.status)) {
+        return res.status(400).json({ error: 'Member is not in a pending approval state.' });
+    }
 
     // ATOMIC ID GENERATION
     const year = member.joining_year || new Date().getFullYear();

@@ -10,7 +10,7 @@ const { isAdmin } = require('../../middlewares/adminMiddlewares');
 router.get('/dashboard', authMiddleware, isAdmin, asyncHandler(async (req, res) => {
     const [totalMembers, pendingMembers, totalAdmin, totalEvents, activeEvents] = await Promise.all([
         Member.countDocuments({ status: 'approved', role: 'General' }),
-        Member.countDocuments({ status: 'pending' }),
+        Member.countDocuments({ status: { $in: ['pending', 'fee_pending'] } }),
         Member.countDocuments({ role: 'Admin', status: 'approved' }),
         Event.countDocuments(),
         Event.countDocuments({ is_active: true })

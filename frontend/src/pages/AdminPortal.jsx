@@ -12,6 +12,7 @@ import { FOOTER_DEFAULTS, FOOTER_FIELDS, parseFooterSettings } from "../constant
 import { ABOUT_DEFAULTS, ABOUT_FIELDS, parseAboutSettings } from "../constants/aboutDefaults";
 import { MEMBER_TYPE_FILTER_OPTIONS } from "../constants/pakistanCities";
 import AdminLocationFilters, { DEFAULT_ADMIN_LOCATION_FILTER, appendLocationFilterParams, matchesAdminLocationFilter } from "../components/common/AdminLocationFilters";
+import FeeManagementTab, { getFeeApprovalBadge, canApproveMemberFee } from "../components/admin/FeeManagementTab";
 
 const adminFilterSelectCls =
   "bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold text-slate-700 outline-none focus:border-[#002147] min-w-[140px]";
@@ -245,9 +246,8 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
     const [footer, setFooter] = useState(
         Object.fromEntries(FOOTER_FIELDS.map(({ key }) => [key, FOOTER_DEFAULTS[key]]))
     );
-    const [about, setAbout] = useState(
-        Object.fromEntries(ABOUT_FIELDS.map(({ key }) => [key, ABOUT_DEFAULTS[key]]))
-    );
+    const [membershipFee, setMembershipFee] = useState("");
+    const [savingFee, setSavingFee] = useState(false);
 
 
     // Admin Promotion State
@@ -287,6 +287,7 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
             }
             setFooter(parseFooterSettings(r.data));
             setAbout(parseAboutSettings(r.data));
+            if (r.data.membership_fee !== undefined) setMembershipFee(String(r.data.membership_fee));
         });
         api.get("settings/whatsapp-link").then(r => setWaLink(r.data.link || ""));
         api.get("settings/terms").then(r => setTnc(r.data.terms || ""));
@@ -330,6 +331,18 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
             notify("WhatsApp link updated!");
         } catch { notify("Failed to update WhatsApp link", "error"); }
         finally { setSubmitting(false); }
+    };
+
+    const saveMembershipFee = async () => {
+        setSavingFee(true);
+        try {
+            await api.put("settings", { membership_fee: membershipFee }, auth);
+            notify("Membership fee amount saved!");
+        } catch {
+            notify("Failed to save membership fee", "error");
+        } finally {
+            setSavingFee(false);
+        }
     };
 
     const saveTnc = async () => {
@@ -530,6 +543,26 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
                                     </div>
                                 ))}
                             </div>
+                        </div>
+                    </div>
+
+                    <div className="p-8 md:p-10 border-t border-slate-100 bg-white">
+                        <div className="flex items-center gap-4 mb-6">
+                            <div className="w-12 h-12 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center text-xl shadow-inner">
+                                <i className="fas fa-receipt" />
+                            </div>
+                            <div>
+                                <h3 className="text-lg font-black text-slate-800 tracking-tight">Membership Fee Settings</h3>
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Amount shown when fee is requested</p>
+                            </div>
+                        </div>
+                        <div className="max-w-sm space-y-3">
+                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block">Membership Fee Amount (PKR)</label>
+                            <input type="number" min="0" step="1" value={membershipFee} onChange={(e) => setMembershipFee(e.target.value)} className={inputCls} />
+                            <p className="text-xs text-slate-400">This amount is shown to members when their fee is requested.</p>
+                            <button type="button" onClick={saveMembershipFee} disabled={savingFee} className="px-6 py-3 bg-[#002147] text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 transition-all shadow-md disabled:opacity-50">
+                                Save Fee Amount
+                            </button>
                         </div>
                     </div>
 
@@ -2141,7 +2174,7 @@ const AdminPortal = () => {
         if (activeTab === "admins" ||
             activeTab === "certificates" ||
             activeTab === "batches") fetchAllMembers();
-        if (activeTab === "pending") fetchPendingMembers();
+        if (activeTab === "pending" || activeTab === "fees") fetchPendingMembers();
         if (activeTab === "events" ||
             activeTab === "certificates") fetchEvents();
         if (activeTab === "announcements") fetchAnnouncements();
@@ -2188,6 +2221,7 @@ const AdminPortal = () => {
         { id: "dashboard", label: "Dashboard", icon: "fa-th-large" },
         { id: "members", label: "Members", icon: "fa-users" },
         { id: "pending", label: "Pending", icon: "fa-user-clock" },
+        { id: "fees", label: "Fee Management", icon: "fa-money-check-alt" },
         { id: "events", label: "Events", icon: "fa-calendar-alt" },
         { id: "blogs", label: "Blogs", icon: "fa-newspaper" },
         { id: "announcements", label: "Announcements", icon: "fa-bullhorn" },
@@ -2431,6 +2465,10 @@ const AdminPortal = () => {
                                             </div>
                                             <div>
                                                 <h4 className="font-bold text-slate-800 leading-none mb-1 text-xs">{m.name}</h4>
+                                                {(() => {
+                                                    const fb = getFeeApprovalBadge(m);
+                                                    return fb ? <span className={`inline-block text-[7px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md border mb-1 ${fb.cls}`}>{fb.label}</span> : null;
+                                                })()}
                                                 <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest leading-none">Class {m.joining_year}</p>
                                                 <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mt-1">{m.tehsil || m.city || "No Tehsil"}</p>
                                                 <p className="text-[8px] font-black text-purple-600 uppercase tracking-widest mt-1">{getRequestedRoleLabel(m)}</p>
@@ -2453,8 +2491,9 @@ const AdminPortal = () => {
                                                 }`}>
                                             Interview
                                         </button>
-                                        <button onClick={() => approveSingle(m._id)} disabled={isProcessing}
-                                            className="flex-1 text-[9px] bg-emerald-50 text-emerald-600 border border-emerald-100 py-2 rounded-lg font-black uppercase tracking-widest disabled:opacity-50">
+                                        <button onClick={() => approveSingle(m._id)} disabled={isProcessing || !canApproveMemberFee(m)}
+                                            title={!canApproveMemberFee(m) ? "Verify or waive fee before approving" : ""}
+                                            className={`flex-1 text-[9px] border py-2 rounded-lg font-black uppercase tracking-widest ${canApproveMemberFee(m) ? "bg-emerald-50 text-emerald-600 border-emerald-100 disabled:opacity-50" : "bg-slate-50 text-slate-400 border-slate-100 opacity-40 cursor-not-allowed"}`}>
                                             Approve
                                         </button>
                                         <button onClick={() => deleteSingle(m._id, m.name)} disabled={isProcessing}
@@ -2496,6 +2535,10 @@ const AdminPortal = () => {
                                                 <td className="px-5 py-3.5">
                                                     <div className="flex flex-col">
                                                         <span className="text-slate-800 font-bold">{m.name}</span>
+                                                        {(() => {
+                                                            const fb = getFeeApprovalBadge(m);
+                                                            return fb ? <span className={`inline-block text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded border mt-1 w-fit ${fb.cls}`}>{fb.label}</span> : null;
+                                                        })()}
                                                         <div className="flex items-center gap-1.5 mt-1">
                                                             <span className="text-xs font-black text-blue-500 uppercase tracking-widest bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100">Applicant</span>
                                                             {m.interview_called ? (
@@ -2533,8 +2576,9 @@ const AdminPortal = () => {
                                                         <i className={m.interview_called ? "fas fa-sync-alt" : "fas fa-microphone-alt"} />
                                                         {m.interview_called ? "Call Again" : "Interview Call"}
                                                     </button>
-                                                    <button onClick={() => approveSingle(m._id)} disabled={isProcessing}
-                                                        className="text-xs bg-emerald-50 text-emerald-600 border border-emerald-200 px-4 py-2 rounded-xl hover:bg-emerald-100 transition-colors font-bold uppercase tracking-widest disabled:opacity-50 flex items-center gap-1.5 shadow-sm">
+                                                    <button onClick={() => approveSingle(m._id)} disabled={isProcessing || !canApproveMemberFee(m)}
+                                                        title={!canApproveMemberFee(m) ? "Verify or waive fee before approving" : ""}
+                                                        className={`text-xs border px-4 py-2 rounded-xl transition-colors font-bold uppercase tracking-widest flex items-center gap-1.5 shadow-sm ${canApproveMemberFee(m) ? "bg-emerald-50 text-emerald-600 border-emerald-200 hover:bg-emerald-100 disabled:opacity-50" : "bg-slate-50 text-slate-400 border-slate-200 opacity-40 cursor-not-allowed"}`}>
                                                         <i className="fas fa-check" /> Approve
                                                     </button>
                                                     <button onClick={() => deleteSingle(m._id, m.name)} disabled={isProcessing}
@@ -4481,6 +4525,7 @@ const AdminPortal = () => {
                         />
                     )}
                     {activeTab === "pending" && <ApprovalsTab pendingMembers={pendingMembers} fetchPendingMembers={fetchPendingMembers} loading={loading} auth={auth} notify={notify} Spinner={Spinner} api={api} />}
+                    {activeTab === "fees" && <FeeManagementTab pendingMembers={pendingMembers} fetchPendingMembers={fetchPendingMembers} auth={auth} notify={notify} api={api} Spinner={Spinner} inputCls={inputCls} />}
                     {activeTab === "events" && !searchParams.get("eventId") && <EventsTab events={events} fetchEvents={fetchEvents} api={api} auth={auth} notify={notify} setSearchParams={setSearchParams} getImgUrl={getImgUrl} CountdownTimer={CountdownTimer} inputCls={inputCls} />}
                     {activeTab === "events" && searchParams.get("eventId") && (
                         <ParticipantsView

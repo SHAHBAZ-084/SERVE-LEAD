@@ -46,13 +46,31 @@ const memberSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['pending', 'approved', 'blocked'],
+    enum: ['pending', 'fee_pending', 'approved', 'blocked'],
     default: 'pending',
     index: true,
   },
   interview_called: {
     type: Boolean,
     default: false,
+  },
+  feeStatus: {
+    type: String,
+    enum: ['not_requested', 'requested', 'submitted', 'verified', 'waived'],
+    default: 'not_requested',
+  },
+  feePayment: {
+    transactionId: { type: String, default: '' },
+    paymentChannel: { type: String, default: '' },
+    accountNumber: { type: String, default: '' },
+    screenshotUrl: { type: String, default: '' },
+    submittedAt: { type: Date },
+    verifiedAt: { type: Date },
+    verifiedBy: { type: String, default: '' },
+    waivedAt: { type: Date },
+    waivedBy: { type: String, default: '' },
+    waivedReason: { type: String, default: '' },
+    amount: { type: Number },
   },
   profile_pic_url: {
     type: String,
