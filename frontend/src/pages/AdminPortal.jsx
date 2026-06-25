@@ -3875,7 +3875,8 @@ const AdminPortal = () => {
         const [existingImages, setExistingImages] = useState([]);
 
         const handleFileChange = (e, isEdit = false) => {
-            const selected = Array.from(e.target.files);
+            const selected = Array.from(e.target.files || []);
+            if (selected.length === 0) return;
             if (isEdit) {
                 setEditFiles(prev => [...prev, ...selected]);
                 const newPreviews = selected.map(file => URL.createObjectURL(file));
@@ -3885,6 +3886,7 @@ const AdminPortal = () => {
                 const newPreviews = selected.map(file => URL.createObjectURL(file));
                 setPreviews(prev => [...prev, ...newPreviews]);
             }
+            e.target.value = "";
         };
 
         const removePreview = (index, isEdit = false) => {
@@ -3913,7 +3915,7 @@ const AdminPortal = () => {
                 files.forEach(file => formData.append("images", file));
 
                 await api.post("blogs", formData, {
-                    headers: { ...auth.headers, "Content-Type": "multipart/form-data" }
+                    headers: auth.headers
                 });
 
                 notify("Blog post published successfully!");
@@ -3941,7 +3943,7 @@ const AdminPortal = () => {
                 editFiles.forEach(file => formData.append("images", file));
 
                 await api.put(`blogs/${editingBlog._id}`, formData, {
-                    headers: { ...auth.headers, "Content-Type": "multipart/form-data" }
+                    headers: auth.headers
                 });
 
                 notify("Blog updated successfully!");

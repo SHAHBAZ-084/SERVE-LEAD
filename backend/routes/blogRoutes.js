@@ -20,6 +20,21 @@ const isAdmin = asyncHandler(async (req, res, next) => {
 
 const upload = createUpload('blogs');
 
+const handleImageUpload = (req, res, next) => {
+    upload.array('images', 10)(req, res, (err) => {
+        if (err) {
+            if (err.code === 'LIMIT_FILE_SIZE') {
+                return res.status(400).json({ error: 'Each image must be 5MB or smaller.' });
+            }
+            if (err.code === 'LIMIT_UNEXPECTED_FILE') {
+                return res.status(400).json({ error: 'Too many images. Maximum 10 allowed.' });
+            }
+            return res.status(400).json({ error: err.message || 'Image upload failed.' });
+        }
+        next();
+    });
+};
+
 // GET all published blogs (Public)
 router.get('/', asyncHandler(async (req, res) => {
     const blogs = await Blog.find({ published: true }).sort({ createdAt: -1 }).lean();
@@ -34,8 +49,12 @@ router.get('/:id', asyncHandler(async (req, res) => {
 }));
 
 // POST Create blog (Admin Only)
-router.post('/', authMiddleware, isAdmin, upload.array('images', 10), asyncHandler(async (req, res) => {
+router.post('/', authMiddleware, isAdmin, handleImageUpload, asyncHandler(async (req, res) => {
     const { title, description, published, captions } = req.body;
+
+    if (!req.files || req.files.length === 0) {
+        return res.status(400).json({ error: 'Please upload at least one image.' });
+    }
     
     // Parse captions if sent as a JSON string or handle as array
     let parsedCaptions = [];
@@ -62,7 +81,7 @@ router.post('/', authMiddleware, isAdmin, upload.array('images', 10), asyncHandl
 }));
 
 // PUT Update blog (Admin Only)
-router.put('/:id', authMiddleware, isAdmin, upload.array('images', 10), asyncHandler(async (req, res) => {
+router.put('/:id', authMiddleware, isAdmin, handleImageUpload, asyncHandler(async (req, res) => {
     const { title, description, published, captions, existingImages } = req.body;
     const blog = await Blog.findById(req.params.id);
     if (!blog) return res.status(404).json({ error: 'Blog not found.' });
