@@ -2394,6 +2394,62 @@ const AdminPortal = () => {
         const [viewMember, setViewMember] = useState(null);
         const [locationFilter, setLocationFilter] = useState({ ...DEFAULT_ADMIN_LOCATION_FILTER });
         const [memberTypeFilter, setMemberTypeFilter] = useState("All");
+        const [approvalSubView, setApprovalSubView] = useState("general");
+        const [executiveApps, setExecutiveApps] = useState([]);
+        const [execAppsLoading, setExecAppsLoading] = useState(false);
+        const [expandedExecId, setExpandedExecId] = useState(null);
+        const [rejectExecTarget, setRejectExecTarget] = useState(null);
+        const [rejectExecReason, setRejectExecReason] = useState("");
+
+        const fetchExecutiveApps = useCallback(async () => {
+            setExecAppsLoading(true);
+            try {
+                const r = await api.get("admin/executive-applications", auth);
+                setExecutiveApps(r.data || []);
+            } catch {
+                notify("Failed to load executive applications", "error");
+            } finally {
+                setExecAppsLoading(false);
+            }
+        }, [api, auth, notify]);
+
+        useEffect(() => {
+            if (approvalSubView === "executive") fetchExecutiveApps();
+        }, [approvalSubView, fetchExecutiveApps]);
+
+        const handleApproveExecutive = async (id) => {
+            if (!window.confirm("Approve this member as Executive?")) return;
+            setIsProcessing(true);
+            try {
+                const r = await api.post(`admin/executive-applications/${id}/approve`, {}, auth);
+                notify(r.data.message || "Executive application approved");
+                fetchExecutiveApps();
+            } catch (err) {
+                notify(err.response?.data?.error || "Approval failed", "error");
+            } finally {
+                setIsProcessing(false);
+            }
+        };
+
+        const handleRejectExecutive = async (e) => {
+            e.preventDefault();
+            if (!rejectExecTarget || rejectExecReason.trim().length < 10) {
+                notify("Rejection reason must be at least 10 characters", "error");
+                return;
+            }
+            setIsProcessing(true);
+            try {
+                const r = await api.post(`admin/executive-applications/${rejectExecTarget._id}/reject`, { reason: rejectExecReason.trim() }, auth);
+                notify(r.data.message || "Application rejected");
+                setRejectExecTarget(null);
+                setRejectExecReason("");
+                fetchExecutiveApps();
+            } catch (err) {
+                notify(err.response?.data?.error || "Rejection failed", "error");
+            } finally {
+                setIsProcessing(false);
+            }
+        };
 
         const getRequestedRoleLabel = (member) => {
             const role = member.requestedRole || member.role || "General";
@@ -2648,10 +2704,36 @@ const AdminPortal = () => {
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                     <div>
                         <h2 className="text-xl font-bold text-slate-800">Pending Approvals</h2>
-                        <p className="text-slate-400 text-sm mt-1">{filtered.length} of {(pendingMembers || []).length} in queue</p>
-                        <p className="text-[10px] text-slate-400 mt-2 font-bold uppercase tracking-widest">Interview Call → Record Result → Request Fee / Free / Direct Approve → Final Approve</p>
+                        <p className="text-slate-400 text-sm mt-1">
+                            {approvalSubView === "general"
+                                ? `${filtered.length} of ${(pendingMembers || []).length} in queue`
+                                : `${executiveApps.length} executive application${executiveApps.length === 1 ? "" : "s"} pending`}
+                        </p>
+                        {approvalSubView === "general" && (
+                            <p className="text-[10px] text-slate-400 mt-2 font-bold uppercase tracking-widest">Interview Call → Record Result → Request Fee / Free / Direct Approve → Final Approve</p>
+                        )}
                     </div>
-                    <div className="flex flex-col gap-3 w-full sm:w-auto">
+                    <div className="flex bg-slate-100 p-1 rounded-xl">
+                        {[
+                            { id: "general", label: "Pending General Members" },
+                            { id: "executive", label: "Executive Applications" },
+                        ].map(({ id, label }) => (
+                            <button
+                                key={id}
+                                type="button"
+                                onClick={() => setApprovalSubView(id)}
+                                className={`px-3 py-2 rounded-lg text-[9px] sm:text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${approvalSubView === id ? "bg-white text-[#002147] shadow-sm" : "text-slate-500"}`}
+                            >
+                                {label}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
+                {approvalSubView === "general" && (
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
+                    <div className="hidden" />
+                    <div className="flex flex-col gap-3 w-full sm:w-auto sm:ml-auto">
                         <div className="flex flex-wrap gap-3">
                             <AdminLocationFilters
                                 filter={locationFilter}
@@ -2681,8 +2763,9 @@ const AdminPortal = () => {
                         </div>
                     </div>
                 </div>
+                )}
 
-                {loading ? <Spinner /> : (
+                {approvalSubView === "general" && (loading ? <Spinner /> : (
                     <>
                         <div className="sm:hidden space-y-2">
                             {filtered.length === 0 ? (
@@ -2865,6 +2948,86 @@ const AdminPortal = () => {
                             </div>
                         </div>
                     </>
+                ))}
+
+                {approvalSubView === "executive" && (
+                    execAppsLoading ? <Spinner /> : (
+                        <div className="space-y-4">
+                            {executiveApps.length === 0 ? (
+                                <div className="text-center py-20 text-slate-300 bg-white rounded-[2rem] border-2 border-dashed border-slate-100">
+                                    <i className="fas fa-user-tie text-5xl mb-4 block opacity-10" />
+                                    <p className="text-[10px] font-black uppercase tracking-widest">No executive applications pending</p>
+                                </div>
+                            ) : executiveApps.map((app) => (
+                                <div key={app._id} className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
+                                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                                        <div>
+                                            <h3 className="font-bold text-slate-800 text-lg">{app.name}</h3>
+                                            <p className="text-xs text-slate-500 mt-1">{app.member_id_str || app.memberId?.member_id || "—"} · {app.city}</p>
+                                            {app.memberId?.email && <p className="text-xs text-slate-400">{app.memberId.email}</p>}
+                                        </div>
+                                        <div className="flex flex-wrap gap-2">
+                                            <span className="text-[9px] font-black uppercase tracking-widest px-3 py-1.5 rounded-lg border bg-purple-50 text-purple-700 border-purple-100">{app.area_of_interest}</span>
+                                            <span className="text-[9px] font-black uppercase tracking-widest px-3 py-1.5 rounded-lg border bg-blue-50 text-blue-700 border-blue-100">{app.availability} hrs/week</span>
+                                        </div>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => setExpandedExecId(expandedExecId === app._id ? null : app._id)}
+                                        className="text-[10px] font-black uppercase tracking-widest text-[#002147] flex items-center gap-2"
+                                    >
+                                        <i className={`fas fa-chevron-${expandedExecId === app._id ? "up" : "down"}`} />
+                                        {expandedExecId === app._id ? "Hide Details" : "View Full Application"}
+                                    </button>
+                                    {expandedExecId === app._id && (
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-slate-50 rounded-xl border border-slate-100 text-sm">
+                                            {[
+                                                ["Mission Statement", app.mission_statement],
+                                                ["Short-Term Goals", app.short_term_goals],
+                                                ["Long-Term Goals", app.long_term_goals],
+                                                ["Why Executive", app.why_executive],
+                                                ["Skills", app.skills],
+                                                ["Experience", app.previous_volunteer_experience || "—"],
+                                                ["Address", app.address],
+                                                ["Father Name", app.father_name],
+                                            ].map(([label, val]) => (
+                                                <div key={label} className={label === "Mission Statement" || label === "Why Executive" ? "md:col-span-2" : ""}>
+                                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{label}</p>
+                                                    <p className="text-slate-700 whitespace-pre-wrap">{val}</p>
+                                                </div>
+                                            ))}
+                                            <div>
+                                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">LinkedIn</p>
+                                                {app.linkedin_url ? (
+                                                    <a href={app.linkedin_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline break-all">{app.linkedin_url}</a>
+                                                ) : (
+                                                    <p className="text-slate-700">—</p>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+                                    <div className="flex flex-wrap gap-3 pt-2 border-t border-slate-100">
+                                        <button type="button" disabled={isProcessing} onClick={() => handleApproveExecutive(app._id)} className="px-5 py-2.5 bg-emerald-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest disabled:opacity-50">Approve Executive</button>
+                                        <button type="button" onClick={() => { setRejectExecTarget(app); setRejectExecReason(""); }} className="px-5 py-2.5 bg-rose-50 text-rose-600 border border-rose-200 rounded-xl text-[10px] font-black uppercase tracking-widest">Reject</button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )
+                )}
+
+                {rejectExecTarget && (
+                    <AdminModal open={!!rejectExecTarget} onClose={() => setRejectExecTarget(null)} maxWidth="max-w-md">
+                        <form onSubmit={handleRejectExecutive} className="p-8 space-y-4">
+                            <h3 className="text-lg font-bold">Reject Executive Application</h3>
+                            <p className="text-sm text-slate-500">Reject application from <strong>{rejectExecTarget.name}</strong>. Member will be emailed.</p>
+                            <textarea rows={4} value={rejectExecReason} onChange={(e) => setRejectExecReason(e.target.value)} placeholder="Reason (min 10 chars)" className={`${inputCls} resize-none`} required minLength={10} />
+                            <div className="flex gap-3">
+                                <button type="submit" disabled={isProcessing} className="flex-1 py-3 bg-rose-600 text-white rounded-xl text-[10px] font-black uppercase disabled:opacity-50">Confirm Reject</button>
+                                <button type="button" onClick={() => setRejectExecTarget(null)} className="px-4 py-3 border rounded-xl text-[10px] font-black uppercase text-slate-500">Cancel</button>
+                            </div>
+                        </form>
+                    </AdminModal>
                 )}
 
                 {interviewTarget && (

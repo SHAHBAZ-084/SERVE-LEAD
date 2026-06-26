@@ -5,11 +5,12 @@ const Member = require('../../models/Member');
 const Event = require('../../models/Event');
 const Counter = require('../../models/Counter');
 const FeeRecord = require('../../models/FeeRecord');
+const ExecutiveApplication = require('../../models/ExecutiveApplication');
 const SystemSetting = require('../../models/SystemSetting');
 const authMiddleware = require('../../middlewares/authMiddleware');
 const asyncHandler = require('../../middlewares/asyncHandler');
 const { isAdmin, isSuperuser } = require('../../middlewares/adminMiddlewares');
-const { sendWelcomeEmail, sendInterviewEmail, sendInterviewPassedEmail, sendInterviewFailedEmail } = require('../../utils/emailService');
+const { sendWelcomeEmail, sendInterviewEmail, sendInterviewPassedEmail, sendInterviewFailedEmail, sendExecutiveApprovedEmail, sendExecutiveRejectedEmail } = require('../../utils/emailService');
 const logActivity = require('../../utils/activityLogger');
 const { deleteFile } = require('../../utils/storage');
 
@@ -383,6 +384,73 @@ router.patch('/members/:id/demote', authMiddleware, isSuperuser, asyncHandler(as
     await member.save();
     res.json({ message: `${member.name} access has been revoked.`, role: 'General' });
     logActivity(req.user.memberId, 'REVOKED_ADMIN', `Demoted ${member.name} back to General member`, member._id);
+}));
+
+// GET pending executive upgrade applications
+router.get('/executive-applications', authMiddleware, isAdmin, asyncHandler(async (req, res) => {
+    const applications = await ExecutiveApplication.find({ status: 'pending' })
+        .sort({ createdAt: -1 })
+        .populate('memberId', 'name email member_id city')
+        .lean();
+
+    res.json(applications);
+}));
+
+// POST approve executive application
+router.post('/executive-applications/:id/approve', authMiddleware, isAdmin, asyncHandler(async (req, res) => {
+    const application = await ExecutiveApplication.findById(req.params.id);
+    if (!application) return res.status(404).json({ error: 'Application not found.' });
+    if (application.status !== 'pending') {
+        return res.status(400).json({ error: 'This application has already been reviewed.' });
+    }
+
+    const admin = await Member.findById(req.user.memberId).select('name member_id');
+    const member = await Member.findById(application.memberId);
+    if (!member) return res.status(404).json({ error: 'Linked member not found.' });
+
+    application.status = 'approved';
+    application.reviewedAt = new Date();
+    application.reviewedBy = admin?.name || admin?.member_id || 'Admin';
+
+    member.role = 'Executive';
+
+    await application.save();
+    await member.save();
+
+    sendExecutiveApprovedEmail(member.email, member.name).catch(console.error);
+    logActivity(req.user.memberId, 'Executive Approved', `Approved executive application for ${member.name}`, member._id);
+
+    res.json({ message: 'Executive application approved' });
+}));
+
+// POST reject executive application
+router.post('/executive-applications/:id/reject', authMiddleware, isAdmin, asyncHandler(async (req, res) => {
+    const { reason } = req.body;
+    if (!reason?.trim() || reason.trim().length < 10) {
+        return res.status(400).json({ error: 'Rejection reason must be at least 10 characters.' });
+    }
+
+    const application = await ExecutiveApplication.findById(req.params.id);
+    if (!application) return res.status(404).json({ error: 'Application not found.' });
+    if (application.status !== 'pending') {
+        return res.status(400).json({ error: 'This application has already been reviewed.' });
+    }
+
+    const admin = await Member.findById(req.user.memberId).select('name member_id');
+    const member = await Member.findById(application.memberId);
+
+    application.status = 'rejected';
+    application.reviewedAt = new Date();
+    application.reviewedBy = admin?.name || admin?.member_id || 'Admin';
+    application.rejectionReason = reason.trim();
+    await application.save();
+
+    if (member) {
+        sendExecutiveRejectedEmail(member.email, member.name, reason.trim()).catch(console.error);
+    }
+
+    logActivity(req.user.memberId, 'Executive Rejected', `Rejected executive application for ${application.memberName}`, application.memberId);
+    res.json({ message: 'Application rejected' });
 }));
 
 module.exports = router;

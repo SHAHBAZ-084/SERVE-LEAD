@@ -12,6 +12,7 @@ const otpLimiter = rateLimit({
 });
 
 const Member = require('../models/Member');
+const ExecutiveApplication = require('../models/ExecutiveApplication');
 const OTP = require('../models/OTP');
 const { sendOTPEmail, sendResetPasswordEmail } = require('../utils/emailService');
 const asyncHandler = require('../middlewares/asyncHandler');
@@ -428,6 +429,116 @@ router.get('/verify/:member_id', asyncHandler(async (req, res) => {
             profile_pic_url: member.profile_pic_url
         }
     });
+}));
+
+// Verify General Member eligibility for executive upgrade (public)
+router.get('/verify-member', asyncHandler(async (req, res) => {
+    const member_id = (req.query.member_id || '').trim().toUpperCase();
+    const email = (req.query.email || '').trim().toLowerCase();
+
+    if (!member_id || !email) {
+        return res.status(400).json({ error: 'Membership ID and email are required.' });
+    }
+
+    const member = await Member.findOne({
+        member_id,
+        email,
+        role: 'General',
+        status: 'approved',
+    }).select('name _id');
+
+    if (!member) {
+        return res.status(400).json({ error: 'No approved General Member found with this ID and email combination.' });
+    }
+
+    res.json({ valid: true, name: member.name, memberId: member._id.toString() });
+}));
+
+// Submit executive upgrade application (public — guarded by memberId re-verification)
+router.post('/apply-executive', asyncHandler(async (req, res) => {
+    const {
+        memberId,
+        mission_statement,
+        short_term_goals,
+        long_term_goals,
+        area_of_interest,
+        skills,
+        previous_volunteer_experience,
+        why_executive,
+        availability,
+        linkedin_url,
+        name,
+        father_name,
+        city,
+        address,
+    } = req.body;
+
+    if (!memberId) {
+        return res.status(400).json({ error: 'Member verification is required.' });
+    }
+
+    const member = await Member.findById(memberId);
+    if (!member) {
+        return res.status(400).json({ error: 'Invalid member reference.' });
+    }
+    if (member.role !== 'General' || member.status !== 'approved') {
+        return res.status(400).json({ error: 'Only approved General Members can apply for Executive membership.' });
+    }
+
+    const existingPending = await ExecutiveApplication.findOne({ memberId: member._id, status: 'pending' });
+    if (existingPending) {
+        return res.status(400).json({ error: 'You have already submitted an executive application.' });
+    }
+
+    const existingAny = await ExecutiveApplication.findOne({ memberId: member._id });
+    if (existingAny) {
+        return res.status(400).json({ error: 'An executive application already exists for this member.' });
+    }
+
+    if (!name?.trim() || !father_name?.trim() || !city?.trim() || !address?.trim()) {
+        return res.status(400).json({ error: 'Name, father name, city, and address are required.' });
+    }
+    if (!area_of_interest?.trim() || !skills?.trim()) {
+        return res.status(400).json({ error: 'Area of interest and skills are required.' });
+    }
+    if (!mission_statement?.trim() || mission_statement.trim().length < 50) {
+        return res.status(400).json({ error: 'Mission statement must be at least 50 characters.' });
+    }
+    if (!short_term_goals?.trim() || short_term_goals.trim().length < 30) {
+        return res.status(400).json({ error: 'Short-term goals must be at least 30 characters.' });
+    }
+    if (!long_term_goals?.trim() || long_term_goals.trim().length < 30) {
+        return res.status(400).json({ error: 'Long-term goals must be at least 30 characters.' });
+    }
+    if (!why_executive?.trim() || why_executive.trim().length < 50) {
+        return res.status(400).json({ error: 'Why Executive must be at least 50 characters.' });
+    }
+
+    const hours = Number(availability);
+    if (!hours || hours < 1 || hours > 40) {
+        return res.status(400).json({ error: 'Availability must be between 1 and 40 hours per week.' });
+    }
+
+    await ExecutiveApplication.create({
+        memberId: member._id,
+        memberName: member.name,
+        member_id_str: member.member_id || '',
+        name: name.trim(),
+        father_name: father_name.trim(),
+        city: city.trim(),
+        address: address.trim(),
+        mission_statement: mission_statement.trim(),
+        short_term_goals: short_term_goals.trim(),
+        long_term_goals: long_term_goals.trim(),
+        area_of_interest: area_of_interest.trim(),
+        skills: skills.trim(),
+        previous_volunteer_experience: (previous_volunteer_experience || '').trim(),
+        why_executive: why_executive.trim(),
+        availability: hours,
+        linkedin_url: (linkedin_url || '').trim(),
+    });
+
+    res.status(201).json({ message: 'Executive application submitted successfully.' });
 }));
 
 module.exports = router;

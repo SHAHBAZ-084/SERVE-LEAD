@@ -10,6 +10,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import GuestRoute from "./components/GuestRoute";
 import Donate from './pages/Donate';
 import RegisterPage from './pages/RegisterPage';
+import ExecutiveRegisterPage from './pages/ExecutiveRegisterPage';
 import MemberLogin from './pages/MemberLogin';
 import ResetPassword from './pages/ResetPassword';
 import MemberVerification from './pages/MemberVerification';
@@ -38,7 +39,11 @@ function App() {
             <RegisterPage />
           </GuestRoute>
         } />
-        <Route path="/executive-register" element={<Navigate to="/register" replace />} />
+        <Route path="/executive-register" element={
+          <GuestRoute role="Member">
+            <ExecutiveRegisterPage />
+          </GuestRoute>
+        } />
         <Route path="/login" element={
           <GuestRoute role="Member">
             <MemberLogin />

@@ -485,6 +485,56 @@ const sendFeeVerifiedEmail = async (email, name) => {
   }
 };
 
+const sendExecutiveApprovedEmail = async (email, name) => {
+  try {
+    const transporter = createTransporter();
+    const portalUrl = `${process.env.FRONTEND_URL || 'https://serveandlead.org'}/login`;
+    await transporter.sendMail({
+      from: `"Serve & Lead Society" <${process.env.EMAIL_USER}>`,
+      to: email,
+      replyTo: 'serveandleadsociety@serveandlead.org',
+      subject: 'Congratulations — Executive Membership Approved',
+      text: `Dear ${name}, your application for Executive membership has been approved. Log in at ${portalUrl}`,
+      html: emailShell('Executive Membership Approved', `
+        <h2 style="color:#0f172a;margin-top:0;">Dear ${name},</h2>
+        <p style="font-size:16px;color:#475569;">Congratulations! The board has <strong style="color:#059669;">approved</strong> your application for Executive membership.</p>
+        <p style="color:#64748b;font-size:14px;">You now hold Executive Member status in Serve & Lead Society. Log in to your member portal to access executive privileges and upcoming leadership opportunities.</p>
+        ${emailActionButton(portalUrl, 'Login to Member Portal', 'Access your executive dashboard')}
+      `),
+    });
+    return { success: true };
+  } catch (error) {
+    console.error('Email Service Error:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+const sendExecutiveRejectedEmail = async (email, name, reason) => {
+  try {
+    const transporter = createTransporter();
+    await transporter.sendMail({
+      from: `"Serve & Lead Society" <${process.env.EMAIL_USER}>`,
+      to: email,
+      replyTo: 'serveandleadsociety@serveandlead.org',
+      subject: 'Executive Membership Application — Decision',
+      text: `Dear ${name}, your executive membership application was not approved at this time. Reason: ${reason}`,
+      html: emailShell('Application Not Approved', `
+        <h2 style="color:#0f172a;margin-top:0;">Dear ${name},</h2>
+        <p style="font-size:16px;color:#475569;">Thank you for your interest in Executive membership. After careful review, the board has decided not to approve your application at this time.</p>
+        <div style="background:#fef2f2;border-left:4px solid #ef4444;padding:16px;border-radius:8px;margin:20px 0;">
+          <p style="margin:0;color:#991b1b;font-weight:700;">Reason:</p>
+          <p style="margin:8px 0 0;color:#7f1d1d;font-size:14px;">${reason}</p>
+        </div>
+        <p style="color:#64748b;font-size:14px;">You remain a valued General Member of the society. We encourage you to continue contributing and consider reapplying in the future.</p>
+      `),
+    });
+    return { success: true };
+  } catch (error) {
+    console.error('Email Service Error:', error);
+    return { success: false, error: error.message };
+  }
+};
+
 module.exports = {
   sendWelcomeEmail,
   sendResetPasswordEmail,
@@ -497,4 +547,6 @@ module.exports = {
   sendFeeVerifiedEmail,
   sendInterviewPassedEmail,
   sendInterviewFailedEmail,
+  sendExecutiveApprovedEmail,
+  sendExecutiveRejectedEmail,
 };
