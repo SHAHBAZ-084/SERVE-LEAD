@@ -18,6 +18,59 @@ import PaymentManagementTab, { getFeeApprovalBadge, canApproveMemberFee, getInte
 const adminFilterSelectCls =
   "bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold text-slate-700 outline-none focus:border-[#002147] min-w-[140px]";
 
+const calculateBatch = (dateStr) => {
+    if (!dateStr) return new Date().getFullYear();
+    const date = new Date(dateStr);
+    if (isNaN(date.getTime())) return new Date().getFullYear();
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    return month >= 8 ? year : year - 1;
+};
+
+const PAK_BANKS = [
+    "Meezan Bank", "Habib Bank Limited (HBL)", "United Bank Limited (UBL)",
+    "Allied Bank Limited (ABL)", "MCB Bank", "Bank Alfalah", "Bank of Punjab (BOP)",
+    "Askari Bank", "Faysal Bank", "National Bank of Pakistan (NBP)",
+    "Dubai Islamic Bank", "Standard Chartered", "Habib Metro", "Soneri Bank",
+    "Al Baraka Bank", "Bank Al Habib", "JS Bank", "Samba Bank", "Silk Bank",
+    "Summit Bank", "Sindh Bank", "SadaPay", "NayaPay",
+];
+
+const CERT_TEMPLATES = [
+    {
+        id: 1,
+        name: "Classic Blue",
+        thumb: "🔵",
+        orientation: "landscape",
+        bgColor: "#ffffff",
+        accentColor: "#003366",
+        textColor: "#0f172a",
+        borderColor: "#002147",
+    },
+    {
+        id: 2,
+        name: "Modern Blue",
+        thumb: "🔷",
+        orientation: "landscape",
+        bgColor: "#f0f4ff",
+        accentColor: "#1a56db",
+        textColor: "#0f172a",
+        borderColor: "#1a56db",
+    },
+    {
+        id: 3,
+        name: "Gold & Blue",
+        thumb: "🏅",
+        orientation: "landscape",
+        bgColor: "#ffffff",
+        accentColor: "#1a56db",
+        textColor: "#0f172a",
+        borderColor: "#c8a951",
+    },
+];
+
+const isAbortError = (err) => err?.name === "CanceledError" || err?.code === "ERR_CANCELED";
+
 // ── Batches Tab (Refactored Standalone) ───────────────────
 const BatchesTab = ({ members, issuedCertificates, auth, api, notify, setSearchParams }) => {
     const [selectedBatch, setSelectedBatch] = useState(null);
@@ -26,16 +79,6 @@ const BatchesTab = ({ members, issuedCertificates, auth, api, notify, setSearchP
     const itemsPerPage = 10;
 
     // Group members by their joining date using the Sep 1st boundary
-    const calculateBatch = (dateStr) => {
-        if (!dateStr) return new Date().getFullYear();
-        const date = new Date(dateStr);
-        if (isNaN(date.getTime())) return new Date().getFullYear();
-        const year = date.getFullYear();
-        const month = date.getMonth(); // 0 is Jan, 8 is Sept
-        return month >= 8 ? year : year - 1;
-    };
-
-    // 1. Identify active members
     const activeMembers = (members || []).filter(m => m && m.role !== 'Admin' && m.role !== 'Superuser');
     const activeIds = new Set(activeMembers.map(m => m.member_id));
 
@@ -72,12 +115,16 @@ const BatchesTab = ({ members, issuedCertificates, auth, api, notify, setSearchP
 
     const sortedBatchYears = Object.keys(batchData).sort((a, b) => b - a);
 
-    if (selectedBatch) {
-        const batchMembers = (batchData[selectedBatch] || []).filter(m =>
-            (m.name || "").toLowerCase().includes(batchSearch.toLowerCase()) ||
-            (m.member_id || "").toLowerCase().includes(batchSearch.toLowerCase())
+    const batchMembers = useMemo(() => {
+        if (!selectedBatch) return [];
+        const term = batchSearch.toLowerCase();
+        return (batchData[selectedBatch] || []).filter(m =>
+            (m.name || "").toLowerCase().includes(term) ||
+            (m.member_id || "").toLowerCase().includes(term)
         );
+    }, [batchData, selectedBatch, batchSearch]);
 
+    if (selectedBatch) {
         const totalPages = Math.ceil(batchMembers.length / itemsPerPage);
         const paginatedMembers = batchMembers.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
@@ -260,15 +307,6 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
     // Admin Promotion State
     const [adminSearch, setAdminSearch] = useState("");
     const [foundMembers, setFoundMembers] = useState([]);
-
-    const PAK_BANKS = [
-        "Meezan Bank", "Habib Bank Limited (HBL)", "United Bank Limited (UBL)",
-        "Allied Bank Limited (ABL)", "MCB Bank", "Bank Alfalah", "Bank of Punjab (BOP)",
-        "Askari Bank", "Faysal Bank", "National Bank of Pakistan (NBP)",
-        "Dubai Islamic Bank", "Standard Chartered", "Habib Metro", "Soneri Bank",
-        "Al Baraka Bank", "Bank Al Habib", "JS Bank", "Samba Bank", "Silk Bank",
-        "Summit Bank", "Sindh Bank", "SadaPay", "NayaPay"
-    ];
 
     useEffect(() => {
         api.get("settings").then(r => {
@@ -1014,39 +1052,6 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
     const [selectMode, setSelectMode] = useState(false);
     const [isRevoking, setIsRevoking] = useState(false);
     const [isDownloading, setIsDownloading] = useState(false);
-    
-    const CERT_TEMPLATES = [
-      {
-        id: 1,
-        name: "Classic Blue",
-        thumb: "🔵",
-        orientation: "landscape",   // 1123 × 794
-        bgColor: "#ffffff",
-        accentColor: "#003366",
-        textColor: "#0f172a",
-        borderColor: "#002147",
-      },
-      {
-        id: 2,
-        name: "Modern Blue",
-        thumb: "🔷",
-        orientation: "landscape",  // 1123 × 794
-        bgColor: "#f0f4ff",
-        accentColor: "#1a56db",
-        textColor: "#0f172a",
-        borderColor: "#1a56db",
-      },
-      {
-        id: 3,
-        name: "Gold & Blue",
-        thumb: "🏅",
-        orientation: "landscape",  // 1123 × 794
-        bgColor: "#ffffff",
-        accentColor: "#1a56db",
-        textColor: "#0f172a",
-        borderColor: "#c8a951",
-      },
-    ];
 
     const [selectedTemplate, setSelectedTemplate] = useState(CERT_TEMPLATES[0]);
 
@@ -1064,8 +1069,6 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
     const [certAssets, setCertAssets] = useState({ logo: null, seal: null, signature: null, stamp: null });
 
     useEffect(() => {
-        fetchCertificates();
-
         // Pre-load assets into Base64 to bypass CORS/Taint issues during capture
         const loadToDataURL = async (url, key) => {
             try {
@@ -1279,7 +1282,7 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
             } catch (e) { }
         }));
         notify(`Successfully revoked ${count} certificates`);
-        fetchCertificates();
+        await fetchCertificates();
         setSelectedCertIds([]);
         setIsRevoking(false);
     };
@@ -1296,7 +1299,7 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
                     // Add a small delay for browser stability
                     await new Promise(r => setTimeout(r, 500));
                 } catch (err) {
-                    console.error("Bulk Download Error:", e);
+                    console.error("Bulk Download Error:", err);
                 }
             }
         }
@@ -1305,6 +1308,17 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
         setSelectedCertIds([]);
         setIsDownloading(false);
     };
+
+    const certMatchesSearch = (c, term) =>
+        (c.memberId?.name || c.memberName || "").toLowerCase().includes(term) ||
+        (c.memberId?.member_id || c.member_id_str || "").toLowerCase().includes(term) ||
+        (c.eventId?.title || "").toLowerCase().includes(term) ||
+        (c.category || "").toLowerCase().includes(term);
+
+    const filteredCertificates = useMemo(() => {
+        const term = searchCert.toLowerCase();
+        return issuedCertificates.filter((c) => certMatchesSearch(c, term));
+    }, [issuedCertificates, searchCert]);
 
     const filteredMembers = members.filter(m =>
         (m.role !== 'Admin' && m.role !== 'Superuser') && (
@@ -1558,22 +1572,12 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
                 ) : (
                     <div className="p-4 sm:p-0">
                         <div className="sm:hidden space-y-2">
-                            {issuedCertificates.filter(c =>
-                                (c.memberId?.name || c.memberName || "").toLowerCase().includes(searchCert.toLowerCase()) ||
-                                (c.memberId?.member_id || c.member_id_str || "").toLowerCase().includes(searchCert.toLowerCase()) ||
-                                (c.eventId?.title || "").toLowerCase().includes(searchCert.toLowerCase()) ||
-                                (c.category || "").toLowerCase().includes(searchCert.toLowerCase())
-                            ).length === 0 ? (
+                            {filteredCertificates.length === 0 ? (
                                 <div className="text-center py-20 text-slate-300 bg-slate-50/50 rounded-[2rem] border-2 border-dashed border-slate-100">
                                     <i className="fas fa-file-circle-exclamation text-4xl mb-3 block opacity-10" />
                                     <p className="text-[10px] font-black uppercase tracking-widest">No matching history</p>
                                 </div>
-                            ) : issuedCertificates.filter(c =>
-                                (c.memberId?.name || c.memberName || "").toLowerCase().includes(searchCert.toLowerCase()) ||
-                                (c.memberId?.member_id || c.member_id_str || "").toLowerCase().includes(searchCert.toLowerCase()) ||
-                                (c.eventId?.title || "").toLowerCase().includes(searchCert.toLowerCase()) ||
-                                (c.category || "").toLowerCase().includes(searchCert.toLowerCase())
-                            ).map((cert) => (
+                            ) : filteredCertificates.map((cert) => (
                                 <div key={cert._id} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-3 relative overflow-hidden transition-all space-y-3">
                                     <div className="flex justify-between items-center gap-3">
                                         <div className={`flex items-center gap-2 ${selectMode ? 'ml-8' : ''}`}>
@@ -1627,12 +1631,7 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-50">
-                                    {issuedCertificates.filter(c =>
-                                        (c.memberId?.name || c.memberName || "").toLowerCase().includes(searchCert.toLowerCase()) ||
-                                        (c.memberId?.member_id || c.member_id_str || "").toLowerCase().includes(searchCert.toLowerCase()) ||
-                                        (c.eventId?.title || "").toLowerCase().includes(searchCert.toLowerCase()) ||
-                                        (c.category || "").toLowerCase().includes(searchCert.toLowerCase())
-                                    ).length === 0 ? (
+                                    {filteredCertificates.length === 0 ? (
                                         <tr>
                                             <td colSpan={selectMode ? 6 : 5} className="py-20 text-center">
                                                 <div className="opacity-10 mb-4"><i className="fas fa-medal text-5xl" /></div>
@@ -1640,12 +1639,7 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
                                             </td>
                                         </tr>
                                     ) : (
-                                        issuedCertificates.filter(c =>
-                                            (c.memberId?.name || c.memberName || "").toLowerCase().includes(searchCert.toLowerCase()) ||
-                                            (c.memberId?.member_id || c.member_id_str || "").toLowerCase().includes(searchCert.toLowerCase()) ||
-                                            (c.eventId?.title || "").toLowerCase().includes(searchCert.toLowerCase()) ||
-                                            (c.category || "").toLowerCase().includes(searchCert.toLowerCase())
-                                        ).map(cert => (
+                                        filteredCertificates.map(cert => (
                                             <tr key={cert._id} className={`transition-all ${selectedCertIds.includes(cert._id) ? 'bg-[#002147]/5' : 'hover:bg-slate-50/30'}`}>
                                                 {selectMode && (
                                                     <td className="px-8 py-6 text-center transition-all">
@@ -1789,14 +1783,6 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
 const DossierView = ({ memberId, members, onBack }) => {
     const member = members.find(m => m._id === memberId);
     if (!member) return <div className="p-10 text-center text-slate-400">Record not found.</div>;
-
-    const calculateBatch = (dateStr) => {
-        if (!dateStr) return new Date().getFullYear();
-        const date = new Date(dateStr);
-        const year = date.getFullYear();
-        const month = date.getMonth();
-        return month >= 8 ? year : year - 1;
-    };
 
     return (
         <div className="max-w-4xl mx-auto bg-white min-h-screen p-4 sm:p-10 md:p-12 lg:p-16 animate-fade-in shadow-2xl rounded-[2rem] sm:rounded-[3.5rem] border border-slate-100 mt-2 sm:mt-6 mb-20 overflow-hidden">
@@ -2166,6 +2152,2963 @@ const MembersTab = ({ members, fetchMembers, loading, search, setSearch, auth, n
 };
 
 
+// ── Dashboard Tab ────────────────────────────────────────
+// ── Dashboard Tab (Moved Outside) ────────────────────
+const DashboardTab = ({ adminUser, setActiveTab, stats, isSuper, tabs, Spinner, StatCard }) => (
+    <div className="space-y-6 animate-fade-up">
+        <div className="relative p-8 rounded-2xl overflow-hidden border border-slate-200 bg-white shadow-sm">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-[#002147]/5 blur-[100px] -mr-32 -mt-32" />
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 relative z-10">
+                <div>
+                    <h2 className="text-3xl font-bold text-slate-900 leading-tight tracking-tight">Welcome back, <span className="text-[#002147]">{adminUser}</span> 👋</h2>
+                    <p className="text-slate-500 text-sm mt-1 font-medium">SLS Society Management Dashboard</p>
+                </div>
+                <div className="flex gap-3">
+                    <button onClick={() => setActiveTab('events')} className="px-5 py-2.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl text-xs font-black uppercase tracking-widest transition-all border border-indigo-100 flex items-center gap-2">
+                        <i className="fas fa-calendar-plus" /> Create Event
+                    </button>
+                    <button onClick={() => setActiveTab('certificates')} className="px-5 py-2.5 bg-[#002147] hover:bg-slate-800 text-white shadow-lg shadow-blue-900/10 rounded-xl text-xs font-black uppercase tracking-widest transition-all flex items-center gap-2">
+                        <i className="fas fa-certificate" /> Create Certificate
+                    </button>
+                </div>
+            </div>
+        </div>
+        {stats ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+                <StatCard icon="fa-users" label="Total Members" value={stats.total_members} color="blue" />
+                <StatCard icon="fa-user-clock" label="Pending" value={stats.pending_members} color="indigo" />
+                {isSuper && <StatCard icon="fa-user-shield" label="Admins" value={stats.total_admins} color="sky" />}
+                <StatCard icon="fa-calendar-alt" label="Events" value={stats.total_events} color="violet" />
+            </div>
+        ) : <Spinner />}
+
+        <div className="space-y-4">
+            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">Quick Management</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {tabs.slice(1, 4).map((t) => (
+                    <button key={t.id} onClick={() => setActiveTab(t.id)}
+                        className="flex items-center gap-4 p-5 bg-white border border-slate-200 rounded-2xl hover:border-[#002147] hover:shadow-lg transition-all duration-300 group">
+                        <div className="w-11 h-11 bg-slate-50 rounded-xl flex items-center justify-center group-hover:bg-[#002147] transition-colors">
+                            <i className={`fas ${t.icon} text-[#002147] text-sm group-hover:text-white`} />
+                        </div>
+                        <span className="text-slate-600 group-hover:text-[#002147] text-sm font-bold tracking-tight transition-colors">{t.label}</span>
+                        <i className="fas fa-chevron-right text-slate-300 text-xs ml-auto group-hover:text-[#002147] group-hover:translate-x-1 transition-all" />
+                    </button>
+                ))}
+            </div>
+        </div>
+    </div>
+);
+
+
+// ── Members Tab ──────────────────────────────────────────
+
+
+// ── Approvals Tab ──────────────────────────────────────────
+const DetailItem = ({ label, value, icon, fullWidth }) => (
+    <div className={fullWidth ? "col-span-full" : "col-span-1"}>
+        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-2">
+            <i className={`fas ${icon} text-[#002147]/40`} /> {label}
+        </label>
+        <p className="text-sm font-bold text-slate-700 leading-relaxed bg-slate-50 p-4 rounded-2xl border border-slate-100/50">
+            {value || "Not provided"}
+        </p>
+    </div>
+);
+
+const ApprovalsTab = ({ pendingMembers, executiveApps, fetchPendingMembers, loading, auth, notify, Spinner, api }) => {
+    const [searchTerm, setSearchTerm] = useState("");
+    const [selectedIds, setSelectedIds] = useState([]);
+    const [isProcessing, setIsProcessing] = useState(false);
+    const [bulkMode, setBulkMode] = useState(false);
+
+    const [interviewTarget, setInterviewTarget] = useState(null);
+    const [interviewForm, setInterviewForm] = useState({
+        venue: "SLS Society HQ, Campus Block B",
+        message: "",
+        dressCode: "Business Formal",
+        arrivalTime: "15 minutes before scheduled time",
+        guideNotes: "",
+        focusAreas: "Leadership potential, communication, commitment to service",
+        linkUrl: "",
+    });
+    const [interviewResultTarget, setInterviewResultTarget] = useState(null);
+    const [interviewResultForm, setInterviewResultForm] = useState({ result: "passed", note: "" });
+    const [submittingResult, setSubmittingResult] = useState(false);
+    const [feePromptTarget, setFeePromptTarget] = useState(null);
+    const [membershipFee, setMembershipFee] = useState(0);
+    const [defaultValidityMonths, setDefaultValidityMonths] = useState("12");
+    const [allFeeChannels, setAllFeeChannels] = useState([]);
+    const [feeDeadline, setFeeDeadline] = useState("");
+    const [feeRequestTarget, setFeeRequestTarget] = useState(null);
+    const [feeRequestIsRetry, setFeeRequestIsRetry] = useState(false);
+    const [feeRequestForm, setFeeRequestForm] = useState({ amount: "", validityMonths: "", deadline: "", message: "", selectedChannelIds: [] });
+    const [waiveTarget, setWaiveTarget] = useState(null);
+    const [waiveReason, setWaiveReason] = useState("");
+    const [directApproveTarget, setDirectApproveTarget] = useState(null);
+    const [directApproveNote, setDirectApproveNote] = useState("");
+    const [openActionMenu, setOpenActionMenu] = useState(null);
+    const [sendingCall, setSendingCall] = useState(false);
+    const [viewMember, setViewMember] = useState(null);
+    const [locationFilter, setLocationFilter] = useState({ ...DEFAULT_ADMIN_LOCATION_FILTER });
+    const [memberTypeFilter, setMemberTypeFilter] = useState("All");
+    const [viewExecApp, setViewExecApp] = useState(null);
+    const [execInterviewTarget, setExecInterviewTarget] = useState(null);
+    const [execInterviewResultTarget, setExecInterviewResultTarget] = useState(null);
+    const [execWaiveTarget, setExecWaiveTarget] = useState(null);
+    const [execWaiveReason, setExecWaiveReason] = useState("");
+    const [execDirectApproveTarget, setExecDirectApproveTarget] = useState(null);
+    const [execDirectApproveNote, setExecDirectApproveNote] = useState("");
+    const [rejectExecTarget, setRejectExecTarget] = useState(null);
+    const [rejectExecReason, setRejectExecReason] = useState("");
+
+    const handleApproveExecutive = async (id) => {
+        if (!window.confirm("Approve this member as Executive? Interview is optional.")) return;
+        setIsProcessing(true);
+        try {
+            const r = await api.post(`admin/executive-applications/${id}/approve`, {}, auth);
+            notify(r.data.message || "Executive application approved");
+            setViewExecApp(null);
+            fetchPendingMembers();
+        } catch (err) {
+            notify(err.response?.data?.error || "Approval failed", "error");
+        } finally {
+            setIsProcessing(false);
+        }
+    };
+
+    const handleExecDirectApprove = async (e) => {
+        e.preventDefault();
+        if (!execDirectApproveTarget) return;
+        setIsProcessing(true);
+        try {
+            const r = await api.post(`admin/executive-applications/${execDirectApproveTarget._id}/direct-approve`, { note: execDirectApproveNote.trim() }, auth);
+            notify(r.data.message || "Executive member approved directly");
+            setExecDirectApproveTarget(null);
+            setExecDirectApproveNote("");
+            setViewExecApp(null);
+            fetchPendingMembers();
+        } catch (err) {
+            notify(err.response?.data?.error || "Direct approval failed", "error");
+        } finally {
+            setIsProcessing(false);
+        }
+    };
+
+    const handleExecWaive = async (e) => {
+        e.preventDefault();
+        if (!execWaiveTarget || execWaiveReason.trim().length < 10) {
+            notify("Waiver reason must be at least 10 characters", "error");
+            return;
+        }
+        setIsProcessing(true);
+        try {
+            const r = await api.post(`admin/executive-applications/${execWaiveTarget._id}/waive`, { reason: execWaiveReason.trim() }, auth);
+            notify(r.data.message || "Free executive membership granted");
+            setExecWaiveTarget(null);
+            setExecWaiveReason("");
+            fetchPendingMembers();
+        } catch (err) {
+            notify(err.response?.data?.error || "Failed to waive fee", "error");
+        } finally {
+            setIsProcessing(false);
+        }
+    };
+
+    const handleExecInterviewResult = async (e) => {
+        e.preventDefault();
+        if (!execInterviewResultTarget) return;
+        setSubmittingResult(true);
+        try {
+            const r = await api.post(`admin/executive-applications/${execInterviewResultTarget._id}/interview-result`, interviewResultForm, auth);
+            notify(r.data.message || "Interview result saved");
+            setExecInterviewResultTarget(null);
+            setInterviewResultForm({ result: "passed", note: "" });
+            fetchPendingMembers();
+        } catch (err) {
+            notify(err.response?.data?.error || "Failed to save interview result", "error");
+        } finally {
+            setSubmittingResult(false);
+        }
+    };
+
+    const handleExecInterviewCall = async (e) => {
+        e.preventDefault();
+        if (!execInterviewTarget) return;
+        setSendingCall(true);
+        try {
+            await api.post(`admin/executive-applications/${execInterviewTarget._id}/interview-call`, interviewForm, auth);
+            notify(`Executive interview call sent to ${execInterviewTarget.name}!`);
+            setExecInterviewTarget(null);
+            setInterviewForm({
+                venue: "SLS Society HQ, Campus Block B",
+                message: "",
+                dressCode: "Business Formal",
+                arrivalTime: "15 minutes before scheduled time",
+                guideNotes: "",
+                focusAreas: "Leadership potential, communication, commitment to service",
+                linkUrl: "",
+            });
+            fetchPendingMembers();
+        } catch (err) {
+            notify(err.response?.data?.error || "Failed to send interview invitation", "error");
+        } finally {
+            setSendingCall(false);
+        }
+    };
+
+    const handleRejectExecutive = async (e) => {
+        e.preventDefault();
+        if (!rejectExecTarget || rejectExecReason.trim().length < 10) {
+            notify("Rejection reason must be at least 10 characters", "error");
+            return;
+        }
+        setIsProcessing(true);
+        try {
+            const r = await api.post(`admin/executive-applications/${rejectExecTarget._id}/reject`, { reason: rejectExecReason.trim() }, auth);
+            notify(r.data.message || "Application rejected");
+            setRejectExecTarget(null);
+            setRejectExecReason("");
+            fetchPendingMembers();
+        } catch (err) {
+            notify(err.response?.data?.error || "Rejection failed", "error");
+        } finally {
+            setIsProcessing(false);
+        }
+    };
+
+    const getRequestedRoleLabel = (member) => {
+        const role = member.requestedRole || member.role || "General";
+        return role === "Executive" ? "Executive Member" : "General Member";
+    };
+
+    const getRoleShort = (member) => {
+        const role = member.requestedRole || member.role || "General";
+        return role === "Executive" ? "Executive" : "General";
+    };
+
+    const loadFeeSettings = useCallback(() => {
+        api.get("settings").then((r) => {
+            setMembershipFee(Number(r.data.membership_fee) || 0);
+            setDefaultValidityMonths(String(r.data.membership_validity_months || "12"));
+            const days = Number(r.data.default_fee_deadline_days) || 7;
+            const d = new Date();
+            d.setDate(d.getDate() + days);
+            setFeeDeadline(d.toISOString().slice(0, 16));
+            let ch = [];
+            try {
+                if (r.data.membership_fee_channels) ch = JSON.parse(r.data.membership_fee_channels);
+                if (!ch.length && r.data.donation_channels) ch = JSON.parse(r.data.donation_channels);
+            } catch { /* ignore */ }
+            setAllFeeChannels(ch);
+        }).catch(() => {});
+    }, [api]);
+
+    const openFeeRequestModal = (member, isRetry = false) => {
+        loadFeeSettings();
+        const fp = member.feePayment || {};
+        setFeeRequestIsRetry(isRetry);
+        setFeeRequestTarget(member);
+        setFeeRequestForm({
+            amount: String(isRetry ? (fp.amount || membershipFee || "") : (membershipFee || "")),
+            validityMonths: String(fp.validityMonths || defaultValidityMonths || "12"),
+            deadline: feeDeadline || new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 16),
+            message: "",
+            selectedChannelIds: (fp.requestedChannels?.length ? fp.requestedChannels : allFeeChannels).map((c) => c.id).filter(Boolean),
+        });
+        setOpenActionMenu(null);
+    };
+
+    const closeFeeRequestModal = () => {
+        setFeeRequestTarget(null);
+        setFeeRequestIsRetry(false);
+    };
+
+    useEffect(() => { loadFeeSettings(); }, [loadFeeSettings]);
+
+    useEffect(() => {
+        if (!feeRequestTarget) return;
+        setFeeRequestForm((prev) => ({
+            ...prev,
+            amount: prev.amount || String(membershipFee || ""),
+            validityMonths: prev.validityMonths || defaultValidityMonths || "12",
+            deadline: prev.deadline || feeDeadline,
+            selectedChannelIds: prev.selectedChannelIds.length ? prev.selectedChannelIds : allFeeChannels.map((c) => c.id).filter(Boolean),
+        }));
+    }, [feeRequestTarget, membershipFee, defaultValidityMonths, feeDeadline, allFeeChannels]);
+
+    const filtered = useMemo(() => (pendingMembers || []).filter(m => {
+        const matchesSearch =
+            m.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            m.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            m.joining_year?.toString().includes(searchTerm);
+        const memberRole = m.requestedRole || m.role || "General";
+        const matchesType = memberTypeFilter === "All" || (memberTypeFilter === "General" && memberRole === "General") || (memberTypeFilter === "Executive" && memberRole === "Executive");
+        return matchesSearch && matchesAdminLocationFilter(m, locationFilter) && matchesType;
+    }), [pendingMembers, searchTerm, memberTypeFilter, locationFilter]);
+
+    const filteredExecutiveApps = useMemo(() => (executiveApps || []).filter((app) => {
+        if (memberTypeFilter === "General") return false;
+        const email = app.memberId?.email || "";
+        const matchesSearch =
+            !searchTerm ||
+            app.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            app.member_id_str?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            app.city?.toLowerCase().includes(searchTerm.toLowerCase());
+        let matchesLocation = true;
+        if (locationFilter.tehsil !== ALL_TEHSILS_LABEL) {
+            const loc = (app.city || app.memberId?.city || "").trim().toLowerCase();
+            const tehsil = locationFilter.tehsil.trim().toLowerCase();
+            matchesLocation = loc === tehsil || loc.includes(tehsil) || tehsil.includes(loc);
+        }
+        return matchesSearch && matchesLocation;
+    }), [executiveApps, searchTerm, memberTypeFilter, locationFilter]);
+
+    const totalInQueue = (pendingMembers?.length || 0) + (executiveApps?.length || 0);
+    const totalShowing = filtered.length + filteredExecutiveApps.length;
+
+    const handleSelectAll = (e) => setSelectedIds(e.target.checked ? filtered.map(m => m._id) : []);
+    const toggleSelect = (id) => setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
+
+    const approveSingle = async (id) => {
+        if (!window.confirm("Approve this member?")) return;
+        setIsProcessing(true);
+        try {
+            const r = await api.post(`admin/approve-member/${id}`, {}, auth);
+            notify(`Approved! Member ID: ${r.data.member_id}`);
+            fetchPendingMembers();
+        }
+        catch (err) {
+            notify(err.response?.data?.error || "Failed to approve", "error");
+            if (err.response?.data?.error?.toLowerCase().includes("already")) { fetchPendingMembers(); }
+        } finally { setIsProcessing(false); }
+    };
+
+    const handleRequestFee = async (e) => {
+        e?.preventDefault?.();
+        if (!feeRequestTarget) return;
+        if (!feeRequestForm.amount || Number(feeRequestForm.amount) <= 0) {
+            notify("Enter a valid fee amount", "error");
+            return;
+        }
+        if (!feeRequestForm.selectedChannelIds.length) {
+            notify("Select at least one payment channel", "error");
+            return;
+        }
+        setIsProcessing(true);
+        try {
+            const channels = allFeeChannels.filter((c) => feeRequestForm.selectedChannelIds.includes(c.id));
+            const endpoint = feeRequestIsRetry
+                ? `fees/request-again/${feeRequestTarget._id}`
+                : `fees/request/${feeRequestTarget._id}`;
+            const r = await api.post(endpoint, {
+                amount: Number(feeRequestForm.amount),
+                deadline: feeRequestForm.deadline,
+                validityMonths: Number(feeRequestForm.validityMonths) || 12,
+                channels,
+                message: feeRequestForm.message.trim(),
+            }, auth);
+            notify(r.data.message || (feeRequestIsRetry ? "Updated fee request emailed to member" : "Fee request emailed to member"));
+            closeFeeRequestModal();
+            setFeePromptTarget(null);
+            fetchPendingMembers();
+        } catch (err) {
+            notify(err.response?.data?.error || "Failed to request fee", "error");
+        } finally { setIsProcessing(false); }
+    };
+
+    const handleWaiveFee = async (e) => {
+        e.preventDefault();
+        if (!waiveTarget || waiveReason.trim().length < 10) {
+            notify("Waiver reason must be at least 10 characters", "error");
+            return;
+        }
+        setIsProcessing(true);
+        try {
+            await api.post(`fees/waive/${waiveTarget._id}`, { reason: waiveReason.trim() }, auth);
+            notify("Free membership granted — member notified by email");
+            setWaiveTarget(null);
+            setWaiveReason("");
+            setFeePromptTarget(null);
+            fetchPendingMembers();
+        } catch (err) {
+            notify(err.response?.data?.error || "Failed to waive fee", "error");
+        } finally { setIsProcessing(false); }
+    };
+
+    const handleDirectApprove = async (e) => {
+        e.preventDefault();
+        if (!directApproveTarget) return;
+        setIsProcessing(true);
+        try {
+            const r = await api.post(`admin/direct-approve/${directApproveTarget._id}`, { note: directApproveNote.trim() }, auth);
+            notify(`Directly approved! Member ID: ${r.data.member_id}`);
+            setDirectApproveTarget(null);
+            setDirectApproveNote("");
+            setFeePromptTarget(null);
+            fetchPendingMembers();
+        } catch (err) {
+            notify(err.response?.data?.error || "Direct approval failed", "error");
+        } finally { setIsProcessing(false); }
+    };
+
+    const deleteSingle = async (id, name) => {
+        if (!window.confirm(`Are you sure you want to delete ${name}'s application? This action cannot be undone.`)) return;
+        setIsProcessing(true);
+        try {
+            await api.delete(`admin/members/${id}`, auth);
+            notify("Application deleted successfully.");
+            fetchPendingMembers();
+        } catch (err) {
+            notify(err.response?.data?.error || "Failed to delete application.", "error");
+        } finally { setIsProcessing(false); }
+    };
+
+    const handleBulkApprove = async () => {
+        if (!window.confirm(`Bulk approve ${selectedIds.length} applications?`)) return;
+        setIsProcessing(true);
+        let count = 0;
+        await Promise.all(selectedIds.map(async id => {
+            try { await api.post(`admin/approve-member/${id}`, {}, auth); count++; } catch { } // eslint-disable-line no-empty
+        }));
+        notify(`Approved ${count} members.`);
+        fetchPendingMembers();
+        setSelectedIds([]);
+        setIsProcessing(false);
+    };
+
+    const handleBulkDelete = async () => {
+        if (!window.confirm(`CRITICAL ACTION: Are you sure you want to PERMANENTLY DELETE ${selectedIds.length} applications?`)) return;
+        setIsProcessing(true);
+        try {
+            await api.post("admin/members/bulk-delete", { ids: selectedIds }, auth);
+            notify(`Successfully deleted ${selectedIds.length} applications.`);
+            fetchPendingMembers();
+            setSelectedIds([]);
+        } catch (err) {
+            notify("Bulk delete failed", "error");
+        } finally { setIsProcessing(false); }
+    };
+
+    const handleInterviewCall = async (e) => {
+        e.preventDefault();
+        if (!interviewTarget) return;
+        setSendingCall(true);
+        try {
+            await api.post(`admin/interview-call/${interviewTarget._id}`, interviewForm, auth);
+            notify(`Interview call sent to ${interviewTarget.name}!`);
+            setInterviewTarget(null);
+            setInterviewForm({
+                venue: "SLS Society HQ, Campus Block B",
+                message: "",
+                dressCode: "Business Formal",
+                arrivalTime: "15 minutes before scheduled time",
+                guideNotes: "",
+                focusAreas: "Leadership potential, communication, commitment to service",
+                linkUrl: "",
+            });
+            fetchPendingMembers();
+        } catch (err) {
+            notify(err.response?.data?.error || "Failed to send interview invitation", "error");
+        } finally { setSendingCall(false); }
+    };
+
+    const handleInterviewResult = async (e) => {
+        e.preventDefault();
+        if (!interviewResultTarget) return;
+        setSubmittingResult(true);
+        const passed = interviewResultForm.result === "passed";
+        const memberSnapshot = interviewResultTarget;
+        try {
+            const r = await api.post(`admin/interview-result/${interviewResultTarget._id}`, interviewResultForm, auth);
+            notify(r.data.message || "Interview result saved");
+            setInterviewResultTarget(null);
+            setInterviewResultForm({ result: "passed", note: "" });
+            fetchPendingMembers();
+            if (passed) setFeePromptTarget(memberSnapshot);
+        } catch (err) {
+            notify(err.response?.data?.error || "Failed to save interview result", "error");
+        } finally { setSubmittingResult(false); }
+    };
+
+    return (
+        <div className="space-y-6 relative">
+            {selectedIds.length > 0 && (
+                <div className="fixed sm:absolute bottom-6 sm:bottom-auto sm:top-0 left-1/2 -translate-x-1/2 sm:-translate-y-1/2 z-[100] bg-slate-900 text-white px-5 sm:px-6 py-3 rounded-2xl sm:rounded-full shadow-2xl shadow-blue-900/40 flex flex-wrap items-center justify-center gap-4 animate-fade-up border border-slate-700 w-[90%] sm:w-auto ring-4 ring-slate-900/20 backdrop-blur-md">
+                    <span className="text-[10px] sm:text-xs font-bold bg-white/10 px-3 py-1 rounded-xl sm:rounded-full whitespace-nowrap">{selectedIds.length} Selected</span>
+                    <div className="hidden sm:block w-px h-4 bg-white/20" />
+                    <button onClick={handleBulkApprove} disabled={isProcessing} className="text-emerald-400 hover:text-emerald-300 text-[10px] sm:text-xs font-black uppercase tracking-widest transition-colors flex items-center gap-2">
+                        {isProcessing ? <i className="fas fa-spinner fa-spin" /> : <i className="fas fa-check-double" />} Approve
+                    </button>
+                    <div className="hidden sm:block w-px h-4 bg-white/20" />
+                    <button onClick={handleBulkDelete} disabled={isProcessing} className="text-rose-400 hover:text-rose-300 text-[10px] sm:text-xs font-black uppercase tracking-widest transition-colors flex items-center gap-2">
+                        <i className="fas fa-trash-alt" /> Delete
+                    </button>
+                </div>
+            )}
+
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div>
+                    <h2 className="text-xl font-bold text-slate-800">Pending Approvals</h2>
+                    <p className="text-slate-400 text-sm mt-1">
+                        {totalShowing} of {totalInQueue} in queue
+                        {filteredExecutiveApps.length > 0 && (
+                            <span className="text-amber-600"> · {filteredExecutiveApps.length} executive upgrade{filteredExecutiveApps.length === 1 ? "" : "s"}</span>
+                        )}
+                    </p>
+                    <p className="text-[10px] text-slate-400 mt-2 font-bold uppercase tracking-widest">General: Interview → Fee → Approve · Executive: Review application → Approve / Reject</p>
+                </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
+                <div className="hidden" />
+                <div className="flex flex-col gap-3 w-full sm:w-auto sm:ml-auto">
+                    <div className="flex flex-wrap gap-3">
+                        <AdminLocationFilters
+                            filter={locationFilter}
+                            onChange={setLocationFilter}
+                            selectCls={adminFilterSelectCls}
+                        />
+                        <select
+                            value={memberTypeFilter}
+                            onChange={(e) => setMemberTypeFilter(e.target.value)}
+                            className={adminFilterSelectCls}
+                        >
+                            {MEMBER_TYPE_FILTER_OPTIONS.map(({ value, label }) => (
+                                <option key={value} value={value}>{label}</option>
+                            ))}
+                        </select>
+                    </div>
+                    <div className="flex flex-col sm:flex-row gap-3">
+                    <button onClick={() => { setBulkMode(!bulkMode); setSelectedIds([]); }} className={`px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-widest transition-all ${bulkMode ? 'bg-[#002147] text-white shadow-sm' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>
+                        <i className="fas fa-layer-group mr-2" /> {bulkMode ? "Done" : "Select"}
+                    </button>
+                    <div className="relative w-full sm:w-72">
+                        <i className="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm" />
+                        <input type="text" placeholder="Filter applicants..." value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="w-full bg-white border border-slate-200 rounded-xl pl-11 pr-4 py-2.5 text-slate-800 focus:ring-0  outline-none text-sm shadow-sm" />
+                    </div>
+                    </div>
+                </div>
+            </div>
+
+            {loading ? <Spinner /> : (
+                <>
+                    <div className="sm:hidden space-y-2">
+                        {totalShowing === 0 ? (
+                            <div className="text-center py-20 text-slate-300 bg-white rounded-[2rem] border-2 border-dashed border-slate-100">
+                                <i className="fas fa-check-circle text-4xl mb-3 block opacity-20" />
+                                <p className="text-[10px] font-black uppercase tracking-widest">No pending applications</p>
+                            </div>
+                        ) : (
+                        <>
+                        {filtered.map((m) => (
+                            <div key={m._id} className="p-3 bg-white rounded-2xl border border-slate-100 shadow-sm space-y-3 relative overflow-hidden transition-all">
+                                <div className="flex justify-between items-center gap-3">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-8 h-8 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center font-black text-[10px] uppercase shadow-inner">
+                                            {(m.name || "?").charAt(0)}
+                                        </div>
+                                        <div>
+                                            <h4 className="font-bold text-slate-800 leading-none mb-1 text-xs">{m.name}</h4>
+                                            {(() => {
+                                                const ib = getInterviewBadge(m);
+                                                const fb = getFeeApprovalBadge(m);
+                                                return (
+                                                    <>
+                                                        {ib && <span className={`inline-block text-[7px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md border mb-1 ${ib.cls}`}>{ib.label}</span>}
+                                                        {fb && fb.label !== ib?.label && <span className={`inline-block text-[7px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md border mb-1 ${fb.cls}`}>{fb.label}</span>}
+                                                    </>
+                                                );
+                                            })()}
+                                            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest leading-none">Class {m.joining_year}</p>
+                                            <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mt-1">{m.tehsil || m.city || "No Tehsil"}</p>
+                                            <p className="text-[8px] font-black text-purple-600 uppercase tracking-widest mt-1">{getRequestedRoleLabel(m)}</p>
+                                        </div>
+                                    </div>
+                                    {m.interview_called ? (
+                                        <span className="text-[8px] font-black text-emerald-600 uppercase tracking-widest bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100">Called</span>
+                                    ) : (
+                                        <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest bg-slate-50 px-2 py-0.5 rounded-md border border-slate-100">Pending</span>
+                                    )}
+                                </div>
+
+                                <div className="flex gap-2">
+                                    <button onClick={() => setViewMember(m)}
+                                        className="flex-1 text-[9px] bg-slate-50 text-slate-600 border border-slate-100 py-2 rounded-lg font-black uppercase tracking-widest transition-all hover:bg-slate-100">
+                                        Details
+                                    </button>
+                                    <button onClick={() => setInterviewTarget(m)}
+                                        className={`flex-1 text-[9px] py-2 rounded-lg font-black uppercase tracking-widest border transition-all ${m.interview_called ? "bg-amber-50 text-amber-600 border-amber-100" : "bg-blue-50 text-blue-600 border-blue-100"
+                                            }`}>
+                                        Interview
+                                    </button>
+                                    {needsInterviewResult(m) && (
+                                        <button onClick={() => { setInterviewResultTarget(m); setInterviewResultForm({ result: "passed", note: "" }); }}
+                                            className="flex-1 text-[9px] bg-indigo-50 text-indigo-600 border border-indigo-100 py-2 rounded-lg font-black uppercase tracking-widest">
+                                            Result
+                                        </button>
+                                    )}
+                                    <button onClick={() => approveSingle(m._id)} disabled={isProcessing || !canApproveMemberFee(m)}
+                                        title={!canApproveMemberFee(m) ? "Verify or waive fee before approving" : ""}
+                                        className={`flex-1 text-[9px] border py-2 rounded-lg font-black uppercase tracking-widest ${canApproveMemberFee(m) ? "bg-emerald-50 text-emerald-600 border-emerald-100 disabled:opacity-50" : "bg-slate-50 text-slate-400 border-slate-100 opacity-40 cursor-not-allowed"}`}>
+                                        Approve
+                                    </button>
+                                    <button onClick={() => deleteSingle(m._id, m.name)} disabled={isProcessing}
+                                        className="w-10 text-[9px] bg-rose-50 text-rose-500 border border-rose-100 py-2 rounded-lg font-black flex items-center justify-center transition-all hover:bg-rose-500 hover:text-white">
+                                        <i className="fas fa-trash-alt" />
+                                    </button>
+                                </div>
+                                {m.interviewResult?.status === "passed" && (
+                                    <div className="flex flex-wrap gap-2 pt-1 border-t border-slate-100">
+                                        {canRequestFee(m) && (
+                                            <button type="button" onClick={() => openFeeRequestModal(m)} disabled={isProcessing}
+                                                className="flex-1 text-[9px] bg-[#002147] text-white py-2 rounded-lg font-black uppercase tracking-widest">
+                                                Request Fee
+                                            </button>
+                                        )}
+                                        {canRequestFee(m) && (
+                                            <button type="button" onClick={() => { setWaiveTarget(m); setWaiveReason(""); }} disabled={isProcessing}
+                                                className="flex-1 text-[9px] bg-purple-50 text-purple-700 border border-purple-100 py-2 rounded-lg font-black uppercase tracking-widest">
+                                                Free Membership
+                                            </button>
+                                        )}
+                                        {canRequestFeeAgain(m) && (
+                                            <button type="button" onClick={() => openFeeRequestModal(m, true)} disabled={isProcessing}
+                                                className="flex-1 text-[9px] bg-amber-600 text-white py-2 rounded-lg font-black uppercase tracking-widest">
+                                                Request Fee Again
+                                            </button>
+                                        )}
+                                        {canDirectApprove(m) && (
+                                            <button type="button" onClick={() => { setDirectApproveTarget(m); setDirectApproveNote(""); }} disabled={isProcessing}
+                                                className="flex-1 text-[9px] bg-teal-50 text-teal-700 border border-teal-100 py-2 rounded-lg font-black uppercase tracking-widest">
+                                                Direct Approve
+                                            </button>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        ))}
+                        {filteredExecutiveApps.map((app) => {
+                            const eib = getExecutiveInterviewBadge(app);
+                            const efb = getExecutiveFeeBadge(app);
+                            return (
+                            <div key={`exec-${app._id}`} className="p-3 bg-white rounded-2xl border border-slate-100 shadow-sm space-y-3 relative overflow-hidden transition-all">
+                                <div className="flex justify-between items-center gap-3">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-8 h-8 bg-purple-50 text-purple-600 rounded-lg flex items-center justify-center font-black text-[10px] uppercase shadow-inner">
+                                            {(app.name || "?").charAt(0)}
+                                        </div>
+                                        <div>
+                                            <h4 className="font-bold text-slate-800 leading-none mb-1 text-xs">{app.name}</h4>
+                                            <div className="flex flex-wrap gap-1 mt-1">
+                                                {eib && <span className={`text-[7px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded border ${eib.cls}`}>{eib.label}</span>}
+                                                {efb && <span className={`text-[7px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded border ${efb.cls}`}>{efb.label}</span>}
+                                            </div>
+                                            <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mt-1">{app.city || "—"}</p>
+                                            <p className="text-[8px] font-black text-purple-600 uppercase tracking-widest mt-1">Executive Upgrade</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="flex flex-wrap gap-2">
+                                    <button type="button" onClick={() => setViewExecApp(app)} className="flex-1 min-w-[30%] text-[9px] bg-slate-50 text-slate-600 border border-slate-100 py-2 rounded-lg font-black uppercase tracking-widest">Details</button>
+                                    <button type="button" onClick={() => setExecInterviewTarget(app)} className="flex-1 min-w-[30%] text-[9px] bg-blue-50 text-blue-600 border border-blue-100 py-2 rounded-lg font-black uppercase tracking-widest">{app.interview_called ? "Call Again" : "Interview"}</button>
+                                    {needsExecutiveInterviewResult(app) && (
+                                        <button type="button" onClick={() => { setExecInterviewResultTarget(app); setInterviewResultForm({ result: "passed", note: "" }); }} className="flex-1 min-w-[30%] text-[9px] bg-indigo-50 text-indigo-600 border border-indigo-100 py-2 rounded-lg font-black uppercase tracking-widest">Result</button>
+                                    )}
+                                    {canWaiveExecutive(app) && (
+                                        <button type="button" onClick={() => { setExecWaiveTarget(app); setExecWaiveReason(""); }} className="flex-1 min-w-[30%] text-[9px] bg-purple-50 text-purple-600 border border-purple-100 py-2 rounded-lg font-black uppercase tracking-widest">Free</button>
+                                    )}
+                                    <button type="button" disabled={isProcessing} onClick={() => handleApproveExecutive(app._id)} className="flex-1 min-w-[30%] text-[9px] bg-emerald-50 text-emerald-600 border border-emerald-100 py-2 rounded-lg font-black uppercase tracking-widest disabled:opacity-50">Approve</button>
+                                    <button type="button" onClick={() => { setRejectExecTarget(app); setRejectExecReason(""); }} className="flex-1 min-w-[30%] text-[9px] bg-rose-50 text-rose-600 border border-rose-100 py-2 rounded-lg font-black uppercase tracking-widest">Reject</button>
+                                </div>
+                            </div>
+                            );
+                        })}
+                        </>
+                        )}
+                    </div>
+
+                    <div className="hidden sm:block bg-white rounded-2xl sm:rounded-3xl border border-slate-200 shadow-sm overflow-visible">
+                        <div className={`overflow-x-auto overflow-y-visible custom-scrollbar-horizontal ${openActionMenu?.startsWith("exec-") ? "pb-52" : ""}`}>
+                            <table className="w-full text-sm table-fixed min-w-[960px]">
+                                <thead>
+                                    <tr className="bg-slate-50 border-b border-slate-200 text-left">
+                                        {bulkMode && (<th className="px-4 py-3 w-10 text-center"><input type="checkbox" checked={selectedIds.length === filtered.length && filtered.length > 0} onChange={handleSelectAll} className="w-4 h-4 text-[#002147] border-slate-300 rounded" /></th>)}
+                                        <th className="px-4 py-3 w-[14%] text-[10px] font-bold text-slate-500 uppercase tracking-widest">Name</th>
+                                        <th className="px-4 py-3 w-[18%] text-[10px] font-bold text-slate-500 uppercase tracking-widest">Email</th>
+                                        <th className="px-4 py-3 w-[7%] text-[10px] font-bold text-slate-500 uppercase tracking-widest">Year</th>
+                                        <th className="px-4 py-3 w-[10%] text-[10px] font-bold text-slate-500 uppercase tracking-widest">Tehsil</th>
+                                        <th className="px-4 py-3 w-[9%] text-[10px] font-bold text-slate-500 uppercase tracking-widest">Role</th>
+                                        <th className="px-4 py-3 w-[22%] text-[10px] font-bold text-slate-500 uppercase tracking-widest">Pipeline</th>
+                                        <th className="px-4 py-3 w-[20%] text-[10px] font-bold text-slate-500 uppercase tracking-widest text-right">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100">
+                                    {totalShowing === 0 ? (
+                                        <tr><td colSpan={bulkMode ? 8 : 7} className="text-center py-20 text-slate-400">
+                                            <i className="fas fa-check-circle text-4xl mb-4 block text-emerald-300/50" />
+                                            <p className="text-xs font-black uppercase tracking-widest">No pending applications</p>
+                                        </td></tr>
+                                    ) : (
+                                    <>
+                                    {filtered.map((m) => {
+                                        const ib = getInterviewBadge(m);
+                                        const fb = getFeeApprovalBadge(m);
+                                        return (
+                                        <tr key={m._id} className={`align-middle ${selectedIds.includes(m._id) ? 'bg-[#002147]/5' : 'hover:bg-slate-50/80'}`}>
+                                            {bulkMode && (<td className="px-4 py-3 text-center"><input type="checkbox" checked={selectedIds.includes(m._id)} onChange={() => toggleSelect(m._id)} className="w-4 h-4 text-[#002147] border-slate-300 rounded" /></td>)}
+                                            <td className="px-4 py-3 align-middle">
+                                                <span className="text-slate-800 font-bold text-sm block truncate" title={m.name}>{m.name}</span>
+                                            </td>
+                                            <td className="px-4 py-3 align-middle">
+                                                <span className="text-slate-500 text-xs block truncate" title={m.email}>{m.email}</span>
+                                            </td>
+                                            <td className="px-4 py-3 align-middle font-bold text-slate-500 font-mono text-xs">{m.joining_year}</td>
+                                            <td className="px-4 py-3 align-middle">
+                                                <span className="text-slate-600 font-semibold text-xs block truncate">{m.tehsil || m.city || "—"}</span>
+                                            </td>
+                                            <td className="px-4 py-3 align-middle">
+                                                <span className={`inline-block whitespace-nowrap text-[10px] font-black uppercase tracking-wider px-2 py-1 rounded border ${(m.requestedRole || m.role) === "Executive" ? "text-purple-700 bg-purple-50 border-purple-100" : "text-blue-700 bg-blue-50 border-blue-100"}`}>
+                                                    {getRoleShort(m)}
+                                                </span>
+                                            </td>
+                                            <td className="px-4 py-3 align-middle">
+                                                <div className="flex flex-wrap gap-1">
+                                                    {ib && <span className={`text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded border whitespace-nowrap ${ib.cls}`}>{ib.label}</span>}
+                                                    {fb && <span className={`text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded border whitespace-nowrap ${fb.cls}`}>{fb.label}</span>}
+                                                </div>
+                                            </td>
+                                            <td className="px-4 py-3 align-middle text-right">
+                                                <div className="relative inline-block text-left">
+                                                    <button type="button" onClick={() => setOpenActionMenu(openActionMenu === m._id ? null : m._id)} className="text-[10px] font-black uppercase tracking-widest px-3 py-2 bg-[#002147] text-white rounded-lg hover:bg-slate-800">
+                                                        Manage <i className={`fas fa-chevron-${openActionMenu === m._id ? "up" : "down"} ml-1 text-[8px]`} />
+                                                    </button>
+                                                    {openActionMenu === m._id && (
+                                                        <div className="absolute right-0 mt-1 w-48 bg-white border border-slate-200 rounded-xl shadow-xl z-20 py-1 text-left">
+                                                            <button type="button" onClick={() => { setViewMember(m); setOpenActionMenu(null); }} className="w-full px-3 py-2 text-[10px] font-bold uppercase text-slate-600 hover:bg-slate-50 text-left">View Details</button>
+                                                            <button type="button" onClick={() => { setInterviewTarget(m); setOpenActionMenu(null); }} className="w-full px-3 py-2 text-[10px] font-bold uppercase text-slate-600 hover:bg-slate-50 text-left">{m.interview_called ? "Call Again" : "Interview Call"}</button>
+                                                            {needsInterviewResult(m) && (
+                                                                <button type="button" onClick={() => { setInterviewResultTarget(m); setInterviewResultForm({ result: "passed", note: "" }); setOpenActionMenu(null); }} className="w-full px-3 py-2 text-[10px] font-bold uppercase text-indigo-600 hover:bg-indigo-50 text-left">Record Result</button>
+                                                            )}
+                                                            {canRequestFee(m) && (
+                                                                <button type="button" onClick={() => openFeeRequestModal(m)} className="w-full px-3 py-2 text-[10px] font-bold uppercase text-[#002147] hover:bg-blue-50 text-left">Request Fee</button>
+                                                            )}
+                                                            {canRequestFee(m) && (
+                                                                <button type="button" onClick={() => { setWaiveTarget(m); setWaiveReason(""); setOpenActionMenu(null); }} className="w-full px-3 py-2 text-[10px] font-bold uppercase text-purple-600 hover:bg-purple-50 text-left">Free Membership</button>
+                                                            )}
+                                                            {canRequestFeeAgain(m) && (
+                                                                <button type="button" onClick={() => openFeeRequestModal(m, true)} className="w-full px-3 py-2 text-[10px] font-bold uppercase text-amber-700 hover:bg-amber-50 text-left">Request Fee Again</button>
+                                                            )}
+                                                            {canDirectApprove(m) && (
+                                                                <button type="button" onClick={() => { setDirectApproveTarget(m); setDirectApproveNote(""); setOpenActionMenu(null); }} className="w-full px-3 py-2 text-[10px] font-bold uppercase text-teal-600 hover:bg-teal-50 text-left">Direct Approve</button>
+                                                            )}
+                                                            <button type="button" onClick={() => { approveSingle(m._id); setOpenActionMenu(null); }} disabled={!canApproveMemberFee(m)} className="w-full px-3 py-2 text-[10px] font-bold uppercase text-emerald-600 hover:bg-emerald-50 text-left disabled:opacity-40 disabled:cursor-not-allowed">Final Approve</button>
+                                                            <button type="button" onClick={() => { deleteSingle(m._id, m.name); setOpenActionMenu(null); }} className="w-full px-3 py-2 text-[10px] font-bold uppercase text-rose-600 hover:bg-rose-50 text-left border-t border-slate-100">Delete</button>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        );
+                                    })}
+                                    {filteredExecutiveApps.map((app) => {
+                                        const menuKey = `exec-${app._id}`;
+                                        const execYear = app.member_id_str?.split("-")[0] || "—";
+                                        const eib = getExecutiveInterviewBadge(app);
+                                        const efb = getExecutiveFeeBadge(app);
+                                        return (
+                                        <tr key={menuKey} className="align-middle hover:bg-slate-50/80">
+                                            {bulkMode && (<td className="px-4 py-3" />)}
+                                            <td className="px-4 py-3 align-middle">
+                                                <span className="text-slate-800 font-bold text-sm block truncate" title={app.name}>{app.name}</span>
+                                            </td>
+                                            <td className="px-4 py-3 align-middle">
+                                                <span className="text-slate-500 text-xs block truncate" title={app.memberId?.email}>{app.memberId?.email || "—"}</span>
+                                            </td>
+                                            <td className="px-4 py-3 align-middle font-bold text-slate-500 font-mono text-xs">{execYear}</td>
+                                            <td className="px-4 py-3 align-middle">
+                                                <span className="text-slate-600 font-semibold text-xs block truncate">{app.city || "—"}</span>
+                                            </td>
+                                            <td className="px-4 py-3 align-middle">
+                                                <span className="inline-block whitespace-nowrap text-[10px] font-black uppercase tracking-wider px-2 py-1 rounded border text-purple-700 bg-purple-50 border-purple-100">Executive</span>
+                                            </td>
+                                            <td className="px-4 py-3 align-middle">
+                                                <div className="flex flex-wrap gap-1">
+                                                    {eib && <span className={`text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded border whitespace-nowrap ${eib.cls}`}>{eib.label}</span>}
+                                                    {efb && <span className={`text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded border whitespace-nowrap ${efb.cls}`}>{efb.label}</span>}
+                                                </div>
+                                            </td>
+                                            <td className="px-4 py-3 align-middle text-right overflow-visible">
+                                                <div className="relative inline-block text-left">
+                                                    <button type="button" onClick={() => setOpenActionMenu(openActionMenu === menuKey ? null : menuKey)} className="text-[10px] font-black uppercase tracking-widest px-3 py-2 bg-[#002147] text-white rounded-lg hover:bg-slate-800">
+                                                        Manage <i className={`fas fa-chevron-${openActionMenu === menuKey ? "up" : "down"} ml-1 text-[8px]`} />
+                                                    </button>
+                                                    {openActionMenu === menuKey && (
+                                                        <div className="absolute right-0 mt-1 w-48 bg-white border border-slate-200 rounded-xl shadow-xl z-20 py-1 text-left">
+                                                            <button type="button" onClick={() => { setViewExecApp(app); setOpenActionMenu(null); }} className="w-full px-3 py-2 text-[10px] font-bold uppercase text-slate-600 hover:bg-slate-50 text-left">View Application</button>
+                                                            <button type="button" onClick={() => { setExecInterviewTarget(app); setOpenActionMenu(null); }} className="w-full px-3 py-2 text-[10px] font-bold uppercase text-slate-600 hover:bg-slate-50 text-left">{app.interview_called ? "Call Again" : "Interview Call"}</button>
+                                                            {needsExecutiveInterviewResult(app) && (
+                                                                <button type="button" onClick={() => { setExecInterviewResultTarget(app); setInterviewResultForm({ result: "passed", note: "" }); setOpenActionMenu(null); }} className="w-full px-3 py-2 text-[10px] font-bold uppercase text-indigo-600 hover:bg-indigo-50 text-left">Record Result</button>
+                                                            )}
+                                                            {canWaiveExecutive(app) && (
+                                                                <button type="button" onClick={() => { setExecWaiveTarget(app); setExecWaiveReason(""); setOpenActionMenu(null); }} className="w-full px-3 py-2 text-[10px] font-bold uppercase text-purple-600 hover:bg-purple-50 text-left">Free Membership</button>
+                                                            )}
+                                                            <button type="button" onClick={() => { handleApproveExecutive(app._id); setOpenActionMenu(null); }} disabled={!canFinalApproveExecutive(app) || isProcessing} className="w-full px-3 py-2 text-[10px] font-bold uppercase text-emerald-600 hover:bg-emerald-50 text-left disabled:opacity-40 disabled:cursor-not-allowed">Final Approve</button>
+                                                            <button type="button" onClick={() => { setRejectExecTarget(app); setRejectExecReason(""); setOpenActionMenu(null); }} className="w-full px-3 py-2 text-[10px] font-bold uppercase text-rose-600 hover:bg-rose-50 text-left border-t border-slate-100">Reject</button>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        );
+                                    })}
+                                    </>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </>
+            )}
+
+            {viewExecApp && (
+                <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-md animate-fade-in" onClick={() => setViewExecApp(null)}>
+                    <div className="bg-white rounded-[3rem] w-full max-w-2xl shadow-2xl border border-white/20 overflow-hidden animate-zoom-in max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+                        <div className="bg-gradient-to-br from-[#002147] to-blue-900 p-8 md:p-10 text-white relative flex-shrink-0">
+                            <button onClick={() => setViewExecApp(null)} className="absolute top-8 right-8 w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center hover:bg-white/20 transition-all">
+                                <i className="fas fa-times" />
+                            </button>
+                            <div className="flex items-center gap-6">
+                                <div className="w-20 h-20 bg-white/10 rounded-[2rem] flex items-center justify-center text-3xl font-black border border-white/20 backdrop-blur-xl">
+                                    {viewExecApp.name?.charAt(0)}
+                                </div>
+                                <div>
+                                    <h3 className="text-3xl font-black tracking-tight leading-tight uppercase">{viewExecApp.name}</h3>
+                                    <p className="text-blue-200 text-xs font-bold uppercase tracking-[0.3em] mt-1">Executive Upgrade Application</p>
+                                    <p className="text-white/60 text-xs mt-1">{viewExecApp.member_id_str} · {viewExecApp.city}</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="p-8 md:p-10 overflow-y-auto custom-scrollbar flex-1 space-y-6">
+                            <div className="flex flex-wrap gap-2">
+                                {(() => {
+                                    const eib = getExecutiveInterviewBadge(viewExecApp);
+                                    const efb = getExecutiveFeeBadge(viewExecApp);
+                                    return (
+                                        <>
+                                            {eib && <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-1 rounded border ${eib.cls}`}>{eib.label}</span>}
+                                            {efb && <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-1 rounded border ${efb.cls}`}>{efb.label}</span>}
+                                        </>
+                                    );
+                                })()}
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
+                                {[
+                                    ["Mission Statement", viewExecApp.mission_statement],
+                                    ["Short-Term Goals", viewExecApp.short_term_goals],
+                                    ["Long-Term Goals", viewExecApp.long_term_goals],
+                                    ["Why Executive", viewExecApp.why_executive],
+                                    ["Skills", viewExecApp.skills],
+                                    ["Experience", viewExecApp.previous_volunteer_experience || "—"],
+                                    ["Area of Interest", viewExecApp.area_of_interest],
+                                    ["Availability", `${viewExecApp.availability} hours/week`],
+                                    ["Address", viewExecApp.address],
+                                    ["Father Name", viewExecApp.father_name],
+                                ].map(([label, val]) => (
+                                    <div key={label} className={label === "Mission Statement" || label === "Why Executive" ? "md:col-span-2" : ""}>
+                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{label}</p>
+                                        <p className="text-slate-700 whitespace-pre-wrap">{val}</p>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                        <div className="p-6 bg-slate-50 border-t border-slate-100 flex justify-end gap-3">
+                            <button onClick={() => setViewExecApp(null)} className="px-8 py-3.5 bg-white border border-slate-200 text-slate-500 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-100 transition-all shadow-sm">
+                                Close Portal
+                            </button>
+                            <button onClick={() => handleApproveExecutive(viewExecApp._id)} disabled={!canFinalApproveExecutive(viewExecApp) || isProcessing} className="px-8 py-3.5 bg-emerald-500 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-600 transition-all shadow-lg shadow-emerald-900/20 disabled:opacity-40 disabled:cursor-not-allowed">
+                                Approve Executive
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {rejectExecTarget && (
+                <AdminModal open={!!rejectExecTarget} onClose={() => setRejectExecTarget(null)} maxWidth="max-w-md">
+                    <form onSubmit={handleRejectExecutive} className="p-8 space-y-4">
+                        <h3 className="text-lg font-bold">Reject Executive Application</h3>
+                        <p className="text-sm text-slate-500">Reject application from <strong>{rejectExecTarget.name}</strong>. Member will be emailed.</p>
+                        <textarea rows={4} value={rejectExecReason} onChange={(e) => setRejectExecReason(e.target.value)} placeholder="Reason (min 10 chars)" className={`${inputCls} resize-none`} required minLength={10} />
+                        <div className="flex gap-3">
+                            <button type="submit" disabled={isProcessing} className="flex-1 py-3 bg-rose-600 text-white rounded-xl text-[10px] font-black uppercase disabled:opacity-50">Confirm Reject</button>
+                            <button type="button" onClick={() => setRejectExecTarget(null)} className="px-4 py-3 border rounded-xl text-[10px] font-black uppercase text-slate-500">Cancel</button>
+                        </div>
+                    </form>
+                </AdminModal>
+            )}
+
+            {execInterviewTarget && (
+                <AdminModal open={!!execInterviewTarget} onClose={() => setExecInterviewTarget(null)} maxWidth="max-w-lg">
+                    <div className="overflow-hidden flex flex-col max-h-[92vh]">
+                        <div className="bg-[#002147] p-6 text-white relative flex-shrink-0">
+                            <button type="button" onClick={() => setExecInterviewTarget(null)} className="absolute top-4 right-4 text-white/40 hover:text-white"><i className="fas fa-times" /></button>
+                            <h3 className="text-xl font-black uppercase">Schedule Executive Interview</h3>
+                            <p className="text-white/60 text-xs mt-1">{execInterviewTarget.name}</p>
+                        </div>
+                        <form onSubmit={handleExecInterviewCall} className="p-6 space-y-4 overflow-y-auto flex-1">
+                            <div className="group">
+                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 ml-1">Interview Venue / Location</label>
+                                <input type="text" required value={interviewForm.venue} onChange={e => setInterviewForm({ ...interviewForm, venue: e.target.value })} className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4 text-sm font-bold text-slate-800 placeholder:text-slate-300 focus:bg-white outline-none" placeholder="e.g. Society HQ or Online Link" />
+                            </div>
+                            <div className="group">
+                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 ml-1">Interview Description / Details</label>
+                                <textarea rows="3" required value={interviewForm.message} onChange={e => setInterviewForm({ ...interviewForm, message: e.target.value })} className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4 text-sm font-bold resize-none outline-none" placeholder="Schedule, instructions, or requirements..." />
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <input type="text" value={interviewForm.dressCode} onChange={e => setInterviewForm({ ...interviewForm, dressCode: e.target.value })} className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-4 py-3 text-sm font-bold" placeholder="Dress Code" />
+                                <input type="text" value={interviewForm.arrivalTime} onChange={e => setInterviewForm({ ...interviewForm, arrivalTime: e.target.value })} className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-4 py-3 text-sm font-bold" placeholder="Arrival Time" />
+                            </div>
+                            <button type="submit" disabled={sendingCall} className="w-full py-4 bg-[#002147] text-white rounded-2xl text-[10px] font-black uppercase tracking-widest disabled:opacity-50">
+                                {sendingCall ? "Sending..." : "Send Interview Call Email"}
+                            </button>
+                        </form>
+                    </div>
+                </AdminModal>
+            )}
+
+            {execInterviewResultTarget && (
+                <AdminModal open={!!execInterviewResultTarget} onClose={() => setExecInterviewResultTarget(null)} maxWidth="max-w-md">
+                    <form onSubmit={handleExecInterviewResult} className="p-8 space-y-4">
+                        <h3 className="text-lg font-bold">Record Executive Interview Result</h3>
+                        <p className="text-sm text-slate-500">{execInterviewResultTarget.name}</p>
+                        <select value={interviewResultForm.result} onChange={(e) => setInterviewResultForm({ ...interviewResultForm, result: e.target.value })} className={inputCls}>
+                            <option value="passed">Passed</option>
+                            <option value="failed">Failed</option>
+                        </select>
+                        <textarea rows={4} required value={interviewResultForm.note} onChange={(e) => setInterviewResultForm({ ...interviewResultForm, note: e.target.value })} placeholder="Interview notes (min 5 chars)" className={`${inputCls} resize-none`} minLength={5} />
+                        <div className="flex gap-3">
+                            <button type="submit" disabled={submittingResult} className="flex-1 py-3 bg-[#002147] text-white rounded-xl text-[10px] font-black uppercase disabled:opacity-50">Save Result</button>
+                            <button type="button" onClick={() => setExecInterviewResultTarget(null)} className="px-4 py-3 border rounded-xl text-[10px] font-black uppercase text-slate-500">Cancel</button>
+                        </div>
+                    </form>
+                </AdminModal>
+            )}
+
+            {execWaiveTarget && (
+                <AdminModal open={!!execWaiveTarget} onClose={() => setExecWaiveTarget(null)} maxWidth="max-w-md">
+                    <form onSubmit={handleExecWaive} className="p-8 space-y-4">
+                        <h3 className="text-lg font-bold">Grant Free Executive Membership</h3>
+                        <p className="text-sm text-slate-500">Waive executive fee/donation for <strong>{execWaiveTarget.name}</strong>. Member will be emailed.</p>
+                        <textarea rows={4} value={execWaiveReason} onChange={(e) => setExecWaiveReason(e.target.value)} placeholder="Reason (min 10 chars)" className={`${inputCls} resize-none`} required minLength={10} />
+                        <div className="flex gap-3">
+                            <button type="submit" disabled={isProcessing} className="flex-1 py-3 bg-emerald-600 text-white rounded-xl text-[10px] font-black uppercase disabled:opacity-50">Confirm & Notify</button>
+                            <button type="button" onClick={() => setExecWaiveTarget(null)} className="px-4 py-3 border rounded-xl text-[10px] font-black uppercase text-slate-500">Cancel</button>
+                        </div>
+                    </form>
+                </AdminModal>
+            )}
+
+            {execDirectApproveTarget && (
+                <AdminModal open={!!execDirectApproveTarget} onClose={() => setExecDirectApproveTarget(null)} maxWidth="max-w-md">
+                    <form onSubmit={handleExecDirectApprove} className="p-8 space-y-4">
+                        <h3 className="text-lg font-bold">Direct Approve Executive</h3>
+                        <p className="text-sm text-slate-500">Approve <strong>{execDirectApproveTarget.name}</strong> as Executive immediately — skips fee collection.</p>
+                        <textarea rows={3} value={execDirectApproveNote} onChange={(e) => setExecDirectApproveNote(e.target.value)} placeholder="Optional note (recorded as waiver reason)" className={`${inputCls} resize-none`} />
+                        <div className="flex gap-3">
+                            <button type="submit" disabled={isProcessing} className="flex-1 py-3 bg-teal-600 text-white rounded-xl text-[10px] font-black uppercase disabled:opacity-50">Approve & Email Welcome</button>
+                            <button type="button" onClick={() => setExecDirectApproveTarget(null)} className="px-4 py-3 border rounded-xl text-[10px] font-black uppercase text-slate-500">Cancel</button>
+                        </div>
+                    </form>
+                </AdminModal>
+            )}
+
+            {interviewTarget && (
+                <AdminModal open={!!interviewTarget} onClose={() => setInterviewTarget(null)} maxWidth="max-w-lg">
+                    <div className="overflow-hidden flex flex-col max-h-[92vh]">
+                        <div className="bg-[#002147] p-6 text-white relative flex-shrink-0">
+                            <button type="button" onClick={() => setInterviewTarget(null)} className="absolute top-4 right-4 text-white/40 hover:text-white"><i className="fas fa-times" /></button>
+                            <h3 className="text-xl font-black uppercase">Schedule Interview Call</h3>
+                            <p className="text-white/60 text-xs mt-1">{interviewTarget.name}</p>
+                        </div>
+                        <form onSubmit={handleInterviewCall} className="p-6 space-y-4 overflow-y-auto flex-1">
+                            <div className="group">
+                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 ml-1 group-focus-within:text-[#002147] transition-colors">Interview Venue / Location</label>
+                                <div className="relative">
+                                    <i className="fas fa-location-dot absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-[#002147] transition-colors" />
+                                    <input
+                                        type="text"
+                                        required
+                                        value={interviewForm.venue}
+                                        onChange={e => setInterviewForm({ ...interviewForm, venue: e.target.value })}
+                                        className="w-full bg-slate-50 border border-slate-100 rounded-2xl pl-12 pr-5 py-4 text-sm font-bold text-slate-800 placeholder:text-slate-300 focus:bg-white focus:ring-0  outline-none transition-all"
+                                        placeholder="e.g. Society HQ or Online Link"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="group">
+                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 ml-1">Interview Description / Details</label>
+                                <textarea
+                                    rows="3"
+                                    required
+                                    value={interviewForm.message}
+                                    onChange={e => setInterviewForm({ ...interviewForm, message: e.target.value })}
+                                    className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4 text-sm font-bold text-slate-800 placeholder:text-slate-300 focus:bg-white outline-none resize-none"
+                                    placeholder="Schedule, instructions, or requirements..."
+                                />
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div className="group">
+                                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Dress Code (optional)</label>
+                                    <input type="text" value={interviewForm.dressCode} onChange={e => setInterviewForm({ ...interviewForm, dressCode: e.target.value })} className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-4 py-3 text-sm font-bold" placeholder="Business Formal" />
+                                </div>
+                                <div className="group">
+                                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Arrival Time (optional)</label>
+                                    <input type="text" value={interviewForm.arrivalTime} onChange={e => setInterviewForm({ ...interviewForm, arrivalTime: e.target.value })} className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-4 py-3 text-sm font-bold" placeholder="15 min early" />
+                                </div>
+                            </div>
+                            <div className="group">
+                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Interview Guide (optional)</label>
+                                <textarea rows="2" value={interviewForm.guideNotes} onChange={e => setInterviewForm({ ...interviewForm, guideNotes: e.target.value })} className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-4 py-3 text-sm font-bold resize-none" placeholder="What to bring, how to prepare..." />
+                            </div>
+                            <div className="group">
+                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Interviewer Focus Areas (optional)</label>
+                                <textarea rows="2" value={interviewForm.focusAreas} onChange={e => setInterviewForm({ ...interviewForm, focusAreas: e.target.value })} className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-4 py-3 text-sm font-bold resize-none" placeholder="Leadership, communication, service..." />
+                            </div>
+                            <div className="group">
+                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Reference Link (optional)</label>
+                                <input type="url" value={interviewForm.linkUrl} onChange={e => setInterviewForm({ ...interviewForm, linkUrl: e.target.value })} className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-4 py-3 text-sm font-bold" placeholder="https://maps.google.com/... or online meeting link" />
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4 pt-2 pb-2">
+                                <button
+                                    type="button"
+                                    onClick={() => setInterviewTarget(null)}
+                                    className="px-6 py-4 bg-slate-100 text-slate-500 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-200 transition-all border border-slate-100 shadow-sm"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={sendingCall}
+                                    className="px-6 py-4 bg-[#002147] text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 transition-all shadow-xl shadow-blue-900/20 flex items-center justify-center gap-2 disabled:opacity-50 active:scale-95"
+                                >
+                                    {sendingCall ? <i className="fas fa-spinner fa-spin" /> : <i className="fas fa-paper-plane" />}
+                                    {sendingCall ? "Sending..." : "Confirm & Send"}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </AdminModal>
+            )}
+
+            {interviewResultTarget && (
+                <AdminModal open={!!interviewResultTarget} onClose={() => setInterviewResultTarget(null)} maxWidth="max-w-lg">
+                    <div className="bg-indigo-700 p-6 text-white">
+                        <h3 className="text-xl font-black uppercase">Record Interview Result</h3>
+                        <p className="text-white/70 text-xs mt-1">{interviewResultTarget.name}</p>
+                    </div>
+                    <form onSubmit={handleInterviewResult} className="p-6 space-y-4">
+                            <div>
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Result</label>
+                                <select value={interviewResultForm.result} onChange={(e) => setInterviewResultForm({ ...interviewResultForm, result: e.target.value })} className={inputCls}>
+                                    <option value="passed">Passed — Congratulations email</option>
+                                    <option value="failed">Failed — Better luck email</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Note to candidate (emailed)</label>
+                                <textarea rows={4} required minLength={5} value={interviewResultForm.note} onChange={(e) => setInterviewResultForm({ ...interviewResultForm, note: e.target.value })} className={`${inputCls} resize-none`} placeholder="Committee feedback or next steps..." />
+                            </div>
+                            <div className="flex gap-3">
+                                <button type="button" onClick={() => setInterviewResultTarget(null)} className="flex-1 py-3 border rounded-xl text-[10px] font-black uppercase text-slate-500">Cancel</button>
+                                <button type="submit" disabled={submittingResult} className="flex-1 py-3 bg-indigo-700 text-white rounded-xl text-[10px] font-black uppercase disabled:opacity-50">{submittingResult ? "Saving..." : "Save & Notify"}</button>
+                            </div>
+                        </form>
+                </AdminModal>
+            )}
+
+            {feePromptTarget && (
+                <AdminModal open={!!feePromptTarget} onClose={() => setFeePromptTarget(null)} maxWidth="max-w-lg">
+                    <div className="p-8 space-y-5">
+                        <h3 className="text-xl font-black text-slate-900 uppercase">Interview Passed — Next Step</h3>
+                        <p className="text-sm text-slate-600"><strong>{feePromptTarget.name}</strong> has been notified by email. What would you like to do next?</p>
+                        <div className="space-y-3">
+                            <button type="button" onClick={() => { openFeeRequestModal(feePromptTarget); setFeePromptTarget(null); }} className="w-full py-3 bg-[#002147] text-white rounded-xl text-[10px] font-black uppercase tracking-widest">Request Fee (PKR {membershipFee || 0})</button>
+                            <button type="button" onClick={() => { setWaiveTarget(feePromptTarget); setWaiveReason(""); setFeePromptTarget(null); }} className="w-full py-3 bg-purple-50 text-purple-700 border border-purple-200 rounded-xl text-[10px] font-black uppercase tracking-widest">Grant Free Membership</button>
+                            <button type="button" onClick={() => { setDirectApproveTarget(feePromptTarget); setDirectApproveNote(""); setFeePromptTarget(null); }} className="w-full py-3 bg-teal-50 text-teal-700 border border-teal-200 rounded-xl text-[10px] font-black uppercase tracking-widest">Direct Approve (Skip Fee)</button>
+                            <button type="button" onClick={() => setFeePromptTarget(null)} className="w-full py-3 border border-slate-200 text-slate-500 rounded-xl text-[10px] font-black uppercase tracking-widest">Later</button>
+                        </div>
+                    </div>
+                </AdminModal>
+            )}
+
+            {feeRequestTarget && (
+                <AdminModal open={!!feeRequestTarget} onClose={closeFeeRequestModal} maxWidth="max-w-xl">
+                    <form onSubmit={handleRequestFee} className="p-8 space-y-5">
+                        <div>
+                            <h3 className="text-xl font-black text-slate-900 uppercase">
+                                {feeRequestIsRetry ? "Send Updated Fee Request" : "Send Membership Fee Request"}
+                            </h3>
+                            <p className="text-sm text-slate-500 mt-1">
+                                To: <strong>{feeRequestTarget.name}</strong>
+                                {feeRequestIsRetry && feeRequestTarget.feePayment?.amount != null && (
+                                    <> — previous amount was <strong>PKR {feeRequestTarget.feePayment.amount}</strong></>
+                                )}
+                                {" "}— member will receive full details by email
+                            </p>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1">Fee Amount (PKR) *</label>
+                                <input type="number" min="1" required value={feeRequestForm.amount} onChange={(e) => setFeeRequestForm({ ...feeRequestForm, amount: e.target.value })} className={inputCls} />
+                            </div>
+                            <div>
+                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1">Membership Duration (Months) *</label>
+                                <input type="number" min="1" required value={feeRequestForm.validityMonths} onChange={(e) => setFeeRequestForm({ ...feeRequestForm, validityMonths: e.target.value })} className={inputCls} />
+                            </div>
+                        </div>
+                        <div>
+                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1">Payment Deadline *</label>
+                            <input type="datetime-local" required value={feeRequestForm.deadline} onChange={(e) => setFeeRequestForm({ ...feeRequestForm, deadline: e.target.value })} className={inputCls} />
+                        </div>
+                        <div>
+                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2">Payment Channels (included in email) *</label>
+                            {allFeeChannels.length === 0 ? (
+                                <p className="text-xs text-rose-500">No channels configured. Add them in Payment Management → Fee Settings first.</p>
+                            ) : (
+                                <div className="space-y-2 max-h-40 overflow-y-auto border border-slate-100 rounded-xl p-3">
+                                    {allFeeChannels.map((ch) => (
+                                        <label key={ch.id} className="flex items-start gap-2 text-sm cursor-pointer">
+                                            <input type="checkbox" checked={feeRequestForm.selectedChannelIds.includes(ch.id)} onChange={(e) => {
+                                                const ids = e.target.checked
+                                                    ? [...feeRequestForm.selectedChannelIds, ch.id]
+                                                    : feeRequestForm.selectedChannelIds.filter((id) => id !== ch.id);
+                                                setFeeRequestForm({ ...feeRequestForm, selectedChannelIds: ids });
+                                            }} className="mt-1" />
+                                            <span>
+                                                {ch.type === "Bank" ? `${ch.bankName} — ${ch.accountNumber}` : `${ch.walletType} — ${ch.number}`}
+                                            </span>
+                                        </label>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                        <div>
+                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1">Message to Member (optional)</label>
+                            <textarea rows={3} value={feeRequestForm.message} onChange={(e) => setFeeRequestForm({ ...feeRequestForm, message: e.target.value })} className={`${inputCls} resize-none`} placeholder={feeRequestIsRetry ? "e.g. Your payment was insufficient. Please send the remaining PKR amount by the deadline." : "Any special instructions..."} />
+                        </div>
+                        <div className="flex gap-3 pt-2">
+                            <button type="submit" disabled={isProcessing || !allFeeChannels.length} className="flex-1 py-3 bg-[#002147] text-white rounded-xl text-[10px] font-black uppercase disabled:opacity-50">
+                                {feeRequestIsRetry ? "Send Updated Request" : "Send Email & Open Portal"}
+                            </button>
+                            <button type="button" onClick={closeFeeRequestModal} className="px-4 py-3 border rounded-xl text-[10px] font-black uppercase text-slate-500">Cancel</button>
+                        </div>
+                    </form>
+                </AdminModal>
+            )}
+
+            {waiveTarget && (
+                <AdminModal open={!!waiveTarget} onClose={() => setWaiveTarget(null)} maxWidth="max-w-md">
+                    <form onSubmit={handleWaiveFee} className="p-8 space-y-4">
+                        <h3 className="text-lg font-bold">Grant Free Membership</h3>
+                        <p className="text-sm text-slate-500">Waive fee for <strong>{waiveTarget.name}</strong>. Member will be emailed.</p>
+                        <textarea rows={4} value={waiveReason} onChange={(e) => setWaiveReason(e.target.value)} placeholder="Reason (min 10 chars) — e.g. deserving candidate, scholarship" className={`${inputCls} resize-none`} required minLength={10} />
+                        <div className="flex gap-3">
+                            <button type="submit" disabled={isProcessing} className="flex-1 py-3 bg-emerald-600 text-white rounded-xl text-[10px] font-black uppercase disabled:opacity-50">Confirm & Notify</button>
+                            <button type="button" onClick={() => setWaiveTarget(null)} className="px-4 py-3 border rounded-xl text-[10px] font-black uppercase text-slate-500">Cancel</button>
+                        </div>
+                    </form>
+                </AdminModal>
+            )}
+
+            {directApproveTarget && (
+                <AdminModal open={!!directApproveTarget} onClose={() => setDirectApproveTarget(null)} maxWidth="max-w-md">
+                    <form onSubmit={handleDirectApprove} className="p-8 space-y-4">
+                        <h3 className="text-lg font-bold">Direct Approve Without Fee</h3>
+                        <p className="text-sm text-slate-500">Approve <strong>{directApproveTarget.name}</strong> immediately after interview — skips fee collection. Welcome email will be sent.</p>
+                        <textarea rows={3} value={directApproveNote} onChange={(e) => setDirectApproveNote(e.target.value)} placeholder="Optional note (recorded as waiver reason)" className={`${inputCls} resize-none`} />
+                        <div className="flex gap-3">
+                            <button type="submit" disabled={isProcessing} className="flex-1 py-3 bg-teal-600 text-white rounded-xl text-[10px] font-black uppercase disabled:opacity-50">Approve & Email Welcome</button>
+                            <button type="button" onClick={() => setDirectApproveTarget(null)} className="px-4 py-3 border rounded-xl text-[10px] font-black uppercase text-slate-500">Cancel</button>
+                        </div>
+                    </form>
+                </AdminModal>
+            )}
+
+            {viewMember && (
+                <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-md animate-fade-in" onClick={() => setViewMember(null)}>
+                    <div className="bg-white rounded-[3rem] w-full max-w-2xl shadow-2xl border border-white/20 overflow-hidden animate-zoom-in max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+                        <div className="bg-gradient-to-br from-[#002147] to-blue-900 p-8 md:p-10 text-white relative flex-shrink-0">
+                            <button onClick={() => setViewMember(null)} className="absolute top-8 right-8 w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center hover:bg-white/20 transition-all">
+                                <i className="fas fa-times" />
+                            </button>
+                            <div className="flex items-center gap-6">
+                                <div className="w-20 h-20 bg-white/10 rounded-[2rem] flex items-center justify-center text-3xl font-black border border-white/20 backdrop-blur-xl">
+                                    {viewMember.name?.charAt(0)}
+                                </div>
+                                <div>
+                                    <h3 className="text-3xl font-black tracking-tight leading-tight uppercase">{viewMember.name}</h3>
+                                    <p className="text-blue-200 text-xs font-bold uppercase tracking-[0.3em] mt-1">Full Applicant Profile</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="p-8 md:p-10 overflow-y-auto custom-scrollbar flex-1 space-y-8">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                <DetailItem label="Full Name" value={viewMember.name} icon="fa-user" />
+                                <DetailItem label="Father Name" value={viewMember.father_name} icon="fa-user-friends" />
+                                <DetailItem label="Email Address" value={viewMember.email} icon="fa-envelope" />
+                                <DetailItem label="WhatsApp Number" value={viewMember.whatsapp} icon="fa-phone" />
+                                <DetailItem label="University" value={viewMember.university} icon="fa-university" />
+                                <DetailItem label="Degree Program" value={viewMember.program} icon="fa-graduation-cap" />
+                                <DetailItem label="Province" value={viewMember.province} icon="fa-map" />
+                                <DetailItem label="District" value={viewMember.district} icon="fa-map-location-dot" />
+                                <DetailItem label="Tehsil" value={viewMember.tehsil || viewMember.city} icon="fa-location-crosshairs" />
+                                <DetailItem label="Requested Role" value={getRequestedRoleLabel(viewMember)} icon="fa-user-tag" />
+                                <DetailItem label="Joining Year" value={viewMember.joining_year} icon="fa-calendar-check" />
+                                <DetailItem label="Passing Year" value={viewMember.passing_year} icon="fa-calendar-alt" />
+                                {viewMember.sls_official_id && <DetailItem label="SLS Official ID" value={viewMember.sls_official_id} icon="fa-id-card" />}
+                                {viewMember.cnic_number && <DetailItem label="CNIC Number" value={viewMember.cnic_number} icon="fa-address-card" />}
+                            </div>
+                            <div className="pt-6 border-t border-slate-100">
+                                <DetailItem
+                                    label="Residential Address"
+                                    value={[viewMember.address, viewMember.tehsil || viewMember.city, viewMember.district, viewMember.province].filter(Boolean).join(", ")}
+                                    icon="fa-location-dot"
+                                    fullWidth
+                                />
+                            </div>
+                        </div>
+
+                        <div className="p-6 bg-slate-50 border-t border-slate-100 flex justify-end gap-3">
+                            <button onClick={() => setViewMember(null)} className="px-8 py-3.5 bg-white border border-slate-200 text-slate-500 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-100 transition-all shadow-sm">
+                                Close Portal
+                            </button>
+                            <button onClick={() => { approveSingle(viewMember._id); setViewMember(null); }} className="px-8 py-3.5 bg-emerald-500 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-600 transition-all shadow-lg shadow-emerald-900/20">
+                                Approve Member
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
+
+
+
+// ── Events Tab ───────────────────────────────────────────
+// ── Events Tab (Moved Outside to fix Search Strokes) ────────
+const EventsTab = ({ events, fetchEvents, api, auth, notify, setSearchParams, getImgUrl, CountdownTimer, inputCls }) => {
+    const [activeSubTab, setActiveSubTab] = useState("view");
+    const [form, setForm] = useState({ title: "", description: "", date: "", endDate: "", location: "", is_active: true, time: "" });
+    const [creating, setCreating] = useState(false);
+    const [file, setFile] = useState(null);
+    const [preview, setPreview] = useState(null);
+    const [searchTerm, setSearchTerm] = useState("");
+    const [statusFilter, setStatusFilter] = useState("All");
+    const [selectedIds, setSelectedIds] = useState([]);
+    const [isProcessing, setIsProcessing] = useState(false);
+    const [bulkMode, setBulkMode] = useState(false);
+    const ldt = new Date();
+    const todayStr = `${ldt.getFullYear()}-${String(ldt.getMonth() + 1).padStart(2, '0')}-${String(ldt.getDate()).padStart(2, '0')}`;
+
+    const filteredEvents = useMemo(() => events.filter(e => {
+        const matchSearch = e.title?.toLowerCase().includes(searchTerm.toLowerCase()) || e.location?.toLowerCase().includes(searchTerm.toLowerCase());
+        const endTimestamp = new Date(`${e.endDate || e.date}T23:59:59`).getTime();
+        const hasEnded = Date.now() > endTimestamp;
+        const matchStatus = statusFilter === "All" || (statusFilter === "Running" && !hasEnded) || (statusFilter === "Ended" && hasEnded);
+        return matchSearch && matchStatus;
+    }), [events, searchTerm, statusFilter]);
+
+    const handleSelectAll = (e) => setSelectedIds(e.target.checked ? filteredEvents.map(ev => ev._id) : []);
+    const toggleSelect = (id) => setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
+
+    const handleFileChange = (e) => {
+        const selected = e.target.files[0];
+        if (selected) {
+            setFile(selected);
+            setPreview(URL.createObjectURL(selected));
+        }
+    };
+
+    const create = async (e) => {
+        e.preventDefault();
+
+        const now = new Date();
+        const isToday = form.date === todayStr;
+
+        if (!form.date) {
+            notify("Please select a date", "error");
+            return;
+        }
+
+        if (isToday && form.time) {
+            try {
+                const eventStartTime = new Date(`${form.date}T${form.time}:00`);
+                if (!isNaN(eventStartTime.getTime()) && eventStartTime < now) {
+                    notify("Selected time has already passed for today.", "error");
+                    return;
+                }
+            } catch (err) {
+                console.error("Date validation error:", e);
+            }
+        }
+
+        if (form.date < todayStr) {
+            notify("Event date cannot be in the past", "error");
+            return;
+        }
+
+        if (form.endDate && form.endDate < form.date) {
+            notify("The event cannot end before it starts.", "error");
+            return;
+        }
+
+        setCreating(true);
+        try {
+            const formData = new FormData();
+            formData.append("title", form.title);
+            formData.append("description", form.description);
+            formData.append("date", form.date);
+            formData.append("endDate", form.endDate || form.date);
+            formData.append("location", form.location);
+            formData.append("is_active", form.is_active);
+            formData.append("time", form.time);
+            if (file) formData.append("image", file);
+
+            await api.post("events/", formData, {
+                headers: { ...auth.headers, "Content-Type": "multipart/form-data" }
+            });
+
+            notify(`Event "${form.title}" created!`);
+            setForm({ title: "", description: "", date: "", endDate: "", location: "", is_active: true, time: "" });
+            setFile(null); setPreview(null);
+            fetchEvents();
+            setActiveSubTab("view");
+        } catch (err) { notify(err.response?.data?.error || "Failed to create", "error"); }
+        finally { setCreating(false); }
+    };
+
+    const deleteSingle = async (id) => {
+        if (!window.confirm("Delete event?")) return;
+        setIsProcessing(true);
+        try { await api.delete(`events/${id}`, auth); notify("Event deleted"); fetchEvents(); }
+        catch { notify("Delete failed", "error"); }
+        finally { setIsProcessing(false); }
+    };
+
+    const handleBulkDelete = async () => {
+        if (!window.confirm(`Permanently remove ${selectedIds.length} event records?`)) return;
+        setIsProcessing(true);
+        let count = 0;
+        await Promise.all(selectedIds.map(async id => {
+            try { await api.delete(`events/${id}`, auth); count++; } catch (e) { }
+        }));
+        notify(`Removed ${count} out of ${selectedIds.length} events`);
+        fetchEvents();
+        setSelectedIds([]);
+        setIsProcessing(false);
+    };
+
+    const viewParticipants = (event) => {
+        setSearchParams({ tab: 'events', eventId: event._id });
+    };
+
+
+    return (
+        <div className="space-y-6 animate-fade-up">
+            <div className="flex gap-4 p-2 bg-slate-100 rounded-2xl w-fit">
+                <button
+                    onClick={() => setActiveSubTab("view")}
+                    className={`py-2 px-6 text-xs font-black uppercase tracking-widest rounded-xl transition-all ${activeSubTab === "view" ? "bg-white text-[#002147] shadow-sm" : "text-slate-500 hover:text-slate-800"}`}
+                >
+                    <i className="fas fa-list-ul mr-2"></i> View Events
+                </button>
+                <button
+                    onClick={() => setActiveSubTab("create")}
+                    className={`py-2 px-6 text-xs font-black uppercase tracking-widest rounded-xl transition-all ${activeSubTab === "create" ? "bg-white text-[#002147] shadow-sm" : "text-slate-500 hover:text-slate-800"}`}
+                >
+                    <i className="fas fa-plus mr-2"></i> Create Event
+                </button>
+            </div>
+
+            {activeSubTab === "create" && (
+                <div className="bg-white border border-slate-200 rounded-3xl sm:rounded-[2.5rem] p-5 sm:p-10 shadow-xl relative overflow-hidden animate-fade-in">
+                    <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-blue-600 to-indigo-700" />
+                    <h3 className="text-xl sm:text-2xl font-black text-slate-800 mb-6 sm:mb-8 flex items-center gap-4">
+                        <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-50 text-blue-600 rounded-xl sm:rounded-2xl flex items-center justify-center text-lg sm:text-xl shadow-inner"><i className="fas fa-calendar-plus" /></div>
+                        Create New Event
+                    </h3>
+                    <form onSubmit={create} className="space-y-8">
+                        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                            <div className="sm:col-span-2 lg:col-span-1">
+                                <label className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 block ml-1">Event Title *</label>
+                                <input type="text" placeholder="Official Event Name" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className={inputCls} required />
+                            </div>
+                            <div>
+                                <label className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 block ml-1">Start Date *</label>
+                                <input type="date" min={todayStr} value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value, endDate: e.target.value > form.endDate ? e.target.value : form.endDate })} className={inputCls} required />
+                            </div>
+                            <div>
+                                <label className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 block ml-1">End Date *</label>
+                                <input type="date" min={form.date || todayStr} value={form.endDate} onChange={(e) => setForm({ ...form, endDate: e.target.value })} className={inputCls} required />
+                            </div>
+                            <div>
+                                <label className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 block ml-1">Starting Time</label>
+                                <input type="time" value={form.time} onChange={(e) => setForm({ ...form, time: e.target.value })} className={inputCls} />
+                            </div>
+                            <div>
+                                <label className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 block ml-1">Physical Location</label>
+                                <input type="text" placeholder="e.g. Main Auditorium, UET" value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} className={inputCls} />
+                            </div>
+                            <div>
+                                <label className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 block ml-1">Event Poster</label>
+                                <div className="flex items-center gap-4">
+                                    <label className="flex-1 flex items-center justify-center gap-3 px-4 py-3 bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl cursor-pointer hover:border-[#002147] hover:bg-white transition-all text-slate-400 text-xs font-black uppercase tracking-widest">
+                                        <i className="fas fa-cloud-arrow-up text-sm" />
+                                        {file ? file.name : "Select Asset"}
+                                        <input type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
+                                    </label>
+                                    {preview && (
+                                        <div className="w-14 h-14 rounded-xl overflow-hidden border-2 border-slate-100 shadow-sm">
+                                            <img src={preview} alt="Preview" className="w-full h-full object-cover" />
+                                        </div>
+                                    )}
+                                </div>
+                                <ImageUploadHint />
+                            </div>
+                        </div>
+                        <div>
+                            <label className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 block ml-1">Event Description</label>
+                            <textarea placeholder="Provide detailed event information..." value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={4} className={`${inputCls} resize-none`} />
+                        </div>
+                        <div className="flex flex-col sm:flex-row justify-between items-center gap-6 pt-4 border-t border-slate-50">
+                            <div className="flex items-center gap-4">
+                                <label className="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" checked={form.is_active} onChange={(e) => setForm({ ...form, is_active: e.target.checked })} className="sr-only peer" />
+                                    <div className="w-12 h-6 bg-slate-200 rounded-full peer peer-checked:bg-emerald-500 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full shadow-inner" />
+                                </label>
+                                <span className={`text-xs font-black uppercase tracking-widest ${form.is_active ? "text-emerald-600" : "text-slate-400"}`}>{form.is_active ? "Live Status" : "Standby Status"}</span>
+                            </div>
+                            <button type="submit" disabled={creating}
+                                className={`px-12 py-4 rounded-2xl text-xs font-black uppercase tracking-[0.3em] transition-all shadow-xl ${creating ? "bg-slate-100 text-slate-400 cursor-not-allowed" : "bg-[#002147] text-white hover:bg-slate-800 shadow-blue-900/20 active:scale-95"}`}>
+                                {creating ? "Processing..." : "Create Event"}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            )}
+
+            {activeSubTab === "view" && (
+                <div className="space-y-8 animate-fade-in relative">
+                    {selectedIds.length > 0 && (
+                        <div className="fixed sm:absolute bottom-6 sm:bottom-auto sm:top-0 left-1/2 -translate-x-1/2 sm:-translate-y-1/2 z-[100] bg-slate-900 text-white px-5 sm:px-6 py-3 rounded-2xl sm:rounded-full shadow-2xl shadow-blue-900/40 flex flex-wrap items-center justify-center gap-4 animate-fade-up border border-slate-700 w-[90%] sm:w-auto ring-4 ring-slate-900/20 backdrop-blur-md">
+                            <span className="text-[10px] sm:text-xs font-bold bg-white/10 px-3 py-1 rounded-xl sm:rounded-full whitespace-nowrap">{selectedIds.length} Selected</span>
+                            <div className="hidden sm:block w-px h-4 bg-white/20" />
+                            <button onClick={handleBulkDelete} disabled={isProcessing} className="text-rose-400 hover:text-rose-300 text-[10px] sm:text-xs font-black uppercase tracking-widest transition-colors flex items-center gap-2">
+                                {isProcessing ? <i className="fas fa-spinner fa-spin" /> : <i className="fas fa-trash-alt" />} Delete Records
+                            </button>
+                        </div>
+                    )}
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
+                        <div className="bg-white p-5 sm:p-8 rounded-2xl sm:rounded-[2rem] border border-slate-100 shadow-xl shadow-slate-200/40">
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Posts</p>
+                            <p className="text-2xl sm:text-3xl font-black text-slate-800 uppercase">{events.length}</p>
+                        </div>
+                        <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-xl shadow-slate-200/40">
+                            <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1">Active / Running</p>
+                            <p className="text-3xl font-black text-emerald-500 uppercase">
+                                {events.filter(e => Date.now() <= new Date(`${e.endDate || e.date}T23:59:59`).getTime()).length}
+                            </p>
+                        </div>
+                        <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-xl shadow-slate-200/40">
+                            <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1">Ended / Archive</p>
+                            <p className="text-3xl font-black text-slate-300 uppercase">{events.filter(e => Date.now() > new Date(`${e.endDate || e.date}T23:59:59`).getTime()).length}</p>
+                        </div>
+                    </div>
+
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                        <h3 className="text-xl font-black text-slate-800 tracking-tight">Event Registry</h3>
+                        <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+                            <button onClick={() => { setBulkMode(!bulkMode); setSelectedIds([]); }} className={`px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-widest transition-all ${bulkMode ? 'bg-[#002147] text-white shadow-sm' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>
+                                <i className="fas fa-layer-group mr-2" /> {bulkMode ? "Done" : "Select"}
+                            </button>
+                            <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold text-slate-600  outline-none shadow-sm cursor-pointer hover:border-slate-300 transition-all">
+                                <option value="All">All Statuses</option>
+                                <option value="Running">Running Active</option>
+                                <option value="Ended">Archive Ended</option>
+                            </select>
+                            <div className="relative w-full sm:w-64">
+                                <i className="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm" />
+                                <input type="text" placeholder="Search events..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl pl-11 pr-4 py-2.5 text-slate-800 text-sm shadow-sm outline-none  focus:ring-0" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="sm:hidden space-y-2">
+                        {filteredEvents.length === 0 ? (
+                            <div className="text-center py-24 bg-white rounded-[2rem] border border-slate-100 shadow-sm">
+                                <i className="fas fa-calendar-xmark text-4xl mb-4 block text-slate-100" />
+                                <p className="text-[10px] font-black uppercase tracking-widest text-slate-300">No events found</p>
+                            </div>
+                        ) : filteredEvents.map((ev) => {
+                            const hasEnded = Date.now() > new Date(`${ev.endDate || ev.date}T23:59:59`).getTime();
+                            return (
+                                <div key={ev._id} className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden relative transition-all p-3 space-y-3">
+                                    <div className="flex items-center justify-between gap-3">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-10 h-10 bg-slate-100 rounded-lg overflow-hidden shrink-0">
+                                                {ev.image_url ? (
+                                                    <img src={getImgUrl(ev.image_url)} className="w-full h-full object-cover" />
+                                                ) : (
+                                                    <div className="w-full h-full flex items-center justify-center">
+                                                        <i className="fas fa-calendar-alt text-lg text-slate-200" />
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <div>
+                                                <h4 className="font-bold text-slate-800 text-xs leading-tight mb-1">{ev.title}</h4>
+                                                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1">
+                                                    <i className="fas fa-users text-blue-500" /> {ev.participants?.length || 0} Joined
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <span className={`px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-widest ${hasEnded ? "bg-slate-100 text-slate-500" : "bg-emerald-50 text-emerald-600 border border-emerald-100"
+                                            }`}>
+                                            {hasEnded ? "Ended" : "Live"}
+                                        </span>
+                                    </div>
+
+                                    <div className="flex gap-2">
+                                        <button onClick={() => viewParticipants(ev)} className="flex-1 bg-[#002147] text-white py-2 rounded-lg text-[9px] font-black uppercase tracking-widest">
+                                            Participants
+                                        </button>
+                                        <button onClick={() => deleteSingle(ev._id)} className="w-10 bg-rose-50 text-rose-500 rounded-lg flex items-center justify-center border border-rose-100">
+                                            <i className="fas fa-trash-alt" />
+                                        </button>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+
+                    <div className="hidden sm:block bg-white rounded-[2.5rem] border border-slate-200 shadow-2xl overflow-hidden">
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-sm">
+                                <thead>
+                                    <tr className="bg-slate-50 border-b border-slate-100 text-left">
+                                        {bulkMode && (<th className="px-8 py-5 w-10 text-center transition-all">
+                                            <input type="checkbox" checked={selectedIds.length === filteredEvents.length && filteredEvents.length > 0} onChange={handleSelectAll} className="w-4 h-4 text-[#002147] border-slate-300 rounded focus:ring-[#002147] cursor-pointer" />
+                                        </th>)}
+                                        <th className="px-8 py-5 text-xs font-black text-slate-400 uppercase tracking-widest">Event Title</th>
+                                        <th className="px-8 py-5 text-xs font-black text-slate-400 uppercase tracking-widest">Schedule</th>
+                                        <th className="px-8 py-5 text-xs font-black text-slate-400 uppercase tracking-widest">Registrations</th>
+                                        <th className="px-8 py-5 text-xs font-black text-slate-400 uppercase tracking-widest">Status</th>
+                                        <th className="px-8 py-5 text-xs font-black text-slate-400 uppercase tracking-widest text-right">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-50">
+                                    {filteredEvents.length === 0 ? (
+                                        <tr><td colSpan={6} className="text-center py-24 text-slate-300">
+                                            <i className="fas fa-calendar-xmark text-5xl mb-4 block opacity-10" />
+                                            <p className="text-xs font-bold uppercase tracking-widest">No events found in registry.</p>
+                                        </td></tr>
+                                    ) : filteredEvents.map((ev) => {
+                                        const d = ev.endDate || ev.date;
+                                        const dateStr = d ? new Date(d).toISOString().split('T')[0] : "";
+                                        const targetDate = `${dateStr}T${ev.time || "23:59"}:00`;
+
+                                        return (
+                                            <tr key={ev._id} className={`transition-colors group ${selectedIds.includes(ev._id) ? 'bg-[#002147]/5' : 'hover:bg-slate-50/50'}`}>
+                                                {bulkMode && (<td className="px-8 py-6 text-center transition-all">
+                                                    <input type="checkbox" checked={selectedIds.includes(ev._id)} onChange={() => toggleSelect(ev._id)} className="w-4 h-4 text-[#002147] border-slate-300 rounded focus:ring-[#002147] cursor-pointer" />
+                                                </td>)}
+                                                <td className="px-8 py-6">
+                                                    <div className="flex items-center gap-4">
+                                                        {ev.image_url && <img src={getImgUrl(ev.image_url)} className="w-12 h-12 rounded-xl object-cover border border-slate-100 shadow-sm" />}
+                                                        <div>
+                                                            <p className="font-black text-slate-800 leading-tight">{ev.title}</p>
+                                                            <p className="text-xs text-slate-400 font-bold mt-0.5"><i className="fas fa-location-dot mr-1" />{ev.location || "TBA"}</p>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td className="px-8 py-6">
+                                                    <p className="text-xs font-bold text-slate-600">{new Date(ev.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })} - {new Date(ev.endDate || ev.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}</p>
+                                                    <p className="text-xs text-slate-400 font-bold mt-0.5 uppercase tracking-widest">{ev.time || "TBA"}</p>
+                                                </td>
+                                                <td className="px-8 py-6">
+                                                    <button onClick={() => viewParticipants(ev)} className="bg-slate-100 text-slate-600 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-[#002147] hover:text-white transition-all shadow-sm">
+                                                        <i className="fas fa-users mr-2" />
+                                                        {ev.participants?.length || 0} Registered
+                                                    </button>
+                                                </td>
+                                                <td className="px-8 py-6">
+                                                    <CountdownTimer targetDate={targetDate} />
+                                                </td>
+                                                <td className="px-8 py-6 text-right">
+                                                    <button onClick={() => deleteSingle(ev._id)} className="text-rose-400 hover:text-rose-600 p-3 hover:bg-rose-50 rounded-xl transition-all">
+                                                        <i className="fas fa-trash-alt" />
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
+
+
+// ── Participants Static View (Moved Outside) ──────────────
+const ParticipantsView = ({ eventId, events, onBack, auth, api, notify, fetchEvents }) => {
+    const [participants, setParticipants] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [searchTerm, setSearchTerm] = useState("");
+    const [selectedMemberIds, setSelectedMemberIds] = useState([]);
+    const [isProcessing, setIsProcessing] = useState(false);
+
+    const event = events.find(e => e._id === eventId);
+    const eventName = event?.title || "Event Records";
+
+    const loadParticipants = async () => {
+        setLoading(true);
+        try {
+            const res = await api.get(`events/${eventId}/participants?limit=1000`, auth);
+            // Filter out Admins and Superusers from attendance
+            const nonAdminParticipants = res.data.filter(p => {
+                const role = p.memberId?.role;
+                return role !== 'Admin' && role !== 'Superuser';
+            });
+            setParticipants(nonAdminParticipants);
+        } catch (err) {
+            notify("Failed to load participants", "error");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        loadParticipants();
+    }, [eventId]);
+
+    const handleToggleAttendance = async (memberId, currentStatus) => {
+        try {
+            const mIdStr = String(memberId);
+            await api.patch(`events/${eventId}/attendance`, { memberId: mIdStr, attended: !currentStatus }, auth);
+
+            setParticipants(prev => prev.map(p => {
+                const pMId = p.memberId?._id || p.memberId;
+                return String(pMId) === mIdStr ? { ...p, attended: !currentStatus } : p;
+            }));
+
+            fetchEvents();
+            notify(`Status updated!`);
+        } catch (err) {
+            notify("Attendance update failed", "error");
+        }
+    };
+
+    const handleBulkAttendance = async (status) => {
+        const idsToUpdate = selectedMemberIds.length > 0 ? selectedMemberIds : null;
+        const targetCount = idsToUpdate ? idsToUpdate.length : participants.length;
+
+        if (!window.confirm(`Mark ${targetCount} selected as ${status ? 'PRESENT' : 'ABSENT'}?`)) return;
+
+        setIsProcessing(true);
+        try {
+            await api.patch(`events/${eventId}/attendance/bulk`, { attended: status, ids: idsToUpdate }, auth);
+            setParticipants(prev => prev.map(p => {
+                const pMId = p.memberId?._id || p.memberId;
+                if (!idsToUpdate || idsToUpdate.includes(String(pMId))) {
+                    return { ...p, attended: status };
+                }
+                return p;
+            }));
+            fetchEvents();
+            notify(`Updated ${targetCount} records!`);
+            setSelectedMemberIds([]);
+        } catch (err) {
+            notify("Bulk action failed", "error");
+        } finally {
+            setIsProcessing(false);
+        }
+    };
+
+    const filteredParticipants = participants.filter(p =>
+        p.memberId?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        p.memberId?.member_id?.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    const toggleMemberSelection = (id) => {
+        const idStr = String(id);
+        setSelectedMemberIds(prev => prev.includes(idStr) ? prev.filter(i => i !== idStr) : [...prev, idStr]);
+    };
+
+    return (
+        <div className="max-w-6xl mx-auto bg-white min-h-screen p-4 sm:p-8 lg:p-12 animate-fade-in shadow-2xl rounded-[2rem] sm:rounded-[3.5rem] border border-slate-100 mt-2 sm:mt-6 mb-20 overflow-hidden">
+            {/* Header Section */}
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 mb-10 border-b border-slate-50 pb-8 sm:pb-10">
+                <div className="space-y-4 w-full sm:w-auto">
+                    <button onClick={onBack} className="flex items-center gap-2 text-slate-400 hover:text-slate-900 transition-all text-[10px] sm:text-xs font-black uppercase tracking-widest group">
+                        <i className="fas fa-arrow-left group-hover:-translate-x-1 transition-transform" /> Back to Registry
+                    </button>
+                    <div>
+                        <h2 className="text-xl sm:text-3xl font-black text-[#002147] uppercase italic tracking-tighter leading-none">{eventName}</h2>
+                        <p className="text-slate-400 text-[8px] sm:text-[10px] font-black uppercase tracking-[0.3em] mt-2">Official Attendance & Participation Log</p>
+                    </div>
+                </div>
+
+                <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+                    {selectedMemberIds.length > 0 && (
+                        <div className="flex gap-2 animate-fade-up">
+                            <button onClick={() => handleBulkAttendance(false)} disabled={isProcessing} className="flex-1 sm:flex-none px-4 py-2.5 bg-slate-50 text-slate-500 rounded-xl text-[9px] font-black uppercase tracking-widest border border-slate-200 hover:bg-slate-100 transition-all">
+                                Absent
+                            </button>
+                            <button onClick={() => handleBulkAttendance(true)} disabled={isProcessing} className="flex-1 sm:flex-none px-4 py-2.5 bg-emerald-50 text-emerald-600 rounded-xl text-[9px] font-black uppercase tracking-widest border border-emerald-100 hover:bg-emerald-600 hover:text-white transition-all shadow-sm">
+                                Present
+                            </button>
+                        </div>
+                    )}
+                    <div className="relative flex-1 sm:w-64">
+                        <i className="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 text-xs" />
+                        <input
+                            type="text"
+                            placeholder="Filter participants..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="w-full bg-slate-50 border border-slate-100 rounded-xl pl-10 pr-4 py-2.5 text-xs font-bold text-slate-800 placeholder:text-slate-300 focus:bg-white focus:ring-4 focus:ring-blue-500/5 transition-all outline-none"
+                        />
+                    </div>
+                </div>
+            </div>
+
+            {/* Content Area */}
+            {loading ? (
+                <div className="py-32 text-center">
+                    <div className="w-10 h-10 border-4 border-slate-100 border-t-[#002147] rounded-full animate-spin mx-auto mb-4" />
+                    <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest">Retrieving Registry...</p>
+                </div>
+            ) : filteredParticipants.length === 0 ? (
+                <div className="py-24 text-center bg-slate-50/50 rounded-[2.5rem] border-2 border-dashed border-slate-100">
+                    <i className="fas fa-user-slash text-slate-200 text-5xl mb-4" />
+                    <p className="text-slate-400 text-xs font-black uppercase tracking-widest">No matching records found</p>
+                </div>
+            ) : (
+                <div className="space-y-3 sm:space-y-4">
+                    {/* List Header - Hidden on Mobile */}
+                    <div className="hidden sm:flex items-center px-6 py-4 bg-slate-50 rounded-2xl border border-slate-100 mb-4">
+                        <div className="w-10 flex justify-center">
+                            <input
+                                type="checkbox"
+                                checked={selectedMemberIds.length === participants.length && participants.length > 0}
+                                onChange={() => {
+                                    if (selectedMemberIds.length === participants.length) setSelectedMemberIds([]);
+                                    else setSelectedMemberIds(participants.map(p => String(p.memberId?._id || p.memberId)));
+                                }}
+                                className="w-4 h-4 rounded border-slate-300 text-[#002147] focus:ring-[#002147]"
+                            />
+                        </div>
+                        <div className="flex-1 ml-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Participant Details</div>
+                        <div className="w-32 text-[10px] font-black text-slate-400 uppercase tracking-widest">Joining Date</div>
+                        <div className="w-40 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Attendance Status</div>
+                    </div>
+
+                    {filteredParticipants.map((p, idx) => {
+                        const mId = p.memberId?._id || p.memberId;
+                        const mIdStr = String(mId);
+                        const isSelected = selectedMemberIds.includes(mIdStr);
+
+                        return (
+                            <div key={idx} className={`flex flex-col sm:flex-row items-start sm:items-center p-4 sm:p-5 rounded-[1.5rem] sm:rounded-3xl border transition-all duration-300 group hover:shadow-xl hover:shadow-slate-200/40 ${isSelected ? 'bg-blue-50/50 border-blue-200 shadow-lg shadow-blue-900/5' : 'bg-white border-slate-100 shadow-sm'}`}>
+                                <div className="flex items-center w-full sm:w-auto mb-4 sm:mb-0">
+                                    <div className="w-8 sm:w-10 flex justify-center shrink-0">
+                                        <input
+                                            type="checkbox"
+                                            checked={isSelected}
+                                            onChange={() => toggleMemberSelection(mIdStr)}
+                                            className="w-4 h-4 rounded border-slate-300 text-[#002147] focus:ring-[#002147] cursor-pointer"
+                                        />
+                                    </div>
+                                    <div className="flex-1 sm:flex-none flex items-center gap-4 ml-2 sm:ml-4 min-w-0">
+                                        <div className="w-10 h-10 sm:w-12 sm:h-12 bg-slate-900 text-white rounded-xl sm:rounded-2xl flex items-center justify-center font-black text-sm uppercase shrink-0 shadow-lg group-hover:scale-105 transition-transform">
+                                            {p.memberId?.name?.charAt(0) || "M"}
+                                        </div>
+                                        <div className="min-w-0">
+                                            <p className="font-black text-slate-800 leading-none mb-1 text-sm sm:text-base truncate group-hover:text-[#002147] transition-colors">{p.memberId?.name}</p>
+                                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest truncate">{p.memberId?.member_id}</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="flex items-center justify-between sm:justify-end gap-6 w-full sm:w-auto sm:ml-auto border-t sm:border-t-0 pt-4 sm:pt-0 border-slate-50">
+                                    <div className="text-left sm:text-right sm:w-32">
+                                        <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Registered</p>
+                                        <p className="text-[10px] font-bold text-slate-700">{new Date(p.joinedAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
+                                    </div>
+
+                                    <button
+                                        onClick={() => handleToggleAttendance(mIdStr, p.attended)}
+                                        className={`sm:w-36 px-5 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-2 border-2 ${p.attended
+                                            ? 'bg-emerald-500 text-white border-emerald-500 shadow-lg shadow-emerald-200'
+                                            : 'bg-white text-slate-400 border-slate-100 hover:border-emerald-500 hover:text-emerald-600'
+                                            }`}
+                                    >
+                                        {p.attended ? <i className="fas fa-check-circle" /> : <i className="fas fa-circle-notch opacity-20" />}
+                                        {p.attended ? 'Present' : 'Mark Present'}
+                                    </button>
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
+
+            <div className="mt-16 sm:mt-24 pt-12 border-t border-slate-50 flex flex-col items-center opacity-40">
+                <div className="w-12 h-0.5 sm:w-16 sm:h-1 bg-slate-900 mb-4" />
+                <p className="text-[8px] sm:text-[9px] font-black text-slate-400 uppercase tracking-[0.5em] text-center">Security Verification: {participants.length} Active Participants</p>
+            </div>
+        </div>
+    );
+};
+
+// ── Announcements Tab (Moved Outside) ────────────────────
+const AnnouncementsTab = ({ announcements, fetchAnnouncements, api, auth, notify, inputCls }) => {
+    const [form, setForm] = useState({ title: "", content: "", type: "Info" });
+    const [submitting, setSubmitting] = useState(false);
+    const [searchTerm, setSearchTerm] = useState("");
+    const [selectedIds, setSelectedIds] = useState([]);
+    const [isProcessing, setIsProcessing] = useState(false);
+    const [bulkMode, setBulkMode] = useState(false);
+
+    const filtered = useMemo(() => announcements.filter(a =>
+        a.title?.toLowerCase().includes(searchTerm.toLowerCase()) || a.content?.toLowerCase().includes(searchTerm.toLowerCase())
+    ), [announcements, searchTerm]);
+
+    const handleSelectAll = (e) => setSelectedIds(e.target.checked ? filtered.map(a => a._id) : []);
+    const toggleSelect = (id) => setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
+
+    const create = async (e) => {
+        e.preventDefault(); setSubmitting(true);
+        try {
+            await api.post("announcements", form, auth);
+            notify("Announcement published successfully!");
+            setForm({ title: "", content: "", type: "Info" });
+            fetchAnnouncements();
+        } catch { notify("Failed to publish announcement", "error"); }
+        finally { setSubmitting(false); }
+    };
+
+    const deleteSingle = async (id) => {
+        if (!window.confirm("Permanently remove this announcement?")) return;
+        setIsProcessing(true);
+        try {
+            await api.delete(`announcements/${id}`, auth);
+            notify("Announcement removed");
+            fetchAnnouncements();
+        } catch { notify("Removal failed", "error"); }
+        finally { setIsProcessing(false); }
+    };
+
+    const handleBulkDelete = async () => {
+        if (!window.confirm(`Permanently remove ${selectedIds.length} announcements?`)) return;
+        setIsProcessing(true);
+        let count = 0;
+        await Promise.all(selectedIds.map(async id => {
+            try { await api.delete(`announcements/${id}`, auth); count++; } catch (e) { }
+        }));
+        notify(`Deleted ${count} announcements`);
+        fetchAnnouncements();
+        setSelectedIds([]);
+        setIsProcessing(false);
+    };
+
+    return (
+        <div className="space-y-10 animate-fade-up relative">
+            {selectedIds.length > 0 && (
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 bg-slate-900 text-white px-6 py-3 rounded-full shadow-2xl shadow-blue-900/40 flex items-center gap-4 animate-fade-up border border-slate-700">
+                    <span className="text-xs font-bold bg-white/10 px-3 py-1 rounded-full">{selectedIds.length} Selected</span>
+                    <div className="w-px h-4 bg-white/20" />
+                    <button onClick={handleBulkDelete} disabled={isProcessing} className="text-rose-400 hover:text-rose-300 text-xs font-black uppercase tracking-widest transition-colors flex items-center gap-2">
+                        {isProcessing ? <i className="fas fa-spinner fa-spin" /> : <i className="fas fa-trash-alt" />} Delete Postings
+                    </button>
+                </div>
+            )}
+            <div className="bg-white border border-slate-200 rounded-[2.5rem] p-6 sm:p-10 shadow-xl relative overflow-hidden group">
+                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-indigo-700" />
+                <div className="flex items-center gap-4 mb-8">
+                    <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center text-xl shadow-inner group-hover:scale-110 transition-transform">
+                        <i className="fas fa-bullhorn" />
+                    </div>
+                    <div>
+                        <h3 className="text-xl sm:text-2xl font-black text-slate-800 tracking-tight leading-none mb-1">Society Broadcast</h3>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">Draft a new official announcement</p>
+                    </div>
+                </div>
+
+                <form onSubmit={create} className="space-y-6">
+                    <div className="grid sm:grid-cols-3 gap-5">
+                        <div className="sm:col-span-2">
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2 block ml-1">Broadcast Title *</label>
+                            <input type="text" placeholder="e.g. Annual Symposium 2026 Registration" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className={`${inputCls} !py-4`} required />
+                        </div>
+                        <div>
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2 block ml-1">Priority Channel</label>
+                            <select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })} className={`${inputCls} !py-4 bg-white`}>
+                                <option value="Info">General Info</option>
+                                <option value="Urgent">Urgent / Critical</option>
+                                <option value="Success">Achievement</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div>
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2 block ml-1">Detailed Message Content</label>
+                        <textarea placeholder="Type your announcement content here..." value={form.content} onChange={(e) => setForm({ ...form, content: e.target.value })} rows={4} className={`${inputCls} resize-none !py-4`} required />
+                    </div>
+                    <div className="flex justify-end pt-2">
+                        <button type="submit" disabled={submitting}
+                            className={`w-full sm:w-auto px-10 py-4 rounded-2xl text-xs font-black uppercase tracking-[0.3em] transition-all flex items-center justify-center gap-3 ${submitting ? "bg-slate-100 text-slate-400 cursor-not-allowed" : "bg-indigo-600 text-white hover:bg-[#002147] shadow-xl shadow-indigo-900/10 active:scale-[0.98]"
+                                }`}>
+                            {submitting ? <i className="fas fa-spinner fa-spin" /> : <i className="fas fa-paper-plane" />}
+                            {submitting ? "BROADCASTING..." : "RELEASE UPDATE"}
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <div className="bg-white rounded-[2.5rem] shadow-2xl border border-slate-100/50 overflow-hidden">
+                <div className="p-6 sm:p-10 border-b border-slate-100 bg-slate-50/30">
+                    <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
+                        <div>
+                            <p className="text-[10px] font-black text-indigo-500 uppercase tracking-[0.3em] mb-2 pl-1">Historical Archive</p>
+                            <h4 className="text-2xl font-black text-slate-800 tracking-tight">System Broadcasts</h4>
+                        </div>
+
+                        <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
+                            <div className="relative flex-1 sm:w-72">
+                                <i className="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-xs" />
+                                <input type="text" placeholder="Search broadcasts..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full bg-white border border-slate-200 rounded-2xl pl-11 pr-4 py-3 text-sm font-bold text-slate-800 placeholder:text-slate-300 focus:border-indigo-500 outline-none transition-all" />
+                            </div>
+                            <button onClick={() => { setBulkMode(!bulkMode); setSelectedIds([]); }}
+                                className={`px-6 py-3 rounded-2xl text-xs font-black uppercase tracking-widest transition-all border ${bulkMode ? 'bg-[#002147] text-white border-[#002147]' : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'
+                                    }`}>
+                                {bulkMode ? "CANCEL" : "SELECT RECORDS"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="p-4 sm:p-10">
+                    <div className="sm:hidden space-y-2">
+                        {filtered.length === 0 ? (
+                            <div className="text-center py-20 bg-slate-50 rounded-[2rem] border-2 border-dashed border-slate-100">
+                                <i className="fas fa-comment-slash text-4xl mb-4 block text-slate-100" />
+                                <p className="text-[10px] font-black uppercase tracking-widest text-slate-300">Archive is empty</p>
+                            </div>
+                        ) : filtered.map((ann) => (
+                            <div key={ann._id} className="relative group overflow-hidden bg-white rounded-2xl border border-slate-100 shadow-sm transition-all space-y-2 p-3">
+                                <div className="flex justify-between items-start gap-3">
+                                    <div className="flex-1">
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <span className={`px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-widest ${ann.type === 'Urgent' ? 'bg-rose-500 text-white' :
+                                                ann.type === 'Success' ? 'bg-emerald-500 text-white' :
+                                                    'bg-[#002147] text-white'
+                                                }`}>
+                                                {ann.type}
+                                            </span>
+                                            <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">{new Date(ann.createdAt).toLocaleDateString()}</span>
+                                        </div>
+                                        <h4 className="font-bold text-slate-800 text-xs leading-none mb-1.5">{ann.title}</h4>
+                                        <p className="text-[10px] text-slate-500 font-medium line-clamp-1 italic">"{ann.content}"</p>
+                                    </div>
+                                    <button onClick={() => deleteSingle(ann._id)} className="w-8 h-8 flex items-center justify-center bg-rose-50 text-rose-500 rounded-lg hover:bg-rose-500 hover:text-white transition-all shrink-0">
+                                        <i className="fas fa-trash-alt text-[10px]" />
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+
+                    <div className="hidden sm:block overflow-x-auto rounded-[2rem] border border-slate-100 shadow-sm">
+                        <table className="w-full text-sm">
+                            <thead>
+                                <tr className="bg-slate-50/50 border-b border-slate-100 text-left">
+                                    {bulkMode && (<th className="px-8 py-5 w-10 text-center transition-all">
+                                        <input type="checkbox" checked={selectedIds.length === filtered.length && filtered.length > 0} onChange={handleSelectAll} className="w-4 h-4 text-[#002147] border-slate-300 rounded focus:ring-[#002147] cursor-pointer" />
+                                    </th>)}
+                                    <th className="px-8 py-5 text-xs font-black text-slate-400 uppercase tracking-widest">Broadcast Details</th>
+                                    <th className="px-8 py-5 text-xs font-black text-slate-400 uppercase tracking-widest">Message Preview</th>
+                                    <th className="px-8 py-5 text-xs font-black text-slate-400 uppercase tracking-widest">Release Date</th>
+                                    <th className="px-8 py-5 text-xs font-black text-slate-400 uppercase tracking-widest text-right">Delete</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-50">
+                                {filtered.length === 0 ? (
+                                    <tr><td colSpan={5} className="text-center py-20 text-slate-300">
+                                        <i className="fas fa-comment-slash text-4xl mb-3 block opacity-20" />
+                                        <p className="text-xs font-black uppercase tracking-widest">No history recorded yet</p>
+                                    </td></tr>
+                                ) : filtered.map((ann) => (
+                                    <tr key={ann._id} className={`transition-colors ${selectedIds.includes(ann._id) ? 'bg-[#002147]/5' : 'hover:bg-slate-50/50'}`}>
+                                        {bulkMode && (<td className="px-8 py-6 text-center transition-all">
+                                            <input type="checkbox" checked={selectedIds.includes(ann._id)} onChange={() => toggleSelect(ann._id)} className="w-4 h-4 text-[#002147] border-slate-300 rounded focus:ring-[#002147] cursor-pointer" />
+                                        </td>)}
+                                        <td className="px-8 py-6">
+                                            <p className="font-black text-slate-800 leading-tight mb-2">{ann.title}</p>
+                                            <div className="flex items-center gap-2 mt-1">
+                                                <span className={`px-3 py-1 rounded-lg text-xs font-black uppercase tracking-widest shadow-sm ${ann.type === 'Urgent' ? 'bg-rose-50 text-rose-600' :
+                                                    ann.type === 'Success' ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-blue-600'
+                                                    }`}>{ann.type}</span>
+                                            </div>
+                                        </td>
+                                        <td className="px-8 py-6">
+                                            <div className="bg-slate-50/50 px-4 py-2 rounded-xl border border-slate-100 max-w-sm">
+                                                <p className="text-slate-500 font-medium line-clamp-2 text-xs italic">"{ann.content}"</p>
+                                            </div>
+                                        </td>
+                                        <td className="px-8 py-6">
+                                            <p className="text-xs font-black text-slate-400 uppercase tracking-widest font-mono">{new Date(ann.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
+                                        </td>
+                                        <td className="px-8 py-6 text-right">
+                                            <button onClick={() => deleteSingle(ann._id)} className="text-rose-400 hover:text-rose-600 p-3 hover:bg-rose-50 rounded-xl transition-all">
+                                                <i className="fas fa-trash-alt" />
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// ── System Logs Tab (SUPERUSER ONLY) ────────────────────────
+// ── System Logs Tab (Moved Outside) ────────────────────────
+const LogsTab = ({ api, auth, notify, isSuper }) => {
+    const [logs, setLogs] = useState([]);
+    const [loadingLogs, setLoadingLogs] = useState(false);
+    const [page, setPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(1);
+
+    const fetchLogs = useCallback(async (p = 1) => {
+        setLoadingLogs(true);
+        try {
+            const r = await api.get(`admin/logs?page=${p}&limit=50`, auth);
+            setLogs(r.data.logs || []);
+            setTotalPages(r.data.totalPages || 1);
+            setPage(r.data.currentPage || 1);
+        } catch (err) {
+            notify("Failed to load logs", "error");
+        } finally {
+            setLoadingLogs(false);
+        }
+    }, [api, auth, notify]);
+    const handleExport = async () => {
+        try {
+            const r = await api.get('admin/logs/export', { ...auth, responseType: 'blob' });
+            const url = window.URL.createObjectURL(new Blob([r.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', 'system_history_logs.csv');
+            document.body.appendChild(link);
+            link.click();
+            link.parentNode.removeChild(link);
+            notify("Export successful", "success");
+        } catch (err) {
+            notify("Failed to export logs", "error");
+        }
+    };
+
+    const handleBackup = async () => {
+        try {
+            const r = await api.get('admin/backup', { ...auth, responseType: 'blob' });
+            const url = window.URL.createObjectURL(new Blob([r.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `FULL_BACKUP_${new Date().toISOString().split('T')[0]}.json`);
+            document.body.appendChild(link);
+            link.click();
+            link.parentNode.removeChild(link);
+            notify("Full database backup successful", "success");
+        } catch (err) {
+            notify("Failed to backup database", "error");
+        }
+    };
+
+    useEffect(() => {
+        fetchLogs(1);
+    }, [fetchLogs]);
+
+    return (
+        <div className="space-y-6 animate-fade-up">
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                <div className="p-6 border-b border-slate-100 flex items-center justify-between">
+                    <div>
+                        <h2 className="text-xl font-bold text-slate-800 flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-lg bg-[#002147]/10 text-[#002147] flex items-center justify-center">
+                                <i className="fas fa-clipboard-list" />
+                            </div>
+                            System Activity Logs
+                        </h2>
+                        <p className="text-xs text-slate-500 mt-1">Permanent record of all management actions taken</p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                        <button onClick={handleExport} className="hidden sm:flex px-4 py-2 text-xs font-bold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 hover:text-[#002147] rounded-lg transition-colors items-center gap-2 shadow-sm">
+                            <i className="fas fa-file-export text-[#002147]" />
+                            Export CSV
+                        </button>
+                        {isSuper && (
+                            <button onClick={handleBackup} className="hidden sm:flex px-4 py-2 text-xs font-bold text-white bg-[#002147] hover:bg-[#002147]/90 rounded-lg transition-colors items-center gap-2 shadow-sm">
+                                <i className="fas fa-database" />
+                                Full Backup (JSON)
+                            </button>
+                        )}
+                        <button onClick={() => fetchLogs(page)} className="text-slate-400 hover:text-[#002147] transition-colors p-2 bg-slate-50 border border-slate-100 hover:bg-blue-50 rounded-lg shadow-sm">
+                            <i className={`fas fa-sync-alt ${loadingLogs ? "animate-spin" : ""}`} />
+                        </button>
+                    </div>
+                </div>
+
+                <div className="p-1 sm:p-0">
+                    <div className="sm:hidden space-y-2 px-4 py-2">
+                        {logs.length === 0 && !loadingLogs ? (
+                            <div className="text-center py-16 bg-slate-50/50 border-2 border-dashed border-slate-100 rounded-3xl">
+                                <i className="fas fa-inbox text-4xl mb-3 opacity-20 block text-slate-400" />
+                                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">No system logs recorded yet.</p>
+                            </div>
+                        ) : logs.map((log) => {
+                            const actionText = log.action || '';
+                            return (
+                                <div key={log._id} className="bg-white rounded-2xl p-3 shadow-sm border border-slate-100 relative overflow-hidden space-y-2">
+                                    <div className="flex justify-between items-center gap-3">
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-8 h-8 rounded-lg bg-slate-50 text-slate-600 flex items-center justify-center text-xs font-black uppercase shrink-0 border border-slate-100">
+                                                {log.admin_name?.charAt(0) || <i className="fas fa-robot text-slate-400" />}
+                                            </div>
+                                            <div className="flex flex-col">
+                                                <span className="font-bold text-slate-800 text-xs leading-none mb-1 text-wrap">
+                                                    {log.admin_name || "System/Unknown"}
+                                                </span>
+                                                <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none">
+                                                    {new Date(log.createdAt).toLocaleString()}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <span className={`px-2 py-0.5 text-[8px] font-black uppercase tracking-widest rounded-md shrink-0 text-center ${actionText.includes('LOGIN') ? 'bg-blue-50 text-blue-600' :
+                                            actionText.includes('CREATE') || actionText.includes('APPROVE') || actionText.includes('Add') ? 'bg-emerald-50 text-emerald-600' :
+                                                actionText.includes('BLOCK') || actionText.includes('DELETE') ? 'bg-rose-50 text-rose-600' :
+                                                    'bg-slate-50 text-slate-600'
+                                            }`}>
+                                            {actionText}
+                                        </span>
+                                    </div>
+                                    <div className="bg-slate-50/50 px-2.5 py-2 rounded-xl text-[10px] text-slate-600 font-medium">
+                                        {log.details}
+                                        {log.target_id && (
+                                            <span className="block mt-1 text-[#002147] font-bold text-[8px] uppercase tracking-widest leading-none">ID: {log.target_id.name || log.target_id.email || log.target_id._id || log.target_id}</span>
+                                        )}
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+
+                    <div className="hidden sm:block overflow-x-auto">
+                        <table className="w-full text-left text-sm">
+                            <thead>
+                                <tr className="bg-slate-50 border-b border-slate-200">
+                                    <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wide">Timestamp</th>
+                                    <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wide">Administrator</th>
+                                    <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wide">Action</th>
+                                    <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wide">Additional Details</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                                {logs.length === 0 && !loadingLogs && (
+                                    <tr>
+                                        <td colSpan={4} className="px-6 py-12 text-center text-slate-400">
+                                            <i className="fas fa-inbox text-4xl mb-3 block opacity-20" />
+                                            No system logs recorded yet.
+                                        </td>
+                                    </tr>
+                                )}
+                                {logs.map((log) => {
+                                    const actionText = log.action || '';
+                                    return (
+                                        <tr key={log._id} className="hover:bg-slate-50 transition-colors">
+                                            <td className="px-6 py-4 whitespace-nowrap text-xs text-slate-500 font-medium">
+                                                {new Date(log.createdAt).toLocaleString()}
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-8 h-8 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center text-xs font-bold uppercase">
+                                                        {log.admin_name?.charAt(0) || <i className="fas fa-robot text-slate-400" />}
+                                                    </div>
+                                                    <span className="font-bold text-slate-800 text-xs">
+                                                        {log.admin_name || "System/Unknown"}
+                                                    </span>
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <span className={`px-3 py-1 text-[10px] font-bold uppercase tracking-widest rounded-full ${actionText.includes('LOGIN') ? 'bg-blue-100 text-blue-700' :
+                                                    actionText.includes('CREATE') || actionText.includes('APPROVE') || actionText.includes('Add') ? 'bg-emerald-100 text-emerald-700' :
+                                                        actionText.includes('BLOCK') || actionText.includes('DELETE') ? 'bg-rose-100 text-rose-700' :
+                                                            'bg-slate-100 text-slate-700'
+                                                    }`}>
+                                                    {actionText}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-4 text-xs text-slate-600 font-medium">
+                                                {log.details}
+                                                {log.target_id && (
+                                                    <span className="ml-1 text-[#002147] font-bold mt-1 inline-block">ID: {log.target_id.name || log.target_id.email || log.target_id._id || log.target_id}</span>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    )
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                {totalPages > 1 && (
+                    <div className="p-4 border-t border-slate-100 flex items-center justify-between bg-slate-50">
+                        <button
+                            disabled={page === 1}
+                            onClick={() => fetchLogs(page - 1)}
+                            className="px-4 py-2 text-xs font-bold text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-50 transition-colors"
+                        >
+                            Previous
+                        </button>
+                        <span className="text-xs font-bold text-slate-500">
+                            Page {page} of {totalPages}
+                        </span>
+                        <button
+                            disabled={page === totalPages}
+                            onClick={() => fetchLogs(page + 1)}
+                            className="px-4 py-2 text-xs font-bold text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-50 transition-colors"
+                        >
+                            Next
+                        </button>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+};
+
+
+// ── Settings Tab (SELF-MANAGEMENT) ───────────────────────
+
+// ── Settings Tab (Moved Outside) ────────────────────
+const SettingsTab = ({ adminUser, api, auth, notify, logout, setAdminUser, inputCls }) => {
+    const [profile, setProfile] = useState({ name: adminUser, oldPassword: "", newPassword: "", confirmPassword: "" });
+    const [updating, setUpdating] = useState(false);
+
+    const handleUpdate = async (e) => {
+        e.preventDefault();
+        if (profile.newPassword && profile.newPassword !== profile.confirmPassword) {
+            return notify("New passwords do not match", "error");
+        }
+        setUpdating(true);
+        try {
+            const r = await api.put("admin/profile", {
+                name: profile.name,
+                oldPassword: profile.oldPassword,
+                newPassword: profile.newPassword
+            }, auth);
+
+            notify(r.data.message);
+            localStorage.setItem("adminUser", r.data.name);
+            setAdminUser(r.data.name);
+            setProfile({ ...profile, oldPassword: "", newPassword: "", confirmPassword: "" });
+        } catch (err) {
+            notify(err.response?.data?.error || "Profile update failed", "error");
+        } finally {
+            setUpdating(false);
+        }
+    };
+
+    return (
+        <div className="max-w-2xl mx-auto animate-fade-up">
+            <div className="bg-white rounded-3xl sm:rounded-[2.5rem] border border-slate-200 shadow-xl overflow-hidden relative">
+                <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-[#002147] to-blue-500" />
+
+                <div className="p-6 md:p-12">
+                    <div className="flex flex-wrap items-center justify-between gap-4 mb-8 sm:mb-10">
+                        <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 sm:w-14 sm:h-14 bg-blue-50 rounded-xl sm:rounded-2xl flex items-center justify-center text-[#002147] text-lg sm:text-xl shadow-inner">
+                                <i className="fas fa-user-edit" />
+                            </div>
+                            <div>
+                                <h2 className="text-xl sm:text-2xl font-black text-slate-800 tracking-tight">Security & Profile</h2>
+                                <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mt-1">Self-Management Console</p>
+                            </div>
+                        </div>
+                        <button type="button" onClick={logout} className="group flex items-center gap-2 px-5 py-2.5 bg-rose-50 text-rose-600 rounded-xl hover:bg-rose-100 transition-all border border-rose-100 shadow-sm active:scale-95">
+                            <i className="fas fa-power-off text-xs group-hover:scale-110 transition-transform" />
+                            <span className="text-[10px] font-black uppercase tracking-[0.2em]">Logout</span>
+                        </button>
+                    </div>
+
+                    <form onSubmit={handleUpdate} className="space-y-8">
+                        <div className="space-y-6">
+                            <div>
+                                <label className="text-xs font-black text-slate-500 uppercase tracking-widest pl-1 mb-2 block">Display Name</label>
+                                <input type="text" value={profile.name} onChange={e => setProfile({ ...profile, name: e.target.value })} className={inputCls} required />
+                            </div>
+
+                            <div className="p-6 bg-slate-50 rounded-3xl border border-slate-100 space-y-5">
+                                <p className="text-xs font-black text-[#002147] uppercase tracking-widest flex items-center gap-2">
+                                    <i className="fas fa-lock" /> Security Update
+                                </p>
+
+                                <div>
+                                    <label className="text-xs font-bold text-slate-400 uppercase tracking-widest pl-1 mb-1.5 block">Current Password (Required)</label>
+                                    <input type="password" placeholder="••••••••" value={profile.oldPassword} onChange={e => setProfile({ ...profile, oldPassword: e.target.value })} className={inputCls} required />
+                                </div>
+
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="text-xs font-bold text-slate-400 uppercase tracking-widest pl-1 mb-1.5 block">New Password</label>
+                                        <input type="password" placeholder="Leave blank to keep current" value={profile.newPassword} onChange={e => setProfile({ ...profile, newPassword: e.target.value })} className={inputCls} />
+                                    </div>
+                                    <div>
+                                        <label className="text-xs font-bold text-slate-400 uppercase tracking-widest pl-1 mb-1.5 block">Confirm New</label>
+                                        <input type="password" placeholder="••••••••" value={profile.confirmPassword} onChange={e => setProfile({ ...profile, confirmPassword: e.target.value })} className={inputCls} />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <button type="submit" disabled={updating}
+                            className="w-full bg-[#002147] text-white py-4 rounded-2xl font-black uppercase text-xs tracking-[0.2em] hover:bg-slate-800 transition-all shadow-xl shadow-blue-900/10 flex items-center justify-center gap-3 disabled:opacity-50">
+                            {updating ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <i className="fas fa-save" />}
+                            SAVE
+                        </button>
+                    </form>
+
+                </div>
+            </div>
+        </div>
+    );
+};
+
+
+// ── Admins Tab (Moved Outside to fix Search Strokes) ────────
+const AdminsTab = ({ members, adminUser, auth, notify, fetchMembers, inputCls, isSuper, api }) => {
+    const [form, setForm] = useState({ name: "", email: "", password: "", joining_year: new Date().getFullYear(), member_id: "", role: "Admin" });
+    const [submitting, setSubmitting] = useState(false);
+    const [editing, setEditing] = useState(null);
+    const [editForm, setEditForm] = useState({ name: "", email: "", password: "" });
+    const adminList = members.filter(m => m.role === "Admin");
+
+    const create = async (e) => {
+        e.preventDefault(); setSubmitting(true);
+        try {
+            await api.post("admin/members/add/", form, auth);
+            notify(`Admin account ${form.member_id} created!`);
+            setForm({ name: "", email: "", password: "", joining_year: new Date().getFullYear(), member_id: "", role: "Admin" });
+            fetchMembers();
+        } catch (err) { notify(err.response?.data?.error || "Failed to create admin", "error"); }
+        finally { setSubmitting(false); }
+    };
+
+    const del = async (id, name) => {
+        if (!window.confirm(`Delete admin ${name}? This action is irreversible.`)) return;
+        try {
+            await api.delete(`admin/members/${id}`, auth);
+            notify(`Admin ${name} deleted`);
+            fetchMembers();
+        }
+        catch (err) { notify(err.response?.data?.error || "Delete failed", "error"); }
+    };
+
+    const toggleBlock = async (id) => {
+        try {
+            const r = await api.patch(`admin/members/${id}/toggle-block`, {}, auth);
+            notify(r.data.message);
+            fetchMembers();
+        } catch (err) {
+            notify(err.response?.data?.error || "Failed to toggle block", "error");
+        }
+    };
+
+    const updateAdmin = async (e) => {
+        e.preventDefault();
+        try {
+            await api.put(`admin/members/${editing}/update`, editForm, auth);
+            notify(`Admin updated successfully`);
+            setEditing(null);
+            fetchMembers();
+        } catch (err) {
+            notify(err.response?.data?.error || "Update failed", "error");
+        }
+    };
+
+    return (
+        <div className="space-y-6 animate-fade-up relative">
+            <div className="bg-white border border-slate-200 rounded-2xl sm:rounded-3xl p-5 sm:p-8 shadow-sm">
+                <h3 className="text-lg font-black text-slate-800 mb-6 flex items-center gap-3 uppercase tracking-tight">
+                    <div className="w-9 h-9 sm:w-10 sm:h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center text-sm shadow-inner"><i className="fas fa-user-plus" /></div>
+                    Official Registration
+                </h3>
+                <form onSubmit={create} className="space-y-4">
+                    <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <div>
+                            <label className="text-xs font-semibold text-slate-500 block mb-1.5">Full Name *</label>
+                            <input type="text" placeholder="Admin Name" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} className={inputCls} required />
+                        </div>
+                        <div>
+                            <label className="text-xs font-semibold text-slate-500 block mb-1.5">Member ID / Username *</label>
+                            <input type="text" placeholder="e.g. admin-hr" value={form.member_id} onChange={e => setForm({ ...form, member_id: e.target.value })} className={inputCls} required />
+                        </div>
+                        <div>
+                            <label className="text-xs font-semibold text-slate-500 block mb-1.5">Email Address *</label>
+                            <input type="email" placeholder="admin@sls.edu.pk" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} className={inputCls} required />
+                        </div>
+                        <div>
+                            <label className="text-xs font-semibold text-slate-500 block mb-1.5">Assign Password *</label>
+                            <input type="password" placeholder="••••••••" value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} className={inputCls} required />
+                        </div>
+                        <div>
+                            <label className="text-xs font-semibold text-slate-500 block mb-1.5">Joining Year *</label>
+                            <input type="number" value={form.joining_year} onChange={e => setForm({ ...form, joining_year: e.target.value })} className={inputCls} required />
+                        </div>
+                    </div>
+                    <div className="flex justify-between items-center pt-4 border-t border-slate-50 mt-2">
+                        <div className="flex items-center gap-2 text-slate-400 group">
+                            <i className="fas fa-info-circle text-xs" />
+                            <p className="text-xs font-bold uppercase tracking-widest leading-none">Account Role: <span className="text-indigo-600">Administrator</span></p>
+                        </div>
+                        <button type="submit" disabled={submitting}
+                            className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-semibold transition-all shadow-sm ${submitting ? "bg-slate-200 text-slate-400 cursor-not-allowed" : "bg-slate-900 text-white hover:bg-slate-800 shadow-slate-300 hover:-translate-y-0.5"}`}>
+                            {submitting ? <div className="w-4 h-4 border-2 border-slate-400 border-t-transparent rounded-full animate-spin" /> : <i className="fas fa-shield-halved" />}
+                            Register Admin
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            {editing && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-slate-900/40 backdrop-blur-sm animate-fade-in">
+                    <div className="bg-white w-full max-w-md rounded-[2.5rem] shadow-2xl border border-slate-200 overflow-hidden relative animate-zoom-in">
+                        <div className="absolute top-0 left-0 w-full h-1.5 bg-[#002147]" />
+                        <div className="p-8">
+                            <div className="flex justify-between items-center mb-6">
+                                <h3 className="text-xl font-black text-[#002147] uppercase tracking-tight">Edit Administrator</h3>
+                                <button onClick={() => setEditing(null)} className="text-slate-400 hover:text-rose-500 transition-colors">
+                                    <i className="fas fa-times text-lg" />
+                                </button>
+                            </div>
+                            <form onSubmit={updateAdmin} className="space-y-5">
+                                <div>
+                                    <label className="text-xs font-black text-slate-500 uppercase tracking-widest pl-1 mb-1.5 block">Display Name</label>
+                                    <input type="text" value={editForm.name} onChange={e => setEditForm({ ...editForm, name: e.target.value })} className={inputCls} required />
+                                </div>
+                                <div>
+                                    <label className="text-xs font-black text-slate-500 uppercase tracking-widest pl-1 mb-1.5 block">Email Address (Unique)</label>
+                                    <input type="email" value={editForm.email} onChange={e => setEditForm({ ...editForm, email: e.target.value })} className={inputCls} required />
+                                </div>
+                                <div>
+                                    <label className="text-xs font-black text-slate-500 uppercase tracking-widest pl-1 mb-1.5 block">New Password (Override)</label>
+                                    <input type="password" placeholder="Leave blank to keep current" value={editForm.password} onChange={e => setEditForm({ ...editForm, password: e.target.value })} className={inputCls} />
+                                </div>
+                                <div className="flex gap-3 pt-4">
+                                    <button type="button" onClick={() => setEditing(null)} className="flex-1 px-6 py-3.5 rounded-2xl border border-slate-200 text-slate-600 font-bold text-xs uppercase hover:bg-slate-50 transition-all">Cancel</button>
+                                    <button type="submit" className="flex-1 px-6 py-3.5 rounded-2xl bg-[#002147] text-white font-bold text-xs uppercase hover:bg-slate-800 transition-all shadow-lg shadow-blue-900/20">Update Account</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            <div className="space-y-4">
+                <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                    <i className="fas fa-users-gear text-slate-400" /> Official Personnel
+                </h2>
+
+                <div className="sm:hidden space-y-2">
+                    {adminList.filter(m => m.role !== 'Superuser' || isSuper).map((m) => (
+                        <div key={m.member_id} className={`p-3 bg-white rounded-2xl border border-slate-100 shadow-sm relative overflow-hidden transition-all space-y-3 ${m.status === 'blocked' ? "opacity-75" : ""}`}>
+                            <div className="flex justify-between items-center gap-3">
+                                <div className="flex items-center gap-2">
+                                    <div className="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-600 shrink-0">
+                                        <span className="font-bold text-[10px] uppercase">{(m.name || "?").charAt(0)}</span>
+                                    </div>
+                                    <div>
+                                        <h4 className="font-bold text-slate-800 text-xs leading-none mb-1">{m.name}</h4>
+                                        <p className="text-[9px] font-bold text-indigo-600 uppercase tracking-widest leading-none">{m.member_id}</p>
+                                    </div>
+                                </div>
+                                <div className="flex flex-col items-end text-right">
+                                    <span className={`text-[8px] font-black px-2 py-0.5 rounded-md uppercase tracking-widest ${m.status === 'blocked' ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"}`}>
+                                        {m.status === 'blocked' ? "Blocked" : "Active"}
+                                    </span>
+                                    <span className="text-[8px] font-black text-purple-600 uppercase tracking-widest bg-purple-50 px-1.5 py-0.5 rounded border border-purple-100 mt-1">{m.role}</span>
+                                </div>
+                            </div>
+
+                            <div className="flex gap-2 pt-1 border-t border-slate-50">
+                                {m.member_id !== adminUser ? (
+                                    <>
+                                        <button onClick={() => toggleBlock(m._id)}
+                                            className={`flex-1 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${m.status === 'blocked' ? "bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white" : "bg-amber-50 text-amber-600 hover:bg-amber-500 hover:text-white"}`}>
+                                            {m.status === 'blocked' ? "Unblock" : "Block"}
+                                        </button>
+                                        <button onClick={() => { setEditing(m.member_id); setEditForm({ name: m.name, email: m.email, password: "" }); }}
+                                            className="flex-1 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest bg-slate-50 text-slate-600 hover:bg-[#002147] hover:text-white transition-all">
+                                            Edit
+                                        </button>
+                                        <button onClick={() => del(m._id, m.name)}
+                                            className="w-8 h-8 rounded-lg bg-rose-50 text-rose-500 flex items-center justify-center hover:bg-rose-500 hover:text-white transition-all">
+                                            <i className="fas fa-trash-alt text-[10px]" />
+                                        </button>
+                                    </>
+                                ) : (
+                                    <div className="w-full text-center py-2 text-[9px] font-black uppercase tracking-[0.2em] text-blue-400 opacity-50 bg-blue-50/50 rounded-lg">Account Owner</div>
+                                )}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+
+                <div className="hidden sm:block bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden overflow-x-auto">
+                    <table className="w-full text-sm">
+                        <thead>
+                            <tr className="bg-slate-50 border-b border-slate-200 text-left">
+                                <th className="px-6 py-4 text-xs font-black text-slate-500 uppercase tracking-widest">ID/Username</th>
+                                <th className="px-6 py-4 text-xs font-black text-slate-500 uppercase tracking-widest">Name</th>
+                                <th className="px-6 py-4 text-xs font-black text-slate-500 uppercase tracking-widest">Privilege Level</th>
+                                <th className="px-6 py-4 text-xs font-black text-slate-500 uppercase tracking-widest">Status</th>
+                                <th className="px-6 py-4 text-xs font-black text-slate-500 uppercase tracking-widest text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                            {adminList.filter(m => m.role !== 'Superuser' || isSuper).map((m) => (
+                                <tr key={m.member_id} className={`hover:bg-purple-50/40 transition-colors group text-left ${m.status === 'blocked' ? "opacity-60 bg-slate-50/10" : ""}`}>
+                                    <td className="px-6 py-4 font-mono text-xs text-slate-800 font-bold">{m.member_id}</td>
+                                    <td className="px-6 py-4 text-slate-800 font-bold">{m.name}</td>
+                                    <td className="px-6 py-4">
+                                        <span className="text-xs font-bold px-3 py-1 rounded-full uppercase tracking-widest bg-purple-100 text-purple-700">
+                                            {m.role}
+                                        </span>
+                                    </td>
+                                    <td className="px-6 py-4">
+                                        <span className={`text-xs font-bold px-3 py-1 rounded-full uppercase tracking-widest ${m.status === 'blocked' ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"}`}>
+                                            {m.status === 'blocked' ? "Blocked" : "Active"}
+                                        </span>
+                                    </td>
+                                    <td className="px-6 py-4 text-right">
+                                        <div className="flex justify-end items-center gap-2">
+                                            {m.member_id !== adminUser ? (
+                                                <>
+                                                    <button onClick={() => toggleBlock(m._id)}
+                                                        className={`text-[9px] font-black uppercase tracking-widest border px-3 py-2 rounded-lg transition-all ${m.status === 'blocked' ? "bg-emerald-50 text-emerald-600 border-emerald-200 hover:bg-emerald-100" : "bg-amber-50 text-amber-600 border-amber-200 hover:bg-amber-100"}`}>
+                                                        {m.status === 'blocked' ? "Unblock" : "Block"}
+                                                    </button>
+                                                    <button onClick={() => { setEditing(m.member_id); setEditForm({ name: m.name, email: m.email, password: "" }); }}
+                                                        className="text-[9px] font-black uppercase tracking-widest bg-slate-50 text-slate-600 border border-slate-200 px-3 py-2 rounded-lg hover:bg-slate-100 transition-all">
+                                                        Edit
+                                                    </button>
+                                                    <button onClick={() => del(m._id, m.name)}
+                                                        className="text-rose-400 hover:text-rose-600 p-2 hover:bg-rose-50 rounded-lg transition-all">
+                                                        <i className="fas fa-trash-alt" />
+                                                    </button>
+                                                </>
+                                            ) : (
+                                                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-500/60 bg-blue-50 px-4 py-1.5 rounded-full">Owner</span>
+                                            )}
+                                        </div>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// ── Blogs Tab ───────────────────────────────────────────
+const BlogsTab = ({ blogs, fetchBlogs, api, auth, notify, getImgUrl, inputCls }) => {
+    const [activeSubTab, setActiveSubTab] = useState("view");
+    const [form, setForm] = useState({ title: "", description: "" });
+    const [files, setFiles] = useState([]);
+    const [previews, setPreviews] = useState([]);
+    const [submitting, setSubmitting] = useState(false);
+    const [isProcessing, setIsProcessing] = useState(false);
+    const [editingBlog, setEditingBlog] = useState(null);
+    const [editForm, setEditForm] = useState({ title: "", description: "", published: true });
+    const [editFiles, setEditFiles] = useState([]);
+    const [editPreviews, setEditPreviews] = useState([]);
+    const [existingImages, setExistingImages] = useState([]);
+
+    const handleFileChange = (e, isEdit = false) => {
+        const selected = Array.from(e.target.files || []);
+        if (selected.length === 0) return;
+        if (isEdit) {
+            setEditFiles(prev => [...prev, ...selected]);
+            const newPreviews = selected.map(file => URL.createObjectURL(file));
+            setEditPreviews(prev => [...prev, ...newPreviews]);
+        } else {
+            setFiles(prev => [...prev, ...selected]);
+            const newPreviews = selected.map(file => URL.createObjectURL(file));
+            setPreviews(prev => [...prev, ...newPreviews]);
+        }
+        e.target.value = "";
+    };
+
+    const removePreview = (index, isEdit = false) => {
+        if (isEdit) {
+            setEditFiles(prev => prev.filter((_, i) => i !== index));
+            setEditPreviews(prev => prev.filter((_, i) => i !== index));
+        } else {
+            setFiles(prev => prev.filter((_, i) => i !== index));
+            setPreviews(prev => prev.filter((_, i) => i !== index));
+        }
+    };
+
+    const removeExistingImage = (url) => {
+        setExistingImages(prev => prev.filter(img => img.url !== url));
+    };
+
+    const uploadBlogImage = async (file) => {
+        const imageFile = await compressImage(file);
+        const formData = new FormData();
+        formData.append("image", imageFile);
+        const response = await api.post("blogs/upload-image", formData, {
+            ...auth,
+            timeout: 120000,
+        });
+        return response.data.url;
+    };
+
+    const createBlog = async (e) => {
+        e.preventDefault();
+        if (files.length === 0) return notify("Please upload at least one image", "error");
+        setSubmitting(true);
+        try {
+            const images = [];
+            for (let i = 0; i < files.length; i++) {
+                notify(`Uploading image ${i + 1} of ${files.length}...`, "info");
+                const url = await uploadBlogImage(files[i]);
+                images.push({ url, caption: "" });
+            }
+
+            await api.post("blogs", {
+                title: form.title,
+                description: form.description,
+                published: true,
+                images,
+            }, auth);
+
+            notify("Blog post published successfully!");
+            setForm({ title: "", description: "" });
+            setFiles([]);
+            setPreviews([]);
+            fetchBlogs();
+            setActiveSubTab("view");
+        } catch (err) {
+            const message = err.response?.data?.error || err.message || "Failed to publish blog";
+            notify(message, "error");
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    const updateBlog = async (e) => {
+        e.preventDefault();
+        setSubmitting(true);
+        try {
+            const uploadedImages = [];
+            for (let i = 0; i < editFiles.length; i++) {
+                notify(`Uploading image ${i + 1} of ${editFiles.length}...`, "info");
+                const url = await uploadBlogImage(editFiles[i]);
+                uploadedImages.push({ url, caption: "" });
+            }
+
+            await api.put(`blogs/${editingBlog._id}`, {
+                title: editForm.title,
+                description: editForm.description,
+                published: editForm.published,
+                images: [...existingImages, ...uploadedImages],
+            }, auth);
+
+            notify("Blog updated successfully!");
+            setEditingBlog(null);
+            fetchBlogs();
+        } catch (err) {
+            const message = err.response?.data?.error || err.message || "Update failed";
+            notify(message, "error");
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    const deleteBlog = async (id) => {
+        if (!window.confirm("Are you sure you want to delete this blog post?")) return;
+        setIsProcessing(true);
+        try {
+            await api.delete(`blogs/${id}`, auth);
+            notify("Blog deleted");
+            fetchBlogs();
+        } catch {
+            notify("Delete failed", "error");
+        } finally {
+            setIsProcessing(false);
+        }
+    };
+
+    const togglePublish = async (blog) => {
+        try {
+            const formData = new FormData();
+            formData.append("published", String(!blog.published));
+            await api.put(`blogs/${blog._id}`, formData, auth);
+            notify(`Blog ${blog.published ? "unpublished" : "published"}`);
+            fetchBlogs();
+        } catch {
+            notify("Failed to update status", "error");
+        }
+    };
+
+    const startEdit = (blog) => {
+        setEditingBlog(blog);
+        setEditForm({ title: blog.title, description: blog.description, published: blog.published });
+        setExistingImages(blog.images || []);
+        setEditFiles([]);
+        setEditPreviews([]);
+    };
+
+    return (
+        <div className="space-y-6 animate-fade-up">
+            {/* Stats Header */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
+                <div className="bg-white p-5 sm:p-8 rounded-[2rem] border border-slate-100 shadow-xl shadow-slate-200/40">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Stories</p>
+                    <p className="text-2xl sm:text-3xl font-black text-slate-800 uppercase">{blogs.length}</p>
+                </div>
+                <div className="bg-white p-5 sm:p-8 rounded-[2rem] border border-slate-100 shadow-xl shadow-slate-200/40">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Published</p>
+                    <p className="text-2xl sm:text-3xl font-black text-emerald-500 uppercase">{blogs.filter(b => b.published).length}</p>
+                </div>
+                <div className="bg-white p-5 sm:p-8 rounded-[2rem] border border-slate-100 shadow-xl shadow-slate-200/40">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Drafts</p>
+                    <p className="text-2xl sm:text-3xl font-black text-orange-500 uppercase">{blogs.filter(b => !b.published).length}</p>
+                </div>
+            </div>
+
+            <div className="flex gap-4 p-2 bg-slate-100 rounded-2xl w-fit">
+                <button onClick={() => setActiveSubTab("view")} className={`py-2 px-6 text-xs font-black uppercase tracking-widest rounded-xl transition-all ${activeSubTab === "view" ? "bg-white text-[#002147] shadow-sm" : "text-slate-500 hover:text-slate-800"}`}>
+                    <i className="fas fa-list-ul mr-2" /> Blog Registry
+                </button>
+                <button onClick={() => setActiveSubTab("create")} className={`py-2 px-6 text-xs font-black uppercase tracking-widest rounded-xl transition-all ${activeSubTab === "create" ? "bg-white text-[#002147] shadow-sm" : "text-slate-500 hover:text-slate-800"}`}>
+                    <i className="fas fa-plus mr-2" /> Create Blog
+                </button>
+            </div>
+
+            {activeSubTab === "create" && (
+                <div className="bg-white border border-slate-200 rounded-[2.5rem] p-10 shadow-xl relative overflow-hidden animate-fade-in">
+                    <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-orange-500 to-rose-600" />
+                    <h3 className="text-2xl font-black text-slate-800 mb-8 flex items-center gap-4">
+                        <div className="w-12 h-12 bg-orange-50 text-orange-600 rounded-2xl flex items-center justify-center text-xl shadow-inner"><i className="fas fa-newspaper" /></div>
+                        Publish New Blog Post
+                    </h3>
+                    <form onSubmit={createBlog} className="space-y-8">
+                        <div className="space-y-6">
+                            <div>
+                                <label className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 block ml-1">Blog Title *</label>
+                                <input type="text" placeholder="Engaging Title for the Story" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} className={inputCls} required />
+                            </div>
+                            <div>
+                                <label className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 block ml-1">Content / Description *</label>
+                                <textarea placeholder="Write the full blog content here..." value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} rows={6} className={`${inputCls} resize-none`} required />
+                            </div>
+                            <div>
+                                <label className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 block ml-1">Images (Multiple Allowed) *</label>
+                                <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-4">
+                                    {previews.map((src, i) => (
+                                        <div key={i} className="relative aspect-square rounded-2xl overflow-hidden border-2 border-slate-100 group">
+                                            <img src={src} className="w-full h-full object-cover" />
+                                            <button type="button" onClick={() => removePreview(i)} className="absolute top-2 right-2 w-6 h-6 bg-rose-500 text-white rounded-full flex items-center justify-center text-[10px] opacity-0 group-hover:opacity-100 transition-opacity shadow-lg">
+                                                <i className="fas fa-times" />
+                                            </button>
+                                        </div>
+                                    ))}
+                                    <label className="aspect-square flex flex-col items-center justify-center gap-2 bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl cursor-pointer hover:border-orange-500 hover:bg-white transition-all text-slate-400">
+                                        <i className="fas fa-plus-circle text-2xl" />
+                                        <span className="text-[10px] font-black uppercase tracking-widest">Add Image</span>
+                                        <input type="file" accept="image/*" multiple onChange={(e) => handleFileChange(e)} className="hidden" />
+                                    </label>
+                                </div>
+                                <ImageUploadHint variant="blog" />
+                            </div>
+                        </div>
+                        <div className="flex justify-end pt-4 border-t border-slate-50">
+                            <button type="submit" disabled={submitting} className={`px-12 py-4 rounded-2xl text-xs font-black uppercase tracking-[0.3em] transition-all shadow-xl ${submitting ? "bg-slate-100 text-slate-400 cursor-not-allowed" : "bg-orange-600 text-white hover:bg-orange-700 shadow-orange-900/20 active:scale-95"}`}>
+                                {submitting ? "Publishing..." : "Release Post"}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            )}
+
+            {activeSubTab === "view" && (
+                <div className="bg-white rounded-[2.5rem] border border-slate-200 shadow-2xl overflow-hidden animate-fade-in">
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                            <thead>
+                                <tr className="bg-slate-50 border-b border-slate-100 text-left">
+                                    <th className="px-8 py-5 text-xs font-black text-slate-400 uppercase tracking-widest">Story Info</th>
+                                    <th className="px-8 py-5 text-xs font-black text-slate-400 uppercase tracking-widest">Preview Content</th>
+                                    <th className="px-8 py-5 text-xs font-black text-slate-400 uppercase tracking-widest">Created On</th>
+                                    <th className="px-8 py-5 text-xs font-black text-slate-400 uppercase tracking-widest">Status</th>
+                                    <th className="px-8 py-5 text-xs font-black text-slate-400 uppercase tracking-widest text-right">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-50">
+                                {blogs.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={5} className="text-center py-24 text-slate-300">
+                                            <i className="fas fa-newspaper text-5xl mb-4 block opacity-10" />
+                                            <p className="text-xs font-bold uppercase tracking-widest">No stories found in registry.</p>
+                                        </td>
+                                    </tr>
+                                ) : blogs.map((blog) => (
+                                    <tr key={blog._id} className="hover:bg-slate-50/50 transition-colors">
+                                        <td className="px-8 py-6">
+                                            <div className="flex items-center gap-4">
+                                                <div className="w-12 h-12 rounded-xl bg-slate-100 overflow-hidden shrink-0 border border-slate-200 shadow-inner">
+                                                    {blog.images?.[0]?.url && <img src={getImgUrl(blog.images[0].url)} className="w-full h-full object-cover" />}
+                                                </div>
+                                                <div>
+                                                    <p className="font-black text-slate-800 leading-tight line-clamp-1 uppercase tracking-tight">{blog.title}</p>
+                                                    <p className="text-[10px] text-slate-400 font-bold mt-1 uppercase tracking-widest">{blog.images?.length || 0} Images Included</p>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td className="px-8 py-6">
+                                            <p className="text-xs text-slate-500 font-medium italic line-clamp-1 max-w-[200px]">"{blog.description}"</p>
+                                        </td>
+                                        <td className="px-8 py-6">
+                                            <p className="text-xs font-bold text-slate-600">{new Date(blog.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
+                                        </td>
+                                        <td className="px-8 py-6">
+                                            <button onClick={() => togglePublish(blog)} className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest transition-all ${blog.published ? "bg-emerald-50 text-emerald-600 border border-emerald-100" : "bg-slate-100 text-slate-400 border border-slate-200"}`}>
+                                                {blog.published ? "Published" : "Draft"}
+                                            </button>
+                                        </td>
+                                        <td className="px-8 py-6 text-right">
+                                            <div className="flex justify-end gap-2">
+                                                <button onClick={() => startEdit(blog)} className="w-9 h-9 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center hover:bg-[#002147] hover:text-white transition-all shadow-sm">
+                                                    <i className="fas fa-edit" />
+                                                </button>
+                                                <button onClick={() => deleteBlog(blog._id)} className="w-9 h-9 bg-rose-50 text-rose-500 rounded-xl flex items-center justify-center hover:bg-rose-500 hover:text-white transition-all shadow-sm">
+                                                    <i className="fas fa-trash-alt" />
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            )}
+
+            {/* Edit Modal */}
+            {editingBlog && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in" onClick={() => setEditingBlog(null)}>
+                    <div className="bg-white rounded-[2.5rem] w-full max-w-2xl shadow-2xl border border-slate-100 overflow-hidden animate-zoom-in max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+                        <div className="bg-[#002147] p-8 text-white relative">
+                            <button onClick={() => setEditingBlog(null)} className="absolute top-8 right-8 text-white/40 hover:text-white transition-all transform hover:rotate-90">
+                                <i className="fas fa-times text-xl" />
+                            </button>
+                            <h3 className="text-2xl font-black tracking-tight uppercase">Update Blog Post</h3>
+                            <p className="text-blue-300 text-[10px] font-black uppercase tracking-[0.3em] mt-2">Content Revision Portal</p>
+                        </div>
+
+                        <form onSubmit={updateBlog} className="p-8 space-y-6 overflow-y-auto custom-scrollbar flex-1">
+                            <div>
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block ml-1">Story Title</label>
+                                <input type="text" value={editForm.title} onChange={e => setEditForm({ ...editForm, title: e.target.value })} className={inputCls} required />
+                            </div>
+                            <div>
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block ml-1">Content / Body</label>
+                                <textarea value={editForm.description} onChange={e => setEditForm({ ...editForm, description: e.target.value })} rows={5} className={`${inputCls} resize-none`} required />
+                            </div>
+                            
+                            <div>
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 block ml-1">Manage Images</label>
+                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                                    {/* Existing Images */}
+                                    {existingImages.map((img, i) => (
+                                        <div key={`exist-${i}`} className="relative aspect-square rounded-2xl overflow-hidden border border-slate-100 group">
+                                            <img src={getImgUrl(img.url)} className="w-full h-full object-cover" />
+                                            <button type="button" onClick={() => removeExistingImage(img.url)} className="absolute top-2 right-2 w-6 h-6 bg-rose-500 text-white rounded-full flex items-center justify-center text-[10px] opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <i className="fas fa-times" />
+                                            </button>
+                                            <div className="absolute inset-0 bg-emerald-500/10 border-2 border-emerald-500/20 rounded-2xl pointer-events-none" />
+                                        </div>
+                                    ))}
+                                    {/* New Previews */}
+                                    {editPreviews.map((src, i) => (
+                                        <div key={`new-${i}`} className="relative aspect-square rounded-2xl overflow-hidden border-2 border-indigo-200 group">
+                                            <img src={src} className="w-full h-full object-cover" />
+                                            <button type="button" onClick={() => removePreview(i, true)} className="absolute top-2 right-2 w-6 h-6 bg-rose-500 text-white rounded-full flex items-center justify-center text-[10px] opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <i className="fas fa-times" />
+                                            </button>
+                                        </div>
+                                    ))}
+                                    {/* Upload More Button */}
+                                    <label className="aspect-square flex flex-col items-center justify-center gap-2 bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl cursor-pointer hover:border-[#002147] transition-all text-slate-400">
+                                        <i className="fas fa-plus-circle text-xl" />
+                                        <span className="text-[9px] font-black uppercase tracking-widest">Add More</span>
+                                        <input type="file" accept="image/*" multiple onChange={(e) => handleFileChange(e, true)} className="hidden" />
+                                    </label>
+                                </div>
+                                <ImageUploadHint variant="blog" />
+                            </div>
+
+                            <div className="flex items-center gap-4 py-4 border-t border-slate-50">
+                                <label className="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" checked={editForm.published} onChange={(e) => setEditForm({ ...editForm, published: e.target.checked })} className="sr-only peer" />
+                                    <div className="w-11 h-6 bg-slate-200 rounded-full peer peer-checked:bg-emerald-500 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full shadow-inner" />
+                                </label>
+                                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">{editForm.published ? "Published & Visible" : "Save as Private Draft"}</span>
+                            </div>
+
+                            <div className="flex gap-3 pt-2">
+                                <button type="button" onClick={() => setEditingBlog(null)} className="flex-1 px-6 py-4 bg-slate-100 text-slate-500 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-200 transition-all">Cancel</button>
+                                <button type="submit" disabled={submitting} className="flex-[2] px-6 py-4 bg-[#002147] text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 transition-all shadow-xl shadow-blue-900/20 disabled:opacity-50">
+                                    {submitting ? "Processing..." : "Save Changes"}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
+
 const AdminPortal = () => {
     const navigate = useNavigate();
     const [searchParams, setSearchParams] = useSearchParams();
@@ -2196,11 +5139,16 @@ const AdminPortal = () => {
         headers: { Authorization: `Bearer ${token}` }
     }), [token]);
 
+    const notify = useCallback((text, type = "success") => {
+        setToast({ text, type });
+        setTimeout(() => setToast(null), 4000);
+    }, []);
+
     const fetchStats = useCallback(async () => {
         try { const r = await api.get("admin/dashboard", auth); setStats(r.data); } catch { }
     }, [auth]);
 
-    const fetchMembers = useCallback(async () => {
+    const fetchMembers = useCallback(async (signal) => {
         setLoading(true);
         try {
             const params = new URLSearchParams({
@@ -2210,19 +5158,27 @@ const AdminPortal = () => {
             });
             appendLocationFilterParams(params, membersLocationFilter);
             if (membersRoleFilter !== "All") params.set("role", membersRoleFilter);
-            const r = await api.get(`admin/members?${params.toString()}`, auth);
+            const r = await api.get(`admin/members?${params.toString()}`, { ...auth, signal });
+            if (signal?.aborted) return;
             setMembers(r.data.members || []);
             setMembersTotalPages(r.data.totalPages || 1);
         }
-        catch (err) { console.error(err); }
-        finally { setLoading(false); }
+        catch (err) {
+            if (isAbortError(err)) return;
+            console.error(err);
+        }
+        finally {
+            if (!signal?.aborted) setLoading(false);
+        }
     }, [search, membersPage, membersLocationFilter, membersRoleFilter, auth]);
 
-    const fetchAllMembers = useCallback(async () => {
+    const fetchAllMembers = useCallback(async (signal) => {
         try {
-            const r = await api.get(`admin/members?limit=1000`, auth);
+            const r = await api.get(`admin/members?limit=1000`, { ...auth, signal });
+            if (signal?.aborted) return;
             setAllMembers(r.data.members || []);
         } catch (err) {
+            if (isAbortError(err)) return;
             console.error("Fetch All Members Error:", err);
         }
     }, [auth]);
@@ -2268,14 +5224,18 @@ const AdminPortal = () => {
     useEffect(() => {
         const restricted = ["admins", "customization", "logs"];
         if (restricted.includes(activeTab) && !isSuper) {
-            setSearchParams({ tab: "dashboard" }); // use setSearchParams not setActiveTab
+            setSearchParams({ tab: "dashboard" });
             return;
         }
+
+        const controller = new AbortController();
+        const { signal } = controller;
+
         if (activeTab === "dashboard") fetchStats();
-        if (activeTab === "members") fetchMembers();
+        if (activeTab === "members") fetchMembers(signal);
         if (activeTab === "admins" ||
             activeTab === "certificates" ||
-            activeTab === "batches") fetchAllMembers();
+            activeTab === "batches") fetchAllMembers(signal);
         if (activeTab === "pending" || activeTab === "payments") fetchPendingMembers();
         if (activeTab === "events" ||
             activeTab === "certificates") fetchEvents();
@@ -2283,11 +5243,16 @@ const AdminPortal = () => {
         if (activeTab === "blogs") fetchBlogs();
         if (activeTab === "certificates" ||
             activeTab === "batches") fetchCertificates();
+
+        return () => controller.abort();
     }, [activeTab, isSuper, fetchStats, fetchMembers, fetchAllMembers,
         fetchPendingMembers, fetchEvents, fetchAnnouncements, fetchBlogs, fetchCertificates, setSearchParams]);
 
     useEffect(() => {
-        if (activeTab === "members") fetchMembers();
+        if (activeTab !== "members") return;
+        const controller = new AbortController();
+        fetchMembers(controller.signal);
+        return () => controller.abort();
     }, [membersPage, membersLocationFilter, membersRoleFilter, fetchMembers, activeTab]);
 
     // Back-Button Trap: Force the browser to stay on this page
@@ -2303,11 +5268,6 @@ const AdminPortal = () => {
         window.addEventListener("popstate", handlePopState);
         return () => window.removeEventListener("popstate", handlePopState);
     }, []);
-
-    const notify = (text, type = "success") => {
-        setToast({ text, type });
-        setTimeout(() => setToast(null), 4000);
-    };
 
     const logout = async () => {
         try {
@@ -2336,2958 +5296,7 @@ const AdminPortal = () => {
         tabs.push({ id: "logs", label: "System Logs", icon: "fa-list-check" });
     }
 
-    // ── Dashboard Tab ────────────────────────────────────────
-    // ── Dashboard Tab (Moved Outside) ────────────────────
-    const DashboardTab = ({ adminUser, setActiveTab, stats, isSuper, tabs, Spinner, StatCard }) => (
-        <div className="space-y-6 animate-fade-up">
-            <div className="relative p-8 rounded-2xl overflow-hidden border border-slate-200 bg-white shadow-sm">
-                <div className="absolute top-0 right-0 w-64 h-64 bg-[#002147]/5 blur-[100px] -mr-32 -mt-32" />
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 relative z-10">
-                    <div>
-                        <h2 className="text-3xl font-bold text-slate-900 leading-tight tracking-tight">Welcome back, <span className="text-[#002147]">{adminUser}</span> 👋</h2>
-                        <p className="text-slate-500 text-sm mt-1 font-medium">SLS Society Management Dashboard</p>
-                    </div>
-                    <div className="flex gap-3">
-                        <button onClick={() => setActiveTab('events')} className="px-5 py-2.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl text-xs font-black uppercase tracking-widest transition-all border border-indigo-100 flex items-center gap-2">
-                            <i className="fas fa-calendar-plus" /> Create Event
-                        </button>
-                        <button onClick={() => setActiveTab('certificates')} className="px-5 py-2.5 bg-[#002147] hover:bg-slate-800 text-white shadow-lg shadow-blue-900/10 rounded-xl text-xs font-black uppercase tracking-widest transition-all flex items-center gap-2">
-                            <i className="fas fa-certificate" /> Create Certificate
-                        </button>
-                    </div>
-                </div>
-            </div>
-            {stats ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-                    <StatCard icon="fa-users" label="Total Members" value={stats.total_members} color="blue" />
-                    <StatCard icon="fa-user-clock" label="Pending" value={stats.pending_members} color="indigo" />
-                    {isSuper && <StatCard icon="fa-user-shield" label="Admins" value={stats.total_admins} color="sky" />}
-                    <StatCard icon="fa-calendar-alt" label="Events" value={stats.total_events} color="violet" />
-                </div>
-            ) : <Spinner />}
 
-            <div className="space-y-4">
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">Quick Management</p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {tabs.slice(1, 4).map((t) => (
-                        <button key={t.id} onClick={() => setActiveTab(t.id)}
-                            className="flex items-center gap-4 p-5 bg-white border border-slate-200 rounded-2xl hover:border-[#002147] hover:shadow-lg transition-all duration-300 group">
-                            <div className="w-11 h-11 bg-slate-50 rounded-xl flex items-center justify-center group-hover:bg-[#002147] transition-colors">
-                                <i className={`fas ${t.icon} text-[#002147] text-sm group-hover:text-white`} />
-                            </div>
-                            <span className="text-slate-600 group-hover:text-[#002147] text-sm font-bold tracking-tight transition-colors">{t.label}</span>
-                            <i className="fas fa-chevron-right text-slate-300 text-xs ml-auto group-hover:text-[#002147] group-hover:translate-x-1 transition-all" />
-                        </button>
-                    ))}
-                </div>
-            </div>
-        </div>
-    );
-
-
-    // ── Members Tab ──────────────────────────────────────────
-
-
-    // ── Approvals Tab ──────────────────────────────────────────
-    const DetailItem = ({ label, value, icon, fullWidth }) => (
-        <div className={fullWidth ? "col-span-full" : "col-span-1"}>
-            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-2">
-                <i className={`fas ${icon} text-[#002147]/40`} /> {label}
-            </label>
-            <p className="text-sm font-bold text-slate-700 leading-relaxed bg-slate-50 p-4 rounded-2xl border border-slate-100/50">
-                {value || "Not provided"}
-            </p>
-        </div>
-    );
-
-    const ApprovalsTab = ({ pendingMembers, executiveApps, fetchPendingMembers, loading, auth, notify, Spinner, api }) => {
-        const [searchTerm, setSearchTerm] = useState("");
-        const [selectedIds, setSelectedIds] = useState([]);
-        const [isProcessing, setIsProcessing] = useState(false);
-        const [bulkMode, setBulkMode] = useState(false);
-
-        const [interviewTarget, setInterviewTarget] = useState(null);
-        const [interviewForm, setInterviewForm] = useState({
-            venue: "SLS Society HQ, Campus Block B",
-            message: "",
-            dressCode: "Business Formal",
-            arrivalTime: "15 minutes before scheduled time",
-            guideNotes: "",
-            focusAreas: "Leadership potential, communication, commitment to service",
-            linkUrl: "",
-        });
-        const [interviewResultTarget, setInterviewResultTarget] = useState(null);
-        const [interviewResultForm, setInterviewResultForm] = useState({ result: "passed", note: "" });
-        const [submittingResult, setSubmittingResult] = useState(false);
-        const [feePromptTarget, setFeePromptTarget] = useState(null);
-        const [membershipFee, setMembershipFee] = useState(0);
-        const [defaultValidityMonths, setDefaultValidityMonths] = useState("12");
-        const [allFeeChannels, setAllFeeChannels] = useState([]);
-        const [feeDeadline, setFeeDeadline] = useState("");
-        const [feeRequestTarget, setFeeRequestTarget] = useState(null);
-        const [feeRequestIsRetry, setFeeRequestIsRetry] = useState(false);
-        const [feeRequestForm, setFeeRequestForm] = useState({ amount: "", validityMonths: "", deadline: "", message: "", selectedChannelIds: [] });
-        const [waiveTarget, setWaiveTarget] = useState(null);
-        const [waiveReason, setWaiveReason] = useState("");
-        const [directApproveTarget, setDirectApproveTarget] = useState(null);
-        const [directApproveNote, setDirectApproveNote] = useState("");
-        const [openActionMenu, setOpenActionMenu] = useState(null);
-        const [sendingCall, setSendingCall] = useState(false);
-        const [viewMember, setViewMember] = useState(null);
-        const [locationFilter, setLocationFilter] = useState({ ...DEFAULT_ADMIN_LOCATION_FILTER });
-        const [memberTypeFilter, setMemberTypeFilter] = useState("All");
-        const [viewExecApp, setViewExecApp] = useState(null);
-        const [execInterviewTarget, setExecInterviewTarget] = useState(null);
-        const [execInterviewResultTarget, setExecInterviewResultTarget] = useState(null);
-        const [execWaiveTarget, setExecWaiveTarget] = useState(null);
-        const [execWaiveReason, setExecWaiveReason] = useState("");
-        const [execDirectApproveTarget, setExecDirectApproveTarget] = useState(null);
-        const [execDirectApproveNote, setExecDirectApproveNote] = useState("");
-        const [rejectExecTarget, setRejectExecTarget] = useState(null);
-        const [rejectExecReason, setRejectExecReason] = useState("");
-
-        const handleApproveExecutive = async (id) => {
-            if (!window.confirm("Approve this member as Executive? Interview is optional.")) return;
-            setIsProcessing(true);
-            try {
-                const r = await api.post(`admin/executive-applications/${id}/approve`, {}, auth);
-                notify(r.data.message || "Executive application approved");
-                setViewExecApp(null);
-                fetchPendingMembers();
-            } catch (err) {
-                notify(err.response?.data?.error || "Approval failed", "error");
-            } finally {
-                setIsProcessing(false);
-            }
-        };
-
-        const handleExecDirectApprove = async (e) => {
-            e.preventDefault();
-            if (!execDirectApproveTarget) return;
-            setIsProcessing(true);
-            try {
-                const r = await api.post(`admin/executive-applications/${execDirectApproveTarget._id}/direct-approve`, { note: execDirectApproveNote.trim() }, auth);
-                notify(r.data.message || "Executive member approved directly");
-                setExecDirectApproveTarget(null);
-                setExecDirectApproveNote("");
-                setViewExecApp(null);
-                fetchPendingMembers();
-            } catch (err) {
-                notify(err.response?.data?.error || "Direct approval failed", "error");
-            } finally {
-                setIsProcessing(false);
-            }
-        };
-
-        const handleExecWaive = async (e) => {
-            e.preventDefault();
-            if (!execWaiveTarget || execWaiveReason.trim().length < 10) {
-                notify("Waiver reason must be at least 10 characters", "error");
-                return;
-            }
-            setIsProcessing(true);
-            try {
-                const r = await api.post(`admin/executive-applications/${execWaiveTarget._id}/waive`, { reason: execWaiveReason.trim() }, auth);
-                notify(r.data.message || "Free executive membership granted");
-                setExecWaiveTarget(null);
-                setExecWaiveReason("");
-                fetchPendingMembers();
-            } catch (err) {
-                notify(err.response?.data?.error || "Failed to waive fee", "error");
-            } finally {
-                setIsProcessing(false);
-            }
-        };
-
-        const handleExecInterviewResult = async (e) => {
-            e.preventDefault();
-            if (!execInterviewResultTarget) return;
-            setSubmittingResult(true);
-            try {
-                const r = await api.post(`admin/executive-applications/${execInterviewResultTarget._id}/interview-result`, interviewResultForm, auth);
-                notify(r.data.message || "Interview result saved");
-                setExecInterviewResultTarget(null);
-                setInterviewResultForm({ result: "passed", note: "" });
-                fetchPendingMembers();
-            } catch (err) {
-                notify(err.response?.data?.error || "Failed to save interview result", "error");
-            } finally {
-                setSubmittingResult(false);
-            }
-        };
-
-        const handleExecInterviewCall = async (e) => {
-            e.preventDefault();
-            if (!execInterviewTarget) return;
-            setSendingCall(true);
-            try {
-                await api.post(`admin/executive-applications/${execInterviewTarget._id}/interview-call`, interviewForm, auth);
-                notify(`Executive interview call sent to ${execInterviewTarget.name}!`);
-                setExecInterviewTarget(null);
-                setInterviewForm({
-                    venue: "SLS Society HQ, Campus Block B",
-                    message: "",
-                    dressCode: "Business Formal",
-                    arrivalTime: "15 minutes before scheduled time",
-                    guideNotes: "",
-                    focusAreas: "Leadership potential, communication, commitment to service",
-                    linkUrl: "",
-                });
-                fetchPendingMembers();
-            } catch (err) {
-                notify(err.response?.data?.error || "Failed to send interview invitation", "error");
-            } finally {
-                setSendingCall(false);
-            }
-        };
-
-        const handleRejectExecutive = async (e) => {
-            e.preventDefault();
-            if (!rejectExecTarget || rejectExecReason.trim().length < 10) {
-                notify("Rejection reason must be at least 10 characters", "error");
-                return;
-            }
-            setIsProcessing(true);
-            try {
-                const r = await api.post(`admin/executive-applications/${rejectExecTarget._id}/reject`, { reason: rejectExecReason.trim() }, auth);
-                notify(r.data.message || "Application rejected");
-                setRejectExecTarget(null);
-                setRejectExecReason("");
-                fetchPendingMembers();
-            } catch (err) {
-                notify(err.response?.data?.error || "Rejection failed", "error");
-            } finally {
-                setIsProcessing(false);
-            }
-        };
-
-        const getRequestedRoleLabel = (member) => {
-            const role = member.requestedRole || member.role || "General";
-            return role === "Executive" ? "Executive Member" : "General Member";
-        };
-
-        const getRoleShort = (member) => {
-            const role = member.requestedRole || member.role || "General";
-            return role === "Executive" ? "Executive" : "General";
-        };
-
-        const loadFeeSettings = useCallback(() => {
-            api.get("settings").then((r) => {
-                setMembershipFee(Number(r.data.membership_fee) || 0);
-                setDefaultValidityMonths(String(r.data.membership_validity_months || "12"));
-                const days = Number(r.data.default_fee_deadline_days) || 7;
-                const d = new Date();
-                d.setDate(d.getDate() + days);
-                setFeeDeadline(d.toISOString().slice(0, 16));
-                let ch = [];
-                try {
-                    if (r.data.membership_fee_channels) ch = JSON.parse(r.data.membership_fee_channels);
-                    if (!ch.length && r.data.donation_channels) ch = JSON.parse(r.data.donation_channels);
-                } catch { /* ignore */ }
-                setAllFeeChannels(ch);
-            }).catch(() => {});
-        }, [api]);
-
-        const openFeeRequestModal = (member, isRetry = false) => {
-            loadFeeSettings();
-            const fp = member.feePayment || {};
-            setFeeRequestIsRetry(isRetry);
-            setFeeRequestTarget(member);
-            setFeeRequestForm({
-                amount: String(isRetry ? (fp.amount || membershipFee || "") : (membershipFee || "")),
-                validityMonths: String(fp.validityMonths || defaultValidityMonths || "12"),
-                deadline: feeDeadline || new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 16),
-                message: "",
-                selectedChannelIds: (fp.requestedChannels?.length ? fp.requestedChannels : allFeeChannels).map((c) => c.id).filter(Boolean),
-            });
-            setOpenActionMenu(null);
-        };
-
-        const closeFeeRequestModal = () => {
-            setFeeRequestTarget(null);
-            setFeeRequestIsRetry(false);
-        };
-
-        useEffect(() => { loadFeeSettings(); }, [loadFeeSettings]);
-
-        useEffect(() => {
-            if (!feeRequestTarget) return;
-            setFeeRequestForm((prev) => ({
-                ...prev,
-                amount: prev.amount || String(membershipFee || ""),
-                validityMonths: prev.validityMonths || defaultValidityMonths || "12",
-                deadline: prev.deadline || feeDeadline,
-                selectedChannelIds: prev.selectedChannelIds.length ? prev.selectedChannelIds : allFeeChannels.map((c) => c.id).filter(Boolean),
-            }));
-        }, [feeRequestTarget, membershipFee, defaultValidityMonths, feeDeadline, allFeeChannels]);
-
-        const filtered = (pendingMembers || []).filter(m => {
-            const matchesSearch =
-                m.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                m.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                m.joining_year?.toString().includes(searchTerm);
-            const memberRole = m.requestedRole || m.role || "General";
-            const matchesType = memberTypeFilter === "All" || (memberTypeFilter === "General" && memberRole === "General") || (memberTypeFilter === "Executive" && memberRole === "Executive");
-            return matchesSearch && matchesAdminLocationFilter(m, locationFilter) && matchesType;
-        });
-
-        const filteredExecutiveApps = (executiveApps || []).filter((app) => {
-            if (memberTypeFilter === "General") return false;
-            const email = app.memberId?.email || "";
-            const matchesSearch =
-                !searchTerm ||
-                app.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                app.member_id_str?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                app.city?.toLowerCase().includes(searchTerm.toLowerCase());
-            let matchesLocation = true;
-            if (locationFilter.tehsil !== ALL_TEHSILS_LABEL) {
-                const loc = (app.city || app.memberId?.city || "").trim().toLowerCase();
-                const tehsil = locationFilter.tehsil.trim().toLowerCase();
-                matchesLocation = loc === tehsil || loc.includes(tehsil) || tehsil.includes(loc);
-            }
-            return matchesSearch && matchesLocation;
-        });
-
-        const totalInQueue = (pendingMembers?.length || 0) + (executiveApps?.length || 0);
-        const totalShowing = filtered.length + filteredExecutiveApps.length;
-
-        const handleSelectAll = (e) => setSelectedIds(e.target.checked ? filtered.map(m => m._id) : []);
-        const toggleSelect = (id) => setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
-
-        const approveSingle = async (id) => {
-            if (!window.confirm("Approve this member?")) return;
-            setIsProcessing(true);
-            try {
-                const r = await api.post(`admin/approve-member/${id}`, {}, auth);
-                notify(`Approved! Member ID: ${r.data.member_id}`);
-                fetchPendingMembers();
-            }
-            catch (err) {
-                notify(err.response?.data?.error || "Failed to approve", "error");
-                if (err.response?.data?.error?.toLowerCase().includes("already")) { fetchPendingMembers(); }
-            } finally { setIsProcessing(false); }
-        };
-
-        const handleRequestFee = async (e) => {
-            e?.preventDefault?.();
-            if (!feeRequestTarget) return;
-            if (!feeRequestForm.amount || Number(feeRequestForm.amount) <= 0) {
-                notify("Enter a valid fee amount", "error");
-                return;
-            }
-            if (!feeRequestForm.selectedChannelIds.length) {
-                notify("Select at least one payment channel", "error");
-                return;
-            }
-            setIsProcessing(true);
-            try {
-                const channels = allFeeChannels.filter((c) => feeRequestForm.selectedChannelIds.includes(c.id));
-                const endpoint = feeRequestIsRetry
-                    ? `fees/request-again/${feeRequestTarget._id}`
-                    : `fees/request/${feeRequestTarget._id}`;
-                const r = await api.post(endpoint, {
-                    amount: Number(feeRequestForm.amount),
-                    deadline: feeRequestForm.deadline,
-                    validityMonths: Number(feeRequestForm.validityMonths) || 12,
-                    channels,
-                    message: feeRequestForm.message.trim(),
-                }, auth);
-                notify(r.data.message || (feeRequestIsRetry ? "Updated fee request emailed to member" : "Fee request emailed to member"));
-                closeFeeRequestModal();
-                setFeePromptTarget(null);
-                fetchPendingMembers();
-            } catch (err) {
-                notify(err.response?.data?.error || "Failed to request fee", "error");
-            } finally { setIsProcessing(false); }
-        };
-
-        const handleWaiveFee = async (e) => {
-            e.preventDefault();
-            if (!waiveTarget || waiveReason.trim().length < 10) {
-                notify("Waiver reason must be at least 10 characters", "error");
-                return;
-            }
-            setIsProcessing(true);
-            try {
-                await api.post(`fees/waive/${waiveTarget._id}`, { reason: waiveReason.trim() }, auth);
-                notify("Free membership granted — member notified by email");
-                setWaiveTarget(null);
-                setWaiveReason("");
-                setFeePromptTarget(null);
-                fetchPendingMembers();
-            } catch (err) {
-                notify(err.response?.data?.error || "Failed to waive fee", "error");
-            } finally { setIsProcessing(false); }
-        };
-
-        const handleDirectApprove = async (e) => {
-            e.preventDefault();
-            if (!directApproveTarget) return;
-            setIsProcessing(true);
-            try {
-                const r = await api.post(`admin/direct-approve/${directApproveTarget._id}`, { note: directApproveNote.trim() }, auth);
-                notify(`Directly approved! Member ID: ${r.data.member_id}`);
-                setDirectApproveTarget(null);
-                setDirectApproveNote("");
-                setFeePromptTarget(null);
-                fetchPendingMembers();
-            } catch (err) {
-                notify(err.response?.data?.error || "Direct approval failed", "error");
-            } finally { setIsProcessing(false); }
-        };
-
-        const deleteSingle = async (id, name) => {
-            if (!window.confirm(`Are you sure you want to delete ${name}'s application? This action cannot be undone.`)) return;
-            setIsProcessing(true);
-            try {
-                await api.delete(`admin/members/${id}`, auth);
-                notify("Application deleted successfully.");
-                fetchPendingMembers();
-            } catch (err) {
-                notify(err.response?.data?.error || "Failed to delete application.", "error");
-            } finally { setIsProcessing(false); }
-        };
-
-        const handleBulkApprove = async () => {
-            if (!window.confirm(`Bulk approve ${selectedIds.length} applications?`)) return;
-            setIsProcessing(true);
-            let count = 0;
-            await Promise.all(selectedIds.map(async id => {
-                try { await api.post(`admin/approve-member/${id}`, {}, auth); count++; } catch { } // eslint-disable-line no-empty
-            }));
-            notify(`Approved ${count} members.`);
-            fetchPendingMembers();
-            setSelectedIds([]);
-            setIsProcessing(false);
-        };
-
-        const handleBulkDelete = async () => {
-            if (!window.confirm(`CRITICAL ACTION: Are you sure you want to PERMANENTLY DELETE ${selectedIds.length} applications?`)) return;
-            setIsProcessing(true);
-            try {
-                await api.post("admin/members/bulk-delete", { ids: selectedIds }, auth);
-                notify(`Successfully deleted ${selectedIds.length} applications.`);
-                fetchPendingMembers();
-                setSelectedIds([]);
-            } catch (err) {
-                notify("Bulk delete failed", "error");
-            } finally { setIsProcessing(false); }
-        };
-
-        const handleInterviewCall = async (e) => {
-            e.preventDefault();
-            if (!interviewTarget) return;
-            setSendingCall(true);
-            try {
-                await api.post(`admin/interview-call/${interviewTarget._id}`, interviewForm, auth);
-                notify(`Interview call sent to ${interviewTarget.name}!`);
-                setInterviewTarget(null);
-                setInterviewForm({
-                    venue: "SLS Society HQ, Campus Block B",
-                    message: "",
-                    dressCode: "Business Formal",
-                    arrivalTime: "15 minutes before scheduled time",
-                    guideNotes: "",
-                    focusAreas: "Leadership potential, communication, commitment to service",
-                    linkUrl: "",
-                });
-                fetchPendingMembers();
-            } catch (err) {
-                notify(err.response?.data?.error || "Failed to send interview invitation", "error");
-            } finally { setSendingCall(false); }
-        };
-
-        const handleInterviewResult = async (e) => {
-            e.preventDefault();
-            if (!interviewResultTarget) return;
-            setSubmittingResult(true);
-            const passed = interviewResultForm.result === "passed";
-            const memberSnapshot = interviewResultTarget;
-            try {
-                const r = await api.post(`admin/interview-result/${interviewResultTarget._id}`, interviewResultForm, auth);
-                notify(r.data.message || "Interview result saved");
-                setInterviewResultTarget(null);
-                setInterviewResultForm({ result: "passed", note: "" });
-                fetchPendingMembers();
-                if (passed) setFeePromptTarget(memberSnapshot);
-            } catch (err) {
-                notify(err.response?.data?.error || "Failed to save interview result", "error");
-            } finally { setSubmittingResult(false); }
-        };
-
-        return (
-            <div className="space-y-6 relative">
-                {selectedIds.length > 0 && (
-                    <div className="fixed sm:absolute bottom-6 sm:bottom-auto sm:top-0 left-1/2 -translate-x-1/2 sm:-translate-y-1/2 z-[100] bg-slate-900 text-white px-5 sm:px-6 py-3 rounded-2xl sm:rounded-full shadow-2xl shadow-blue-900/40 flex flex-wrap items-center justify-center gap-4 animate-fade-up border border-slate-700 w-[90%] sm:w-auto ring-4 ring-slate-900/20 backdrop-blur-md">
-                        <span className="text-[10px] sm:text-xs font-bold bg-white/10 px-3 py-1 rounded-xl sm:rounded-full whitespace-nowrap">{selectedIds.length} Selected</span>
-                        <div className="hidden sm:block w-px h-4 bg-white/20" />
-                        <button onClick={handleBulkApprove} disabled={isProcessing} className="text-emerald-400 hover:text-emerald-300 text-[10px] sm:text-xs font-black uppercase tracking-widest transition-colors flex items-center gap-2">
-                            {isProcessing ? <i className="fas fa-spinner fa-spin" /> : <i className="fas fa-check-double" />} Approve
-                        </button>
-                        <div className="hidden sm:block w-px h-4 bg-white/20" />
-                        <button onClick={handleBulkDelete} disabled={isProcessing} className="text-rose-400 hover:text-rose-300 text-[10px] sm:text-xs font-black uppercase tracking-widest transition-colors flex items-center gap-2">
-                            <i className="fas fa-trash-alt" /> Delete
-                        </button>
-                    </div>
-                )}
-
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                    <div>
-                        <h2 className="text-xl font-bold text-slate-800">Pending Approvals</h2>
-                        <p className="text-slate-400 text-sm mt-1">
-                            {totalShowing} of {totalInQueue} in queue
-                            {filteredExecutiveApps.length > 0 && (
-                                <span className="text-amber-600"> · {filteredExecutiveApps.length} executive upgrade{filteredExecutiveApps.length === 1 ? "" : "s"}</span>
-                            )}
-                        </p>
-                        <p className="text-[10px] text-slate-400 mt-2 font-bold uppercase tracking-widest">General: Interview → Fee → Approve · Executive: Review application → Approve / Reject</p>
-                    </div>
-                </div>
-
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
-                    <div className="hidden" />
-                    <div className="flex flex-col gap-3 w-full sm:w-auto sm:ml-auto">
-                        <div className="flex flex-wrap gap-3">
-                            <AdminLocationFilters
-                                filter={locationFilter}
-                                onChange={setLocationFilter}
-                                selectCls={adminFilterSelectCls}
-                            />
-                            <select
-                                value={memberTypeFilter}
-                                onChange={(e) => setMemberTypeFilter(e.target.value)}
-                                className={adminFilterSelectCls}
-                            >
-                                {MEMBER_TYPE_FILTER_OPTIONS.map(({ value, label }) => (
-                                    <option key={value} value={value}>{label}</option>
-                                ))}
-                            </select>
-                        </div>
-                        <div className="flex flex-col sm:flex-row gap-3">
-                        <button onClick={() => { setBulkMode(!bulkMode); setSelectedIds([]); }} className={`px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-widest transition-all ${bulkMode ? 'bg-[#002147] text-white shadow-sm' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>
-                            <i className="fas fa-layer-group mr-2" /> {bulkMode ? "Done" : "Select"}
-                        </button>
-                        <div className="relative w-full sm:w-72">
-                            <i className="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm" />
-                            <input type="text" placeholder="Filter applicants..." value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                className="w-full bg-white border border-slate-200 rounded-xl pl-11 pr-4 py-2.5 text-slate-800 focus:ring-0  outline-none text-sm shadow-sm" />
-                        </div>
-                        </div>
-                    </div>
-                </div>
-
-                {loading ? <Spinner /> : (
-                    <>
-                        <div className="sm:hidden space-y-2">
-                            {totalShowing === 0 ? (
-                                <div className="text-center py-20 text-slate-300 bg-white rounded-[2rem] border-2 border-dashed border-slate-100">
-                                    <i className="fas fa-check-circle text-4xl mb-3 block opacity-20" />
-                                    <p className="text-[10px] font-black uppercase tracking-widest">No pending applications</p>
-                                </div>
-                            ) : (
-                            <>
-                            {filtered.map((m) => (
-                                <div key={m._id} className="p-3 bg-white rounded-2xl border border-slate-100 shadow-sm space-y-3 relative overflow-hidden transition-all">
-                                    <div className="flex justify-between items-center gap-3">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-8 h-8 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center font-black text-[10px] uppercase shadow-inner">
-                                                {(m.name || "?").charAt(0)}
-                                            </div>
-                                            <div>
-                                                <h4 className="font-bold text-slate-800 leading-none mb-1 text-xs">{m.name}</h4>
-                                                {(() => {
-                                                    const ib = getInterviewBadge(m);
-                                                    const fb = getFeeApprovalBadge(m);
-                                                    return (
-                                                        <>
-                                                            {ib && <span className={`inline-block text-[7px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md border mb-1 ${ib.cls}`}>{ib.label}</span>}
-                                                            {fb && fb.label !== ib?.label && <span className={`inline-block text-[7px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md border mb-1 ${fb.cls}`}>{fb.label}</span>}
-                                                        </>
-                                                    );
-                                                })()}
-                                                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest leading-none">Class {m.joining_year}</p>
-                                                <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mt-1">{m.tehsil || m.city || "No Tehsil"}</p>
-                                                <p className="text-[8px] font-black text-purple-600 uppercase tracking-widest mt-1">{getRequestedRoleLabel(m)}</p>
-                                            </div>
-                                        </div>
-                                        {m.interview_called ? (
-                                            <span className="text-[8px] font-black text-emerald-600 uppercase tracking-widest bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100">Called</span>
-                                        ) : (
-                                            <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest bg-slate-50 px-2 py-0.5 rounded-md border border-slate-100">Pending</span>
-                                        )}
-                                    </div>
-
-                                    <div className="flex gap-2">
-                                        <button onClick={() => setViewMember(m)}
-                                            className="flex-1 text-[9px] bg-slate-50 text-slate-600 border border-slate-100 py-2 rounded-lg font-black uppercase tracking-widest transition-all hover:bg-slate-100">
-                                            Details
-                                        </button>
-                                        <button onClick={() => setInterviewTarget(m)}
-                                            className={`flex-1 text-[9px] py-2 rounded-lg font-black uppercase tracking-widest border transition-all ${m.interview_called ? "bg-amber-50 text-amber-600 border-amber-100" : "bg-blue-50 text-blue-600 border-blue-100"
-                                                }`}>
-                                            Interview
-                                        </button>
-                                        {needsInterviewResult(m) && (
-                                            <button onClick={() => { setInterviewResultTarget(m); setInterviewResultForm({ result: "passed", note: "" }); }}
-                                                className="flex-1 text-[9px] bg-indigo-50 text-indigo-600 border border-indigo-100 py-2 rounded-lg font-black uppercase tracking-widest">
-                                                Result
-                                            </button>
-                                        )}
-                                        <button onClick={() => approveSingle(m._id)} disabled={isProcessing || !canApproveMemberFee(m)}
-                                            title={!canApproveMemberFee(m) ? "Verify or waive fee before approving" : ""}
-                                            className={`flex-1 text-[9px] border py-2 rounded-lg font-black uppercase tracking-widest ${canApproveMemberFee(m) ? "bg-emerald-50 text-emerald-600 border-emerald-100 disabled:opacity-50" : "bg-slate-50 text-slate-400 border-slate-100 opacity-40 cursor-not-allowed"}`}>
-                                            Approve
-                                        </button>
-                                        <button onClick={() => deleteSingle(m._id, m.name)} disabled={isProcessing}
-                                            className="w-10 text-[9px] bg-rose-50 text-rose-500 border border-rose-100 py-2 rounded-lg font-black flex items-center justify-center transition-all hover:bg-rose-500 hover:text-white">
-                                            <i className="fas fa-trash-alt" />
-                                        </button>
-                                    </div>
-                                    {m.interviewResult?.status === "passed" && (
-                                        <div className="flex flex-wrap gap-2 pt-1 border-t border-slate-100">
-                                            {canRequestFee(m) && (
-                                                <button type="button" onClick={() => openFeeRequestModal(m)} disabled={isProcessing}
-                                                    className="flex-1 text-[9px] bg-[#002147] text-white py-2 rounded-lg font-black uppercase tracking-widest">
-                                                    Request Fee
-                                                </button>
-                                            )}
-                                            {canRequestFee(m) && (
-                                                <button type="button" onClick={() => { setWaiveTarget(m); setWaiveReason(""); }} disabled={isProcessing}
-                                                    className="flex-1 text-[9px] bg-purple-50 text-purple-700 border border-purple-100 py-2 rounded-lg font-black uppercase tracking-widest">
-                                                    Free Membership
-                                                </button>
-                                            )}
-                                            {canRequestFeeAgain(m) && (
-                                                <button type="button" onClick={() => openFeeRequestModal(m, true)} disabled={isProcessing}
-                                                    className="flex-1 text-[9px] bg-amber-600 text-white py-2 rounded-lg font-black uppercase tracking-widest">
-                                                    Request Fee Again
-                                                </button>
-                                            )}
-                                            {canDirectApprove(m) && (
-                                                <button type="button" onClick={() => { setDirectApproveTarget(m); setDirectApproveNote(""); }} disabled={isProcessing}
-                                                    className="flex-1 text-[9px] bg-teal-50 text-teal-700 border border-teal-100 py-2 rounded-lg font-black uppercase tracking-widest">
-                                                    Direct Approve
-                                                </button>
-                                            )}
-                                        </div>
-                                    )}
-                                </div>
-                            ))}
-                            {filteredExecutiveApps.map((app) => {
-                                const eib = getExecutiveInterviewBadge(app);
-                                const efb = getExecutiveFeeBadge(app);
-                                return (
-                                <div key={`exec-${app._id}`} className="p-3 bg-white rounded-2xl border border-slate-100 shadow-sm space-y-3 relative overflow-hidden transition-all">
-                                    <div className="flex justify-between items-center gap-3">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-8 h-8 bg-purple-50 text-purple-600 rounded-lg flex items-center justify-center font-black text-[10px] uppercase shadow-inner">
-                                                {(app.name || "?").charAt(0)}
-                                            </div>
-                                            <div>
-                                                <h4 className="font-bold text-slate-800 leading-none mb-1 text-xs">{app.name}</h4>
-                                                <div className="flex flex-wrap gap-1 mt-1">
-                                                    {eib && <span className={`text-[7px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded border ${eib.cls}`}>{eib.label}</span>}
-                                                    {efb && <span className={`text-[7px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded border ${efb.cls}`}>{efb.label}</span>}
-                                                </div>
-                                                <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mt-1">{app.city || "—"}</p>
-                                                <p className="text-[8px] font-black text-purple-600 uppercase tracking-widest mt-1">Executive Upgrade</p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div className="flex flex-wrap gap-2">
-                                        <button type="button" onClick={() => setViewExecApp(app)} className="flex-1 min-w-[30%] text-[9px] bg-slate-50 text-slate-600 border border-slate-100 py-2 rounded-lg font-black uppercase tracking-widest">Details</button>
-                                        <button type="button" onClick={() => setExecInterviewTarget(app)} className="flex-1 min-w-[30%] text-[9px] bg-blue-50 text-blue-600 border border-blue-100 py-2 rounded-lg font-black uppercase tracking-widest">{app.interview_called ? "Call Again" : "Interview"}</button>
-                                        {needsExecutiveInterviewResult(app) && (
-                                            <button type="button" onClick={() => { setExecInterviewResultTarget(app); setInterviewResultForm({ result: "passed", note: "" }); }} className="flex-1 min-w-[30%] text-[9px] bg-indigo-50 text-indigo-600 border border-indigo-100 py-2 rounded-lg font-black uppercase tracking-widest">Result</button>
-                                        )}
-                                        {canWaiveExecutive(app) && (
-                                            <button type="button" onClick={() => { setExecWaiveTarget(app); setExecWaiveReason(""); }} className="flex-1 min-w-[30%] text-[9px] bg-purple-50 text-purple-600 border border-purple-100 py-2 rounded-lg font-black uppercase tracking-widest">Free</button>
-                                        )}
-                                        <button type="button" disabled={isProcessing} onClick={() => handleApproveExecutive(app._id)} className="flex-1 min-w-[30%] text-[9px] bg-emerald-50 text-emerald-600 border border-emerald-100 py-2 rounded-lg font-black uppercase tracking-widest disabled:opacity-50">Approve</button>
-                                        <button type="button" onClick={() => { setRejectExecTarget(app); setRejectExecReason(""); }} className="flex-1 min-w-[30%] text-[9px] bg-rose-50 text-rose-600 border border-rose-100 py-2 rounded-lg font-black uppercase tracking-widest">Reject</button>
-                                    </div>
-                                </div>
-                                );
-                            })}
-                            </>
-                            )}
-                        </div>
-
-                        <div className="hidden sm:block bg-white rounded-2xl sm:rounded-3xl border border-slate-200 shadow-sm overflow-visible">
-                            <div className={`overflow-x-auto overflow-y-visible custom-scrollbar-horizontal ${openActionMenu?.startsWith("exec-") ? "pb-52" : ""}`}>
-                                <table className="w-full text-sm table-fixed min-w-[960px]">
-                                    <thead>
-                                        <tr className="bg-slate-50 border-b border-slate-200 text-left">
-                                            {bulkMode && (<th className="px-4 py-3 w-10 text-center"><input type="checkbox" checked={selectedIds.length === filtered.length && filtered.length > 0} onChange={handleSelectAll} className="w-4 h-4 text-[#002147] border-slate-300 rounded" /></th>)}
-                                            <th className="px-4 py-3 w-[14%] text-[10px] font-bold text-slate-500 uppercase tracking-widest">Name</th>
-                                            <th className="px-4 py-3 w-[18%] text-[10px] font-bold text-slate-500 uppercase tracking-widest">Email</th>
-                                            <th className="px-4 py-3 w-[7%] text-[10px] font-bold text-slate-500 uppercase tracking-widest">Year</th>
-                                            <th className="px-4 py-3 w-[10%] text-[10px] font-bold text-slate-500 uppercase tracking-widest">Tehsil</th>
-                                            <th className="px-4 py-3 w-[9%] text-[10px] font-bold text-slate-500 uppercase tracking-widest">Role</th>
-                                            <th className="px-4 py-3 w-[22%] text-[10px] font-bold text-slate-500 uppercase tracking-widest">Pipeline</th>
-                                            <th className="px-4 py-3 w-[20%] text-[10px] font-bold text-slate-500 uppercase tracking-widest text-right">Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-slate-100">
-                                        {totalShowing === 0 ? (
-                                            <tr><td colSpan={bulkMode ? 8 : 7} className="text-center py-20 text-slate-400">
-                                                <i className="fas fa-check-circle text-4xl mb-4 block text-emerald-300/50" />
-                                                <p className="text-xs font-black uppercase tracking-widest">No pending applications</p>
-                                            </td></tr>
-                                        ) : (
-                                        <>
-                                        {filtered.map((m) => {
-                                            const ib = getInterviewBadge(m);
-                                            const fb = getFeeApprovalBadge(m);
-                                            return (
-                                            <tr key={m._id} className={`align-middle ${selectedIds.includes(m._id) ? 'bg-[#002147]/5' : 'hover:bg-slate-50/80'}`}>
-                                                {bulkMode && (<td className="px-4 py-3 text-center"><input type="checkbox" checked={selectedIds.includes(m._id)} onChange={() => toggleSelect(m._id)} className="w-4 h-4 text-[#002147] border-slate-300 rounded" /></td>)}
-                                                <td className="px-4 py-3 align-middle">
-                                                    <span className="text-slate-800 font-bold text-sm block truncate" title={m.name}>{m.name}</span>
-                                                </td>
-                                                <td className="px-4 py-3 align-middle">
-                                                    <span className="text-slate-500 text-xs block truncate" title={m.email}>{m.email}</span>
-                                                </td>
-                                                <td className="px-4 py-3 align-middle font-bold text-slate-500 font-mono text-xs">{m.joining_year}</td>
-                                                <td className="px-4 py-3 align-middle">
-                                                    <span className="text-slate-600 font-semibold text-xs block truncate">{m.tehsil || m.city || "—"}</span>
-                                                </td>
-                                                <td className="px-4 py-3 align-middle">
-                                                    <span className={`inline-block whitespace-nowrap text-[10px] font-black uppercase tracking-wider px-2 py-1 rounded border ${(m.requestedRole || m.role) === "Executive" ? "text-purple-700 bg-purple-50 border-purple-100" : "text-blue-700 bg-blue-50 border-blue-100"}`}>
-                                                        {getRoleShort(m)}
-                                                    </span>
-                                                </td>
-                                                <td className="px-4 py-3 align-middle">
-                                                    <div className="flex flex-wrap gap-1">
-                                                        {ib && <span className={`text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded border whitespace-nowrap ${ib.cls}`}>{ib.label}</span>}
-                                                        {fb && <span className={`text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded border whitespace-nowrap ${fb.cls}`}>{fb.label}</span>}
-                                                    </div>
-                                                </td>
-                                                <td className="px-4 py-3 align-middle text-right">
-                                                    <div className="relative inline-block text-left">
-                                                        <button type="button" onClick={() => setOpenActionMenu(openActionMenu === m._id ? null : m._id)} className="text-[10px] font-black uppercase tracking-widest px-3 py-2 bg-[#002147] text-white rounded-lg hover:bg-slate-800">
-                                                            Manage <i className={`fas fa-chevron-${openActionMenu === m._id ? "up" : "down"} ml-1 text-[8px]`} />
-                                                        </button>
-                                                        {openActionMenu === m._id && (
-                                                            <div className="absolute right-0 mt-1 w-48 bg-white border border-slate-200 rounded-xl shadow-xl z-20 py-1 text-left">
-                                                                <button type="button" onClick={() => { setViewMember(m); setOpenActionMenu(null); }} className="w-full px-3 py-2 text-[10px] font-bold uppercase text-slate-600 hover:bg-slate-50 text-left">View Details</button>
-                                                                <button type="button" onClick={() => { setInterviewTarget(m); setOpenActionMenu(null); }} className="w-full px-3 py-2 text-[10px] font-bold uppercase text-slate-600 hover:bg-slate-50 text-left">{m.interview_called ? "Call Again" : "Interview Call"}</button>
-                                                                {needsInterviewResult(m) && (
-                                                                    <button type="button" onClick={() => { setInterviewResultTarget(m); setInterviewResultForm({ result: "passed", note: "" }); setOpenActionMenu(null); }} className="w-full px-3 py-2 text-[10px] font-bold uppercase text-indigo-600 hover:bg-indigo-50 text-left">Record Result</button>
-                                                                )}
-                                                                {canRequestFee(m) && (
-                                                                    <button type="button" onClick={() => openFeeRequestModal(m)} className="w-full px-3 py-2 text-[10px] font-bold uppercase text-[#002147] hover:bg-blue-50 text-left">Request Fee</button>
-                                                                )}
-                                                                {canRequestFee(m) && (
-                                                                    <button type="button" onClick={() => { setWaiveTarget(m); setWaiveReason(""); setOpenActionMenu(null); }} className="w-full px-3 py-2 text-[10px] font-bold uppercase text-purple-600 hover:bg-purple-50 text-left">Free Membership</button>
-                                                                )}
-                                                                {canRequestFeeAgain(m) && (
-                                                                    <button type="button" onClick={() => openFeeRequestModal(m, true)} className="w-full px-3 py-2 text-[10px] font-bold uppercase text-amber-700 hover:bg-amber-50 text-left">Request Fee Again</button>
-                                                                )}
-                                                                {canDirectApprove(m) && (
-                                                                    <button type="button" onClick={() => { setDirectApproveTarget(m); setDirectApproveNote(""); setOpenActionMenu(null); }} className="w-full px-3 py-2 text-[10px] font-bold uppercase text-teal-600 hover:bg-teal-50 text-left">Direct Approve</button>
-                                                                )}
-                                                                <button type="button" onClick={() => { approveSingle(m._id); setOpenActionMenu(null); }} disabled={!canApproveMemberFee(m)} className="w-full px-3 py-2 text-[10px] font-bold uppercase text-emerald-600 hover:bg-emerald-50 text-left disabled:opacity-40 disabled:cursor-not-allowed">Final Approve</button>
-                                                                <button type="button" onClick={() => { deleteSingle(m._id, m.name); setOpenActionMenu(null); }} className="w-full px-3 py-2 text-[10px] font-bold uppercase text-rose-600 hover:bg-rose-50 text-left border-t border-slate-100">Delete</button>
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                            );
-                                        })}
-                                        {filteredExecutiveApps.map((app) => {
-                                            const menuKey = `exec-${app._id}`;
-                                            const execYear = app.member_id_str?.split("-")[0] || "—";
-                                            const eib = getExecutiveInterviewBadge(app);
-                                            const efb = getExecutiveFeeBadge(app);
-                                            return (
-                                            <tr key={menuKey} className="align-middle hover:bg-slate-50/80">
-                                                {bulkMode && (<td className="px-4 py-3" />)}
-                                                <td className="px-4 py-3 align-middle">
-                                                    <span className="text-slate-800 font-bold text-sm block truncate" title={app.name}>{app.name}</span>
-                                                </td>
-                                                <td className="px-4 py-3 align-middle">
-                                                    <span className="text-slate-500 text-xs block truncate" title={app.memberId?.email}>{app.memberId?.email || "—"}</span>
-                                                </td>
-                                                <td className="px-4 py-3 align-middle font-bold text-slate-500 font-mono text-xs">{execYear}</td>
-                                                <td className="px-4 py-3 align-middle">
-                                                    <span className="text-slate-600 font-semibold text-xs block truncate">{app.city || "—"}</span>
-                                                </td>
-                                                <td className="px-4 py-3 align-middle">
-                                                    <span className="inline-block whitespace-nowrap text-[10px] font-black uppercase tracking-wider px-2 py-1 rounded border text-purple-700 bg-purple-50 border-purple-100">Executive</span>
-                                                </td>
-                                                <td className="px-4 py-3 align-middle">
-                                                    <div className="flex flex-wrap gap-1">
-                                                        {eib && <span className={`text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded border whitespace-nowrap ${eib.cls}`}>{eib.label}</span>}
-                                                        {efb && <span className={`text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded border whitespace-nowrap ${efb.cls}`}>{efb.label}</span>}
-                                                    </div>
-                                                </td>
-                                                <td className="px-4 py-3 align-middle text-right overflow-visible">
-                                                    <div className="relative inline-block text-left">
-                                                        <button type="button" onClick={() => setOpenActionMenu(openActionMenu === menuKey ? null : menuKey)} className="text-[10px] font-black uppercase tracking-widest px-3 py-2 bg-[#002147] text-white rounded-lg hover:bg-slate-800">
-                                                            Manage <i className={`fas fa-chevron-${openActionMenu === menuKey ? "up" : "down"} ml-1 text-[8px]`} />
-                                                        </button>
-                                                        {openActionMenu === menuKey && (
-                                                            <div className="absolute right-0 mt-1 w-48 bg-white border border-slate-200 rounded-xl shadow-xl z-20 py-1 text-left">
-                                                                <button type="button" onClick={() => { setViewExecApp(app); setOpenActionMenu(null); }} className="w-full px-3 py-2 text-[10px] font-bold uppercase text-slate-600 hover:bg-slate-50 text-left">View Application</button>
-                                                                <button type="button" onClick={() => { setExecInterviewTarget(app); setOpenActionMenu(null); }} className="w-full px-3 py-2 text-[10px] font-bold uppercase text-slate-600 hover:bg-slate-50 text-left">{app.interview_called ? "Call Again" : "Interview Call"}</button>
-                                                                {needsExecutiveInterviewResult(app) && (
-                                                                    <button type="button" onClick={() => { setExecInterviewResultTarget(app); setInterviewResultForm({ result: "passed", note: "" }); setOpenActionMenu(null); }} className="w-full px-3 py-2 text-[10px] font-bold uppercase text-indigo-600 hover:bg-indigo-50 text-left">Record Result</button>
-                                                                )}
-                                                                {canWaiveExecutive(app) && (
-                                                                    <button type="button" onClick={() => { setExecWaiveTarget(app); setExecWaiveReason(""); setOpenActionMenu(null); }} className="w-full px-3 py-2 text-[10px] font-bold uppercase text-purple-600 hover:bg-purple-50 text-left">Free Membership</button>
-                                                                )}
-                                                                <button type="button" onClick={() => { handleApproveExecutive(app._id); setOpenActionMenu(null); }} disabled={!canFinalApproveExecutive(app) || isProcessing} className="w-full px-3 py-2 text-[10px] font-bold uppercase text-emerald-600 hover:bg-emerald-50 text-left disabled:opacity-40 disabled:cursor-not-allowed">Final Approve</button>
-                                                                <button type="button" onClick={() => { setRejectExecTarget(app); setRejectExecReason(""); setOpenActionMenu(null); }} className="w-full px-3 py-2 text-[10px] font-bold uppercase text-rose-600 hover:bg-rose-50 text-left border-t border-slate-100">Reject</button>
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                            );
-                                        })}
-                                        </>
-                                        )}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </>
-                )}
-
-                {viewExecApp && (
-                    <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-md animate-fade-in" onClick={() => setViewExecApp(null)}>
-                        <div className="bg-white rounded-[3rem] w-full max-w-2xl shadow-2xl border border-white/20 overflow-hidden animate-zoom-in max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
-                            <div className="bg-gradient-to-br from-[#002147] to-blue-900 p-8 md:p-10 text-white relative flex-shrink-0">
-                                <button onClick={() => setViewExecApp(null)} className="absolute top-8 right-8 w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center hover:bg-white/20 transition-all">
-                                    <i className="fas fa-times" />
-                                </button>
-                                <div className="flex items-center gap-6">
-                                    <div className="w-20 h-20 bg-white/10 rounded-[2rem] flex items-center justify-center text-3xl font-black border border-white/20 backdrop-blur-xl">
-                                        {viewExecApp.name?.charAt(0)}
-                                    </div>
-                                    <div>
-                                        <h3 className="text-3xl font-black tracking-tight leading-tight uppercase">{viewExecApp.name}</h3>
-                                        <p className="text-blue-200 text-xs font-bold uppercase tracking-[0.3em] mt-1">Executive Upgrade Application</p>
-                                        <p className="text-white/60 text-xs mt-1">{viewExecApp.member_id_str} · {viewExecApp.city}</p>
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="p-8 md:p-10 overflow-y-auto custom-scrollbar flex-1 space-y-6">
-                                <div className="flex flex-wrap gap-2">
-                                    {(() => {
-                                        const eib = getExecutiveInterviewBadge(viewExecApp);
-                                        const efb = getExecutiveFeeBadge(viewExecApp);
-                                        return (
-                                            <>
-                                                {eib && <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-1 rounded border ${eib.cls}`}>{eib.label}</span>}
-                                                {efb && <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-1 rounded border ${efb.cls}`}>{efb.label}</span>}
-                                            </>
-                                        );
-                                    })()}
-                                </div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
-                                    {[
-                                        ["Mission Statement", viewExecApp.mission_statement],
-                                        ["Short-Term Goals", viewExecApp.short_term_goals],
-                                        ["Long-Term Goals", viewExecApp.long_term_goals],
-                                        ["Why Executive", viewExecApp.why_executive],
-                                        ["Skills", viewExecApp.skills],
-                                        ["Experience", viewExecApp.previous_volunteer_experience || "—"],
-                                        ["Area of Interest", viewExecApp.area_of_interest],
-                                        ["Availability", `${viewExecApp.availability} hours/week`],
-                                        ["Address", viewExecApp.address],
-                                        ["Father Name", viewExecApp.father_name],
-                                    ].map(([label, val]) => (
-                                        <div key={label} className={label === "Mission Statement" || label === "Why Executive" ? "md:col-span-2" : ""}>
-                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{label}</p>
-                                            <p className="text-slate-700 whitespace-pre-wrap">{val}</p>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                            <div className="p-6 bg-slate-50 border-t border-slate-100 flex justify-end gap-3">
-                                <button onClick={() => setViewExecApp(null)} className="px-8 py-3.5 bg-white border border-slate-200 text-slate-500 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-100 transition-all shadow-sm">
-                                    Close Portal
-                                </button>
-                                <button onClick={() => handleApproveExecutive(viewExecApp._id)} disabled={!canFinalApproveExecutive(viewExecApp) || isProcessing} className="px-8 py-3.5 bg-emerald-500 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-600 transition-all shadow-lg shadow-emerald-900/20 disabled:opacity-40 disabled:cursor-not-allowed">
-                                    Approve Executive
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-                {rejectExecTarget && (
-                    <AdminModal open={!!rejectExecTarget} onClose={() => setRejectExecTarget(null)} maxWidth="max-w-md">
-                        <form onSubmit={handleRejectExecutive} className="p-8 space-y-4">
-                            <h3 className="text-lg font-bold">Reject Executive Application</h3>
-                            <p className="text-sm text-slate-500">Reject application from <strong>{rejectExecTarget.name}</strong>. Member will be emailed.</p>
-                            <textarea rows={4} value={rejectExecReason} onChange={(e) => setRejectExecReason(e.target.value)} placeholder="Reason (min 10 chars)" className={`${inputCls} resize-none`} required minLength={10} />
-                            <div className="flex gap-3">
-                                <button type="submit" disabled={isProcessing} className="flex-1 py-3 bg-rose-600 text-white rounded-xl text-[10px] font-black uppercase disabled:opacity-50">Confirm Reject</button>
-                                <button type="button" onClick={() => setRejectExecTarget(null)} className="px-4 py-3 border rounded-xl text-[10px] font-black uppercase text-slate-500">Cancel</button>
-                            </div>
-                        </form>
-                    </AdminModal>
-                )}
-
-                {execInterviewTarget && (
-                    <AdminModal open={!!execInterviewTarget} onClose={() => setExecInterviewTarget(null)} maxWidth="max-w-lg">
-                        <div className="overflow-hidden flex flex-col max-h-[92vh]">
-                            <div className="bg-[#002147] p-6 text-white relative flex-shrink-0">
-                                <button type="button" onClick={() => setExecInterviewTarget(null)} className="absolute top-4 right-4 text-white/40 hover:text-white"><i className="fas fa-times" /></button>
-                                <h3 className="text-xl font-black uppercase">Schedule Executive Interview</h3>
-                                <p className="text-white/60 text-xs mt-1">{execInterviewTarget.name}</p>
-                            </div>
-                            <form onSubmit={handleExecInterviewCall} className="p-6 space-y-4 overflow-y-auto flex-1">
-                                <div className="group">
-                                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 ml-1">Interview Venue / Location</label>
-                                    <input type="text" required value={interviewForm.venue} onChange={e => setInterviewForm({ ...interviewForm, venue: e.target.value })} className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4 text-sm font-bold text-slate-800 placeholder:text-slate-300 focus:bg-white outline-none" placeholder="e.g. Society HQ or Online Link" />
-                                </div>
-                                <div className="group">
-                                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 ml-1">Interview Description / Details</label>
-                                    <textarea rows="3" required value={interviewForm.message} onChange={e => setInterviewForm({ ...interviewForm, message: e.target.value })} className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4 text-sm font-bold resize-none outline-none" placeholder="Schedule, instructions, or requirements..." />
-                                </div>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                    <input type="text" value={interviewForm.dressCode} onChange={e => setInterviewForm({ ...interviewForm, dressCode: e.target.value })} className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-4 py-3 text-sm font-bold" placeholder="Dress Code" />
-                                    <input type="text" value={interviewForm.arrivalTime} onChange={e => setInterviewForm({ ...interviewForm, arrivalTime: e.target.value })} className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-4 py-3 text-sm font-bold" placeholder="Arrival Time" />
-                                </div>
-                                <button type="submit" disabled={sendingCall} className="w-full py-4 bg-[#002147] text-white rounded-2xl text-[10px] font-black uppercase tracking-widest disabled:opacity-50">
-                                    {sendingCall ? "Sending..." : "Send Interview Call Email"}
-                                </button>
-                            </form>
-                        </div>
-                    </AdminModal>
-                )}
-
-                {execInterviewResultTarget && (
-                    <AdminModal open={!!execInterviewResultTarget} onClose={() => setExecInterviewResultTarget(null)} maxWidth="max-w-md">
-                        <form onSubmit={handleExecInterviewResult} className="p-8 space-y-4">
-                            <h3 className="text-lg font-bold">Record Executive Interview Result</h3>
-                            <p className="text-sm text-slate-500">{execInterviewResultTarget.name}</p>
-                            <select value={interviewResultForm.result} onChange={(e) => setInterviewResultForm({ ...interviewResultForm, result: e.target.value })} className={inputCls}>
-                                <option value="passed">Passed</option>
-                                <option value="failed">Failed</option>
-                            </select>
-                            <textarea rows={4} required value={interviewResultForm.note} onChange={(e) => setInterviewResultForm({ ...interviewResultForm, note: e.target.value })} placeholder="Interview notes (min 5 chars)" className={`${inputCls} resize-none`} minLength={5} />
-                            <div className="flex gap-3">
-                                <button type="submit" disabled={submittingResult} className="flex-1 py-3 bg-[#002147] text-white rounded-xl text-[10px] font-black uppercase disabled:opacity-50">Save Result</button>
-                                <button type="button" onClick={() => setExecInterviewResultTarget(null)} className="px-4 py-3 border rounded-xl text-[10px] font-black uppercase text-slate-500">Cancel</button>
-                            </div>
-                        </form>
-                    </AdminModal>
-                )}
-
-                {execWaiveTarget && (
-                    <AdminModal open={!!execWaiveTarget} onClose={() => setExecWaiveTarget(null)} maxWidth="max-w-md">
-                        <form onSubmit={handleExecWaive} className="p-8 space-y-4">
-                            <h3 className="text-lg font-bold">Grant Free Executive Membership</h3>
-                            <p className="text-sm text-slate-500">Waive executive fee/donation for <strong>{execWaiveTarget.name}</strong>. Member will be emailed.</p>
-                            <textarea rows={4} value={execWaiveReason} onChange={(e) => setExecWaiveReason(e.target.value)} placeholder="Reason (min 10 chars)" className={`${inputCls} resize-none`} required minLength={10} />
-                            <div className="flex gap-3">
-                                <button type="submit" disabled={isProcessing} className="flex-1 py-3 bg-emerald-600 text-white rounded-xl text-[10px] font-black uppercase disabled:opacity-50">Confirm & Notify</button>
-                                <button type="button" onClick={() => setExecWaiveTarget(null)} className="px-4 py-3 border rounded-xl text-[10px] font-black uppercase text-slate-500">Cancel</button>
-                            </div>
-                        </form>
-                    </AdminModal>
-                )}
-
-                {execDirectApproveTarget && (
-                    <AdminModal open={!!execDirectApproveTarget} onClose={() => setExecDirectApproveTarget(null)} maxWidth="max-w-md">
-                        <form onSubmit={handleExecDirectApprove} className="p-8 space-y-4">
-                            <h3 className="text-lg font-bold">Direct Approve Executive</h3>
-                            <p className="text-sm text-slate-500">Approve <strong>{execDirectApproveTarget.name}</strong> as Executive immediately — skips fee collection.</p>
-                            <textarea rows={3} value={execDirectApproveNote} onChange={(e) => setExecDirectApproveNote(e.target.value)} placeholder="Optional note (recorded as waiver reason)" className={`${inputCls} resize-none`} />
-                            <div className="flex gap-3">
-                                <button type="submit" disabled={isProcessing} className="flex-1 py-3 bg-teal-600 text-white rounded-xl text-[10px] font-black uppercase disabled:opacity-50">Approve & Email Welcome</button>
-                                <button type="button" onClick={() => setExecDirectApproveTarget(null)} className="px-4 py-3 border rounded-xl text-[10px] font-black uppercase text-slate-500">Cancel</button>
-                            </div>
-                        </form>
-                    </AdminModal>
-                )}
-
-                {interviewTarget && (
-                    <AdminModal open={!!interviewTarget} onClose={() => setInterviewTarget(null)} maxWidth="max-w-lg">
-                        <div className="overflow-hidden flex flex-col max-h-[92vh]">
-                            <div className="bg-[#002147] p-6 text-white relative flex-shrink-0">
-                                <button type="button" onClick={() => setInterviewTarget(null)} className="absolute top-4 right-4 text-white/40 hover:text-white"><i className="fas fa-times" /></button>
-                                <h3 className="text-xl font-black uppercase">Schedule Interview Call</h3>
-                                <p className="text-white/60 text-xs mt-1">{interviewTarget.name}</p>
-                            </div>
-                            <form onSubmit={handleInterviewCall} className="p-6 space-y-4 overflow-y-auto flex-1">
-                                <div className="group">
-                                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 ml-1 group-focus-within:text-[#002147] transition-colors">Interview Venue / Location</label>
-                                    <div className="relative">
-                                        <i className="fas fa-location-dot absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-[#002147] transition-colors" />
-                                        <input
-                                            type="text"
-                                            required
-                                            value={interviewForm.venue}
-                                            onChange={e => setInterviewForm({ ...interviewForm, venue: e.target.value })}
-                                            className="w-full bg-slate-50 border border-slate-100 rounded-2xl pl-12 pr-5 py-4 text-sm font-bold text-slate-800 placeholder:text-slate-300 focus:bg-white focus:ring-0  outline-none transition-all"
-                                            placeholder="e.g. Society HQ or Online Link"
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className="group">
-                                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 ml-1">Interview Description / Details</label>
-                                    <textarea
-                                        rows="3"
-                                        required
-                                        value={interviewForm.message}
-                                        onChange={e => setInterviewForm({ ...interviewForm, message: e.target.value })}
-                                        className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4 text-sm font-bold text-slate-800 placeholder:text-slate-300 focus:bg-white outline-none resize-none"
-                                        placeholder="Schedule, instructions, or requirements..."
-                                    />
-                                </div>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                    <div className="group">
-                                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Dress Code (optional)</label>
-                                        <input type="text" value={interviewForm.dressCode} onChange={e => setInterviewForm({ ...interviewForm, dressCode: e.target.value })} className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-4 py-3 text-sm font-bold" placeholder="Business Formal" />
-                                    </div>
-                                    <div className="group">
-                                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Arrival Time (optional)</label>
-                                        <input type="text" value={interviewForm.arrivalTime} onChange={e => setInterviewForm({ ...interviewForm, arrivalTime: e.target.value })} className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-4 py-3 text-sm font-bold" placeholder="15 min early" />
-                                    </div>
-                                </div>
-                                <div className="group">
-                                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Interview Guide (optional)</label>
-                                    <textarea rows="2" value={interviewForm.guideNotes} onChange={e => setInterviewForm({ ...interviewForm, guideNotes: e.target.value })} className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-4 py-3 text-sm font-bold resize-none" placeholder="What to bring, how to prepare..." />
-                                </div>
-                                <div className="group">
-                                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Interviewer Focus Areas (optional)</label>
-                                    <textarea rows="2" value={interviewForm.focusAreas} onChange={e => setInterviewForm({ ...interviewForm, focusAreas: e.target.value })} className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-4 py-3 text-sm font-bold resize-none" placeholder="Leadership, communication, service..." />
-                                </div>
-                                <div className="group">
-                                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Reference Link (optional)</label>
-                                    <input type="url" value={interviewForm.linkUrl} onChange={e => setInterviewForm({ ...interviewForm, linkUrl: e.target.value })} className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-4 py-3 text-sm font-bold" placeholder="https://maps.google.com/... or online meeting link" />
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-4 pt-2 pb-2">
-                                    <button
-                                        type="button"
-                                        onClick={() => setInterviewTarget(null)}
-                                        className="px-6 py-4 bg-slate-100 text-slate-500 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-200 transition-all border border-slate-100 shadow-sm"
-                                    >
-                                        Cancel
-                                    </button>
-                                    <button
-                                        type="submit"
-                                        disabled={sendingCall}
-                                        className="px-6 py-4 bg-[#002147] text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 transition-all shadow-xl shadow-blue-900/20 flex items-center justify-center gap-2 disabled:opacity-50 active:scale-95"
-                                    >
-                                        {sendingCall ? <i className="fas fa-spinner fa-spin" /> : <i className="fas fa-paper-plane" />}
-                                        {sendingCall ? "Sending..." : "Confirm & Send"}
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
-                    </AdminModal>
-                )}
-
-                {interviewResultTarget && (
-                    <AdminModal open={!!interviewResultTarget} onClose={() => setInterviewResultTarget(null)} maxWidth="max-w-lg">
-                        <div className="bg-indigo-700 p-6 text-white">
-                            <h3 className="text-xl font-black uppercase">Record Interview Result</h3>
-                            <p className="text-white/70 text-xs mt-1">{interviewResultTarget.name}</p>
-                        </div>
-                        <form onSubmit={handleInterviewResult} className="p-6 space-y-4">
-                                <div>
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Result</label>
-                                    <select value={interviewResultForm.result} onChange={(e) => setInterviewResultForm({ ...interviewResultForm, result: e.target.value })} className={inputCls}>
-                                        <option value="passed">Passed — Congratulations email</option>
-                                        <option value="failed">Failed — Better luck email</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Note to candidate (emailed)</label>
-                                    <textarea rows={4} required minLength={5} value={interviewResultForm.note} onChange={(e) => setInterviewResultForm({ ...interviewResultForm, note: e.target.value })} className={`${inputCls} resize-none`} placeholder="Committee feedback or next steps..." />
-                                </div>
-                                <div className="flex gap-3">
-                                    <button type="button" onClick={() => setInterviewResultTarget(null)} className="flex-1 py-3 border rounded-xl text-[10px] font-black uppercase text-slate-500">Cancel</button>
-                                    <button type="submit" disabled={submittingResult} className="flex-1 py-3 bg-indigo-700 text-white rounded-xl text-[10px] font-black uppercase disabled:opacity-50">{submittingResult ? "Saving..." : "Save & Notify"}</button>
-                                </div>
-                            </form>
-                    </AdminModal>
-                )}
-
-                {feePromptTarget && (
-                    <AdminModal open={!!feePromptTarget} onClose={() => setFeePromptTarget(null)} maxWidth="max-w-lg">
-                        <div className="p-8 space-y-5">
-                            <h3 className="text-xl font-black text-slate-900 uppercase">Interview Passed — Next Step</h3>
-                            <p className="text-sm text-slate-600"><strong>{feePromptTarget.name}</strong> has been notified by email. What would you like to do next?</p>
-                            <div className="space-y-3">
-                                <button type="button" onClick={() => { openFeeRequestModal(feePromptTarget); setFeePromptTarget(null); }} className="w-full py-3 bg-[#002147] text-white rounded-xl text-[10px] font-black uppercase tracking-widest">Request Fee (PKR {membershipFee || 0})</button>
-                                <button type="button" onClick={() => { setWaiveTarget(feePromptTarget); setWaiveReason(""); setFeePromptTarget(null); }} className="w-full py-3 bg-purple-50 text-purple-700 border border-purple-200 rounded-xl text-[10px] font-black uppercase tracking-widest">Grant Free Membership</button>
-                                <button type="button" onClick={() => { setDirectApproveTarget(feePromptTarget); setDirectApproveNote(""); setFeePromptTarget(null); }} className="w-full py-3 bg-teal-50 text-teal-700 border border-teal-200 rounded-xl text-[10px] font-black uppercase tracking-widest">Direct Approve (Skip Fee)</button>
-                                <button type="button" onClick={() => setFeePromptTarget(null)} className="w-full py-3 border border-slate-200 text-slate-500 rounded-xl text-[10px] font-black uppercase tracking-widest">Later</button>
-                            </div>
-                        </div>
-                    </AdminModal>
-                )}
-
-                {feeRequestTarget && (
-                    <AdminModal open={!!feeRequestTarget} onClose={closeFeeRequestModal} maxWidth="max-w-xl">
-                        <form onSubmit={handleRequestFee} className="p-8 space-y-5">
-                            <div>
-                                <h3 className="text-xl font-black text-slate-900 uppercase">
-                                    {feeRequestIsRetry ? "Send Updated Fee Request" : "Send Membership Fee Request"}
-                                </h3>
-                                <p className="text-sm text-slate-500 mt-1">
-                                    To: <strong>{feeRequestTarget.name}</strong>
-                                    {feeRequestIsRetry && feeRequestTarget.feePayment?.amount != null && (
-                                        <> — previous amount was <strong>PKR {feeRequestTarget.feePayment.amount}</strong></>
-                                    )}
-                                    {" "}— member will receive full details by email
-                                </p>
-                            </div>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <div>
-                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1">Fee Amount (PKR) *</label>
-                                    <input type="number" min="1" required value={feeRequestForm.amount} onChange={(e) => setFeeRequestForm({ ...feeRequestForm, amount: e.target.value })} className={inputCls} />
-                                </div>
-                                <div>
-                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1">Membership Duration (Months) *</label>
-                                    <input type="number" min="1" required value={feeRequestForm.validityMonths} onChange={(e) => setFeeRequestForm({ ...feeRequestForm, validityMonths: e.target.value })} className={inputCls} />
-                                </div>
-                            </div>
-                            <div>
-                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1">Payment Deadline *</label>
-                                <input type="datetime-local" required value={feeRequestForm.deadline} onChange={(e) => setFeeRequestForm({ ...feeRequestForm, deadline: e.target.value })} className={inputCls} />
-                            </div>
-                            <div>
-                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2">Payment Channels (included in email) *</label>
-                                {allFeeChannels.length === 0 ? (
-                                    <p className="text-xs text-rose-500">No channels configured. Add them in Payment Management → Fee Settings first.</p>
-                                ) : (
-                                    <div className="space-y-2 max-h-40 overflow-y-auto border border-slate-100 rounded-xl p-3">
-                                        {allFeeChannels.map((ch) => (
-                                            <label key={ch.id} className="flex items-start gap-2 text-sm cursor-pointer">
-                                                <input type="checkbox" checked={feeRequestForm.selectedChannelIds.includes(ch.id)} onChange={(e) => {
-                                                    const ids = e.target.checked
-                                                        ? [...feeRequestForm.selectedChannelIds, ch.id]
-                                                        : feeRequestForm.selectedChannelIds.filter((id) => id !== ch.id);
-                                                    setFeeRequestForm({ ...feeRequestForm, selectedChannelIds: ids });
-                                                }} className="mt-1" />
-                                                <span>
-                                                    {ch.type === "Bank" ? `${ch.bankName} — ${ch.accountNumber}` : `${ch.walletType} — ${ch.number}`}
-                                                </span>
-                                            </label>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-                            <div>
-                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1">Message to Member (optional)</label>
-                                <textarea rows={3} value={feeRequestForm.message} onChange={(e) => setFeeRequestForm({ ...feeRequestForm, message: e.target.value })} className={`${inputCls} resize-none`} placeholder={feeRequestIsRetry ? "e.g. Your payment was insufficient. Please send the remaining PKR amount by the deadline." : "Any special instructions..."} />
-                            </div>
-                            <div className="flex gap-3 pt-2">
-                                <button type="submit" disabled={isProcessing || !allFeeChannels.length} className="flex-1 py-3 bg-[#002147] text-white rounded-xl text-[10px] font-black uppercase disabled:opacity-50">
-                                    {feeRequestIsRetry ? "Send Updated Request" : "Send Email & Open Portal"}
-                                </button>
-                                <button type="button" onClick={closeFeeRequestModal} className="px-4 py-3 border rounded-xl text-[10px] font-black uppercase text-slate-500">Cancel</button>
-                            </div>
-                        </form>
-                    </AdminModal>
-                )}
-
-                {waiveTarget && (
-                    <AdminModal open={!!waiveTarget} onClose={() => setWaiveTarget(null)} maxWidth="max-w-md">
-                        <form onSubmit={handleWaiveFee} className="p-8 space-y-4">
-                            <h3 className="text-lg font-bold">Grant Free Membership</h3>
-                            <p className="text-sm text-slate-500">Waive fee for <strong>{waiveTarget.name}</strong>. Member will be emailed.</p>
-                            <textarea rows={4} value={waiveReason} onChange={(e) => setWaiveReason(e.target.value)} placeholder="Reason (min 10 chars) — e.g. deserving candidate, scholarship" className={`${inputCls} resize-none`} required minLength={10} />
-                            <div className="flex gap-3">
-                                <button type="submit" disabled={isProcessing} className="flex-1 py-3 bg-emerald-600 text-white rounded-xl text-[10px] font-black uppercase disabled:opacity-50">Confirm & Notify</button>
-                                <button type="button" onClick={() => setWaiveTarget(null)} className="px-4 py-3 border rounded-xl text-[10px] font-black uppercase text-slate-500">Cancel</button>
-                            </div>
-                        </form>
-                    </AdminModal>
-                )}
-
-                {directApproveTarget && (
-                    <AdminModal open={!!directApproveTarget} onClose={() => setDirectApproveTarget(null)} maxWidth="max-w-md">
-                        <form onSubmit={handleDirectApprove} className="p-8 space-y-4">
-                            <h3 className="text-lg font-bold">Direct Approve Without Fee</h3>
-                            <p className="text-sm text-slate-500">Approve <strong>{directApproveTarget.name}</strong> immediately after interview — skips fee collection. Welcome email will be sent.</p>
-                            <textarea rows={3} value={directApproveNote} onChange={(e) => setDirectApproveNote(e.target.value)} placeholder="Optional note (recorded as waiver reason)" className={`${inputCls} resize-none`} />
-                            <div className="flex gap-3">
-                                <button type="submit" disabled={isProcessing} className="flex-1 py-3 bg-teal-600 text-white rounded-xl text-[10px] font-black uppercase disabled:opacity-50">Approve & Email Welcome</button>
-                                <button type="button" onClick={() => setDirectApproveTarget(null)} className="px-4 py-3 border rounded-xl text-[10px] font-black uppercase text-slate-500">Cancel</button>
-                            </div>
-                        </form>
-                    </AdminModal>
-                )}
-
-                {viewMember && (
-                    <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-md animate-fade-in" onClick={() => setViewMember(null)}>
-                        <div className="bg-white rounded-[3rem] w-full max-w-2xl shadow-2xl border border-white/20 overflow-hidden animate-zoom-in max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
-                            <div className="bg-gradient-to-br from-[#002147] to-blue-900 p-8 md:p-10 text-white relative flex-shrink-0">
-                                <button onClick={() => setViewMember(null)} className="absolute top-8 right-8 w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center hover:bg-white/20 transition-all">
-                                    <i className="fas fa-times" />
-                                </button>
-                                <div className="flex items-center gap-6">
-                                    <div className="w-20 h-20 bg-white/10 rounded-[2rem] flex items-center justify-center text-3xl font-black border border-white/20 backdrop-blur-xl">
-                                        {viewMember.name?.charAt(0)}
-                                    </div>
-                                    <div>
-                                        <h3 className="text-3xl font-black tracking-tight leading-tight uppercase">{viewMember.name}</h3>
-                                        <p className="text-blue-200 text-xs font-bold uppercase tracking-[0.3em] mt-1">Full Applicant Profile</p>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="p-8 md:p-10 overflow-y-auto custom-scrollbar flex-1 space-y-8">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                    <DetailItem label="Full Name" value={viewMember.name} icon="fa-user" />
-                                    <DetailItem label="Father Name" value={viewMember.father_name} icon="fa-user-friends" />
-                                    <DetailItem label="Email Address" value={viewMember.email} icon="fa-envelope" />
-                                    <DetailItem label="WhatsApp Number" value={viewMember.whatsapp} icon="fa-phone" />
-                                    <DetailItem label="University" value={viewMember.university} icon="fa-university" />
-                                    <DetailItem label="Degree Program" value={viewMember.program} icon="fa-graduation-cap" />
-                                    <DetailItem label="Province" value={viewMember.province} icon="fa-map" />
-                                    <DetailItem label="District" value={viewMember.district} icon="fa-map-location-dot" />
-                                    <DetailItem label="Tehsil" value={viewMember.tehsil || viewMember.city} icon="fa-location-crosshairs" />
-                                    <DetailItem label="Requested Role" value={getRequestedRoleLabel(viewMember)} icon="fa-user-tag" />
-                                    <DetailItem label="Joining Year" value={viewMember.joining_year} icon="fa-calendar-check" />
-                                    <DetailItem label="Passing Year" value={viewMember.passing_year} icon="fa-calendar-alt" />
-                                    {viewMember.sls_official_id && <DetailItem label="SLS Official ID" value={viewMember.sls_official_id} icon="fa-id-card" />}
-                                    {viewMember.cnic_number && <DetailItem label="CNIC Number" value={viewMember.cnic_number} icon="fa-address-card" />}
-                                </div>
-                                <div className="pt-6 border-t border-slate-100">
-                                    <DetailItem
-                                        label="Residential Address"
-                                        value={[viewMember.address, viewMember.tehsil || viewMember.city, viewMember.district, viewMember.province].filter(Boolean).join(", ")}
-                                        icon="fa-location-dot"
-                                        fullWidth
-                                    />
-                                </div>
-                            </div>
-
-                            <div className="p-6 bg-slate-50 border-t border-slate-100 flex justify-end gap-3">
-                                <button onClick={() => setViewMember(null)} className="px-8 py-3.5 bg-white border border-slate-200 text-slate-500 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-100 transition-all shadow-sm">
-                                    Close Portal
-                                </button>
-                                <button onClick={() => { approveSingle(viewMember._id); setViewMember(null); }} className="px-8 py-3.5 bg-emerald-500 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-600 transition-all shadow-lg shadow-emerald-900/20">
-                                    Approve Member
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                )}
-            </div>
-        );
-    };
-
-
-
-    // ── Events Tab ───────────────────────────────────────────
-    // ── Events Tab (Moved Outside to fix Search Strokes) ────────
-    const EventsTab = ({ events, fetchEvents, api, auth, notify, setSearchParams, getImgUrl, CountdownTimer, inputCls }) => {
-        const [activeSubTab, setActiveSubTab] = useState("view");
-        const [form, setForm] = useState({ title: "", description: "", date: "", endDate: "", location: "", is_active: true, time: "" });
-        const [creating, setCreating] = useState(false);
-        const [file, setFile] = useState(null);
-        const [preview, setPreview] = useState(null);
-        const [searchTerm, setSearchTerm] = useState("");
-        const [statusFilter, setStatusFilter] = useState("All");
-        const [selectedIds, setSelectedIds] = useState([]);
-        const [isProcessing, setIsProcessing] = useState(false);
-        const [bulkMode, setBulkMode] = useState(false);
-        const ldt = new Date();
-        const todayStr = `${ldt.getFullYear()}-${String(ldt.getMonth() + 1).padStart(2, '0')}-${String(ldt.getDate()).padStart(2, '0')}`;
-
-        const filteredEvents = events.filter(e => {
-            const matchSearch = e.title?.toLowerCase().includes(searchTerm.toLowerCase()) || e.location?.toLowerCase().includes(searchTerm.toLowerCase());
-            const endTimestamp = new Date(`${e.endDate || e.date}T23:59:59`).getTime();
-            const hasEnded = Date.now() > endTimestamp;
-            const matchStatus = statusFilter === "All" || (statusFilter === "Running" && !hasEnded) || (statusFilter === "Ended" && hasEnded);
-            return matchSearch && matchStatus;
-        });
-
-        const handleSelectAll = (e) => setSelectedIds(e.target.checked ? filteredEvents.map(ev => ev._id) : []);
-        const toggleSelect = (id) => setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
-
-        const handleFileChange = (e) => {
-            const selected = e.target.files[0];
-            if (selected) {
-                setFile(selected);
-                setPreview(URL.createObjectURL(selected));
-            }
-        };
-
-        const create = async (e) => {
-            e.preventDefault();
-
-            const now = new Date();
-            const isToday = form.date === todayStr;
-
-            if (!form.date) {
-                notify("Please select a date", "error");
-                return;
-            }
-
-            if (isToday && form.time) {
-                try {
-                    const eventStartTime = new Date(`${form.date}T${form.time}:00`);
-                    if (!isNaN(eventStartTime.getTime()) && eventStartTime < now) {
-                        notify("Selected time has already passed for today.", "error");
-                        return;
-                    }
-                } catch (err) {
-                    console.error("Date validation error:", e);
-                }
-            }
-
-            if (form.date < todayStr) {
-                notify("Event date cannot be in the past", "error");
-                return;
-            }
-
-            if (form.endDate && form.endDate < form.date) {
-                notify("The event cannot end before it starts.", "error");
-                return;
-            }
-
-            setCreating(true);
-            try {
-                const formData = new FormData();
-                formData.append("title", form.title);
-                formData.append("description", form.description);
-                formData.append("date", form.date);
-                formData.append("endDate", form.endDate || form.date);
-                formData.append("location", form.location);
-                formData.append("is_active", form.is_active);
-                formData.append("time", form.time);
-                if (file) formData.append("image", file);
-
-                await api.post("events/", formData, {
-                    headers: { ...auth.headers, "Content-Type": "multipart/form-data" }
-                });
-
-                notify(`Event "${form.title}" created!`);
-                setForm({ title: "", description: "", date: "", endDate: "", location: "", is_active: true, time: "" });
-                setFile(null); setPreview(null);
-                fetchEvents();
-                setActiveSubTab("view");
-            } catch (err) { notify(err.response?.data?.error || "Failed to create", "error"); }
-            finally { setCreating(false); }
-        };
-
-        const deleteSingle = async (id) => {
-            if (!window.confirm("Delete event?")) return;
-            setIsProcessing(true);
-            try { await api.delete(`events/${id}`, auth); notify("Event deleted"); fetchEvents(); }
-            catch { notify("Delete failed", "error"); }
-            finally { setIsProcessing(false); }
-        };
-
-        const handleBulkDelete = async () => {
-            if (!window.confirm(`Permanently remove ${selectedIds.length} event records?`)) return;
-            setIsProcessing(true);
-            let count = 0;
-            await Promise.all(selectedIds.map(async id => {
-                try { await api.delete(`events/${id}`, auth); count++; } catch (e) { }
-            }));
-            notify(`Removed ${count} out of ${selectedIds.length} events`);
-            fetchEvents();
-            setSelectedIds([]);
-            setIsProcessing(false);
-        };
-
-        const viewParticipants = (event) => {
-            setSearchParams({ tab: 'events', eventId: event._id });
-        };
-
-
-        return (
-            <div className="space-y-6 animate-fade-up">
-                <div className="flex gap-4 p-2 bg-slate-100 rounded-2xl w-fit">
-                    <button
-                        onClick={() => setActiveSubTab("view")}
-                        className={`py-2 px-6 text-xs font-black uppercase tracking-widest rounded-xl transition-all ${activeSubTab === "view" ? "bg-white text-[#002147] shadow-sm" : "text-slate-500 hover:text-slate-800"}`}
-                    >
-                        <i className="fas fa-list-ul mr-2"></i> View Events
-                    </button>
-                    <button
-                        onClick={() => setActiveSubTab("create")}
-                        className={`py-2 px-6 text-xs font-black uppercase tracking-widest rounded-xl transition-all ${activeSubTab === "create" ? "bg-white text-[#002147] shadow-sm" : "text-slate-500 hover:text-slate-800"}`}
-                    >
-                        <i className="fas fa-plus mr-2"></i> Create Event
-                    </button>
-                </div>
-
-                {activeSubTab === "create" && (
-                    <div className="bg-white border border-slate-200 rounded-3xl sm:rounded-[2.5rem] p-5 sm:p-10 shadow-xl relative overflow-hidden animate-fade-in">
-                        <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-blue-600 to-indigo-700" />
-                        <h3 className="text-xl sm:text-2xl font-black text-slate-800 mb-6 sm:mb-8 flex items-center gap-4">
-                            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-50 text-blue-600 rounded-xl sm:rounded-2xl flex items-center justify-center text-lg sm:text-xl shadow-inner"><i className="fas fa-calendar-plus" /></div>
-                            Create New Event
-                        </h3>
-                        <form onSubmit={create} className="space-y-8">
-                            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                                <div className="sm:col-span-2 lg:col-span-1">
-                                    <label className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 block ml-1">Event Title *</label>
-                                    <input type="text" placeholder="Official Event Name" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className={inputCls} required />
-                                </div>
-                                <div>
-                                    <label className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 block ml-1">Start Date *</label>
-                                    <input type="date" min={todayStr} value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value, endDate: e.target.value > form.endDate ? e.target.value : form.endDate })} className={inputCls} required />
-                                </div>
-                                <div>
-                                    <label className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 block ml-1">End Date *</label>
-                                    <input type="date" min={form.date || todayStr} value={form.endDate} onChange={(e) => setForm({ ...form, endDate: e.target.value })} className={inputCls} required />
-                                </div>
-                                <div>
-                                    <label className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 block ml-1">Starting Time</label>
-                                    <input type="time" value={form.time} onChange={(e) => setForm({ ...form, time: e.target.value })} className={inputCls} />
-                                </div>
-                                <div>
-                                    <label className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 block ml-1">Physical Location</label>
-                                    <input type="text" placeholder="e.g. Main Auditorium, UET" value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} className={inputCls} />
-                                </div>
-                                <div>
-                                    <label className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 block ml-1">Event Poster</label>
-                                    <div className="flex items-center gap-4">
-                                        <label className="flex-1 flex items-center justify-center gap-3 px-4 py-3 bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl cursor-pointer hover:border-[#002147] hover:bg-white transition-all text-slate-400 text-xs font-black uppercase tracking-widest">
-                                            <i className="fas fa-cloud-arrow-up text-sm" />
-                                            {file ? file.name : "Select Asset"}
-                                            <input type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
-                                        </label>
-                                        {preview && (
-                                            <div className="w-14 h-14 rounded-xl overflow-hidden border-2 border-slate-100 shadow-sm">
-                                                <img src={preview} alt="Preview" className="w-full h-full object-cover" />
-                                            </div>
-                                        )}
-                                    </div>
-                                    <ImageUploadHint />
-                                </div>
-                            </div>
-                            <div>
-                                <label className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 block ml-1">Event Description</label>
-                                <textarea placeholder="Provide detailed event information..." value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={4} className={`${inputCls} resize-none`} />
-                            </div>
-                            <div className="flex flex-col sm:flex-row justify-between items-center gap-6 pt-4 border-t border-slate-50">
-                                <div className="flex items-center gap-4">
-                                    <label className="relative inline-flex items-center cursor-pointer">
-                                        <input type="checkbox" checked={form.is_active} onChange={(e) => setForm({ ...form, is_active: e.target.checked })} className="sr-only peer" />
-                                        <div className="w-12 h-6 bg-slate-200 rounded-full peer peer-checked:bg-emerald-500 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full shadow-inner" />
-                                    </label>
-                                    <span className={`text-xs font-black uppercase tracking-widest ${form.is_active ? "text-emerald-600" : "text-slate-400"}`}>{form.is_active ? "Live Status" : "Standby Status"}</span>
-                                </div>
-                                <button type="submit" disabled={creating}
-                                    className={`px-12 py-4 rounded-2xl text-xs font-black uppercase tracking-[0.3em] transition-all shadow-xl ${creating ? "bg-slate-100 text-slate-400 cursor-not-allowed" : "bg-[#002147] text-white hover:bg-slate-800 shadow-blue-900/20 active:scale-95"}`}>
-                                    {creating ? "Processing..." : "Create Event"}
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                )}
-
-                {activeSubTab === "view" && (
-                    <div className="space-y-8 animate-fade-in relative">
-                        {selectedIds.length > 0 && (
-                            <div className="fixed sm:absolute bottom-6 sm:bottom-auto sm:top-0 left-1/2 -translate-x-1/2 sm:-translate-y-1/2 z-[100] bg-slate-900 text-white px-5 sm:px-6 py-3 rounded-2xl sm:rounded-full shadow-2xl shadow-blue-900/40 flex flex-wrap items-center justify-center gap-4 animate-fade-up border border-slate-700 w-[90%] sm:w-auto ring-4 ring-slate-900/20 backdrop-blur-md">
-                                <span className="text-[10px] sm:text-xs font-bold bg-white/10 px-3 py-1 rounded-xl sm:rounded-full whitespace-nowrap">{selectedIds.length} Selected</span>
-                                <div className="hidden sm:block w-px h-4 bg-white/20" />
-                                <button onClick={handleBulkDelete} disabled={isProcessing} className="text-rose-400 hover:text-rose-300 text-[10px] sm:text-xs font-black uppercase tracking-widest transition-colors flex items-center gap-2">
-                                    {isProcessing ? <i className="fas fa-spinner fa-spin" /> : <i className="fas fa-trash-alt" />} Delete Records
-                                </button>
-                            </div>
-                        )}
-
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
-                            <div className="bg-white p-5 sm:p-8 rounded-2xl sm:rounded-[2rem] border border-slate-100 shadow-xl shadow-slate-200/40">
-                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Posts</p>
-                                <p className="text-2xl sm:text-3xl font-black text-slate-800 uppercase">{events.length}</p>
-                            </div>
-                            <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-xl shadow-slate-200/40">
-                                <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1">Active / Running</p>
-                                <p className="text-3xl font-black text-emerald-500 uppercase">
-                                    {events.filter(e => Date.now() <= new Date(`${e.endDate || e.date}T23:59:59`).getTime()).length}
-                                </p>
-                            </div>
-                            <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-xl shadow-slate-200/40">
-                                <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1">Ended / Archive</p>
-                                <p className="text-3xl font-black text-slate-300 uppercase">{events.filter(e => Date.now() > new Date(`${e.endDate || e.date}T23:59:59`).getTime()).length}</p>
-                            </div>
-                        </div>
-
-                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                            <h3 className="text-xl font-black text-slate-800 tracking-tight">Event Registry</h3>
-                            <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-                                <button onClick={() => { setBulkMode(!bulkMode); setSelectedIds([]); }} className={`px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-widest transition-all ${bulkMode ? 'bg-[#002147] text-white shadow-sm' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>
-                                    <i className="fas fa-layer-group mr-2" /> {bulkMode ? "Done" : "Select"}
-                                </button>
-                                <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold text-slate-600  outline-none shadow-sm cursor-pointer hover:border-slate-300 transition-all">
-                                    <option value="All">All Statuses</option>
-                                    <option value="Running">Running Active</option>
-                                    <option value="Ended">Archive Ended</option>
-                                </select>
-                                <div className="relative w-full sm:w-64">
-                                    <i className="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm" />
-                                    <input type="text" placeholder="Search events..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl pl-11 pr-4 py-2.5 text-slate-800 text-sm shadow-sm outline-none  focus:ring-0" />
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="sm:hidden space-y-2">
-                            {filteredEvents.length === 0 ? (
-                                <div className="text-center py-24 bg-white rounded-[2rem] border border-slate-100 shadow-sm">
-                                    <i className="fas fa-calendar-xmark text-4xl mb-4 block text-slate-100" />
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-300">No events found</p>
-                                </div>
-                            ) : filteredEvents.map((ev) => {
-                                const hasEnded = Date.now() > new Date(`${ev.endDate || ev.date}T23:59:59`).getTime();
-                                return (
-                                    <div key={ev._id} className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden relative transition-all p-3 space-y-3">
-                                        <div className="flex items-center justify-between gap-3">
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-10 h-10 bg-slate-100 rounded-lg overflow-hidden shrink-0">
-                                                    {ev.image_url ? (
-                                                        <img src={getImgUrl(ev.image_url)} className="w-full h-full object-cover" />
-                                                    ) : (
-                                                        <div className="w-full h-full flex items-center justify-center">
-                                                            <i className="fas fa-calendar-alt text-lg text-slate-200" />
-                                                        </div>
-                                                    )}
-                                                </div>
-                                                <div>
-                                                    <h4 className="font-bold text-slate-800 text-xs leading-tight mb-1">{ev.title}</h4>
-                                                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1">
-                                                        <i className="fas fa-users text-blue-500" /> {ev.participants?.length || 0} Joined
-                                                    </p>
-                                                </div>
-                                            </div>
-                                            <span className={`px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-widest ${hasEnded ? "bg-slate-100 text-slate-500" : "bg-emerald-50 text-emerald-600 border border-emerald-100"
-                                                }`}>
-                                                {hasEnded ? "Ended" : "Live"}
-                                            </span>
-                                        </div>
-
-                                        <div className="flex gap-2">
-                                            <button onClick={() => viewParticipants(ev)} className="flex-1 bg-[#002147] text-white py-2 rounded-lg text-[9px] font-black uppercase tracking-widest">
-                                                Participants
-                                            </button>
-                                            <button onClick={() => deleteSingle(ev._id)} className="w-10 bg-rose-50 text-rose-500 rounded-lg flex items-center justify-center border border-rose-100">
-                                                <i className="fas fa-trash-alt" />
-                                            </button>
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-
-                        <div className="hidden sm:block bg-white rounded-[2.5rem] border border-slate-200 shadow-2xl overflow-hidden">
-                            <div className="overflow-x-auto">
-                                <table className="w-full text-sm">
-                                    <thead>
-                                        <tr className="bg-slate-50 border-b border-slate-100 text-left">
-                                            {bulkMode && (<th className="px-8 py-5 w-10 text-center transition-all">
-                                                <input type="checkbox" checked={selectedIds.length === filteredEvents.length && filteredEvents.length > 0} onChange={handleSelectAll} className="w-4 h-4 text-[#002147] border-slate-300 rounded focus:ring-[#002147] cursor-pointer" />
-                                            </th>)}
-                                            <th className="px-8 py-5 text-xs font-black text-slate-400 uppercase tracking-widest">Event Title</th>
-                                            <th className="px-8 py-5 text-xs font-black text-slate-400 uppercase tracking-widest">Schedule</th>
-                                            <th className="px-8 py-5 text-xs font-black text-slate-400 uppercase tracking-widest">Registrations</th>
-                                            <th className="px-8 py-5 text-xs font-black text-slate-400 uppercase tracking-widest">Status</th>
-                                            <th className="px-8 py-5 text-xs font-black text-slate-400 uppercase tracking-widest text-right">Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-slate-50">
-                                        {filteredEvents.length === 0 ? (
-                                            <tr><td colSpan={6} className="text-center py-24 text-slate-300">
-                                                <i className="fas fa-calendar-xmark text-5xl mb-4 block opacity-10" />
-                                                <p className="text-xs font-bold uppercase tracking-widest">No events found in registry.</p>
-                                            </td></tr>
-                                        ) : filteredEvents.map((ev) => {
-                                            const d = ev.endDate || ev.date;
-                                            const dateStr = d ? new Date(d).toISOString().split('T')[0] : "";
-                                            const targetDate = `${dateStr}T${ev.time || "23:59"}:00`;
-
-                                            return (
-                                                <tr key={ev._id} className={`transition-colors group ${selectedIds.includes(ev._id) ? 'bg-[#002147]/5' : 'hover:bg-slate-50/50'}`}>
-                                                    {bulkMode && (<td className="px-8 py-6 text-center transition-all">
-                                                        <input type="checkbox" checked={selectedIds.includes(ev._id)} onChange={() => toggleSelect(ev._id)} className="w-4 h-4 text-[#002147] border-slate-300 rounded focus:ring-[#002147] cursor-pointer" />
-                                                    </td>)}
-                                                    <td className="px-8 py-6">
-                                                        <div className="flex items-center gap-4">
-                                                            {ev.image_url && <img src={getImgUrl(ev.image_url)} className="w-12 h-12 rounded-xl object-cover border border-slate-100 shadow-sm" />}
-                                                            <div>
-                                                                <p className="font-black text-slate-800 leading-tight">{ev.title}</p>
-                                                                <p className="text-xs text-slate-400 font-bold mt-0.5"><i className="fas fa-location-dot mr-1" />{ev.location || "TBA"}</p>
-                                                            </div>
-                                                        </div>
-                                                    </td>
-                                                    <td className="px-8 py-6">
-                                                        <p className="text-xs font-bold text-slate-600">{new Date(ev.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })} - {new Date(ev.endDate || ev.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}</p>
-                                                        <p className="text-xs text-slate-400 font-bold mt-0.5 uppercase tracking-widest">{ev.time || "TBA"}</p>
-                                                    </td>
-                                                    <td className="px-8 py-6">
-                                                        <button onClick={() => viewParticipants(ev)} className="bg-slate-100 text-slate-600 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-[#002147] hover:text-white transition-all shadow-sm">
-                                                            <i className="fas fa-users mr-2" />
-                                                            {ev.participants?.length || 0} Registered
-                                                        </button>
-                                                    </td>
-                                                    <td className="px-8 py-6">
-                                                        <CountdownTimer targetDate={targetDate} />
-                                                    </td>
-                                                    <td className="px-8 py-6 text-right">
-                                                        <button onClick={() => deleteSingle(ev._id)} className="text-rose-400 hover:text-rose-600 p-3 hover:bg-rose-50 rounded-xl transition-all">
-                                                            <i className="fas fa-trash-alt" />
-                                                        </button>
-                                                    </td>
-                                                </tr>
-                                            );
-                                        })}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                )}
-            </div>
-        );
-    };
-
-
-    // ── Participants Static View (Moved Outside) ──────────────
-    const ParticipantsView = ({ eventId, events, onBack, auth, api, notify, fetchEvents }) => {
-        const [participants, setParticipants] = useState([]);
-        const [loading, setLoading] = useState(true);
-        const [searchTerm, setSearchTerm] = useState("");
-        const [selectedMemberIds, setSelectedMemberIds] = useState([]);
-        const [isProcessing, setIsProcessing] = useState(false);
-
-        const event = events.find(e => e._id === eventId);
-        const eventName = event?.title || "Event Records";
-
-        const loadParticipants = async () => {
-            setLoading(true);
-            try {
-                const res = await api.get(`events/${eventId}/participants?limit=1000`, auth);
-                // Filter out Admins and Superusers from attendance
-                const nonAdminParticipants = res.data.filter(p => {
-                    const role = p.memberId?.role;
-                    return role !== 'Admin' && role !== 'Superuser';
-                });
-                setParticipants(nonAdminParticipants);
-            } catch (err) {
-                notify("Failed to load participants", "error");
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        useEffect(() => {
-            loadParticipants();
-        }, [eventId]);
-
-        const handleToggleAttendance = async (memberId, currentStatus) => {
-            try {
-                const mIdStr = String(memberId);
-                await api.patch(`events/${eventId}/attendance`, { memberId: mIdStr, attended: !currentStatus }, auth);
-
-                setParticipants(prev => prev.map(p => {
-                    const pMId = p.memberId?._id || p.memberId;
-                    return String(pMId) === mIdStr ? { ...p, attended: !currentStatus } : p;
-                }));
-
-                fetchEvents();
-                notify(`Status updated!`);
-            } catch (err) {
-                notify("Attendance update failed", "error");
-            }
-        };
-
-        const handleBulkAttendance = async (status) => {
-            const idsToUpdate = selectedMemberIds.length > 0 ? selectedMemberIds : null;
-            const targetCount = idsToUpdate ? idsToUpdate.length : participants.length;
-
-            if (!window.confirm(`Mark ${targetCount} selected as ${status ? 'PRESENT' : 'ABSENT'}?`)) return;
-
-            setIsProcessing(true);
-            try {
-                await api.patch(`events/${eventId}/attendance/bulk`, { attended: status, ids: idsToUpdate }, auth);
-                setParticipants(prev => prev.map(p => {
-                    const pMId = p.memberId?._id || p.memberId;
-                    if (!idsToUpdate || idsToUpdate.includes(String(pMId))) {
-                        return { ...p, attended: status };
-                    }
-                    return p;
-                }));
-                fetchEvents();
-                notify(`Updated ${targetCount} records!`);
-                setSelectedMemberIds([]);
-            } catch (err) {
-                notify("Bulk action failed", "error");
-            } finally {
-                setIsProcessing(false);
-            }
-        };
-
-        const filteredParticipants = participants.filter(p =>
-            p.memberId?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            p.memberId?.member_id?.toLowerCase().includes(searchTerm.toLowerCase())
-        );
-
-        const toggleMemberSelection = (id) => {
-            const idStr = String(id);
-            setSelectedMemberIds(prev => prev.includes(idStr) ? prev.filter(i => i !== idStr) : [...prev, idStr]);
-        };
-
-        return (
-            <div className="max-w-6xl mx-auto bg-white min-h-screen p-4 sm:p-8 lg:p-12 animate-fade-in shadow-2xl rounded-[2rem] sm:rounded-[3.5rem] border border-slate-100 mt-2 sm:mt-6 mb-20 overflow-hidden">
-                {/* Header Section */}
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 mb-10 border-b border-slate-50 pb-8 sm:pb-10">
-                    <div className="space-y-4 w-full sm:w-auto">
-                        <button onClick={onBack} className="flex items-center gap-2 text-slate-400 hover:text-slate-900 transition-all text-[10px] sm:text-xs font-black uppercase tracking-widest group">
-                            <i className="fas fa-arrow-left group-hover:-translate-x-1 transition-transform" /> Back to Registry
-                        </button>
-                        <div>
-                            <h2 className="text-xl sm:text-3xl font-black text-[#002147] uppercase italic tracking-tighter leading-none">{eventName}</h2>
-                            <p className="text-slate-400 text-[8px] sm:text-[10px] font-black uppercase tracking-[0.3em] mt-2">Official Attendance & Participation Log</p>
-                        </div>
-                    </div>
-
-                    <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-                        {selectedMemberIds.length > 0 && (
-                            <div className="flex gap-2 animate-fade-up">
-                                <button onClick={() => handleBulkAttendance(false)} disabled={isProcessing} className="flex-1 sm:flex-none px-4 py-2.5 bg-slate-50 text-slate-500 rounded-xl text-[9px] font-black uppercase tracking-widest border border-slate-200 hover:bg-slate-100 transition-all">
-                                    Absent
-                                </button>
-                                <button onClick={() => handleBulkAttendance(true)} disabled={isProcessing} className="flex-1 sm:flex-none px-4 py-2.5 bg-emerald-50 text-emerald-600 rounded-xl text-[9px] font-black uppercase tracking-widest border border-emerald-100 hover:bg-emerald-600 hover:text-white transition-all shadow-sm">
-                                    Present
-                                </button>
-                            </div>
-                        )}
-                        <div className="relative flex-1 sm:w-64">
-                            <i className="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 text-xs" />
-                            <input
-                                type="text"
-                                placeholder="Filter participants..."
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                className="w-full bg-slate-50 border border-slate-100 rounded-xl pl-10 pr-4 py-2.5 text-xs font-bold text-slate-800 placeholder:text-slate-300 focus:bg-white focus:ring-4 focus:ring-blue-500/5 transition-all outline-none"
-                            />
-                        </div>
-                    </div>
-                </div>
-
-                {/* Content Area */}
-                {loading ? (
-                    <div className="py-32 text-center">
-                        <div className="w-10 h-10 border-4 border-slate-100 border-t-[#002147] rounded-full animate-spin mx-auto mb-4" />
-                        <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest">Retrieving Registry...</p>
-                    </div>
-                ) : filteredParticipants.length === 0 ? (
-                    <div className="py-24 text-center bg-slate-50/50 rounded-[2.5rem] border-2 border-dashed border-slate-100">
-                        <i className="fas fa-user-slash text-slate-200 text-5xl mb-4" />
-                        <p className="text-slate-400 text-xs font-black uppercase tracking-widest">No matching records found</p>
-                    </div>
-                ) : (
-                    <div className="space-y-3 sm:space-y-4">
-                        {/* List Header - Hidden on Mobile */}
-                        <div className="hidden sm:flex items-center px-6 py-4 bg-slate-50 rounded-2xl border border-slate-100 mb-4">
-                            <div className="w-10 flex justify-center">
-                                <input
-                                    type="checkbox"
-                                    checked={selectedMemberIds.length === participants.length && participants.length > 0}
-                                    onChange={() => {
-                                        if (selectedMemberIds.length === participants.length) setSelectedMemberIds([]);
-                                        else setSelectedMemberIds(participants.map(p => String(p.memberId?._id || p.memberId)));
-                                    }}
-                                    className="w-4 h-4 rounded border-slate-300 text-[#002147] focus:ring-[#002147]"
-                                />
-                            </div>
-                            <div className="flex-1 ml-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Participant Details</div>
-                            <div className="w-32 text-[10px] font-black text-slate-400 uppercase tracking-widest">Joining Date</div>
-                            <div className="w-40 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Attendance Status</div>
-                        </div>
-
-                        {filteredParticipants.map((p, idx) => {
-                            const mId = p.memberId?._id || p.memberId;
-                            const mIdStr = String(mId);
-                            const isSelected = selectedMemberIds.includes(mIdStr);
-
-                            return (
-                                <div key={idx} className={`flex flex-col sm:flex-row items-start sm:items-center p-4 sm:p-5 rounded-[1.5rem] sm:rounded-3xl border transition-all duration-300 group hover:shadow-xl hover:shadow-slate-200/40 ${isSelected ? 'bg-blue-50/50 border-blue-200 shadow-lg shadow-blue-900/5' : 'bg-white border-slate-100 shadow-sm'}`}>
-                                    <div className="flex items-center w-full sm:w-auto mb-4 sm:mb-0">
-                                        <div className="w-8 sm:w-10 flex justify-center shrink-0">
-                                            <input
-                                                type="checkbox"
-                                                checked={isSelected}
-                                                onChange={() => toggleMemberSelection(mIdStr)}
-                                                className="w-4 h-4 rounded border-slate-300 text-[#002147] focus:ring-[#002147] cursor-pointer"
-                                            />
-                                        </div>
-                                        <div className="flex-1 sm:flex-none flex items-center gap-4 ml-2 sm:ml-4 min-w-0">
-                                            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-slate-900 text-white rounded-xl sm:rounded-2xl flex items-center justify-center font-black text-sm uppercase shrink-0 shadow-lg group-hover:scale-105 transition-transform">
-                                                {p.memberId?.name?.charAt(0) || "M"}
-                                            </div>
-                                            <div className="min-w-0">
-                                                <p className="font-black text-slate-800 leading-none mb-1 text-sm sm:text-base truncate group-hover:text-[#002147] transition-colors">{p.memberId?.name}</p>
-                                                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest truncate">{p.memberId?.member_id}</p>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className="flex items-center justify-between sm:justify-end gap-6 w-full sm:w-auto sm:ml-auto border-t sm:border-t-0 pt-4 sm:pt-0 border-slate-50">
-                                        <div className="text-left sm:text-right sm:w-32">
-                                            <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Registered</p>
-                                            <p className="text-[10px] font-bold text-slate-700">{new Date(p.joinedAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
-                                        </div>
-
-                                        <button
-                                            onClick={() => handleToggleAttendance(mIdStr, p.attended)}
-                                            className={`sm:w-36 px-5 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-2 border-2 ${p.attended
-                                                ? 'bg-emerald-500 text-white border-emerald-500 shadow-lg shadow-emerald-200'
-                                                : 'bg-white text-slate-400 border-slate-100 hover:border-emerald-500 hover:text-emerald-600'
-                                                }`}
-                                        >
-                                            {p.attended ? <i className="fas fa-check-circle" /> : <i className="fas fa-circle-notch opacity-20" />}
-                                            {p.attended ? 'Present' : 'Mark Present'}
-                                        </button>
-                                    </div>
-                                </div>
-                            );
-                        })}
-                    </div>
-                )}
-
-                <div className="mt-16 sm:mt-24 pt-12 border-t border-slate-50 flex flex-col items-center opacity-40">
-                    <div className="w-12 h-0.5 sm:w-16 sm:h-1 bg-slate-900 mb-4" />
-                    <p className="text-[8px] sm:text-[9px] font-black text-slate-400 uppercase tracking-[0.5em] text-center">Security Verification: {participants.length} Active Participants</p>
-                </div>
-            </div>
-        );
-    };
-
-    // ── Announcements Tab (Moved Outside) ────────────────────
-    const AnnouncementsTab = ({ announcements, fetchAnnouncements, api, auth, notify, inputCls }) => {
-        const [form, setForm] = useState({ title: "", content: "", type: "Info" });
-        const [submitting, setSubmitting] = useState(false);
-        const [searchTerm, setSearchTerm] = useState("");
-        const [selectedIds, setSelectedIds] = useState([]);
-        const [isProcessing, setIsProcessing] = useState(false);
-        const [bulkMode, setBulkMode] = useState(false);
-
-        const filtered = announcements.filter(a => a.title?.toLowerCase().includes(searchTerm.toLowerCase()) || a.content?.toLowerCase().includes(searchTerm.toLowerCase()));
-
-        const handleSelectAll = (e) => setSelectedIds(e.target.checked ? filtered.map(a => a._id) : []);
-        const toggleSelect = (id) => setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
-
-        const create = async (e) => {
-            e.preventDefault(); setSubmitting(true);
-            try {
-                await api.post("announcements", form, auth);
-                notify("Announcement published successfully!");
-                setForm({ title: "", content: "", type: "Info" });
-                fetchAnnouncements();
-            } catch { notify("Failed to publish announcement", "error"); }
-            finally { setSubmitting(false); }
-        };
-
-        const deleteSingle = async (id) => {
-            if (!window.confirm("Permanently remove this announcement?")) return;
-            setIsProcessing(true);
-            try {
-                await api.delete(`announcements/${id}`, auth);
-                notify("Announcement removed");
-                fetchAnnouncements();
-            } catch { notify("Removal failed", "error"); }
-            finally { setIsProcessing(false); }
-        };
-
-        const handleBulkDelete = async () => {
-            if (!window.confirm(`Permanently remove ${selectedIds.length} announcements?`)) return;
-            setIsProcessing(true);
-            let count = 0;
-            await Promise.all(selectedIds.map(async id => {
-                try { await api.delete(`announcements/${id}`, auth); count++; } catch (e) { }
-            }));
-            notify(`Deleted ${count} announcements`);
-            fetchAnnouncements();
-            setSelectedIds([]);
-            setIsProcessing(false);
-        };
-
-        return (
-            <div className="space-y-10 animate-fade-up relative">
-                {selectedIds.length > 0 && (
-                    <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 bg-slate-900 text-white px-6 py-3 rounded-full shadow-2xl shadow-blue-900/40 flex items-center gap-4 animate-fade-up border border-slate-700">
-                        <span className="text-xs font-bold bg-white/10 px-3 py-1 rounded-full">{selectedIds.length} Selected</span>
-                        <div className="w-px h-4 bg-white/20" />
-                        <button onClick={handleBulkDelete} disabled={isProcessing} className="text-rose-400 hover:text-rose-300 text-xs font-black uppercase tracking-widest transition-colors flex items-center gap-2">
-                            {isProcessing ? <i className="fas fa-spinner fa-spin" /> : <i className="fas fa-trash-alt" />} Delete Postings
-                        </button>
-                    </div>
-                )}
-                <div className="bg-white border border-slate-200 rounded-[2.5rem] p-6 sm:p-10 shadow-xl relative overflow-hidden group">
-                    <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-indigo-700" />
-                    <div className="flex items-center gap-4 mb-8">
-                        <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center text-xl shadow-inner group-hover:scale-110 transition-transform">
-                            <i className="fas fa-bullhorn" />
-                        </div>
-                        <div>
-                            <h3 className="text-xl sm:text-2xl font-black text-slate-800 tracking-tight leading-none mb-1">Society Broadcast</h3>
-                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">Draft a new official announcement</p>
-                        </div>
-                    </div>
-
-                    <form onSubmit={create} className="space-y-6">
-                        <div className="grid sm:grid-cols-3 gap-5">
-                            <div className="sm:col-span-2">
-                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2 block ml-1">Broadcast Title *</label>
-                                <input type="text" placeholder="e.g. Annual Symposium 2026 Registration" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className={`${inputCls} !py-4`} required />
-                            </div>
-                            <div>
-                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2 block ml-1">Priority Channel</label>
-                                <select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })} className={`${inputCls} !py-4 bg-white`}>
-                                    <option value="Info">General Info</option>
-                                    <option value="Urgent">Urgent / Critical</option>
-                                    <option value="Success">Achievement</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div>
-                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2 block ml-1">Detailed Message Content</label>
-                            <textarea placeholder="Type your announcement content here..." value={form.content} onChange={(e) => setForm({ ...form, content: e.target.value })} rows={4} className={`${inputCls} resize-none !py-4`} required />
-                        </div>
-                        <div className="flex justify-end pt-2">
-                            <button type="submit" disabled={submitting}
-                                className={`w-full sm:w-auto px-10 py-4 rounded-2xl text-xs font-black uppercase tracking-[0.3em] transition-all flex items-center justify-center gap-3 ${submitting ? "bg-slate-100 text-slate-400 cursor-not-allowed" : "bg-indigo-600 text-white hover:bg-[#002147] shadow-xl shadow-indigo-900/10 active:scale-[0.98]"
-                                    }`}>
-                                {submitting ? <i className="fas fa-spinner fa-spin" /> : <i className="fas fa-paper-plane" />}
-                                {submitting ? "BROADCASTING..." : "RELEASE UPDATE"}
-                            </button>
-                        </div>
-                    </form>
-                </div>
-
-                <div className="bg-white rounded-[2.5rem] shadow-2xl border border-slate-100/50 overflow-hidden">
-                    <div className="p-6 sm:p-10 border-b border-slate-100 bg-slate-50/30">
-                        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
-                            <div>
-                                <p className="text-[10px] font-black text-indigo-500 uppercase tracking-[0.3em] mb-2 pl-1">Historical Archive</p>
-                                <h4 className="text-2xl font-black text-slate-800 tracking-tight">System Broadcasts</h4>
-                            </div>
-
-                            <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
-                                <div className="relative flex-1 sm:w-72">
-                                    <i className="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-xs" />
-                                    <input type="text" placeholder="Search broadcasts..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full bg-white border border-slate-200 rounded-2xl pl-11 pr-4 py-3 text-sm font-bold text-slate-800 placeholder:text-slate-300 focus:border-indigo-500 outline-none transition-all" />
-                                </div>
-                                <button onClick={() => { setBulkMode(!bulkMode); setSelectedIds([]); }}
-                                    className={`px-6 py-3 rounded-2xl text-xs font-black uppercase tracking-widest transition-all border ${bulkMode ? 'bg-[#002147] text-white border-[#002147]' : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'
-                                        }`}>
-                                    {bulkMode ? "CANCEL" : "SELECT RECORDS"}
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="p-4 sm:p-10">
-                        <div className="sm:hidden space-y-2">
-                            {filtered.length === 0 ? (
-                                <div className="text-center py-20 bg-slate-50 rounded-[2rem] border-2 border-dashed border-slate-100">
-                                    <i className="fas fa-comment-slash text-4xl mb-4 block text-slate-100" />
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-300">Archive is empty</p>
-                                </div>
-                            ) : filtered.map((ann) => (
-                                <div key={ann._id} className="relative group overflow-hidden bg-white rounded-2xl border border-slate-100 shadow-sm transition-all space-y-2 p-3">
-                                    <div className="flex justify-between items-start gap-3">
-                                        <div className="flex-1">
-                                            <div className="flex items-center gap-2 mb-1">
-                                                <span className={`px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-widest ${ann.type === 'Urgent' ? 'bg-rose-500 text-white' :
-                                                    ann.type === 'Success' ? 'bg-emerald-500 text-white' :
-                                                        'bg-[#002147] text-white'
-                                                    }`}>
-                                                    {ann.type}
-                                                </span>
-                                                <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">{new Date(ann.createdAt).toLocaleDateString()}</span>
-                                            </div>
-                                            <h4 className="font-bold text-slate-800 text-xs leading-none mb-1.5">{ann.title}</h4>
-                                            <p className="text-[10px] text-slate-500 font-medium line-clamp-1 italic">"{ann.content}"</p>
-                                        </div>
-                                        <button onClick={() => deleteSingle(ann._id)} className="w-8 h-8 flex items-center justify-center bg-rose-50 text-rose-500 rounded-lg hover:bg-rose-500 hover:text-white transition-all shrink-0">
-                                            <i className="fas fa-trash-alt text-[10px]" />
-                                        </button>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-
-                        <div className="hidden sm:block overflow-x-auto rounded-[2rem] border border-slate-100 shadow-sm">
-                            <table className="w-full text-sm">
-                                <thead>
-                                    <tr className="bg-slate-50/50 border-b border-slate-100 text-left">
-                                        {bulkMode && (<th className="px-8 py-5 w-10 text-center transition-all">
-                                            <input type="checkbox" checked={selectedIds.length === filtered.length && filtered.length > 0} onChange={handleSelectAll} className="w-4 h-4 text-[#002147] border-slate-300 rounded focus:ring-[#002147] cursor-pointer" />
-                                        </th>)}
-                                        <th className="px-8 py-5 text-xs font-black text-slate-400 uppercase tracking-widest">Broadcast Details</th>
-                                        <th className="px-8 py-5 text-xs font-black text-slate-400 uppercase tracking-widest">Message Preview</th>
-                                        <th className="px-8 py-5 text-xs font-black text-slate-400 uppercase tracking-widest">Release Date</th>
-                                        <th className="px-8 py-5 text-xs font-black text-slate-400 uppercase tracking-widest text-right">Delete</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-50">
-                                    {filtered.length === 0 ? (
-                                        <tr><td colSpan={5} className="text-center py-20 text-slate-300">
-                                            <i className="fas fa-comment-slash text-4xl mb-3 block opacity-20" />
-                                            <p className="text-xs font-black uppercase tracking-widest">No history recorded yet</p>
-                                        </td></tr>
-                                    ) : filtered.map((ann) => (
-                                        <tr key={ann._id} className={`transition-colors ${selectedIds.includes(ann._id) ? 'bg-[#002147]/5' : 'hover:bg-slate-50/50'}`}>
-                                            {bulkMode && (<td className="px-8 py-6 text-center transition-all">
-                                                <input type="checkbox" checked={selectedIds.includes(ann._id)} onChange={() => toggleSelect(ann._id)} className="w-4 h-4 text-[#002147] border-slate-300 rounded focus:ring-[#002147] cursor-pointer" />
-                                            </td>)}
-                                            <td className="px-8 py-6">
-                                                <p className="font-black text-slate-800 leading-tight mb-2">{ann.title}</p>
-                                                <div className="flex items-center gap-2 mt-1">
-                                                    <span className={`px-3 py-1 rounded-lg text-xs font-black uppercase tracking-widest shadow-sm ${ann.type === 'Urgent' ? 'bg-rose-50 text-rose-600' :
-                                                        ann.type === 'Success' ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-blue-600'
-                                                        }`}>{ann.type}</span>
-                                                </div>
-                                            </td>
-                                            <td className="px-8 py-6">
-                                                <div className="bg-slate-50/50 px-4 py-2 rounded-xl border border-slate-100 max-w-sm">
-                                                    <p className="text-slate-500 font-medium line-clamp-2 text-xs italic">"{ann.content}"</p>
-                                                </div>
-                                            </td>
-                                            <td className="px-8 py-6">
-                                                <p className="text-xs font-black text-slate-400 uppercase tracking-widest font-mono">{new Date(ann.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
-                                            </td>
-                                            <td className="px-8 py-6 text-right">
-                                                <button onClick={() => deleteSingle(ann._id)} className="text-rose-400 hover:text-rose-600 p-3 hover:bg-rose-50 rounded-xl transition-all">
-                                                    <i className="fas fa-trash-alt" />
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        );
-    };
-
-    // ── System Logs Tab (SUPERUSER ONLY) ────────────────────────
-    // ── System Logs Tab (Moved Outside) ────────────────────────
-    const LogsTab = ({ api, auth, notify, isSuper }) => {
-        const [logs, setLogs] = useState([]);
-        const [loadingLogs, setLoadingLogs] = useState(false);
-        const [page, setPage] = useState(1);
-        const [totalPages, setTotalPages] = useState(1);
-
-        const fetchLogs = async (p = 1) => {
-            setLoadingLogs(true);
-            try {
-                const r = await api.get(`admin/logs?page=${p}&limit=50`, auth);
-                setLogs(r.data.logs || []);
-                setTotalPages(r.data.totalPages || 1);
-                setPage(r.data.currentPage || 1);
-            } catch (err) {
-                notify("Failed to load logs", "error");
-            } finally {
-                setLoadingLogs(false);
-            }
-        };
-        const handleExport = async () => {
-            try {
-                const r = await api.get('admin/logs/export', { ...auth, responseType: 'blob' });
-                const url = window.URL.createObjectURL(new Blob([r.data]));
-                const link = document.createElement('a');
-                link.href = url;
-                link.setAttribute('download', 'system_history_logs.csv');
-                document.body.appendChild(link);
-                link.click();
-                link.parentNode.removeChild(link);
-                notify("Export successful", "success");
-            } catch (err) {
-                notify("Failed to export logs", "error");
-            }
-        };
-
-        const handleBackup = async () => {
-            try {
-                const r = await api.get('admin/backup', { ...auth, responseType: 'blob' });
-                const url = window.URL.createObjectURL(new Blob([r.data]));
-                const link = document.createElement('a');
-                link.href = url;
-                link.setAttribute('download', `FULL_BACKUP_${new Date().toISOString().split('T')[0]}.json`);
-                document.body.appendChild(link);
-                link.click();
-                link.parentNode.removeChild(link);
-                notify("Full database backup successful", "success");
-            } catch (err) {
-                notify("Failed to backup database", "error");
-            }
-        };
-
-        useEffect(() => {
-            fetchLogs(1);
-        }, []);
-
-        return (
-            <div className="space-y-6 animate-fade-up">
-                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                    <div className="p-6 border-b border-slate-100 flex items-center justify-between">
-                        <div>
-                            <h2 className="text-xl font-bold text-slate-800 flex items-center gap-3">
-                                <div className="w-8 h-8 rounded-lg bg-[#002147]/10 text-[#002147] flex items-center justify-center">
-                                    <i className="fas fa-clipboard-list" />
-                                </div>
-                                System Activity Logs
-                            </h2>
-                            <p className="text-xs text-slate-500 mt-1">Permanent record of all management actions taken</p>
-                        </div>
-                        <div className="flex items-center gap-3">
-                            <button onClick={handleExport} className="hidden sm:flex px-4 py-2 text-xs font-bold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 hover:text-[#002147] rounded-lg transition-colors items-center gap-2 shadow-sm">
-                                <i className="fas fa-file-export text-[#002147]" />
-                                Export CSV
-                            </button>
-                            {isSuper && (
-                                <button onClick={handleBackup} className="hidden sm:flex px-4 py-2 text-xs font-bold text-white bg-[#002147] hover:bg-[#002147]/90 rounded-lg transition-colors items-center gap-2 shadow-sm">
-                                    <i className="fas fa-database" />
-                                    Full Backup (JSON)
-                                </button>
-                            )}
-                            <button onClick={() => fetchLogs(page)} className="text-slate-400 hover:text-[#002147] transition-colors p-2 bg-slate-50 border border-slate-100 hover:bg-blue-50 rounded-lg shadow-sm">
-                                <i className={`fas fa-sync-alt ${loadingLogs ? "animate-spin" : ""}`} />
-                            </button>
-                        </div>
-                    </div>
-
-                    <div className="p-1 sm:p-0">
-                        <div className="sm:hidden space-y-2 px-4 py-2">
-                            {logs.length === 0 && !loadingLogs ? (
-                                <div className="text-center py-16 bg-slate-50/50 border-2 border-dashed border-slate-100 rounded-3xl">
-                                    <i className="fas fa-inbox text-4xl mb-3 opacity-20 block text-slate-400" />
-                                    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">No system logs recorded yet.</p>
-                                </div>
-                            ) : logs.map((log) => {
-                                const actionText = log.action || '';
-                                return (
-                                    <div key={log._id} className="bg-white rounded-2xl p-3 shadow-sm border border-slate-100 relative overflow-hidden space-y-2">
-                                        <div className="flex justify-between items-center gap-3">
-                                            <div className="flex items-center gap-2">
-                                                <div className="w-8 h-8 rounded-lg bg-slate-50 text-slate-600 flex items-center justify-center text-xs font-black uppercase shrink-0 border border-slate-100">
-                                                    {log.admin_name?.charAt(0) || <i className="fas fa-robot text-slate-400" />}
-                                                </div>
-                                                <div className="flex flex-col">
-                                                    <span className="font-bold text-slate-800 text-xs leading-none mb-1 text-wrap">
-                                                        {log.admin_name || "System/Unknown"}
-                                                    </span>
-                                                    <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none">
-                                                        {new Date(log.createdAt).toLocaleString()}
-                                                    </span>
-                                                </div>
-                                            </div>
-                                            <span className={`px-2 py-0.5 text-[8px] font-black uppercase tracking-widest rounded-md shrink-0 text-center ${actionText.includes('LOGIN') ? 'bg-blue-50 text-blue-600' :
-                                                actionText.includes('CREATE') || actionText.includes('APPROVE') || actionText.includes('Add') ? 'bg-emerald-50 text-emerald-600' :
-                                                    actionText.includes('BLOCK') || actionText.includes('DELETE') ? 'bg-rose-50 text-rose-600' :
-                                                        'bg-slate-50 text-slate-600'
-                                                }`}>
-                                                {actionText}
-                                            </span>
-                                        </div>
-                                        <div className="bg-slate-50/50 px-2.5 py-2 rounded-xl text-[10px] text-slate-600 font-medium">
-                                            {log.details}
-                                            {log.target_id && (
-                                                <span className="block mt-1 text-[#002147] font-bold text-[8px] uppercase tracking-widest leading-none">ID: {log.target_id.name || log.target_id.email || log.target_id._id || log.target_id}</span>
-                                            )}
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-
-                        <div className="hidden sm:block overflow-x-auto">
-                            <table className="w-full text-left text-sm">
-                                <thead>
-                                    <tr className="bg-slate-50 border-b border-slate-200">
-                                        <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wide">Timestamp</th>
-                                        <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wide">Administrator</th>
-                                        <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wide">Action</th>
-                                        <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wide">Additional Details</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-100">
-                                    {logs.length === 0 && !loadingLogs && (
-                                        <tr>
-                                            <td colSpan={4} className="px-6 py-12 text-center text-slate-400">
-                                                <i className="fas fa-inbox text-4xl mb-3 block opacity-20" />
-                                                No system logs recorded yet.
-                                            </td>
-                                        </tr>
-                                    )}
-                                    {logs.map((log) => {
-                                        const actionText = log.action || '';
-                                        return (
-                                            <tr key={log._id} className="hover:bg-slate-50 transition-colors">
-                                                <td className="px-6 py-4 whitespace-nowrap text-xs text-slate-500 font-medium">
-                                                    {new Date(log.createdAt).toLocaleString()}
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="w-8 h-8 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center text-xs font-bold uppercase">
-                                                            {log.admin_name?.charAt(0) || <i className="fas fa-robot text-slate-400" />}
-                                                        </div>
-                                                        <span className="font-bold text-slate-800 text-xs">
-                                                            {log.admin_name || "System/Unknown"}
-                                                        </span>
-                                                    </div>
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    <span className={`px-3 py-1 text-[10px] font-bold uppercase tracking-widest rounded-full ${actionText.includes('LOGIN') ? 'bg-blue-100 text-blue-700' :
-                                                        actionText.includes('CREATE') || actionText.includes('APPROVE') || actionText.includes('Add') ? 'bg-emerald-100 text-emerald-700' :
-                                                            actionText.includes('BLOCK') || actionText.includes('DELETE') ? 'bg-rose-100 text-rose-700' :
-                                                                'bg-slate-100 text-slate-700'
-                                                        }`}>
-                                                        {actionText}
-                                                    </span>
-                                                </td>
-                                                <td className="px-6 py-4 text-xs text-slate-600 font-medium">
-                                                    {log.details}
-                                                    {log.target_id && (
-                                                        <span className="ml-1 text-[#002147] font-bold mt-1 inline-block">ID: {log.target_id.name || log.target_id.email || log.target_id._id || log.target_id}</span>
-                                                    )}
-                                                </td>
-                                            </tr>
-                                        )
-                                    })}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-
-                    {totalPages > 1 && (
-                        <div className="p-4 border-t border-slate-100 flex items-center justify-between bg-slate-50">
-                            <button
-                                disabled={page === 1}
-                                onClick={() => fetchLogs(page - 1)}
-                                className="px-4 py-2 text-xs font-bold text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-50 transition-colors"
-                            >
-                                Previous
-                            </button>
-                            <span className="text-xs font-bold text-slate-500">
-                                Page {page} of {totalPages}
-                            </span>
-                            <button
-                                disabled={page === totalPages}
-                                onClick={() => fetchLogs(page + 1)}
-                                className="px-4 py-2 text-xs font-bold text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-50 transition-colors"
-                            >
-                                Next
-                            </button>
-                        </div>
-                    )}
-                </div>
-            </div>
-        );
-    };
-
-
-    // ── Settings Tab (SELF-MANAGEMENT) ───────────────────────
-
-    // ── Settings Tab (Moved Outside) ────────────────────
-    const SettingsTab = ({ adminUser, api, auth, notify, logout, setAdminUser, inputCls }) => {
-        const [profile, setProfile] = useState({ name: adminUser, oldPassword: "", newPassword: "", confirmPassword: "" });
-        const [updating, setUpdating] = useState(false);
-
-        const handleUpdate = async (e) => {
-            e.preventDefault();
-            if (profile.newPassword && profile.newPassword !== profile.confirmPassword) {
-                return notify("New passwords do not match", "error");
-            }
-            setUpdating(true);
-            try {
-                const r = await api.put("admin/profile", {
-                    name: profile.name,
-                    oldPassword: profile.oldPassword,
-                    newPassword: profile.newPassword
-                }, auth);
-
-                notify(r.data.message);
-                localStorage.setItem("adminUser", r.data.name);
-                setAdminUser(r.data.name);
-                setProfile({ ...profile, oldPassword: "", newPassword: "", confirmPassword: "" });
-            } catch (err) {
-                notify(err.response?.data?.error || "Profile update failed", "error");
-            } finally {
-                setUpdating(false);
-            }
-        };
-
-        return (
-            <div className="max-w-2xl mx-auto animate-fade-up">
-                <div className="bg-white rounded-3xl sm:rounded-[2.5rem] border border-slate-200 shadow-xl overflow-hidden relative">
-                    <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-[#002147] to-blue-500" />
-
-                    <div className="p-6 md:p-12">
-                        <div className="flex flex-wrap items-center justify-between gap-4 mb-8 sm:mb-10">
-                            <div className="flex items-center gap-4">
-                                <div className="w-12 h-12 sm:w-14 sm:h-14 bg-blue-50 rounded-xl sm:rounded-2xl flex items-center justify-center text-[#002147] text-lg sm:text-xl shadow-inner">
-                                    <i className="fas fa-user-edit" />
-                                </div>
-                                <div>
-                                    <h2 className="text-xl sm:text-2xl font-black text-slate-800 tracking-tight">Security & Profile</h2>
-                                    <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mt-1">Self-Management Console</p>
-                                </div>
-                            </div>
-                            <button type="button" onClick={logout} className="group flex items-center gap-2 px-5 py-2.5 bg-rose-50 text-rose-600 rounded-xl hover:bg-rose-100 transition-all border border-rose-100 shadow-sm active:scale-95">
-                                <i className="fas fa-power-off text-xs group-hover:scale-110 transition-transform" />
-                                <span className="text-[10px] font-black uppercase tracking-[0.2em]">Logout</span>
-                            </button>
-                        </div>
-
-                        <form onSubmit={handleUpdate} className="space-y-8">
-                            <div className="space-y-6">
-                                <div>
-                                    <label className="text-xs font-black text-slate-500 uppercase tracking-widest pl-1 mb-2 block">Display Name</label>
-                                    <input type="text" value={profile.name} onChange={e => setProfile({ ...profile, name: e.target.value })} className={inputCls} required />
-                                </div>
-
-                                <div className="p-6 bg-slate-50 rounded-3xl border border-slate-100 space-y-5">
-                                    <p className="text-xs font-black text-[#002147] uppercase tracking-widest flex items-center gap-2">
-                                        <i className="fas fa-lock" /> Security Update
-                                    </p>
-
-                                    <div>
-                                        <label className="text-xs font-bold text-slate-400 uppercase tracking-widest pl-1 mb-1.5 block">Current Password (Required)</label>
-                                        <input type="password" placeholder="••••••••" value={profile.oldPassword} onChange={e => setProfile({ ...profile, oldPassword: e.target.value })} className={inputCls} required />
-                                    </div>
-
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                        <div>
-                                            <label className="text-xs font-bold text-slate-400 uppercase tracking-widest pl-1 mb-1.5 block">New Password</label>
-                                            <input type="password" placeholder="Leave blank to keep current" value={profile.newPassword} onChange={e => setProfile({ ...profile, newPassword: e.target.value })} className={inputCls} />
-                                        </div>
-                                        <div>
-                                            <label className="text-xs font-bold text-slate-400 uppercase tracking-widest pl-1 mb-1.5 block">Confirm New</label>
-                                            <input type="password" placeholder="••••••••" value={profile.confirmPassword} onChange={e => setProfile({ ...profile, confirmPassword: e.target.value })} className={inputCls} />
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <button type="submit" disabled={updating}
-                                className="w-full bg-[#002147] text-white py-4 rounded-2xl font-black uppercase text-xs tracking-[0.2em] hover:bg-slate-800 transition-all shadow-xl shadow-blue-900/10 flex items-center justify-center gap-3 disabled:opacity-50">
-                                {updating ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <i className="fas fa-save" />}
-                                SAVE
-                            </button>
-                        </form>
-
-                    </div>
-                </div>
-            </div>
-        );
-    };
-
-
-    // ── Admins Tab (Moved Outside to fix Search Strokes) ────────
-    const AdminsTab = ({ members, adminUser, auth, notify, fetchMembers, inputCls, isSuper, api }) => {
-        const [form, setForm] = useState({ name: "", email: "", password: "", joining_year: new Date().getFullYear(), member_id: "", role: "Admin" });
-        const [submitting, setSubmitting] = useState(false);
-        const [editing, setEditing] = useState(null);
-        const [editForm, setEditForm] = useState({ name: "", email: "", password: "" });
-        const adminList = members.filter(m => m.role === "Admin");
-
-        const create = async (e) => {
-            e.preventDefault(); setSubmitting(true);
-            try {
-                await api.post("admin/members/add/", form, auth);
-                notify(`Admin account ${form.member_id} created!`);
-                setForm({ name: "", email: "", password: "", joining_year: new Date().getFullYear(), member_id: "", role: "Admin" });
-                fetchMembers();
-            } catch (err) { notify(err.response?.data?.error || "Failed to create admin", "error"); }
-            finally { setSubmitting(false); }
-        };
-
-        const del = async (id, name) => {
-            if (!window.confirm(`Delete admin ${name}? This action is irreversible.`)) return;
-            try {
-                await api.delete(`admin/members/${id}`, auth);
-                notify(`Admin ${name} deleted`);
-                fetchMembers();
-            }
-            catch (err) { notify(err.response?.data?.error || "Delete failed", "error"); }
-        };
-
-        const toggleBlock = async (id) => {
-            try {
-                const r = await api.patch(`admin/members/${id}/toggle-block`, {}, auth);
-                notify(r.data.message);
-                fetchMembers();
-            } catch (err) {
-                notify(err.response?.data?.error || "Failed to toggle block", "error");
-            }
-        };
-
-        const updateAdmin = async (e) => {
-            e.preventDefault();
-            try {
-                await api.put(`admin/members/${editing}/update`, editForm, auth);
-                notify(`Admin updated successfully`);
-                setEditing(null);
-                fetchMembers();
-            } catch (err) {
-                notify(err.response?.data?.error || "Update failed", "error");
-            }
-        };
-
-        return (
-            <div className="space-y-6 animate-fade-up relative">
-                <div className="bg-white border border-slate-200 rounded-2xl sm:rounded-3xl p-5 sm:p-8 shadow-sm">
-                    <h3 className="text-lg font-black text-slate-800 mb-6 flex items-center gap-3 uppercase tracking-tight">
-                        <div className="w-9 h-9 sm:w-10 sm:h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center text-sm shadow-inner"><i className="fas fa-user-plus" /></div>
-                        Official Registration
-                    </h3>
-                    <form onSubmit={create} className="space-y-4">
-                        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                            <div>
-                                <label className="text-xs font-semibold text-slate-500 block mb-1.5">Full Name *</label>
-                                <input type="text" placeholder="Admin Name" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} className={inputCls} required />
-                            </div>
-                            <div>
-                                <label className="text-xs font-semibold text-slate-500 block mb-1.5">Member ID / Username *</label>
-                                <input type="text" placeholder="e.g. admin-hr" value={form.member_id} onChange={e => setForm({ ...form, member_id: e.target.value })} className={inputCls} required />
-                            </div>
-                            <div>
-                                <label className="text-xs font-semibold text-slate-500 block mb-1.5">Email Address *</label>
-                                <input type="email" placeholder="admin@sls.edu.pk" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} className={inputCls} required />
-                            </div>
-                            <div>
-                                <label className="text-xs font-semibold text-slate-500 block mb-1.5">Assign Password *</label>
-                                <input type="password" placeholder="••••••••" value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} className={inputCls} required />
-                            </div>
-                            <div>
-                                <label className="text-xs font-semibold text-slate-500 block mb-1.5">Joining Year *</label>
-                                <input type="number" value={form.joining_year} onChange={e => setForm({ ...form, joining_year: e.target.value })} className={inputCls} required />
-                            </div>
-                        </div>
-                        <div className="flex justify-between items-center pt-4 border-t border-slate-50 mt-2">
-                            <div className="flex items-center gap-2 text-slate-400 group">
-                                <i className="fas fa-info-circle text-xs" />
-                                <p className="text-xs font-bold uppercase tracking-widest leading-none">Account Role: <span className="text-indigo-600">Administrator</span></p>
-                            </div>
-                            <button type="submit" disabled={submitting}
-                                className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-semibold transition-all shadow-sm ${submitting ? "bg-slate-200 text-slate-400 cursor-not-allowed" : "bg-slate-900 text-white hover:bg-slate-800 shadow-slate-300 hover:-translate-y-0.5"}`}>
-                                {submitting ? <div className="w-4 h-4 border-2 border-slate-400 border-t-transparent rounded-full animate-spin" /> : <i className="fas fa-shield-halved" />}
-                                Register Admin
-                            </button>
-                        </div>
-                    </form>
-                </div>
-
-                {editing && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-slate-900/40 backdrop-blur-sm animate-fade-in">
-                        <div className="bg-white w-full max-w-md rounded-[2.5rem] shadow-2xl border border-slate-200 overflow-hidden relative animate-zoom-in">
-                            <div className="absolute top-0 left-0 w-full h-1.5 bg-[#002147]" />
-                            <div className="p-8">
-                                <div className="flex justify-between items-center mb-6">
-                                    <h3 className="text-xl font-black text-[#002147] uppercase tracking-tight">Edit Administrator</h3>
-                                    <button onClick={() => setEditing(null)} className="text-slate-400 hover:text-rose-500 transition-colors">
-                                        <i className="fas fa-times text-lg" />
-                                    </button>
-                                </div>
-                                <form onSubmit={updateAdmin} className="space-y-5">
-                                    <div>
-                                        <label className="text-xs font-black text-slate-500 uppercase tracking-widest pl-1 mb-1.5 block">Display Name</label>
-                                        <input type="text" value={editForm.name} onChange={e => setEditForm({ ...editForm, name: e.target.value })} className={inputCls} required />
-                                    </div>
-                                    <div>
-                                        <label className="text-xs font-black text-slate-500 uppercase tracking-widest pl-1 mb-1.5 block">Email Address (Unique)</label>
-                                        <input type="email" value={editForm.email} onChange={e => setEditForm({ ...editForm, email: e.target.value })} className={inputCls} required />
-                                    </div>
-                                    <div>
-                                        <label className="text-xs font-black text-slate-500 uppercase tracking-widest pl-1 mb-1.5 block">New Password (Override)</label>
-                                        <input type="password" placeholder="Leave blank to keep current" value={editForm.password} onChange={e => setEditForm({ ...editForm, password: e.target.value })} className={inputCls} />
-                                    </div>
-                                    <div className="flex gap-3 pt-4">
-                                        <button type="button" onClick={() => setEditing(null)} className="flex-1 px-6 py-3.5 rounded-2xl border border-slate-200 text-slate-600 font-bold text-xs uppercase hover:bg-slate-50 transition-all">Cancel</button>
-                                        <button type="submit" className="flex-1 px-6 py-3.5 rounded-2xl bg-[#002147] text-white font-bold text-xs uppercase hover:bg-slate-800 transition-all shadow-lg shadow-blue-900/20">Update Account</button>
-                                    </div>
-                                </form>
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-                <div className="space-y-4">
-                    <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-                        <i className="fas fa-users-gear text-slate-400" /> Official Personnel
-                    </h2>
-
-                    <div className="sm:hidden space-y-2">
-                        {adminList.filter(m => m.role !== 'Superuser' || isSuper).map((m) => (
-                            <div key={m.member_id} className={`p-3 bg-white rounded-2xl border border-slate-100 shadow-sm relative overflow-hidden transition-all space-y-3 ${m.status === 'blocked' ? "opacity-75" : ""}`}>
-                                <div className="flex justify-between items-center gap-3">
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-600 shrink-0">
-                                            <span className="font-bold text-[10px] uppercase">{(m.name || "?").charAt(0)}</span>
-                                        </div>
-                                        <div>
-                                            <h4 className="font-bold text-slate-800 text-xs leading-none mb-1">{m.name}</h4>
-                                            <p className="text-[9px] font-bold text-indigo-600 uppercase tracking-widest leading-none">{m.member_id}</p>
-                                        </div>
-                                    </div>
-                                    <div className="flex flex-col items-end text-right">
-                                        <span className={`text-[8px] font-black px-2 py-0.5 rounded-md uppercase tracking-widest ${m.status === 'blocked' ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"}`}>
-                                            {m.status === 'blocked' ? "Blocked" : "Active"}
-                                        </span>
-                                        <span className="text-[8px] font-black text-purple-600 uppercase tracking-widest bg-purple-50 px-1.5 py-0.5 rounded border border-purple-100 mt-1">{m.role}</span>
-                                    </div>
-                                </div>
-
-                                <div className="flex gap-2 pt-1 border-t border-slate-50">
-                                    {m.member_id !== adminUser ? (
-                                        <>
-                                            <button onClick={() => toggleBlock(m._id)}
-                                                className={`flex-1 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${m.status === 'blocked' ? "bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white" : "bg-amber-50 text-amber-600 hover:bg-amber-500 hover:text-white"}`}>
-                                                {m.status === 'blocked' ? "Unblock" : "Block"}
-                                            </button>
-                                            <button onClick={() => { setEditing(m.member_id); setEditForm({ name: m.name, email: m.email, password: "" }); }}
-                                                className="flex-1 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest bg-slate-50 text-slate-600 hover:bg-[#002147] hover:text-white transition-all">
-                                                Edit
-                                            </button>
-                                            <button onClick={() => del(m._id, m.name)}
-                                                className="w-8 h-8 rounded-lg bg-rose-50 text-rose-500 flex items-center justify-center hover:bg-rose-500 hover:text-white transition-all">
-                                                <i className="fas fa-trash-alt text-[10px]" />
-                                            </button>
-                                        </>
-                                    ) : (
-                                        <div className="w-full text-center py-2 text-[9px] font-black uppercase tracking-[0.2em] text-blue-400 opacity-50 bg-blue-50/50 rounded-lg">Account Owner</div>
-                                    )}
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-
-                    <div className="hidden sm:block bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden overflow-x-auto">
-                        <table className="w-full text-sm">
-                            <thead>
-                                <tr className="bg-slate-50 border-b border-slate-200 text-left">
-                                    <th className="px-6 py-4 text-xs font-black text-slate-500 uppercase tracking-widest">ID/Username</th>
-                                    <th className="px-6 py-4 text-xs font-black text-slate-500 uppercase tracking-widest">Name</th>
-                                    <th className="px-6 py-4 text-xs font-black text-slate-500 uppercase tracking-widest">Privilege Level</th>
-                                    <th className="px-6 py-4 text-xs font-black text-slate-500 uppercase tracking-widest">Status</th>
-                                    <th className="px-6 py-4 text-xs font-black text-slate-500 uppercase tracking-widest text-right">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-100">
-                                {adminList.filter(m => m.role !== 'Superuser' || isSuper).map((m) => (
-                                    <tr key={m.member_id} className={`hover:bg-purple-50/40 transition-colors group text-left ${m.status === 'blocked' ? "opacity-60 bg-slate-50/10" : ""}`}>
-                                        <td className="px-6 py-4 font-mono text-xs text-slate-800 font-bold">{m.member_id}</td>
-                                        <td className="px-6 py-4 text-slate-800 font-bold">{m.name}</td>
-                                        <td className="px-6 py-4">
-                                            <span className="text-xs font-bold px-3 py-1 rounded-full uppercase tracking-widest bg-purple-100 text-purple-700">
-                                                {m.role}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <span className={`text-xs font-bold px-3 py-1 rounded-full uppercase tracking-widest ${m.status === 'blocked' ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"}`}>
-                                                {m.status === 'blocked' ? "Blocked" : "Active"}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-4 text-right">
-                                            <div className="flex justify-end items-center gap-2">
-                                                {m.member_id !== adminUser ? (
-                                                    <>
-                                                        <button onClick={() => toggleBlock(m._id)}
-                                                            className={`text-[9px] font-black uppercase tracking-widest border px-3 py-2 rounded-lg transition-all ${m.status === 'blocked' ? "bg-emerald-50 text-emerald-600 border-emerald-200 hover:bg-emerald-100" : "bg-amber-50 text-amber-600 border-amber-200 hover:bg-amber-100"}`}>
-                                                            {m.status === 'blocked' ? "Unblock" : "Block"}
-                                                        </button>
-                                                        <button onClick={() => { setEditing(m.member_id); setEditForm({ name: m.name, email: m.email, password: "" }); }}
-                                                            className="text-[9px] font-black uppercase tracking-widest bg-slate-50 text-slate-600 border border-slate-200 px-3 py-2 rounded-lg hover:bg-slate-100 transition-all">
-                                                            Edit
-                                                        </button>
-                                                        <button onClick={() => del(m._id, m.name)}
-                                                            className="text-rose-400 hover:text-rose-600 p-2 hover:bg-rose-50 rounded-lg transition-all">
-                                                            <i className="fas fa-trash-alt" />
-                                                        </button>
-                                                    </>
-                                                ) : (
-                                                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-500/60 bg-blue-50 px-4 py-1.5 rounded-full">Owner</span>
-                                                )}
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        );
-    };
-
-    // ── Blogs Tab ───────────────────────────────────────────
-    const BlogsTab = ({ blogs, fetchBlogs, api, auth, notify, getImgUrl, inputCls }) => {
-        const [activeSubTab, setActiveSubTab] = useState("view");
-        const [form, setForm] = useState({ title: "", description: "" });
-        const [files, setFiles] = useState([]);
-        const [previews, setPreviews] = useState([]);
-        const [submitting, setSubmitting] = useState(false);
-        const [isProcessing, setIsProcessing] = useState(false);
-        const [editingBlog, setEditingBlog] = useState(null);
-        const [editForm, setEditForm] = useState({ title: "", description: "", published: true });
-        const [editFiles, setEditFiles] = useState([]);
-        const [editPreviews, setEditPreviews] = useState([]);
-        const [existingImages, setExistingImages] = useState([]);
-
-        const handleFileChange = (e, isEdit = false) => {
-            const selected = Array.from(e.target.files || []);
-            if (selected.length === 0) return;
-            if (isEdit) {
-                setEditFiles(prev => [...prev, ...selected]);
-                const newPreviews = selected.map(file => URL.createObjectURL(file));
-                setEditPreviews(prev => [...prev, ...newPreviews]);
-            } else {
-                setFiles(prev => [...prev, ...selected]);
-                const newPreviews = selected.map(file => URL.createObjectURL(file));
-                setPreviews(prev => [...prev, ...newPreviews]);
-            }
-            e.target.value = "";
-        };
-
-        const removePreview = (index, isEdit = false) => {
-            if (isEdit) {
-                setEditFiles(prev => prev.filter((_, i) => i !== index));
-                setEditPreviews(prev => prev.filter((_, i) => i !== index));
-            } else {
-                setFiles(prev => prev.filter((_, i) => i !== index));
-                setPreviews(prev => prev.filter((_, i) => i !== index));
-            }
-        };
-
-        const removeExistingImage = (url) => {
-            setExistingImages(prev => prev.filter(img => img.url !== url));
-        };
-
-        const uploadBlogImage = async (file) => {
-            const imageFile = await compressImage(file);
-            const formData = new FormData();
-            formData.append("image", imageFile);
-            const response = await api.post("blogs/upload-image", formData, {
-                ...auth,
-                timeout: 120000,
-            });
-            return response.data.url;
-        };
-
-        const createBlog = async (e) => {
-            e.preventDefault();
-            if (files.length === 0) return notify("Please upload at least one image", "error");
-            setSubmitting(true);
-            try {
-                const images = [];
-                for (let i = 0; i < files.length; i++) {
-                    notify(`Uploading image ${i + 1} of ${files.length}...`, "info");
-                    const url = await uploadBlogImage(files[i]);
-                    images.push({ url, caption: "" });
-                }
-
-                await api.post("blogs", {
-                    title: form.title,
-                    description: form.description,
-                    published: true,
-                    images,
-                }, auth);
-
-                notify("Blog post published successfully!");
-                setForm({ title: "", description: "" });
-                setFiles([]);
-                setPreviews([]);
-                fetchBlogs();
-                setActiveSubTab("view");
-            } catch (err) {
-                const message = err.response?.data?.error || err.message || "Failed to publish blog";
-                notify(message, "error");
-            } finally {
-                setSubmitting(false);
-            }
-        };
-
-        const updateBlog = async (e) => {
-            e.preventDefault();
-            setSubmitting(true);
-            try {
-                const uploadedImages = [];
-                for (let i = 0; i < editFiles.length; i++) {
-                    notify(`Uploading image ${i + 1} of ${editFiles.length}...`, "info");
-                    const url = await uploadBlogImage(editFiles[i]);
-                    uploadedImages.push({ url, caption: "" });
-                }
-
-                await api.put(`blogs/${editingBlog._id}`, {
-                    title: editForm.title,
-                    description: editForm.description,
-                    published: editForm.published,
-                    images: [...existingImages, ...uploadedImages],
-                }, auth);
-
-                notify("Blog updated successfully!");
-                setEditingBlog(null);
-                fetchBlogs();
-            } catch (err) {
-                const message = err.response?.data?.error || err.message || "Update failed";
-                notify(message, "error");
-            } finally {
-                setSubmitting(false);
-            }
-        };
-
-        const deleteBlog = async (id) => {
-            if (!window.confirm("Are you sure you want to delete this blog post?")) return;
-            setIsProcessing(true);
-            try {
-                await api.delete(`blogs/${id}`, auth);
-                notify("Blog deleted");
-                fetchBlogs();
-            } catch {
-                notify("Delete failed", "error");
-            } finally {
-                setIsProcessing(false);
-            }
-        };
-
-        const togglePublish = async (blog) => {
-            try {
-                await api.put(`blogs/${blog._id}`, { published: !blog.published }, auth);
-                notify(`Blog ${blog.published ? "unpublished" : "published"}`);
-                fetchBlogs();
-            } catch {
-                notify("Failed to update status", "error");
-            }
-        };
-
-        const startEdit = (blog) => {
-            setEditingBlog(blog);
-            setEditForm({ title: blog.title, description: blog.description, published: blog.published });
-            setExistingImages(blog.images || []);
-            setEditFiles([]);
-            setEditPreviews([]);
-        };
-
-        return (
-            <div className="space-y-6 animate-fade-up">
-                {/* Stats Header */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
-                    <div className="bg-white p-5 sm:p-8 rounded-[2rem] border border-slate-100 shadow-xl shadow-slate-200/40">
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Stories</p>
-                        <p className="text-2xl sm:text-3xl font-black text-slate-800 uppercase">{blogs.length}</p>
-                    </div>
-                    <div className="bg-white p-5 sm:p-8 rounded-[2rem] border border-slate-100 shadow-xl shadow-slate-200/40">
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Published</p>
-                        <p className="text-2xl sm:text-3xl font-black text-emerald-500 uppercase">{blogs.filter(b => b.published).length}</p>
-                    </div>
-                    <div className="bg-white p-5 sm:p-8 rounded-[2rem] border border-slate-100 shadow-xl shadow-slate-200/40">
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Drafts</p>
-                        <p className="text-2xl sm:text-3xl font-black text-orange-500 uppercase">{blogs.filter(b => !b.published).length}</p>
-                    </div>
-                </div>
-
-                <div className="flex gap-4 p-2 bg-slate-100 rounded-2xl w-fit">
-                    <button onClick={() => setActiveSubTab("view")} className={`py-2 px-6 text-xs font-black uppercase tracking-widest rounded-xl transition-all ${activeSubTab === "view" ? "bg-white text-[#002147] shadow-sm" : "text-slate-500 hover:text-slate-800"}`}>
-                        <i className="fas fa-list-ul mr-2" /> Blog Registry
-                    </button>
-                    <button onClick={() => setActiveSubTab("create")} className={`py-2 px-6 text-xs font-black uppercase tracking-widest rounded-xl transition-all ${activeSubTab === "create" ? "bg-white text-[#002147] shadow-sm" : "text-slate-500 hover:text-slate-800"}`}>
-                        <i className="fas fa-plus mr-2" /> Create Blog
-                    </button>
-                </div>
-
-                {activeSubTab === "create" && (
-                    <div className="bg-white border border-slate-200 rounded-[2.5rem] p-10 shadow-xl relative overflow-hidden animate-fade-in">
-                        <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-orange-500 to-rose-600" />
-                        <h3 className="text-2xl font-black text-slate-800 mb-8 flex items-center gap-4">
-                            <div className="w-12 h-12 bg-orange-50 text-orange-600 rounded-2xl flex items-center justify-center text-xl shadow-inner"><i className="fas fa-newspaper" /></div>
-                            Publish New Blog Post
-                        </h3>
-                        <form onSubmit={createBlog} className="space-y-8">
-                            <div className="space-y-6">
-                                <div>
-                                    <label className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 block ml-1">Blog Title *</label>
-                                    <input type="text" placeholder="Engaging Title for the Story" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} className={inputCls} required />
-                                </div>
-                                <div>
-                                    <label className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 block ml-1">Content / Description *</label>
-                                    <textarea placeholder="Write the full blog content here..." value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} rows={6} className={`${inputCls} resize-none`} required />
-                                </div>
-                                <div>
-                                    <label className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 block ml-1">Images (Multiple Allowed) *</label>
-                                    <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-4">
-                                        {previews.map((src, i) => (
-                                            <div key={i} className="relative aspect-square rounded-2xl overflow-hidden border-2 border-slate-100 group">
-                                                <img src={src} className="w-full h-full object-cover" />
-                                                <button type="button" onClick={() => removePreview(i)} className="absolute top-2 right-2 w-6 h-6 bg-rose-500 text-white rounded-full flex items-center justify-center text-[10px] opacity-0 group-hover:opacity-100 transition-opacity shadow-lg">
-                                                    <i className="fas fa-times" />
-                                                </button>
-                                            </div>
-                                        ))}
-                                        <label className="aspect-square flex flex-col items-center justify-center gap-2 bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl cursor-pointer hover:border-orange-500 hover:bg-white transition-all text-slate-400">
-                                            <i className="fas fa-plus-circle text-2xl" />
-                                            <span className="text-[10px] font-black uppercase tracking-widest">Add Image</span>
-                                            <input type="file" accept="image/*" multiple onChange={(e) => handleFileChange(e)} className="hidden" />
-                                        </label>
-                                    </div>
-                                    <ImageUploadHint variant="blog" />
-                                </div>
-                            </div>
-                            <div className="flex justify-end pt-4 border-t border-slate-50">
-                                <button type="submit" disabled={submitting} className={`px-12 py-4 rounded-2xl text-xs font-black uppercase tracking-[0.3em] transition-all shadow-xl ${submitting ? "bg-slate-100 text-slate-400 cursor-not-allowed" : "bg-orange-600 text-white hover:bg-orange-700 shadow-orange-900/20 active:scale-95"}`}>
-                                    {submitting ? "Publishing..." : "Release Post"}
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                )}
-
-                {activeSubTab === "view" && (
-                    <div className="bg-white rounded-[2.5rem] border border-slate-200 shadow-2xl overflow-hidden animate-fade-in">
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-sm">
-                                <thead>
-                                    <tr className="bg-slate-50 border-b border-slate-100 text-left">
-                                        <th className="px-8 py-5 text-xs font-black text-slate-400 uppercase tracking-widest">Story Info</th>
-                                        <th className="px-8 py-5 text-xs font-black text-slate-400 uppercase tracking-widest">Preview Content</th>
-                                        <th className="px-8 py-5 text-xs font-black text-slate-400 uppercase tracking-widest">Created On</th>
-                                        <th className="px-8 py-5 text-xs font-black text-slate-400 uppercase tracking-widest">Status</th>
-                                        <th className="px-8 py-5 text-xs font-black text-slate-400 uppercase tracking-widest text-right">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-50">
-                                    {blogs.length === 0 ? (
-                                        <tr>
-                                            <td colSpan={5} className="text-center py-24 text-slate-300">
-                                                <i className="fas fa-newspaper text-5xl mb-4 block opacity-10" />
-                                                <p className="text-xs font-bold uppercase tracking-widest">No stories found in registry.</p>
-                                            </td>
-                                        </tr>
-                                    ) : blogs.map((blog) => (
-                                        <tr key={blog._id} className="hover:bg-slate-50/50 transition-colors">
-                                            <td className="px-8 py-6">
-                                                <div className="flex items-center gap-4">
-                                                    <div className="w-12 h-12 rounded-xl bg-slate-100 overflow-hidden shrink-0 border border-slate-200 shadow-inner">
-                                                        {blog.images?.[0]?.url && <img src={getImgUrl(blog.images[0].url)} className="w-full h-full object-cover" />}
-                                                    </div>
-                                                    <div>
-                                                        <p className="font-black text-slate-800 leading-tight line-clamp-1 uppercase tracking-tight">{blog.title}</p>
-                                                        <p className="text-[10px] text-slate-400 font-bold mt-1 uppercase tracking-widest">{blog.images?.length || 0} Images Included</p>
-                                                    </div>
-                                                </div>
-                                            </td>
-                                            <td className="px-8 py-6">
-                                                <p className="text-xs text-slate-500 font-medium italic line-clamp-1 max-w-[200px]">"{blog.description}"</p>
-                                            </td>
-                                            <td className="px-8 py-6">
-                                                <p className="text-xs font-bold text-slate-600">{new Date(blog.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
-                                            </td>
-                                            <td className="px-8 py-6">
-                                                <button onClick={() => togglePublish(blog)} className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest transition-all ${blog.published ? "bg-emerald-50 text-emerald-600 border border-emerald-100" : "bg-slate-100 text-slate-400 border border-slate-200"}`}>
-                                                    {blog.published ? "Published" : "Draft"}
-                                                </button>
-                                            </td>
-                                            <td className="px-8 py-6 text-right">
-                                                <div className="flex justify-end gap-2">
-                                                    <button onClick={() => startEdit(blog)} className="w-9 h-9 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center hover:bg-[#002147] hover:text-white transition-all shadow-sm">
-                                                        <i className="fas fa-edit" />
-                                                    </button>
-                                                    <button onClick={() => deleteBlog(blog._id)} className="w-9 h-9 bg-rose-50 text-rose-500 rounded-xl flex items-center justify-center hover:bg-rose-500 hover:text-white transition-all shadow-sm">
-                                                        <i className="fas fa-trash-alt" />
-                                                    </button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                )}
-
-                {/* Edit Modal */}
-                {editingBlog && (
-                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in" onClick={() => setEditingBlog(null)}>
-                        <div className="bg-white rounded-[2.5rem] w-full max-w-2xl shadow-2xl border border-slate-100 overflow-hidden animate-zoom-in max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
-                            <div className="bg-[#002147] p-8 text-white relative">
-                                <button onClick={() => setEditingBlog(null)} className="absolute top-8 right-8 text-white/40 hover:text-white transition-all transform hover:rotate-90">
-                                    <i className="fas fa-times text-xl" />
-                                </button>
-                                <h3 className="text-2xl font-black tracking-tight uppercase">Update Blog Post</h3>
-                                <p className="text-blue-300 text-[10px] font-black uppercase tracking-[0.3em] mt-2">Content Revision Portal</p>
-                            </div>
-
-                            <form onSubmit={updateBlog} className="p-8 space-y-6 overflow-y-auto custom-scrollbar flex-1">
-                                <div>
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block ml-1">Story Title</label>
-                                    <input type="text" value={editForm.title} onChange={e => setEditForm({ ...editForm, title: e.target.value })} className={inputCls} required />
-                                </div>
-                                <div>
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block ml-1">Content / Body</label>
-                                    <textarea value={editForm.description} onChange={e => setEditForm({ ...editForm, description: e.target.value })} rows={5} className={`${inputCls} resize-none`} required />
-                                </div>
-                                
-                                <div>
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 block ml-1">Manage Images</label>
-                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                                        {/* Existing Images */}
-                                        {existingImages.map((img, i) => (
-                                            <div key={`exist-${i}`} className="relative aspect-square rounded-2xl overflow-hidden border border-slate-100 group">
-                                                <img src={getImgUrl(img.url)} className="w-full h-full object-cover" />
-                                                <button type="button" onClick={() => removeExistingImage(img.url)} className="absolute top-2 right-2 w-6 h-6 bg-rose-500 text-white rounded-full flex items-center justify-center text-[10px] opacity-0 group-hover:opacity-100 transition-opacity">
-                                                    <i className="fas fa-times" />
-                                                </button>
-                                                <div className="absolute inset-0 bg-emerald-500/10 border-2 border-emerald-500/20 rounded-2xl pointer-events-none" />
-                                            </div>
-                                        ))}
-                                        {/* New Previews */}
-                                        {editPreviews.map((src, i) => (
-                                            <div key={`new-${i}`} className="relative aspect-square rounded-2xl overflow-hidden border-2 border-indigo-200 group">
-                                                <img src={src} className="w-full h-full object-cover" />
-                                                <button type="button" onClick={() => removePreview(i, true)} className="absolute top-2 right-2 w-6 h-6 bg-rose-500 text-white rounded-full flex items-center justify-center text-[10px] opacity-0 group-hover:opacity-100 transition-opacity">
-                                                    <i className="fas fa-times" />
-                                                </button>
-                                            </div>
-                                        ))}
-                                        {/* Upload More Button */}
-                                        <label className="aspect-square flex flex-col items-center justify-center gap-2 bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl cursor-pointer hover:border-[#002147] transition-all text-slate-400">
-                                            <i className="fas fa-plus-circle text-xl" />
-                                            <span className="text-[9px] font-black uppercase tracking-widest">Add More</span>
-                                            <input type="file" accept="image/*" multiple onChange={(e) => handleFileChange(e, true)} className="hidden" />
-                                        </label>
-                                    </div>
-                                    <ImageUploadHint variant="blog" />
-                                </div>
-
-                                <div className="flex items-center gap-4 py-4 border-t border-slate-50">
-                                    <label className="relative inline-flex items-center cursor-pointer">
-                                        <input type="checkbox" checked={editForm.published} onChange={(e) => setEditForm({ ...editForm, published: e.target.checked })} className="sr-only peer" />
-                                        <div className="w-11 h-6 bg-slate-200 rounded-full peer peer-checked:bg-emerald-500 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full shadow-inner" />
-                                    </label>
-                                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">{editForm.published ? "Published & Visible" : "Save as Private Draft"}</span>
-                                </div>
-
-                                <div className="flex gap-3 pt-2">
-                                    <button type="button" onClick={() => setEditingBlog(null)} className="flex-1 px-6 py-4 bg-slate-100 text-slate-500 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-200 transition-all">Cancel</button>
-                                    <button type="submit" disabled={submitting} className="flex-[2] px-6 py-4 bg-[#002147] text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 transition-all shadow-xl shadow-blue-900/20 disabled:opacity-50">
-                                        {submitting ? "Processing..." : "Save Changes"}
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-                )}
-            </div>
-        );
-    };
 
     return (
         <div className="min-h-screen bg-[#F1F5F9] flex font-sans text-slate-900 max-w-full overflow-x-hidden">
