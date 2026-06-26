@@ -248,6 +248,9 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
     const [footer, setFooter] = useState(
         Object.fromEntries(FOOTER_FIELDS.map(({ key }) => [key, FOOTER_DEFAULTS[key]]))
     );
+    const [about, setAbout] = useState(
+        Object.fromEntries(ABOUT_FIELDS.map(({ key }) => [key, ABOUT_DEFAULTS[key]]))
+    );
     const [membershipFee, setMembershipFee] = useState("");
     const [membershipValidityMonths, setMembershipValidityMonths] = useState("12");
     const [defaultFeeDeadlineDays, setDefaultFeeDeadlineDays] = useState("7");
@@ -320,17 +323,36 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
         if (e) e.preventDefault();
         setSubmitting(true);
         try {
-            await api.put("settings", {
+            const payload = {
                 donation_channels: JSON.stringify(channels),
                 team_structure: JSON.stringify(teamStructure),
                 team_leadership: JSON.stringify(leadership),
                 vision_section: JSON.stringify(vision),
                 ...footer,
                 ...about,
-            }, auth);
+            };
+            await api.put("settings", payload, auth);
+            const r = await api.get("settings");
+            if (r.data.donation_channels) {
+                try { setChannels(JSON.parse(r.data.donation_channels)); } catch { /* keep current */ }
+            }
+            if (r.data.team_structure) {
+                try { setTeamStructure(JSON.parse(r.data.team_structure)); } catch { /* keep current */ }
+            }
+            if (r.data.team_leadership) {
+                try { setLeadership(JSON.parse(r.data.team_leadership)); } catch { /* keep current */ }
+            }
+            if (r.data.vision_section) {
+                try { setVision(JSON.parse(r.data.vision_section)); } catch { /* keep current */ }
+            }
+            setFooter(parseFooterSettings(r.data));
+            setAbout(parseAboutSettings(r.data));
             notify("System customization updated successfully!");
-        } catch { notify("Failed to update settings", "error"); }
-        finally { setSubmitting(false); }
+        } catch (err) {
+            notify(err.response?.data?.error || "Failed to update settings", "error");
+        } finally {
+            setSubmitting(false);
+        }
     };
 
     const saveWaLink = async () => {
@@ -383,7 +405,7 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
         }
     };
 
-    const updateFooter = (key, value) => setFooter({ ...footer, [key]: value });
+    const updateFooter = (key, value) => setFooter((prev) => ({ ...prev, [key]: value }));
 
     const saveAbout = async (e) => {
         if (e) e.preventDefault();
@@ -400,7 +422,7 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
         }
     };
 
-    const updateAbout = (key, value) => setAbout({ ...about, [key]: value });
+    const updateAbout = (key, value) => setAbout((prev) => ({ ...prev, [key]: value }));
 
 
     const saveLeadership = async (e) => {
@@ -469,8 +491,8 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
         formData.append('image', file);
         try {
             const r = await api.post('settings/upload', formData, auth);
-            if (catId === 'leadership') setLeadership({ ...leadership, img: r.data.imageUrl });
-            else if (catId === 'vision') setVision({ ...vision, img: r.data.imageUrl });
+            if (catId === 'leadership') setLeadership((prev) => ({ ...prev, img: r.data.imageUrl }));
+            else if (catId === 'vision') setVision((prev) => ({ ...prev, img: r.data.imageUrl }));
             else updateMember(catId, memberId, 'img', r.data.imageUrl);
             notify("Photo uploaded successfully!");
         } catch { notify("Photo upload failed", "error"); }
@@ -828,15 +850,15 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
                                     <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-4 w-full">
                                         <div className="col-span-1">
                                             <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Badge Subtitle (e.g. Chairman Vision)</label>
-                                            <input type="text" value={vision.badgeSubtitle} onChange={e => setVision({ ...vision, badgeSubtitle: e.target.value })} className={inputCls} placeholder="Chairman Vision" />
+                                            <input type="text" value={vision.badgeSubtitle} onChange={e => setVision(prev => ({ ...prev, badgeSubtitle: e.target.value }))} className={inputCls} placeholder="Chairman Vision" />
                                         </div>
                                         <div className="col-span-1">
                                             <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Badge Name (e.g. Farooq Baloch)</label>
-                                            <input type="text" value={vision.badgeName} onChange={e => setVision({ ...vision, badgeName: e.target.value })} className={inputCls} placeholder="Farooq Baloch" />
+                                            <input type="text" value={vision.badgeName} onChange={e => setVision(prev => ({ ...prev, badgeName: e.target.value }))} className={inputCls} placeholder="Farooq Baloch" />
                                         </div>
                                         <div className="col-span-1 sm:col-span-2">
                                             <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Vision Section Main Title</label>
-                                            <input type="text" value={vision.mainTitle} onChange={e => setVision({ ...vision, mainTitle: e.target.value })} className={inputCls} placeholder="Empowering student leaders..." />
+                                            <input type="text" value={vision.mainTitle} onChange={e => setVision(prev => ({ ...prev, mainTitle: e.target.value }))} className={inputCls} placeholder="Empowering student leaders..." />
                                         </div>
                                     </div>
                                 </div>
@@ -847,7 +869,7 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
                                         <i className="fas fa-quote-left text-emerald-500" />
                                         Vision Quote Content
                                     </label>
-                                    <textarea rows={4} value={vision.quote} onChange={e => setVision({ ...vision, quote: e.target.value })} className={`${inputCls} font-medium text-slate-600 italic leading-relaxed`} placeholder="Enter the chairman's vision statement..." />
+                                    <textarea rows={4} value={vision.quote} onChange={e => setVision(prev => ({ ...prev, quote: e.target.value }))} className={`${inputCls} font-medium text-slate-600 italic leading-relaxed`} placeholder="Enter the chairman's vision statement..." />
                                     <div className="mt-3 flex items-center gap-2 text-[9px] text-slate-400 font-bold uppercase tracking-widest">
                                         <i className="fas fa-info-circle" />
                                         This text appears in the prominent quote block next to the image.
