@@ -2856,24 +2856,31 @@ const AdminPortal = () => {
                                     )}
                                 </div>
                             ))}
-                            {filteredExecutiveApps.map((app) => (
-                                <div key={`exec-${app._id}`} className="p-3 bg-amber-50/30 rounded-2xl border border-amber-100 shadow-sm space-y-3">
-                                    <div className="flex justify-between items-start gap-3">
-                                        <div>
-                                            <h4 className="font-bold text-slate-800 text-xs">{app.name}</h4>
-                                            <p className="text-[9px] text-slate-500 mt-1">{app.member_id_str || "—"}</p>
-                                            <p className="text-[8px] text-slate-400">{app.memberId?.email}</p>
-                                            <span className="inline-block mt-2 text-[7px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md border text-amber-700 bg-amber-50 border-amber-200">Exec Upgrade</span>
+                            {filteredExecutiveApps.map((app) => {
+                                const execYear = app.member_id_str?.split("-")[0] || "—";
+                                return (
+                                <div key={`exec-${app._id}`} className="p-3 bg-white rounded-2xl border border-slate-100 shadow-sm space-y-3 relative overflow-hidden transition-all">
+                                    <div className="flex justify-between items-center gap-3">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-8 h-8 bg-purple-50 text-purple-600 rounded-lg flex items-center justify-center font-black text-[10px] uppercase shadow-inner">
+                                                {(app.name || "?").charAt(0)}
+                                            </div>
+                                            <div>
+                                                <h4 className="font-bold text-slate-800 leading-none mb-1 text-xs">{app.name}</h4>
+                                                <span className="inline-block text-[7px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md border text-amber-700 bg-amber-50 border-amber-200">Pending Review</span>
+                                                <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mt-1">{app.city || "—"}</p>
+                                                <p className="text-[8px] font-black text-purple-600 uppercase tracking-widest mt-1">Executive Upgrade</p>
+                                            </div>
                                         </div>
-                                        <span className="text-[8px] font-black text-purple-600 uppercase tracking-widest bg-purple-50 px-2 py-0.5 rounded-md border border-purple-100">{app.area_of_interest}</span>
                                     </div>
                                     <div className="flex gap-2">
-                                        <button type="button" onClick={() => setViewExecApp(app)} className="flex-1 text-[9px] bg-white text-slate-600 border border-slate-200 py-2 rounded-lg font-black uppercase tracking-widest">View</button>
-                                        <button type="button" disabled={isProcessing} onClick={() => handleApproveExecutive(app._id)} className="flex-1 text-[9px] bg-emerald-600 text-white py-2 rounded-lg font-black uppercase tracking-widest disabled:opacity-50">Approve</button>
-                                        <button type="button" onClick={() => { setRejectExecTarget(app); setRejectExecReason(""); }} className="flex-1 text-[9px] bg-rose-50 text-rose-600 border border-rose-200 py-2 rounded-lg font-black uppercase tracking-widest">Reject</button>
+                                        <button type="button" onClick={() => setViewExecApp(app)} className="flex-1 text-[9px] bg-slate-50 text-slate-600 border border-slate-100 py-2 rounded-lg font-black uppercase tracking-widest">Details</button>
+                                        <button type="button" disabled={isProcessing} onClick={() => handleApproveExecutive(app._id)} className="flex-1 text-[9px] bg-emerald-50 text-emerald-600 border border-emerald-100 py-2 rounded-lg font-black uppercase tracking-widest disabled:opacity-50">Approve</button>
+                                        <button type="button" onClick={() => { setRejectExecTarget(app); setRejectExecReason(""); }} className="flex-1 text-[9px] bg-rose-50 text-rose-600 border border-rose-100 py-2 rounded-lg font-black uppercase tracking-widest">Reject</button>
                                     </div>
                                 </div>
-                            ))}
+                                );
+                            })}
                             </>
                             )}
                         </div>
@@ -2963,37 +2970,35 @@ const AdminPortal = () => {
                                         })}
                                         {filteredExecutiveApps.map((app) => {
                                             const menuKey = `exec-${app._id}`;
+                                            const execYear = app.member_id_str?.split("-")[0] || "—";
                                             return (
-                                            <tr key={menuKey} className="align-middle hover:bg-amber-50/30 bg-amber-50/10">
+                                            <tr key={menuKey} className="align-middle hover:bg-slate-50/80">
                                                 {bulkMode && (<td className="px-4 py-3" />)}
                                                 <td className="px-4 py-3 align-middle">
                                                     <span className="text-slate-800 font-bold text-sm block truncate" title={app.name}>{app.name}</span>
-                                                    <span className="text-[9px] text-slate-400 font-mono">{app.member_id_str || "—"}</span>
                                                 </td>
                                                 <td className="px-4 py-3 align-middle">
                                                     <span className="text-slate-500 text-xs block truncate" title={app.memberId?.email}>{app.memberId?.email || "—"}</span>
                                                 </td>
-                                                <td className="px-4 py-3 align-middle font-bold text-slate-300 font-mono text-xs">—</td>
+                                                <td className="px-4 py-3 align-middle font-bold text-slate-500 font-mono text-xs">{execYear}</td>
                                                 <td className="px-4 py-3 align-middle">
                                                     <span className="text-slate-600 font-semibold text-xs block truncate">{app.city || "—"}</span>
                                                 </td>
                                                 <td className="px-4 py-3 align-middle">
-                                                    <span className="inline-block whitespace-nowrap text-[10px] font-black uppercase tracking-wider px-2 py-1 rounded border text-amber-700 bg-amber-50 border-amber-200">Exec Upgrade</span>
+                                                    <span className="inline-block whitespace-nowrap text-[10px] font-black uppercase tracking-wider px-2 py-1 rounded border text-purple-700 bg-purple-50 border-purple-100">Executive</span>
                                                 </td>
-                                                <td className="px-4 py-3 align-middle">
-                                                    <div className="flex flex-wrap gap-1">
-                                                        <span className="text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded border whitespace-nowrap text-amber-700 bg-amber-50 border-amber-200">Pending Review</span>
-                                                        <span className="text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded border whitespace-nowrap text-purple-700 bg-purple-50 border-purple-100">{app.area_of_interest}</span>
-                                                        <span className="text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded border whitespace-nowrap text-blue-700 bg-blue-50 border-blue-100">{app.availability}h/wk</span>
+                                                <td className="px-4 py-3 align-middle min-w-0">
+                                                    <div className="flex flex-nowrap gap-1 items-center overflow-hidden">
+                                                        <span className="shrink-0 text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded border whitespace-nowrap text-amber-700 bg-amber-50 border-amber-200">Pending Review</span>
                                                     </div>
                                                 </td>
                                                 <td className="px-4 py-3 align-middle text-right">
-                                                    <div className="relative inline-block text-left">
-                                                        <button type="button" onClick={() => setOpenActionMenu(openActionMenu === menuKey ? null : menuKey)} className="text-[10px] font-black uppercase tracking-widest px-3 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700">
+                                                    <div className="relative inline-block text-left z-10">
+                                                        <button type="button" onClick={() => setOpenActionMenu(openActionMenu === menuKey ? null : menuKey)} className="text-[10px] font-black uppercase tracking-widest px-3 py-2 bg-[#002147] text-white rounded-lg hover:bg-slate-800">
                                                             Manage <i className={`fas fa-chevron-${openActionMenu === menuKey ? "up" : "down"} ml-1 text-[8px]`} />
                                                         </button>
                                                         {openActionMenu === menuKey && (
-                                                            <div className="absolute right-0 mt-1 w-48 bg-white border border-slate-200 rounded-xl shadow-xl z-20 py-1 text-left">
+                                                            <div className="absolute right-0 mt-1 w-48 bg-white border border-slate-200 rounded-xl shadow-xl z-30 py-1 text-left">
                                                                 <button type="button" onClick={() => { setViewExecApp(app); setOpenActionMenu(null); }} className="w-full px-3 py-2 text-[10px] font-bold uppercase text-slate-600 hover:bg-slate-50 text-left">View Application</button>
                                                                 <button type="button" onClick={() => { handleApproveExecutive(app._id); setOpenActionMenu(null); }} disabled={isProcessing} className="w-full px-3 py-2 text-[10px] font-bold uppercase text-emerald-600 hover:bg-emerald-50 text-left disabled:opacity-40">Approve Executive</button>
                                                                 <button type="button" onClick={() => { setRejectExecTarget(app); setRejectExecReason(""); setOpenActionMenu(null); }} className="w-full px-3 py-2 text-[10px] font-bold uppercase text-rose-600 hover:bg-rose-50 text-left border-t border-slate-100">Reject</button>
