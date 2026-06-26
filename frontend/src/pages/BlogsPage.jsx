@@ -4,7 +4,30 @@ import api, { getImgUrl } from "../api";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 
-const BlogSlideshow = ({ images }) => {
+const IMAGE_COVER_STYLE = { width: "100%", height: "100%", objectFit: "cover", display: "block" };
+
+const BlogThumbnail = ({ images }) => {
+  if (!images || images.length === 0) {
+    return (
+      <div className="w-full aspect-[16/9] overflow-hidden rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-center">
+        <i className="fas fa-image text-slate-300 text-4xl" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="w-full aspect-[16/9] overflow-hidden rounded-2xl bg-slate-100 border border-slate-100">
+      <img
+        src={getImgUrl(images[0].url)}
+        alt={images[0].caption || "Blog image"}
+        className="w-full h-full object-cover block"
+        style={IMAGE_COVER_STYLE}
+      />
+    </div>
+  );
+};
+
+const BlogSlideshow = ({ images, variant = "slideshow" }) => {
   const [index, setIndex] = useState(0);
 
   useEffect(() => {
@@ -15,17 +38,24 @@ const BlogSlideshow = ({ images }) => {
     return () => clearInterval(interval);
   }, [images.length]);
 
-  if (!images || images.length === 0) return (
-    <div className="w-full aspect-square bg-slate-50 flex items-center justify-center rounded-2xl border border-slate-100">
-      <i className="fas fa-image text-slate-300 text-4xl" />
-    </div>
-  );
+  const isDetail = variant === "detail";
+  const containerClass = isDetail
+    ? "relative w-full aspect-[16/9] overflow-hidden rounded-2xl group bg-slate-50 border border-slate-100"
+    : "relative w-full h-80 sm:h-96 overflow-hidden rounded-3xl group bg-slate-50";
+
+  if (!images || images.length === 0) {
+    return (
+      <div className={`${containerClass} flex items-center justify-center border border-slate-100`}>
+        <i className="fas fa-image text-slate-300 text-4xl" />
+      </div>
+    );
+  }
 
   const next = () => setIndex((prev) => (prev + 1) % images.length);
   const prev = () => setIndex((prev) => (prev - 1 + images.length) % images.length);
 
   return (
-    <div className="relative w-full aspect-square overflow-hidden rounded-2xl group bg-slate-50 border border-slate-100">
+    <div className={containerClass}>
       <AnimatePresence mode="wait">
         <motion.img
           key={index}
@@ -35,29 +65,30 @@ const BlogSlideshow = ({ images }) => {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.5, ease: "easeOut" }}
-          className="absolute inset-0 w-full h-full object-contain"
+          className="absolute inset-0 w-full h-full object-cover block"
+          style={IMAGE_COVER_STYLE}
         />
       </AnimatePresence>
 
-      {/* Caption Badge */}
       {images[index].caption && (
         <div className="absolute bottom-3 left-3 right-10 z-10">
-           <p className="text-white text-[10px] font-bold uppercase tracking-widest bg-black/50 backdrop-blur-md px-3 py-1.5 rounded-lg inline-block border border-white/10">
-             {images[index].caption}
-           </p>
+          <p className="text-white text-[10px] font-bold uppercase tracking-widest bg-black/50 backdrop-blur-md px-3 py-1.5 rounded-lg inline-block border border-white/10">
+            {images[index].caption}
+          </p>
         </div>
       )}
 
-      {/* Navigation Arrows */}
       {images.length > 1 && (
         <>
-          <button 
+          <button
+            type="button"
             onClick={prev}
             className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all hover:bg-white hover:text-slate-900 z-20"
           >
             <i className="fas fa-chevron-left" />
           </button>
-          <button 
+          <button
+            type="button"
             onClick={next}
             className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all hover:bg-white hover:text-slate-900 z-20"
           >
@@ -66,13 +97,12 @@ const BlogSlideshow = ({ images }) => {
         </>
       )}
 
-      {/* Indicators */}
       {images.length > 1 && (
         <div className="absolute bottom-3 right-3 flex gap-1.5 z-20">
           {images.map((_, i) => (
-            <div 
-              key={i} 
-              className={`h-1.5 rounded-full transition-all duration-500 ${i === index ? 'w-6 bg-white' : 'w-1.5 bg-white/30'}`} 
+            <div
+              key={i}
+              className={`h-1.5 rounded-full transition-all duration-500 ${i === index ? "w-6 bg-white" : "w-1.5 bg-white/30"}`}
             />
           ))}
         </div>
@@ -104,20 +134,19 @@ export default function BlogsPage() {
       <Navbar />
 
       <section className="relative py-24 md:py-32 overflow-hidden">
-         {/* Background Orbs */}
          <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-[#002147]/5 rounded-full blur-[150px] -mr-80 -mt-80" />
          <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-blue-100/30 rounded-full blur-[150px] -ml-80 -mb-80" />
 
          <div className="max-w-7xl mx-auto px-6 relative z-10">
             <div className="text-center mb-20">
-               <motion.h1 
+               <motion.h1
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   className="text-4xl md:text-7xl font-black text-slate-900 mb-6 tracking-tight"
                >
                   Society <span className="gradient-text">Journal</span>
                </motion.h1>
-               <motion.div 
+               <motion.div
                   initial={{ opacity: 0, scale: 0.8 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ delay: 0.2 }}
@@ -141,7 +170,7 @@ export default function BlogsPage() {
             ) : (
                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6 md:gap-8">
                   {blogs.map((blog, idx) => (
-                     <motion.article 
+                     <motion.article
                         key={blog._id}
                         initial={{ opacity: 0, y: 30 }}
                         whileInView={{ opacity: 1, y: 0 }}
@@ -149,13 +178,16 @@ export default function BlogsPage() {
                         transition={{ delay: idx % 3 * 0.1 }}
                         className="bg-white rounded-2xl p-4 sm:p-5 shadow-lg shadow-slate-200/40 border border-slate-100 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col"
                      >
-                        <BlogSlideshow images={blog.images} />
+                        {blog.isExpanded ? (
+                          <BlogSlideshow images={blog.images} variant="detail" />
+                        ) : (
+                          <BlogThumbnail images={blog.images} />
+                        )}
 
                         <div className="mt-4 sm:mt-5 space-y-3 flex-1 flex flex-col">
                            <div className="flex items-center gap-4">
-
                               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                                 {new Date(blog.createdAt).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                 {new Date(blog.createdAt).toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric" })}
                               </span>
                            </div>
 
@@ -168,9 +200,10 @@ export default function BlogsPage() {
                                  {blog.isExpanded ? blog.description : (blog.description.length > 200 ? blog.description.substring(0, 200) + "..." : blog.description)}
                               </p>
                               {blog.description.length > 200 && (
-                                 <button 
+                                 <button
+                                    type="button"
                                     onClick={() => {
-                                       setBlogs(prev => prev.map(b => b._id === blog._id ? { ...b, isExpanded: !b.isExpanded } : b));
+                                       setBlogs((prev) => prev.map((b) => (b._id === blog._id ? { ...b, isExpanded: !b.isExpanded } : b)));
                                     }}
                                     className="mt-2 text-[#002147] font-black uppercase tracking-widest text-[10px] hover:underline"
                                  >
@@ -189,7 +222,6 @@ export default function BlogsPage() {
                                     <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest leading-none">Verified Author</p>
                                  </div>
                               </div>
-
                            </div>
                         </div>
                      </motion.article>
