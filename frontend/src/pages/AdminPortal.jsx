@@ -12,7 +12,7 @@ import { FOOTER_DEFAULTS, FOOTER_FIELDS, parseFooterSettings } from "../constant
 import { ABOUT_DEFAULTS, ABOUT_FIELDS, parseAboutSettings } from "../constants/aboutDefaults";
 import { MEMBER_TYPE_FILTER_OPTIONS } from "../constants/pakistanCities";
 import AdminLocationFilters, { DEFAULT_ADMIN_LOCATION_FILTER, appendLocationFilterParams, matchesAdminLocationFilter } from "../components/common/AdminLocationFilters";
-import PaymentManagementTab, { getFeeApprovalBadge, canApproveMemberFee, getInterviewBadge, needsInterviewResult, canRequestFee, canDirectApprove } from "../components/admin/PaymentManagementTab";
+import PaymentManagementTab, { getFeeApprovalBadge, canApproveMemberFee, getInterviewBadge, needsInterviewResult, canRequestFee, canRequestFeeAgain, canDirectApprove } from "../components/admin/PaymentManagementTab";
 
 const adminFilterSelectCls =
   "bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold text-slate-700 outline-none focus:border-[#002147] min-w-[140px]";
@@ -2383,6 +2383,7 @@ const AdminPortal = () => {
         const [allFeeChannels, setAllFeeChannels] = useState([]);
         const [feeDeadline, setFeeDeadline] = useState("");
         const [feeRequestTarget, setFeeRequestTarget] = useState(null);
+        const [feeRequestIsRetry, setFeeRequestIsRetry] = useState(false);
         const [feeRequestForm, setFeeRequestForm] = useState({ amount: "", validityMonths: "", deadline: "", message: "", selectedChannelIds: [] });
         const [waiveTarget, setWaiveTarget] = useState(null);
         const [waiveReason, setWaiveReason] = useState("");
@@ -2421,19 +2422,24 @@ const AdminPortal = () => {
             }).catch(() => {});
         }, [api]);
 
-        const openFeeRequestModal = (member) => {
+        const openFeeRequestModal = (member, isRetry = false) => {
             loadFeeSettings();
-            const d = new Date();
-            d.setDate(d.getDate() + (Number(defaultValidityMonths) ? 0 : 7));
+            const fp = member.feePayment || {};
+            setFeeRequestIsRetry(isRetry);
             setFeeRequestTarget(member);
             setFeeRequestForm({
-                amount: String(membershipFee || ""),
-                validityMonths: defaultValidityMonths || "12",
-                deadline: feeDeadline || d.toISOString().slice(0, 16),
+                amount: String(isRetry ? (fp.amount || membershipFee || "") : (membershipFee || "")),
+                validityMonths: String(fp.validityMonths || defaultValidityMonths || "12"),
+                deadline: feeDeadline || new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 16),
                 message: "",
-                selectedChannelIds: allFeeChannels.map((c) => c.id).filter(Boolean),
+                selectedChannelIds: (fp.requestedChannels?.length ? fp.requestedChannels : allFeeChannels).map((c) => c.id).filter(Boolean),
             });
             setOpenActionMenu(null);
+        };
+
+        const closeFeeRequestModal = () => {
+            setFeeRequestTarget(null);
+            setFeeRequestIsRetry(false);
         };
 
         useEffect(() => { loadFeeSettings(); }, [loadFeeSettings]);
@@ -2490,15 +2496,18 @@ const AdminPortal = () => {
             setIsProcessing(true);
             try {
                 const channels = allFeeChannels.filter((c) => feeRequestForm.selectedChannelIds.includes(c.id));
-                const r = await api.post(`fees/request/${feeRequestTarget._id}`, {
+                const endpoint = feeRequestIsRetry
+                    ? `fees/request-again/${feeRequestTarget._id}`
+                    : `fees/request/${feeRequestTarget._id}`;
+                const r = await api.post(endpoint, {
                     amount: Number(feeRequestForm.amount),
                     deadline: feeRequestForm.deadline,
                     validityMonths: Number(feeRequestForm.validityMonths) || 12,
                     channels,
                     message: feeRequestForm.message.trim(),
                 }, auth);
-                notify(r.data.message || "Fee request emailed to member");
-                setFeeRequestTarget(null);
+                notify(r.data.message || (feeRequestIsRetry ? "Updated fee request emailed to member" : "Fee request emailed to member"));
+                closeFeeRequestModal();
                 setFeePromptTarget(null);
                 fetchPendingMembers();
             } catch (err) {
@@ -2752,6 +2761,12 @@ const AdminPortal = () => {
                                                     Free Membership
                                                 </button>
                                             )}
+                                            {canRequestFeeAgain(m) && (
+                                                <button type="button" onClick={() => openFeeRequestModal(m, true)} disabled={isProcessing}
+                                                    className="flex-1 text-[9px] bg-amber-600 text-white py-2 rounded-lg font-black uppercase tracking-widest">
+                                                    Request Fee Again
+                                                </button>
+                                            )}
                                             {canDirectApprove(m) && (
                                                 <button type="button" onClick={() => { setDirectApproveTarget(m); setDirectApproveNote(""); }} disabled={isProcessing}
                                                     className="flex-1 text-[9px] bg-teal-50 text-teal-700 border border-teal-100 py-2 rounded-lg font-black uppercase tracking-widest">
@@ -2829,6 +2844,9 @@ const AdminPortal = () => {
                                                                 )}
                                                                 {canRequestFee(m) && (
                                                                     <button type="button" onClick={() => { setWaiveTarget(m); setWaiveReason(""); setOpenActionMenu(null); }} className="w-full px-3 py-2 text-[10px] font-bold uppercase text-purple-600 hover:bg-purple-50 text-left">Free Membership</button>
+                                                                )}
+                                                                {canRequestFeeAgain(m) && (
+                                                                    <button type="button" onClick={() => openFeeRequestModal(m, true)} className="w-full px-3 py-2 text-[10px] font-bold uppercase text-amber-700 hover:bg-amber-50 text-left">Request Fee Again</button>
                                                                 )}
                                                                 {canDirectApprove(m) && (
                                                                     <button type="button" onClick={() => { setDirectApproveTarget(m); setDirectApproveNote(""); setOpenActionMenu(null); }} className="w-full px-3 py-2 text-[10px] font-bold uppercase text-teal-600 hover:bg-teal-50 text-left">Direct Approve</button>
@@ -2971,11 +2989,19 @@ const AdminPortal = () => {
                 )}
 
                 {feeRequestTarget && (
-                    <AdminModal open={!!feeRequestTarget} onClose={() => setFeeRequestTarget(null)} maxWidth="max-w-xl">
+                    <AdminModal open={!!feeRequestTarget} onClose={closeFeeRequestModal} maxWidth="max-w-xl">
                         <form onSubmit={handleRequestFee} className="p-8 space-y-5">
                             <div>
-                                <h3 className="text-xl font-black text-slate-900 uppercase">Send Membership Fee Request</h3>
-                                <p className="text-sm text-slate-500 mt-1">To: <strong>{feeRequestTarget.name}</strong> — member will receive full details by email</p>
+                                <h3 className="text-xl font-black text-slate-900 uppercase">
+                                    {feeRequestIsRetry ? "Send Updated Fee Request" : "Send Membership Fee Request"}
+                                </h3>
+                                <p className="text-sm text-slate-500 mt-1">
+                                    To: <strong>{feeRequestTarget.name}</strong>
+                                    {feeRequestIsRetry && feeRequestTarget.feePayment?.amount != null && (
+                                        <> — previous amount was <strong>PKR {feeRequestTarget.feePayment.amount}</strong></>
+                                    )}
+                                    {" "}— member will receive full details by email
+                                </p>
                             </div>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div>
@@ -3015,11 +3041,13 @@ const AdminPortal = () => {
                             </div>
                             <div>
                                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1">Message to Member (optional)</label>
-                                <textarea rows={3} value={feeRequestForm.message} onChange={(e) => setFeeRequestForm({ ...feeRequestForm, message: e.target.value })} className={`${inputCls} resize-none`} placeholder="Any special instructions..." />
+                                <textarea rows={3} value={feeRequestForm.message} onChange={(e) => setFeeRequestForm({ ...feeRequestForm, message: e.target.value })} className={`${inputCls} resize-none`} placeholder={feeRequestIsRetry ? "e.g. Your payment was insufficient. Please send the remaining PKR amount by the deadline." : "Any special instructions..."} />
                             </div>
                             <div className="flex gap-3 pt-2">
-                                <button type="submit" disabled={isProcessing || !allFeeChannels.length} className="flex-1 py-3 bg-[#002147] text-white rounded-xl text-[10px] font-black uppercase disabled:opacity-50">Send Email & Open Portal</button>
-                                <button type="button" onClick={() => setFeeRequestTarget(null)} className="px-4 py-3 border rounded-xl text-[10px] font-black uppercase text-slate-500">Cancel</button>
+                                <button type="submit" disabled={isProcessing || !allFeeChannels.length} className="flex-1 py-3 bg-[#002147] text-white rounded-xl text-[10px] font-black uppercase disabled:opacity-50">
+                                    {feeRequestIsRetry ? "Send Updated Request" : "Send Email & Open Portal"}
+                                </button>
+                                <button type="button" onClick={closeFeeRequestModal} className="px-4 py-3 border rounded-xl text-[10px] font-black uppercase text-slate-500">Cancel</button>
                             </div>
                         </form>
                     </AdminModal>

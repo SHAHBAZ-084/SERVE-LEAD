@@ -300,6 +300,154 @@ router.post('/request/:memberId', authMiddleware, isAdmin, asyncHandler(async (r
 
 
 
+// POST /api/fees/request-again/:memberId — updated amount / send more fee (clears prior proof)
+
+router.post('/request-again/:memberId', authMiddleware, isAdmin, asyncHandler(async (req, res) => {
+
+    const member = await Member.findById(req.params.memberId);
+
+    if (!member) return res.status(404).json({ error: 'Member not found' });
+
+
+
+    if (member.interviewResult?.status !== 'passed') {
+
+        return res.status(400).json({ error: 'Fee can only be re-requested after the member has passed the interview.' });
+
+    }
+
+    if (!['pending', 'fee_pending'].includes(member.status)) {
+
+        return res.status(400).json({ error: 'Member is not eligible for a fee re-request.' });
+
+    }
+
+    if (!['requested', 'submitted'].includes(member.feeStatus)) {
+
+        return res.status(400).json({ error: 'Fee can only be re-requested when payment is pending or proof needs correction.' });
+
+    }
+
+
+
+    const previousAmount = member.feePayment?.amount ?? null;
+
+    const bodyAmount = Number(req.body.amount);
+
+    const defaultAmount = Number(await getSettingValue('membership_fee', '0')) || 0;
+
+    const amount = bodyAmount > 0 ? bodyAmount : (previousAmount || defaultAmount);
+
+    if (!amount || amount <= 0) {
+
+        return res.status(400).json({ error: 'A valid membership fee amount is required.' });
+
+    }
+
+
+
+    const defaultMonths = parseInt(await getSettingValue('membership_validity_months', '12'), 10) || 12;
+
+    const validityMonths = Number(req.body.validityMonths) > 0 ? Number(req.body.validityMonths) : (member.feePayment?.validityMonths || defaultMonths);
+
+    const deadline = await resolveFeeDeadline(req.body.deadline);
+
+    const admin = await getAdminActor(req);
+
+
+
+    let channels = Array.isArray(req.body.channels) ? req.body.channels : [];
+
+    if (!channels.length) {
+
+        channels = member.feePayment?.requestedChannels?.length
+
+            ? member.feePayment.requestedChannels
+
+            : parseChannels(await getSettingValue('membership_fee_channels', '[]'));
+
+    }
+
+
+
+    const adminMessage = (req.body.message || '').trim();
+
+
+
+    member.feeStatus = 'requested';
+
+    member.status = 'fee_pending';
+
+    member.feePayment = member.feePayment || {};
+
+    member.feePayment.amount = amount;
+
+    member.feePayment.deadline = deadline;
+
+    member.feePayment.validityMonths = validityMonths;
+
+    member.feePayment.requestedChannels = channels;
+
+    member.feePayment.adminMessage = adminMessage;
+
+    member.feePayment.transactionId = '';
+
+    member.feePayment.paymentChannel = '';
+
+    member.feePayment.accountNumber = '';
+
+    member.feePayment.screenshotUrl = '';
+
+    member.feePayment.submittedAt = undefined;
+
+    await member.save();
+
+
+
+    await createFeeRecord({
+
+        member,
+
+        admin,
+
+        action: 'fee_requested',
+
+        amount,
+
+        note: `Re-request${previousAmount != null ? ` (was PKR ${previousAmount})` : ''}. Deadline: ${deadline.toISOString()}`,
+
+    });
+
+
+
+    sendFeeRequestedEmail(
+
+        member.email,
+
+        member.name,
+
+        amount,
+
+        channels,
+
+        deadline,
+
+        validityMonths,
+
+        adminMessage,
+
+        { isRetry: true, previousAmount }
+
+    ).catch(console.error);
+
+
+
+    res.json({ message: 'Updated fee request sent to member', amount, deadline, validityMonths });
+
+}));
+
+
+
 // POST /api/fees/waive/:memberId
 
 router.post('/waive/:memberId', authMiddleware, isAdmin, asyncHandler(async (req, res) => {

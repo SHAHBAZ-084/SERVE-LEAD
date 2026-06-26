@@ -38,6 +38,13 @@ export const needsInterviewResult = (m) =>
 export const canRequestFee = (m) =>
   m.interviewResult?.status === "passed" && m.feeStatus === "not_requested";
 
+export const canRequestFeeAgain = (m) =>
+  m.interviewResult?.status === "passed" && ["requested", "submitted"].includes(m.feeStatus);
+
+export const canVerifyFee = (m) => m.feeStatus === "submitted";
+
+export const canRejectFee = (m) => m.feeStatus === "submitted";
+
 export const canDirectApprove = (m) =>
   m.interviewResult?.status === "passed" && !canApproveMemberFee(m);
 
@@ -52,6 +59,8 @@ const PaymentManagementTab = ({ pendingMembers, fetchPendingMembers, auth, notif
   const [savingSettings, setSavingSettings] = useState(false);
   const [membershipFee, setMembershipFee] = useState(0);
   const [confirmRequest, setConfirmRequest] = useState(null);
+  const [retryTarget, setRetryTarget] = useState(null);
+  const [retryForm, setRetryForm] = useState({ amount: "", deadline: "", message: "" });
   const [feeDeadline, setFeeDeadline] = useState("");
   const [waiveTarget, setWaiveTarget] = useState(null);
   const [waiveReason, setWaiveReason] = useState("");
@@ -70,9 +79,10 @@ const PaymentManagementTab = ({ pendingMembers, fetchPendingMembers, auth, notif
 
   const actionMembers = passedMembers.filter((m) => {
     const needsRequest = m.feeStatus === "not_requested";
+    const needsRetry = ["requested", "submitted"].includes(m.feeStatus);
     const needsReview = m.feeStatus === "submitted";
     const needsVerifyWaived = m.feeStatus === "waived";
-    return needsRequest || needsReview || needsVerifyWaived;
+    return needsRequest || needsRetry || needsReview || needsVerifyWaived;
   });
 
   const fetchRecords = useCallback(async (type) => {
@@ -122,6 +132,31 @@ const PaymentManagementTab = ({ pendingMembers, fetchPendingMembers, auth, notif
       fetchPendingMembers();
     } catch (err) {
       notify(err.response?.data?.error || "Failed to request fee", "error");
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const handleRequestFeeAgain = async (memberId) => {
+    if (!retryForm.amount || Number(retryForm.amount) <= 0) {
+      notify("Enter a valid fee amount", "error");
+      return;
+    }
+    setProcessing(true);
+    try {
+      const r = await api.post(`fees/request-again/${memberId}`, {
+        amount: Number(retryForm.amount),
+        deadline: retryForm.deadline || feeDeadline,
+        validityMonths: Number(membershipValidityMonths) || 12,
+        channels: feeChannels,
+        message: retryForm.message.trim(),
+      }, auth);
+      notify(r.data.message || "Updated fee request sent");
+      setRetryTarget(null);
+      setRetryForm({ amount: "", deadline: "", message: "" });
+      fetchPendingMembers();
+    } catch (err) {
+      notify(err.response?.data?.error || "Failed to re-request fee", "error");
     } finally {
       setProcessing(false);
     }
@@ -351,6 +386,49 @@ const PaymentManagementTab = ({ pendingMembers, fetchPendingMembers, auth, notif
                         <button type="button" onClick={() => setConfirmRequest(m._id)} className="px-5 py-2.5 bg-[#002147] text-white rounded-xl text-[10px] font-black uppercase tracking-widest">Request Fee Payment</button>
                         <button type="button" onClick={() => { setWaiveTarget(m); setWaiveReason(""); }} className="px-5 py-2.5 bg-white border-2 border-emerald-200 text-emerald-700 rounded-xl text-[10px] font-black uppercase tracking-widest">Grant Free Membership</button>
                       </>
+                    )}
+                  </div>
+                )}
+
+                {(m.feeStatus === "requested" || m.feeStatus === "submitted") && (
+                  <div className="flex flex-wrap gap-3">
+                    {retryTarget === m._id ? (
+                      <div className="w-full p-4 bg-amber-50 border border-amber-100 rounded-xl space-y-3">
+                        <p className="text-sm text-slate-700">
+                          Send an <strong>updated fee request</strong> to {m.name}.
+                          {fp.amount != null && <> Previous amount: <strong>PKR {fp.amount}</strong>.</>}
+                          {" "}Use this if they paid less than required or proof needs correction.
+                        </p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div>
+                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1">New Fee Amount (PKR)</label>
+                            <input type="number" min="1" value={retryForm.amount} onChange={(e) => setRetryForm({ ...retryForm, amount: e.target.value })} className={inputCls} />
+                          </div>
+                          <div>
+                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1">Payment Deadline</label>
+                            <input type="datetime-local" value={retryForm.deadline || feeDeadline} onChange={(e) => setRetryForm({ ...retryForm, deadline: e.target.value })} className={inputCls} />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1">Message to Member</label>
+                          <textarea rows={2} value={retryForm.message} onChange={(e) => setRetryForm({ ...retryForm, message: e.target.value })} className={`${inputCls} resize-none`} placeholder="e.g. Your payment was PKR 500 short. Please send the remaining amount." />
+                        </div>
+                        <div className="flex gap-2">
+                          <button type="button" disabled={processing} onClick={() => handleRequestFeeAgain(m._id)} className="px-4 py-2 bg-amber-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest disabled:opacity-50">Confirm & Send</button>
+                          <button type="button" onClick={() => setRetryTarget(null)} className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-[10px] font-black uppercase text-slate-500">Cancel</button>
+                        </div>
+                      </div>
+                    ) : (
+                      <button type="button" onClick={() => {
+                        setRetryTarget(m._id);
+                        setRetryForm({
+                          amount: String(fp.amount || membershipFee || ""),
+                          deadline: feeDeadline,
+                          message: "",
+                        });
+                      }} className="px-5 py-2.5 bg-amber-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest">
+                        Request Fee Again
+                      </button>
                     )}
                   </div>
                 )}

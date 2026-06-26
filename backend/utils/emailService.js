@@ -359,7 +359,8 @@ const formatChannelsHtml = (channels) => {
   }).join('');
 };
 
-const sendFeeRequestedEmail = async (email, name, amount, channels, deadline, validityMonths = 12, adminMessage = '') => {
+const sendFeeRequestedEmail = async (email, name, amount, channels, deadline, validityMonths = 12, adminMessage = '', options = {}) => {
+  const { isRetry = false, previousAmount = null } = options;
   try {
     const transporter = createTransporter();
     const portalUrl = `${process.env.FRONTEND_URL || 'https://serveandlead.org'}/login?redirect=${encodeURIComponent('/dashboard?fee=submit')}`;
@@ -370,17 +371,27 @@ const sendFeeRequestedEmail = async (email, name, amount, channels, deadline, va
     const messageBlock = adminMessage
       ? `<div style="background:#f0f9ff;border-left:4px solid #0284c7;padding:16px;border-radius:8px;margin:20px 0;"><p style="margin:0;color:#0c4a6e;"><strong>Message from administration:</strong> ${adminMessage}</p></div>`
       : '';
+    const retryNotice = isRetry
+      ? `<div style="background:#fffbeb;border-left:4px solid #f59e0b;padding:16px;border-radius:8px;margin:20px 0;">
+          <p style="margin:0;color:#92400e;font-weight:700;">Your fee payment needs to be updated.${previousAmount != null ? ` Previous requested amount: PKR ${previousAmount}.` : ''}</p>
+          <p style="margin:8px 0 0;color:#78350f;font-size:14px;">Please pay the revised amount below and submit fresh payment proof through the membership portal.</p>
+        </div>`
+      : '';
+    const intro = isRetry
+      ? 'Please review the updated membership fee details below.'
+      : 'Congratulations on passing your interview. Please pay your membership fee and submit payment proof through the membership portal.';
     await transporter.sendMail({
       from: `"Serve & Lead Society" <${process.env.EMAIL_USER}>`,
       to: email,
       replyTo: 'serveandleadsociety@serveandlead.org',
-      subject: 'Action Required: Membership Fee Payment',
+      subject: isRetry ? 'Updated Membership Fee Required' : 'Action Required: Membership Fee Payment',
       text: `Dear ${name}, membership fee PKR ${amount} due by ${deadlineText}. Membership valid for ${validityMonths} months. Submit proof: ${portalUrl}`,
-      html: emailShell('Membership Fee Required', `
+      html: emailShell(isRetry ? 'Updated Fee Required' : 'Membership Fee Required', `
         <h2 style="color:#0f172a;margin-top:0;">Dear ${name},</h2>
-        <p style="font-size:16px;color:#475569;">Congratulations on passing your interview. Please pay your membership fee and submit payment proof through the membership portal.</p>
+        <p style="font-size:16px;color:#475569;">${intro}</p>
+        ${retryNotice}
         <div style="background:#f8fafc;border-radius:12px;padding:20px;margin:20px 0;border:1px solid #e2e8f0;">
-          <p style="margin:0 0 8px;color:#64748b;font-size:13px;text-transform:uppercase;letter-spacing:0.08em;font-weight:700;">Fee Amount</p>
+          <p style="margin:0 0 8px;color:#64748b;font-size:13px;text-transform:uppercase;letter-spacing:0.08em;font-weight:700;">${isRetry ? 'Revised Fee Amount' : 'Fee Amount'}</p>
           <p style="margin:0;font-size:28px;font-weight:900;color:#002147;">PKR ${amount}</p>
           <p style="margin:12px 0 0;color:#475569;font-size:14px;"><strong>Membership duration:</strong> ${validityMonths} month${validityMonths === 1 ? '' : 's'} from approval</p>
           <p style="margin:8px 0 0;color:#92400e;font-size:14px;font-weight:700;"><strong>Payment deadline:</strong> ${deadlineText}</p>
@@ -389,7 +400,7 @@ const sendFeeRequestedEmail = async (email, name, amount, channels, deadline, va
         <h3 style="color:#002147;font-size:14px;text-transform:uppercase;letter-spacing:0.1em;">Payment Channels</h3>
         ${channelsHtml}
         ${emailActionButton(portalUrl, 'Open Membership Portal', 'Submit Payment Proof')}
-        <p style="color:#94a3b8;font-size:12px;text-align:center;margin-top:16px;">Log in with your registered email if prompted.</p>
+        <p style="color:#94a3b8;font-size:12px;text-align:center;margin-top:16px;">Log in with your registered email if prompted. For issues, use WhatsApp support in the member portal.</p>
       `),
     });
     return { success: true };

@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import api, { getImgUrl } from "../api";
 import Navbar from "../components/Navbar";
+import MemberSupportWhatsApp from "../components/MemberSupportWhatsApp";
 import { Template1, Template2, Template3, logo, sealImg } from "./CertTemplates";
 import CountdownTimer from "../components/common/CountdownTimer";
 const Spinner = () => (
@@ -1363,6 +1364,12 @@ const MemberDashboard = () => {
                                     </form>
                                 </div>
                             </div>
+                            <MemberSupportWhatsApp
+                                name={user.name}
+                                email={user.email}
+                                feeAmount={amount}
+                                feeStatus="Fee payment due"
+                            />
                             <button onClick={handleLogout} className="text-[10px] font-bold text-rose-500 uppercase tracking-[0.3em] hover:text-rose-600 mx-auto block">Sign Out</button>
                         </div>
                     </div>
@@ -1400,6 +1407,21 @@ const MemberDashboard = () => {
                                     : "Welcome to the society. Your membership details are currently being verified by our administration team."
                                 }
                             </p>
+                            {(fs === "submitted" || interviewPassed || isInterviewed || !feeStage) && (
+                                <div className="mb-10 text-left">
+                                    <MemberSupportWhatsApp
+                                        name={user.name}
+                                        email={user.email}
+                                        feeAmount={amount}
+                                        feeStatus={
+                                            fs === "submitted" ? "Payment proof under review"
+                                            : interviewPassed ? "Interview passed — awaiting fee"
+                                            : isInterviewed ? "Interview scheduled"
+                                            : "Application pending"
+                                        }
+                                    />
+                                </div>
+                            )}
                             <button onClick={handleLogout} className="text-[10px] font-bold text-rose-500 uppercase tracking-[0.3em] hover:text-rose-600 transition-all flex items-center gap-2 mx-auto justify-center">
                                 <i className="fas fa-power-off" /> Sign Out
                             </button>
