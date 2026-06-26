@@ -39,11 +39,7 @@ function App() {
             <RegisterPage />
           </GuestRoute>
         } />
-        <Route path="/executive-register" element={
-          <GuestRoute role="Member">
-            <ExecutiveRegisterPage />
-          </GuestRoute>
-        } />
+        <Route path="/executive-register" element={<ExecutiveRegisterPage />} />
         <Route path="/login" element={
           <GuestRoute role="Member">
             <MemberLogin />

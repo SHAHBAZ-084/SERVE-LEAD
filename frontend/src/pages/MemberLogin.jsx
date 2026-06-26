@@ -172,6 +172,15 @@ export default function MemberLogin() {
                   Apply Now →
                 </button>
               </p>
+              <p className="text-sm font-bold text-slate-400">
+                Already a General Member?
+                <button
+                  onClick={() => navigate("/executive-register")}
+                  className="ml-2 text-amber-600 hover:text-amber-700 transition-colors"
+                >
+                  Apply for Executive →
+                </button>
+              </p>
               <button
                 onClick={() => navigate("/admin-login")}
                 className="text-xs font-bold uppercase tracking-widest text-slate-500 hover:text-cyan-600 transition-colors flex items-center justify-center gap-2 mx-auto mt-6 px-4 py-2 rounded-full hover:bg-slate-100"
