@@ -345,31 +345,39 @@ const formatChannelsHtml = (channels) => {
   }).join('');
 };
 
-const sendFeeRequestedEmail = async (email, name, amount, channels, deadline) => {
+const sendFeeRequestedEmail = async (email, name, amount, channels, deadline, validityMonths = 12, adminMessage = '') => {
   try {
     const transporter = createTransporter();
-    const loginUrl = `${process.env.FRONTEND_URL || 'https://serveandlead.org'}/login`;
+    const portalUrl = `${process.env.FRONTEND_URL || 'https://serveandlead.org'}/login?redirect=${encodeURIComponent('/dashboard?fee=submit')}`;
     const channelsHtml = formatChannelsHtml(channels);
     const deadlineText = deadline
       ? new Date(deadline).toLocaleString('en-PK', { dateStyle: 'full', timeStyle: 'short' })
       : 'As communicated by administration';
+    const messageBlock = adminMessage
+      ? `<div style="background:#f0f9ff;border-left:4px solid #0284c7;padding:16px;border-radius:8px;margin:20px 0;"><p style="margin:0;color:#0c4a6e;"><strong>Message from administration:</strong> ${adminMessage}</p></div>`
+      : '';
     await transporter.sendMail({
       from: `"Serve & Lead Society" <${process.env.EMAIL_USER}>`,
       to: email,
       replyTo: 'serveandleadsociety@serveandlead.org',
       subject: 'Action Required: Membership Fee Payment',
-      text: `Dear ${name}, your membership fee of PKR ${amount} is due by ${deadlineText}. Log in: ${loginUrl}`,
+      text: `Dear ${name}, membership fee PKR ${amount} due by ${deadlineText}. Membership valid for ${validityMonths} months. Submit proof: ${portalUrl}`,
       html: emailShell('Membership Fee Required', `
         <h2 style="color:#0f172a;margin-top:0;">Dear ${name},</h2>
-        <p style="font-size:16px;color:#475569;">Congratulations on passing your interview. To proceed, please pay the membership fee of <strong>PKR ${amount}</strong> and submit payment proof through the member portal.</p>
-        <div style="background:#fffbeb;border-left:4px solid #f59e0b;padding:16px;border-radius:8px;margin:20px 0;">
-          <p style="margin:0;color:#92400e;font-weight:700;">Payment deadline: ${deadlineText}</p>
+        <p style="font-size:16px;color:#475569;">Congratulations on passing your interview. Please pay your membership fee and submit payment proof through the membership portal.</p>
+        <div style="background:#f8fafc;border-radius:12px;padding:20px;margin:20px 0;border:1px solid #e2e8f0;">
+          <p style="margin:0 0 8px;color:#64748b;font-size:13px;text-transform:uppercase;letter-spacing:0.08em;font-weight:700;">Fee Amount</p>
+          <p style="margin:0;font-size:28px;font-weight:900;color:#002147;">PKR ${amount}</p>
+          <p style="margin:12px 0 0;color:#475569;font-size:14px;"><strong>Membership duration:</strong> ${validityMonths} month${validityMonths === 1 ? '' : 's'} from approval</p>
+          <p style="margin:8px 0 0;color:#92400e;font-size:14px;font-weight:700;"><strong>Payment deadline:</strong> ${deadlineText}</p>
         </div>
+        ${messageBlock}
         <h3 style="color:#002147;font-size:14px;text-transform:uppercase;letter-spacing:0.1em;">Payment Channels</h3>
         ${channelsHtml}
         <div style="text-align:center;margin-top:32px;">
-          <a href="${loginUrl}" style="background-color:#002147;color:#ffffff;padding:16px 32px;border-radius:12px;text-decoration:none;font-weight:800;font-size:14px;text-transform:uppercase;">Log In & Submit Proof</a>
+          <a href="${portalUrl}" style="background-color:#002147;color:#ffffff;padding:16px 32px;border-radius:12px;text-decoration:none;font-weight:800;font-size:14px;text-transform:uppercase;">Open Membership Portal & Submit Proof</a>
         </div>
+        <p style="color:#94a3b8;font-size:12px;text-align:center;margin-top:16px;">Log in with your registered email if prompted.</p>
       `),
     });
     return { success: true };

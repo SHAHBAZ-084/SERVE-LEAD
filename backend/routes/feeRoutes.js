@@ -190,11 +190,51 @@ router.post('/request/:memberId', authMiddleware, isAdmin, asyncHandler(async (r
 
 
 
-    const amount = Number(await getSettingValue('membership_fee', '0')) || 0;
+    const bodyAmount = Number(req.body.amount);
+
+    const defaultAmount = Number(await getSettingValue('membership_fee', '0')) || 0;
+
+    const amount = bodyAmount > 0 ? bodyAmount : defaultAmount;
+
+    if (!amount || amount <= 0) {
+
+        return res.status(400).json({ error: 'A valid membership fee amount is required.' });
+
+    }
+
+
+
+    const defaultMonths = parseInt(await getSettingValue('membership_validity_months', '12'), 10) || 12;
+
+    const validityMonths = Number(req.body.validityMonths) > 0 ? Number(req.body.validityMonths) : defaultMonths;
+
+
 
     const deadline = await resolveFeeDeadline(req.body.deadline);
 
     const admin = await getAdminActor(req);
+
+
+
+    let channels = Array.isArray(req.body.channels) ? req.body.channels : [];
+
+    if (!channels.length) {
+
+        const channelsRaw = await getSettingValue('membership_fee_channels', '[]');
+
+        channels = parseChannels(channelsRaw);
+
+        if (!channels.length) {
+
+            channels = parseChannels(await getSettingValue('donation_channels', '[]'));
+
+        }
+
+    }
+
+
+
+    const adminMessage = (req.body.message || '').trim();
 
 
 
@@ -208,29 +248,53 @@ router.post('/request/:memberId', authMiddleware, isAdmin, asyncHandler(async (r
 
     member.feePayment.deadline = deadline;
 
+    member.feePayment.validityMonths = validityMonths;
+
+    member.feePayment.requestedChannels = channels;
+
+    member.feePayment.adminMessage = adminMessage;
+
     await member.save();
 
 
 
-    await createFeeRecord({ member, admin, action: 'fee_requested', amount, note: `Deadline: ${deadline.toISOString()}` });
+    await createFeeRecord({
+
+        member,
+
+        admin,
+
+        action: 'fee_requested',
+
+        amount,
+
+        note: `Deadline: ${deadline.toISOString()} | Validity: ${validityMonths}mo`,
+
+    });
 
 
 
-    const channelsRaw = await getSettingValue('membership_fee_channels', '[]');
+    sendFeeRequestedEmail(
 
-    let channels = parseChannels(channelsRaw);
+        member.email,
 
-    if (!channels.length) {
+        member.name,
 
-        channels = parseChannels(await getSettingValue('donation_channels', '[]'));
+        amount,
 
-    }
+        channels,
 
-    sendFeeRequestedEmail(member.email, member.name, amount, channels, deadline).catch(console.error);
+        deadline,
+
+        validityMonths,
+
+        adminMessage
+
+    ).catch(console.error);
 
 
 
-    res.json({ message: 'Fee request sent', amount, deadline });
+    res.json({ message: 'Fee request sent', amount, deadline, validityMonths });
 
 }));
 
@@ -655,6 +719,12 @@ router.get('/my-fee', authMiddleware, asyncHandler(async (req, res) => {
         amount: member.feePayment?.amount ?? null,
 
         deadline: member.feePayment?.deadline ?? null,
+
+        validityMonths: member.feePayment?.validityMonths ?? null,
+
+        requestedChannels: member.feePayment?.requestedChannels || [],
+
+        adminMessage: member.feePayment?.adminMessage || '',
 
         status: member.status,
 

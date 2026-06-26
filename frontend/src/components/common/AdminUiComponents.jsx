@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 
 // ── Shared Primitives ─────────────────────────────────────
 export const inputCls =
@@ -78,3 +79,33 @@ export const Spinner = () => (
         <div className="w-8 h-8 border-3 border-[#002147] border-t-transparent rounded-full animate-spin" style={{ borderWidth: "3px" }} />
     </div>
 );
+
+/** Renders modals on document.body so fixed positioning is not broken by parent transforms. */
+export function AdminModal({ open, onClose, children, maxWidth = "max-w-lg", zIndex = "z-[9999]" }) {
+    useEffect(() => {
+        if (!open) return undefined;
+        const prev = document.body.style.overflow;
+        document.body.style.overflow = "hidden";
+        return () => { document.body.style.overflow = prev; };
+    }, [open]);
+
+    if (!open) return null;
+
+    return createPortal(
+        <div
+            className={`fixed inset-0 ${zIndex} flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm`}
+            onClick={onClose}
+            role="presentation"
+        >
+            <div
+                className={`bg-white rounded-2xl w-full ${maxWidth} shadow-2xl max-h-[92vh] overflow-y-auto`}
+                onClick={(e) => e.stopPropagation()}
+                role="dialog"
+                aria-modal="true"
+            >
+                {children}
+            </div>
+        </div>,
+        document.body
+    );
+}

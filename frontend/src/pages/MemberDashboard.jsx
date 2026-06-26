@@ -116,13 +116,21 @@ const MemberDashboard = () => {
     const [feeToast, setFeeToast] = useState(null);
 
     const navigate = useNavigate();
+    const [searchParams, setSearchParams] = useSearchParams();
+    const feeFormRef = useRef(null);
 
     const auth = useMemo(() => ({
         headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
     }), []);
 
+    const activeFeeChannels = useMemo(() => {
+        const req = feeInfo?.requestedChannels;
+        if (Array.isArray(req) && req.length) return req;
+        return donationChannels;
+    }, [feeInfo?.requestedChannels, donationChannels]);
+
     const channelOptions = useMemo(() => {
-        return donationChannels.map((ch) => {
+        return activeFeeChannels.map((ch) => {
             if (ch.type === "Bank") {
                 const last4 = (ch.accountNumber || "").slice(-4);
                 return { label: `${ch.bankName || "Bank"} ••••${last4}`, value: ch.bankName || "Bank" };
@@ -130,7 +138,7 @@ const MemberDashboard = () => {
             const last4 = (ch.number || "").slice(-4);
             return { label: `${ch.walletType || "Wallet"} ••••${last4}`, value: ch.walletType || "Wallet" };
         });
-    }, [donationChannels]);
+    }, [activeFeeChannels]);
 
     const handleFeeScreenshot = (e) => {
         const file = e.target.files?.[0];
@@ -233,7 +241,7 @@ const MemberDashboard = () => {
                                 <p className="text-2xl font-black text-[#002147] text-center">PKR {feeInfo?.amount ?? "—"}</p>
                                 <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Payment Channels</p>
                                 <div className="space-y-2">
-                                    {donationChannels.map((ch) => (
+                                    {activeFeeChannels.map((ch) => (
                                         <div key={ch.id || ch.bankName || ch.walletType} className="p-3 bg-slate-50 rounded-xl border border-slate-100 text-sm">
                                             {ch.type === "Bank" ? (
                                                 <>
@@ -357,6 +365,8 @@ const MemberDashboard = () => {
                     try {
                         const feeRes = await api.get("fees/my-fee", auth);
                         setFeeInfo(feeRes.data);
+                        const reqCh = feeRes.data?.requestedChannels;
+                        if (Array.isArray(reqCh) && reqCh.length) setDonationChannels(reqCh);
                     } catch { /* ignore */ }
                     try {
                         const settingsRes = await api.get("settings");
@@ -380,6 +390,16 @@ const MemberDashboard = () => {
         };
         fetchStatus();
     }, [navigate, fetchAllData, handleLogout, auth]);
+
+    useEffect(() => {
+        if (searchParams.get("fee") === "submit" && (feeInfo?.feeStatus === "requested" || user.feeStatus === "requested")) {
+            setShowFeeModal(true);
+            setTimeout(() => feeFormRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 300);
+            const next = new URLSearchParams(searchParams);
+            next.delete("fee");
+            setSearchParams(next, { replace: true });
+        }
+    }, [searchParams, feeInfo?.feeStatus, user.feeStatus, setSearchParams]);
 
     const [exportData, setExportData] = useState(null);
     const [exporting, setExporting] = useState(false);
@@ -1239,6 +1259,109 @@ const MemberDashboard = () => {
         const fs = feeInfo?.feeStatus || user.feeStatus;
         const feeStage = fs && fs !== "not_requested";
         const interviewPassed = ir === "passed";
+        const amount = feeInfo?.amount ?? feeInfo?.feePayment?.amount;
+        const validityMonths = feeInfo?.validityMonths ?? feeInfo?.feePayment?.validityMonths;
+        const deadlineText = feeInfo?.deadline || feeInfo?.feePayment?.deadline;
+        const adminMessage = feeInfo?.adminMessage || feeInfo?.feePayment?.adminMessage;
+
+        if (fs === "requested") {
+            return (
+                <>
+                    <Navbar />
+                    {feeToast && (
+                        <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[300] bg-emerald-600 text-white px-6 py-3 rounded-xl text-sm font-bold shadow-xl">{feeToast}</div>
+                    )}
+                    <FeeSubmissionModal />
+                    <div className="min-h-screen bg-slate-50 py-10 px-4">
+                        <div ref={feeFormRef} className="max-w-4xl mx-auto space-y-6">
+                            <div className="bg-white rounded-3xl border border-slate-200 shadow-lg overflow-hidden">
+                                <div className="bg-[#002147] p-8 text-white">
+                                    <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white/60">Membership Portal</p>
+                                    <h1 className="text-2xl sm:text-3xl font-black uppercase mt-2">Submit Membership Fee Proof</h1>
+                                    <p className="text-white/70 text-sm mt-2">Welcome, {user.name}. Complete payment and upload proof below.</p>
+                                </div>
+                                <div className="p-6 sm:p-8 grid grid-cols-1 md:grid-cols-3 gap-4 border-b border-slate-100">
+                                    <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Fee Amount</p>
+                                        <p className="text-2xl font-black text-[#002147] mt-1">PKR {amount ?? "—"}</p>
+                                    </div>
+                                    <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Membership Duration</p>
+                                        <p className="text-xl font-black text-slate-800 mt-1">{validityMonths || "—"} months</p>
+                                    </div>
+                                    <div className="p-4 bg-amber-50 rounded-2xl border border-amber-100">
+                                        <p className="text-[10px] font-black text-amber-700 uppercase tracking-widest">Deadline</p>
+                                        <p className="text-sm font-bold text-amber-900 mt-1">{deadlineText ? new Date(deadlineText).toLocaleString() : "—"}</p>
+                                    </div>
+                                </div>
+                                {adminMessage && (
+                                    <div className="px-6 sm:px-8 py-4 bg-blue-50 border-b border-blue-100">
+                                        <p className="text-[10px] font-black text-blue-700 uppercase tracking-widest mb-1">Message from Administration</p>
+                                        <p className="text-sm text-blue-900">{adminMessage}</p>
+                                    </div>
+                                )}
+                                <div className="p-6 sm:p-8">
+                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Payment Channels</p>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-8">
+                                        {activeFeeChannels.map((ch) => (
+                                            <div key={ch.id || ch.bankName || ch.walletType} className="p-4 bg-slate-50 rounded-xl border border-slate-100 text-sm">
+                                                {ch.type === "Bank" ? (
+                                                    <>
+                                                        <p className="font-bold text-slate-800">{ch.bankName}</p>
+                                                        <p className="text-slate-500 text-xs mt-1">Account: {ch.accountNumber}</p>
+                                                        {ch.iban && <p className="text-slate-500 text-xs">IBAN: {ch.iban}</p>}
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <p className="font-bold text-slate-800">{ch.walletType}</p>
+                                                        <p className="text-slate-500 text-xs mt-1">{ch.number}</p>
+                                                    </>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <form onSubmit={submitFeeProof} className="space-y-4 border-t border-slate-100 pt-6">
+                                        <h2 className="text-sm font-black text-slate-800 uppercase tracking-widest">Payment Proof Form</h2>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            <div>
+                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Payment Channel *</label>
+                                                <select value={feeForm.paymentChannel} onChange={(e) => setFeeForm({ ...feeForm, paymentChannel: e.target.value })} className={inputCls} required>
+                                                    <option value="">Select channel</option>
+                                                    {channelOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                                                    <option value="Other">Other</option>
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">TID / Reference No. *</label>
+                                                <input type="text" value={feeForm.transactionId} onChange={(e) => setFeeForm({ ...feeForm, transactionId: e.target.value })} className={inputCls} required />
+                                            </div>
+                                        </div>
+                                        {feeForm.paymentChannel === "Other" && (
+                                            <input type="text" placeholder="Specify payment channel" value={feeForm.otherChannel} onChange={(e) => setFeeForm({ ...feeForm, otherChannel: e.target.value })} className={inputCls} required />
+                                        )}
+                                        <div>
+                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Sender Account or Phone *</label>
+                                            <input type="text" value={feeForm.accountNumber} onChange={(e) => setFeeForm({ ...feeForm, accountNumber: e.target.value })} className={inputCls} required />
+                                        </div>
+                                        <div>
+                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Payment Screenshot *</label>
+                                            <input type="file" accept="image/jpeg,image/png,image/webp" onChange={handleFeeScreenshot} className="text-sm" required={!feeScreenshot} />
+                                            {feePreview && <img src={feePreview} alt="Preview" className="mt-2 max-h-40 rounded-xl border border-slate-200 object-contain" />}
+                                        </div>
+                                        {feeError && <p className="text-xs font-bold text-rose-500">{feeError}</p>}
+                                        <button type="submit" disabled={feeSubmitting} className="w-full py-4 bg-[#002147] text-white rounded-xl text-[10px] font-black uppercase tracking-widest disabled:opacity-50">
+                                            {feeSubmitting ? "Uploading..." : "Submit Proof for Verification"}
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                            <button onClick={handleLogout} className="text-[10px] font-bold text-rose-500 uppercase tracking-[0.3em] hover:text-rose-600 mx-auto block">Sign Out</button>
+                        </div>
+                    </div>
+                </>
+            );
+        }
+
         return (
             <>
                 <Navbar />

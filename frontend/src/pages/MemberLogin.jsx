@@ -1,18 +1,21 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import api from "../api";
 
 export default function MemberLogin() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const [searchParams] = useSearchParams();
+  const redirectTo = searchParams.get("redirect") || (location.state?.from ? `${location.state.from.pathname}${location.state.from.search || ""}` : "/dashboard");
 
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (token) {
-      navigate("/dashboard", { replace: true });
+      navigate(redirectTo.startsWith("/") ? redirectTo : "/dashboard", { replace: true });
     }
-  }, [navigate]);
+  }, [navigate, redirectTo]);
 
   const [credentials, setCredentials] = useState({ email: "", password: "" });
   const [error, setError] = useState(null);
@@ -44,7 +47,7 @@ export default function MemberLogin() {
       localStorage.setItem("userRole", `${response.data.member.role} Member`);
       localStorage.setItem("joiningYear", response.data.member.joining_year || "20XX");
 
-      navigate("/dashboard", { replace: true });
+      navigate(redirectTo.startsWith("/") ? redirectTo : "/dashboard", { replace: true });
     } catch (err) {
       console.error("Login Error:", err);
       const status = err.response?.status;

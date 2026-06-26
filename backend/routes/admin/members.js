@@ -144,8 +144,10 @@ router.get('/pending-members', authMiddleware, isAdmin, asyncHandler(async (req,
 }));
 
 const finalizeMemberApproval = async (member) => {
+    const perRequestMonths = member.feePayment?.validityMonths;
     const validityDoc = await SystemSetting.findOne({ key: 'membership_validity_months' });
-    const validityMonths = parseInt(validityDoc?.value, 10) || 12;
+    const defaultMonths = parseInt(validityDoc?.value, 10) || 12;
+    const validityMonths = (perRequestMonths && perRequestMonths > 0) ? perRequestMonths : defaultMonths;
     const validUntil = new Date();
     validUntil.setMonth(validUntil.getMonth() + validityMonths);
 

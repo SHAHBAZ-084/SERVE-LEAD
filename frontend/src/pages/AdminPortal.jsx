@@ -7,7 +7,7 @@ import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 
 import { compressImage } from "../utils/compressImage";
-import { inputCls, useCountUp, StatCard, Spinner } from "../components/common/AdminUiComponents";
+import { inputCls, useCountUp, StatCard, Spinner, AdminModal } from "../components/common/AdminUiComponents";
 import { FOOTER_DEFAULTS, FOOTER_FIELDS, parseFooterSettings } from "../constants/footerDefaults";
 import { ABOUT_DEFAULTS, ABOUT_FIELDS, parseAboutSettings } from "../constants/aboutDefaults";
 import { MEMBER_TYPE_FILTER_OPTIONS } from "../constants/pakistanCities";
@@ -2379,12 +2379,16 @@ const AdminPortal = () => {
         const [submittingResult, setSubmittingResult] = useState(false);
         const [feePromptTarget, setFeePromptTarget] = useState(null);
         const [membershipFee, setMembershipFee] = useState(0);
+        const [defaultValidityMonths, setDefaultValidityMonths] = useState("12");
+        const [allFeeChannels, setAllFeeChannels] = useState([]);
         const [feeDeadline, setFeeDeadline] = useState("");
-        const [confirmFeeRequest, setConfirmFeeRequest] = useState(null);
+        const [feeRequestTarget, setFeeRequestTarget] = useState(null);
+        const [feeRequestForm, setFeeRequestForm] = useState({ amount: "", validityMonths: "", deadline: "", message: "", selectedChannelIds: [] });
         const [waiveTarget, setWaiveTarget] = useState(null);
         const [waiveReason, setWaiveReason] = useState("");
         const [directApproveTarget, setDirectApproveTarget] = useState(null);
         const [directApproveNote, setDirectApproveNote] = useState("");
+        const [openActionMenu, setOpenActionMenu] = useState(null);
         const [sendingCall, setSendingCall] = useState(false);
         const [viewMember, setViewMember] = useState(null);
         const [locationFilter, setLocationFilter] = useState({ ...DEFAULT_ADMIN_LOCATION_FILTER });
@@ -2395,6 +2399,56 @@ const AdminPortal = () => {
             return role === "Executive" ? "Executive Member" : "General Member";
         };
 
+        const getRoleShort = (member) => {
+            const role = member.requestedRole || member.role || "General";
+            return role === "Executive" ? "Executive" : "General";
+        };
+
+        const loadFeeSettings = useCallback(() => {
+            api.get("settings").then((r) => {
+                setMembershipFee(Number(r.data.membership_fee) || 0);
+                setDefaultValidityMonths(String(r.data.membership_validity_months || "12"));
+                const days = Number(r.data.default_fee_deadline_days) || 7;
+                const d = new Date();
+                d.setDate(d.getDate() + days);
+                setFeeDeadline(d.toISOString().slice(0, 16));
+                let ch = [];
+                try {
+                    if (r.data.membership_fee_channels) ch = JSON.parse(r.data.membership_fee_channels);
+                    if (!ch.length && r.data.donation_channels) ch = JSON.parse(r.data.donation_channels);
+                } catch { /* ignore */ }
+                setAllFeeChannels(ch);
+            }).catch(() => {});
+        }, [api]);
+
+        const openFeeRequestModal = (member) => {
+            loadFeeSettings();
+            const d = new Date();
+            d.setDate(d.getDate() + (Number(defaultValidityMonths) ? 0 : 7));
+            setFeeRequestTarget(member);
+            setFeeRequestForm({
+                amount: String(membershipFee || ""),
+                validityMonths: defaultValidityMonths || "12",
+                deadline: feeDeadline || d.toISOString().slice(0, 16),
+                message: "",
+                selectedChannelIds: allFeeChannels.map((c) => c.id).filter(Boolean),
+            });
+            setOpenActionMenu(null);
+        };
+
+        useEffect(() => { loadFeeSettings(); }, [loadFeeSettings]);
+
+        useEffect(() => {
+            if (!feeRequestTarget) return;
+            setFeeRequestForm((prev) => ({
+                ...prev,
+                amount: prev.amount || String(membershipFee || ""),
+                validityMonths: prev.validityMonths || defaultValidityMonths || "12",
+                deadline: prev.deadline || feeDeadline,
+                selectedChannelIds: prev.selectedChannelIds.length ? prev.selectedChannelIds : allFeeChannels.map((c) => c.id).filter(Boolean),
+            }));
+        }, [feeRequestTarget, membershipFee, defaultValidityMonths, feeDeadline, allFeeChannels]);
+
         const filtered = (pendingMembers || []).filter(m => {
             const matchesSearch =
                 m.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -2404,16 +2458,6 @@ const AdminPortal = () => {
             const matchesType = memberTypeFilter === "All" || memberRole === memberTypeFilter;
             return matchesSearch && matchesAdminLocationFilter(m, locationFilter) && matchesType;
         });
-
-        useEffect(() => {
-            api.get("settings").then((r) => {
-                setMembershipFee(Number(r.data.membership_fee) || 0);
-                const days = Number(r.data.default_fee_deadline_days) || 7;
-                const d = new Date();
-                d.setDate(d.getDate() + days);
-                setFeeDeadline(d.toISOString().slice(0, 16));
-            }).catch(() => {});
-        }, [api]);
 
         const handleSelectAll = (e) => setSelectedIds(e.target.checked ? filtered.map(m => m._id) : []);
         const toggleSelect = (id) => setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
@@ -2432,12 +2476,29 @@ const AdminPortal = () => {
             } finally { setIsProcessing(false); }
         };
 
-        const handleRequestFee = async (memberId) => {
+        const handleRequestFee = async (e) => {
+            e?.preventDefault?.();
+            if (!feeRequestTarget) return;
+            if (!feeRequestForm.amount || Number(feeRequestForm.amount) <= 0) {
+                notify("Enter a valid fee amount", "error");
+                return;
+            }
+            if (!feeRequestForm.selectedChannelIds.length) {
+                notify("Select at least one payment channel", "error");
+                return;
+            }
             setIsProcessing(true);
             try {
-                const r = await api.post(`fees/request/${memberId}`, { deadline: feeDeadline }, auth);
+                const channels = allFeeChannels.filter((c) => feeRequestForm.selectedChannelIds.includes(c.id));
+                const r = await api.post(`fees/request/${feeRequestTarget._id}`, {
+                    amount: Number(feeRequestForm.amount),
+                    deadline: feeRequestForm.deadline,
+                    validityMonths: Number(feeRequestForm.validityMonths) || 12,
+                    channels,
+                    message: feeRequestForm.message.trim(),
+                }, auth);
                 notify(r.data.message || "Fee request emailed to member");
-                setConfirmFeeRequest(null);
+                setFeeRequestTarget(null);
                 setFeePromptTarget(null);
                 fetchPendingMembers();
             } catch (err) {
@@ -2560,7 +2621,7 @@ const AdminPortal = () => {
         };
 
         return (
-            <div className="space-y-6 animate-fade-up relative">
+            <div className="space-y-6 relative">
                 {selectedIds.length > 0 && (
                     <div className="fixed sm:absolute bottom-6 sm:bottom-auto sm:top-0 left-1/2 -translate-x-1/2 sm:-translate-y-1/2 z-[100] bg-slate-900 text-white px-5 sm:px-6 py-3 rounded-2xl sm:rounded-full shadow-2xl shadow-blue-900/40 flex flex-wrap items-center justify-center gap-4 animate-fade-up border border-slate-700 w-[90%] sm:w-auto ring-4 ring-slate-900/20 backdrop-blur-md">
                         <span className="text-[10px] sm:text-xs font-bold bg-white/10 px-3 py-1 rounded-xl sm:rounded-full whitespace-nowrap">{selectedIds.length} Selected</span>
@@ -2680,7 +2741,7 @@ const AdminPortal = () => {
                                     {m.interviewResult?.status === "passed" && (
                                         <div className="flex flex-wrap gap-2 pt-1 border-t border-slate-100">
                                             {canRequestFee(m) && (
-                                                <button type="button" onClick={() => setConfirmFeeRequest(m._id)} disabled={isProcessing}
+                                                <button type="button" onClick={() => openFeeRequestModal(m)} disabled={isProcessing}
                                                     className="flex-1 text-[9px] bg-[#002147] text-white py-2 rounded-lg font-black uppercase tracking-widest">
                                                     Request Fee
                                                 </button>
@@ -2705,119 +2766,82 @@ const AdminPortal = () => {
 
                         <div className="hidden sm:block bg-white rounded-2xl sm:rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
                             <div className="overflow-x-auto custom-scrollbar-horizontal">
-                                <table className="w-full text-sm">
+                                <table className="w-full text-sm table-fixed min-w-[960px]">
                                     <thead>
                                         <tr className="bg-slate-50 border-b border-slate-200 text-left">
-                                            {bulkMode && (<th className="px-5 py-3.5 w-10 text-center transition-all">
-                                                <input type="checkbox" checked={selectedIds.length === filtered.length && filtered.length > 0} onChange={handleSelectAll} className="w-4 h-4 text-[#002147] border-slate-300 rounded focus:ring-[#002147]" />
-                                            </th>)}
-                                            <th className="px-5 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-widest">Applicant Name</th>
-                                            <th className="px-5 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-widest">Email Record</th>
-                                            <th className="px-5 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-widest">Entry Year</th>
-                                            <th className="px-5 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-widest">Tehsil</th>
-                                            <th className="px-5 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-widest">Requested Role</th>
-                                            <th className="px-5 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-widest text-right">Actions</th>
+                                            {bulkMode && (<th className="px-4 py-3 w-10 text-center"><input type="checkbox" checked={selectedIds.length === filtered.length && filtered.length > 0} onChange={handleSelectAll} className="w-4 h-4 text-[#002147] border-slate-300 rounded" /></th>)}
+                                            <th className="px-4 py-3 w-[14%] text-[10px] font-bold text-slate-500 uppercase tracking-widest">Name</th>
+                                            <th className="px-4 py-3 w-[18%] text-[10px] font-bold text-slate-500 uppercase tracking-widest">Email</th>
+                                            <th className="px-4 py-3 w-[7%] text-[10px] font-bold text-slate-500 uppercase tracking-widest">Year</th>
+                                            <th className="px-4 py-3 w-[10%] text-[10px] font-bold text-slate-500 uppercase tracking-widest">Tehsil</th>
+                                            <th className="px-4 py-3 w-[9%] text-[10px] font-bold text-slate-500 uppercase tracking-widest">Role</th>
+                                            <th className="px-4 py-3 w-[22%] text-[10px] font-bold text-slate-500 uppercase tracking-widest">Pipeline</th>
+                                            <th className="px-4 py-3 w-[20%] text-[10px] font-bold text-slate-500 uppercase tracking-widest text-right">Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-100">
                                         {filtered.length === 0 ? (
-                                            <tr><td colSpan={7} className="text-center py-20 text-slate-400">
+                                            <tr><td colSpan={bulkMode ? 8 : 7} className="text-center py-20 text-slate-400">
                                                 <i className="fas fa-check-circle text-4xl mb-4 block text-emerald-300/50" />
                                                 <p className="text-xs font-black uppercase tracking-widest">No pending members</p>
                                             </td></tr>
-                                        ) : filtered.map((m) => (
-                                            <tr key={m._id} className={`transition-colors group ${selectedIds.includes(m._id) ? 'bg-[#002147]/5' : 'hover:bg-amber-50/40'}`}>
-                                                {bulkMode && (<td className="px-5 py-3.5 text-center transition-all">
-                                                    <input type="checkbox" checked={selectedIds.includes(m._id)} onChange={() => toggleSelect(m._id)} className="w-4 h-4 text-[#002147] border-slate-300 rounded focus:ring-[#002147]" />
-                                                </td>)}
-                                                <td className="px-5 py-3.5">
-                                                    <div className="flex flex-col">
-                                                        <span className="text-slate-800 font-bold">{m.name}</span>
-                                                        {(() => {
-                                                            const ib = getInterviewBadge(m);
-                                                            const fb = getFeeApprovalBadge(m);
-                                                            return (
-                                                                <div className="flex flex-wrap gap-1 mt-1">
-                                                                    {ib && <span className={`inline-block text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded border w-fit ${ib.cls}`}>{ib.label}</span>}
-                                                                    {fb && fb.label !== ib?.label && <span className={`inline-block text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded border w-fit ${fb.cls}`}>{fb.label}</span>}
-                                                                </div>
-                                                            );
-                                                        })()}
-                                                        <div className="flex items-center gap-1.5 mt-1">
-                                                            <span className="text-xs font-black text-blue-500 uppercase tracking-widest bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100">Applicant</span>
-                                                            {m.interview_called ? (
-                                                                <span className="text-xs font-black text-emerald-500 uppercase tracking-widest bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100 flex items-center gap-1">
-                                                                    <i className="fas fa-check-circle text-xs" /> Called
-                                                                </span>
-                                                            ) : (
-                                                                <span className="text-xs font-black text-slate-400 uppercase tracking-widest bg-slate-50 px-1.5 py-0.5 rounded border border-slate-100">Not Called</span>
-                                                            )}
-                                                        </div>
-                                                    </div>
+                                        ) : filtered.map((m) => {
+                                            const ib = getInterviewBadge(m);
+                                            const fb = getFeeApprovalBadge(m);
+                                            return (
+                                            <tr key={m._id} className={`align-middle ${selectedIds.includes(m._id) ? 'bg-[#002147]/5' : 'hover:bg-slate-50/80'}`}>
+                                                {bulkMode && (<td className="px-4 py-3 text-center"><input type="checkbox" checked={selectedIds.includes(m._id)} onChange={() => toggleSelect(m._id)} className="w-4 h-4 text-[#002147] border-slate-300 rounded" /></td>)}
+                                                <td className="px-4 py-3 align-middle">
+                                                    <span className="text-slate-800 font-bold text-sm block truncate" title={m.name}>{m.name}</span>
                                                 </td>
-                                                <td className="px-5 py-3.5 text-slate-500">{m.email}</td>
-                                                <td className="px-5 py-3.5 font-bold text-slate-400 font-mono tracking-tighter">{m.joining_year}</td>
-                                                <td className="px-5 py-3.5 text-slate-600 font-bold">{m.tehsil || m.city || "—"}</td>
-                                                <td className="px-5 py-3.5">
-                                                    <span className={`text-xs font-black uppercase tracking-widest px-2 py-1 rounded border ${
-                                                        (m.requestedRole || m.role) === "Executive"
-                                                            ? "text-purple-700 bg-purple-50 border-purple-100"
-                                                            : "text-blue-700 bg-blue-50 border-blue-100"
-                                                    }`}>
-                                                        {getRequestedRoleLabel(m)}
+                                                <td className="px-4 py-3 align-middle">
+                                                    <span className="text-slate-500 text-xs block truncate" title={m.email}>{m.email}</span>
+                                                </td>
+                                                <td className="px-4 py-3 align-middle font-bold text-slate-500 font-mono text-xs">{m.joining_year}</td>
+                                                <td className="px-4 py-3 align-middle">
+                                                    <span className="text-slate-600 font-semibold text-xs block truncate">{m.tehsil || m.city || "—"}</span>
+                                                </td>
+                                                <td className="px-4 py-3 align-middle">
+                                                    <span className={`inline-block whitespace-nowrap text-[10px] font-black uppercase tracking-wider px-2 py-1 rounded border ${(m.requestedRole || m.role) === "Executive" ? "text-purple-700 bg-purple-50 border-purple-100" : "text-blue-700 bg-blue-50 border-blue-100"}`}>
+                                                        {getRoleShort(m)}
                                                     </span>
                                                 </td>
-                                                <td className="px-5 py-3.5 text-right">
-                                                    <div className="flex flex-wrap justify-end gap-2">
-                                                    <button onClick={() => setViewMember(m)}
-                                                        className="text-xs px-4 py-2 rounded-xl transition-all font-bold uppercase tracking-widest flex items-center gap-1.5 shadow-sm border border-slate-200 text-slate-600 hover:bg-slate-50">
-                                                        <i className="fas fa-eye" /> Details
-                                                    </button>
-                                                    <button onClick={() => setInterviewTarget(m)}
-                                                        className={`text-xs px-4 py-2 rounded-xl transition-all font-bold uppercase tracking-widest flex items-center gap-1.5 shadow-sm border ${m.interview_called
-                                                            ? "bg-amber-50 text-amber-600 border-amber-200 hover:bg-amber-100"
-                                                            : "bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100"
-                                                            }`}>
-                                                        <i className={m.interview_called ? "fas fa-sync-alt" : "fas fa-microphone-alt"} />
-                                                        {m.interview_called ? "Call Again" : "Interview Call"}
-                                                    </button>
-                                                    {needsInterviewResult(m) && (
-                                                        <button onClick={() => { setInterviewResultTarget(m); setInterviewResultForm({ result: "passed", note: "" }); }}
-                                                            className="text-xs px-4 py-2 rounded-xl font-bold uppercase tracking-widest flex items-center gap-1.5 shadow-sm border bg-indigo-50 text-indigo-600 border-indigo-200 hover:bg-indigo-100">
-                                                            <i className="fas fa-clipboard-check" /> Result
+                                                <td className="px-4 py-3 align-middle">
+                                                    <div className="flex flex-wrap gap-1">
+                                                        {ib && <span className={`text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded border whitespace-nowrap ${ib.cls}`}>{ib.label}</span>}
+                                                        {fb && <span className={`text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded border whitespace-nowrap ${fb.cls}`}>{fb.label}</span>}
+                                                    </div>
+                                                </td>
+                                                <td className="px-4 py-3 align-middle text-right">
+                                                    <div className="relative inline-block text-left">
+                                                        <button type="button" onClick={() => setOpenActionMenu(openActionMenu === m._id ? null : m._id)} className="text-[10px] font-black uppercase tracking-widest px-3 py-2 bg-[#002147] text-white rounded-lg hover:bg-slate-800">
+                                                            Manage <i className={`fas fa-chevron-${openActionMenu === m._id ? "up" : "down"} ml-1 text-[8px]`} />
                                                         </button>
-                                                    )}
-                                                    {canRequestFee(m) && (
-                                                        <button type="button" onClick={() => setConfirmFeeRequest(m._id)} disabled={isProcessing}
-                                                            className="text-xs px-4 py-2 rounded-xl font-bold uppercase tracking-widest flex items-center gap-1.5 shadow-sm border bg-[#002147] text-white border-[#002147] hover:bg-slate-800 disabled:opacity-50">
-                                                            <i className="fas fa-money-check-alt" /> Request Fee
-                                                        </button>
-                                                    )}
-                                                    {canRequestFee(m) && (
-                                                        <button type="button" onClick={() => { setWaiveTarget(m); setWaiveReason(""); }} disabled={isProcessing}
-                                                            className="text-xs px-4 py-2 rounded-xl font-bold uppercase tracking-widest flex items-center gap-1.5 shadow-sm border bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100 disabled:opacity-50">
-                                                            <i className="fas fa-gift" /> Free
-                                                        </button>
-                                                    )}
-                                                    {canDirectApprove(m) && (
-                                                        <button type="button" onClick={() => { setDirectApproveTarget(m); setDirectApproveNote(""); }} disabled={isProcessing}
-                                                            className="text-xs px-4 py-2 rounded-xl font-bold uppercase tracking-widest flex items-center gap-1.5 shadow-sm border bg-teal-50 text-teal-700 border-teal-200 hover:bg-teal-100 disabled:opacity-50">
-                                                            <i className="fas fa-user-check" /> Direct Approve
-                                                        </button>
-                                                    )}
-                                                    <button onClick={() => approveSingle(m._id)} disabled={isProcessing || !canApproveMemberFee(m)}
-                                                        title={!canApproveMemberFee(m) ? "Interview passed + fee verified/waived required" : ""}
-                                                        className={`text-xs border px-4 py-2 rounded-xl transition-colors font-bold uppercase tracking-widest flex items-center gap-1.5 shadow-sm ${canApproveMemberFee(m) ? "bg-emerald-50 text-emerald-600 border-emerald-200 hover:bg-emerald-100 disabled:opacity-50" : "bg-slate-50 text-slate-400 border-slate-200 opacity-40 cursor-not-allowed"}`}>
-                                                        <i className="fas fa-check" /> Approve
-                                                    </button>
-                                                    <button onClick={() => deleteSingle(m._id, m.name)} disabled={isProcessing}
-                                                        className="text-white bg-rose-500 w-10 h-10 rounded-xl hover:bg-rose-600 transition-all flex items-center justify-center shadow-lg shadow-rose-900/20 active:scale-95 disabled:opacity-50" title="Delete Application">
-                                                        <i className="fas fa-trash-alt" />
-                                                    </button>
+                                                        {openActionMenu === m._id && (
+                                                            <div className="absolute right-0 mt-1 w-48 bg-white border border-slate-200 rounded-xl shadow-xl z-20 py-1 text-left">
+                                                                <button type="button" onClick={() => { setViewMember(m); setOpenActionMenu(null); }} className="w-full px-3 py-2 text-[10px] font-bold uppercase text-slate-600 hover:bg-slate-50 text-left">View Details</button>
+                                                                <button type="button" onClick={() => { setInterviewTarget(m); setOpenActionMenu(null); }} className="w-full px-3 py-2 text-[10px] font-bold uppercase text-slate-600 hover:bg-slate-50 text-left">{m.interview_called ? "Call Again" : "Interview Call"}</button>
+                                                                {needsInterviewResult(m) && (
+                                                                    <button type="button" onClick={() => { setInterviewResultTarget(m); setInterviewResultForm({ result: "passed", note: "" }); setOpenActionMenu(null); }} className="w-full px-3 py-2 text-[10px] font-bold uppercase text-indigo-600 hover:bg-indigo-50 text-left">Record Result</button>
+                                                                )}
+                                                                {canRequestFee(m) && (
+                                                                    <button type="button" onClick={() => openFeeRequestModal(m)} className="w-full px-3 py-2 text-[10px] font-bold uppercase text-[#002147] hover:bg-blue-50 text-left">Request Fee</button>
+                                                                )}
+                                                                {canRequestFee(m) && (
+                                                                    <button type="button" onClick={() => { setWaiveTarget(m); setWaiveReason(""); setOpenActionMenu(null); }} className="w-full px-3 py-2 text-[10px] font-bold uppercase text-purple-600 hover:bg-purple-50 text-left">Free Membership</button>
+                                                                )}
+                                                                {canDirectApprove(m) && (
+                                                                    <button type="button" onClick={() => { setDirectApproveTarget(m); setDirectApproveNote(""); setOpenActionMenu(null); }} className="w-full px-3 py-2 text-[10px] font-bold uppercase text-teal-600 hover:bg-teal-50 text-left">Direct Approve</button>
+                                                                )}
+                                                                <button type="button" onClick={() => { approveSingle(m._id); setOpenActionMenu(null); }} disabled={!canApproveMemberFee(m)} className="w-full px-3 py-2 text-[10px] font-bold uppercase text-emerald-600 hover:bg-emerald-50 text-left disabled:opacity-40 disabled:cursor-not-allowed">Final Approve</button>
+                                                                <button type="button" onClick={() => { deleteSingle(m._id, m.name); setOpenActionMenu(null); }} className="w-full px-3 py-2 text-[10px] font-bold uppercase text-rose-600 hover:bg-rose-50 text-left border-t border-slate-100">Delete</button>
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 </td>
                                             </tr>
-                                        ))}
+                                            );
+                                        })}
                                     </tbody>
                                 </table>
                             </div>
@@ -2826,20 +2850,14 @@ const AdminPortal = () => {
                 )}
 
                 {interviewTarget && (
-                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
-                        <div className="bg-white rounded-[2.5rem] w-full max-w-lg shadow-2xl border border-slate-100 overflow-hidden animate-zoom-in max-h-[90vh] flex flex-col">
-                            <div className="bg-[#002147] p-8 text-white relative flex-shrink-0">
-                                <button onClick={() => setInterviewTarget(null)} className="absolute top-8 right-8 text-white/40 hover:text-white transition-all transform hover:rotate-90">
-                                    <i className="fas fa-times text-xl" />
-                                </button>
-                                <div className="w-14 h-14 bg-white/10 rounded-2xl flex items-center justify-center mb-5 backdrop-blur-md border border-white/10">
-                                    <i className="fas fa-calendar-check text-2xl" />
-                                </div>
-                                <h3 className="text-2xl font-black tracking-tight leading-tight uppercase">Schedule Interview Call</h3>
-                                <p className="text-white/50 text-[10px] font-black uppercase tracking-[0.3em] mt-2">Recruitment Drive Invitation</p>
+                    <AdminModal open={!!interviewTarget} onClose={() => setInterviewTarget(null)} maxWidth="max-w-lg">
+                        <div className="overflow-hidden flex flex-col max-h-[92vh]">
+                            <div className="bg-[#002147] p-6 text-white relative flex-shrink-0">
+                                <button type="button" onClick={() => setInterviewTarget(null)} className="absolute top-4 right-4 text-white/40 hover:text-white"><i className="fas fa-times" /></button>
+                                <h3 className="text-xl font-black uppercase">Schedule Interview Call</h3>
+                                <p className="text-white/60 text-xs mt-1">{interviewTarget.name}</p>
                             </div>
-
-                            <form onSubmit={handleInterviewCall} className="p-8 space-y-6 overflow-y-auto custom-scrollbar flex-1">
+                            <form onSubmit={handleInterviewCall} className="p-6 space-y-4 overflow-y-auto flex-1">
                                 <div className="group">
                                     <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 ml-1 group-focus-within:text-[#002147] transition-colors">Interview Venue / Location</label>
                                     <div className="relative">
@@ -2908,17 +2926,16 @@ const AdminPortal = () => {
                                 </div>
                             </form>
                         </div>
-                    </div>
+                    </AdminModal>
                 )}
 
                 {interviewResultTarget && (
-                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-                        <div className="bg-white rounded-[2.5rem] w-full max-w-lg shadow-2xl overflow-hidden">
-                            <div className="bg-indigo-700 p-8 text-white">
-                                <h3 className="text-xl font-black uppercase">Record Interview Result</h3>
-                                <p className="text-white/70 text-xs mt-1">{interviewResultTarget.name}</p>
-                            </div>
-                            <form onSubmit={handleInterviewResult} className="p-8 space-y-4">
+                    <AdminModal open={!!interviewResultTarget} onClose={() => setInterviewResultTarget(null)} maxWidth="max-w-lg">
+                        <div className="bg-indigo-700 p-6 text-white">
+                            <h3 className="text-xl font-black uppercase">Record Interview Result</h3>
+                            <p className="text-white/70 text-xs mt-1">{interviewResultTarget.name}</p>
+                        </div>
+                        <form onSubmit={handleInterviewResult} className="p-6 space-y-4">
                                 <div>
                                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Result</label>
                                     <select value={interviewResultForm.result} onChange={(e) => setInterviewResultForm({ ...interviewResultForm, result: e.target.value })} className={inputCls}>
@@ -2935,17 +2952,16 @@ const AdminPortal = () => {
                                     <button type="submit" disabled={submittingResult} className="flex-1 py-3 bg-indigo-700 text-white rounded-xl text-[10px] font-black uppercase disabled:opacity-50">{submittingResult ? "Saving..." : "Save & Notify"}</button>
                                 </div>
                             </form>
-                        </div>
-                    </div>
+                    </AdminModal>
                 )}
 
                 {feePromptTarget && (
-                    <div className="fixed inset-0 z-[105] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-                        <div className="bg-white rounded-[2.5rem] w-full max-w-lg shadow-2xl overflow-hidden p-8 space-y-5">
+                    <AdminModal open={!!feePromptTarget} onClose={() => setFeePromptTarget(null)} maxWidth="max-w-lg">
+                        <div className="p-8 space-y-5">
                             <h3 className="text-xl font-black text-slate-900 uppercase">Interview Passed — Next Step</h3>
                             <p className="text-sm text-slate-600"><strong>{feePromptTarget.name}</strong> has been notified by email. What would you like to do next?</p>
                             <div className="space-y-3">
-                                <button type="button" onClick={() => { setConfirmFeeRequest(feePromptTarget._id); setFeePromptTarget(null); }} className="w-full py-3 bg-[#002147] text-white rounded-xl text-[10px] font-black uppercase tracking-widest">Request Fee (PKR {membershipFee || 0})</button>
+                                <button type="button" onClick={() => { openFeeRequestModal(feePromptTarget); setFeePromptTarget(null); }} className="w-full py-3 bg-[#002147] text-white rounded-xl text-[10px] font-black uppercase tracking-widest">Request Fee (PKR {membershipFee || 0})</button>
                                 <button type="button" onClick={() => { setWaiveTarget(feePromptTarget); setWaiveReason(""); setFeePromptTarget(null); }} className="w-full py-3 bg-purple-50 text-purple-700 border border-purple-200 rounded-xl text-[10px] font-black uppercase tracking-widest">Grant Free Membership</button>
                                 <button type="button" onClick={() => { setDirectApproveTarget(feePromptTarget); setDirectApproveNote(""); setFeePromptTarget(null); }} className="w-full py-3 bg-teal-50 text-teal-700 border border-teal-200 rounded-xl text-[10px] font-black uppercase tracking-widest">Direct Approve (Skip Fee)</button>
                                 <button type="button" onClick={() => setFeePromptTarget(null)} className="w-full py-3 border border-slate-200 text-slate-500 rounded-xl text-[10px] font-black uppercase tracking-widest">Later</button>
@@ -2954,26 +2970,64 @@ const AdminPortal = () => {
                     </div>
                 )}
 
-                {confirmFeeRequest && (
-                    <div className="fixed inset-0 z-[105] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-                        <div className="bg-white rounded-2xl w-full max-w-md p-8 shadow-2xl space-y-4">
-                            <h3 className="text-lg font-bold">Request Membership Fee</h3>
-                            <p className="text-sm text-slate-600">Member will receive an email with amount <strong>PKR {membershipFee || 0}</strong>, payment methods, and deadline.</p>
+                {feeRequestTarget && (
+                    <AdminModal open={!!feeRequestTarget} onClose={() => setFeeRequestTarget(null)} maxWidth="max-w-xl">
+                        <form onSubmit={handleRequestFee} className="p-8 space-y-5">
                             <div>
-                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1">Payment Deadline</label>
-                                <input type="datetime-local" value={feeDeadline} onChange={(e) => setFeeDeadline(e.target.value)} className={inputCls} />
+                                <h3 className="text-xl font-black text-slate-900 uppercase">Send Membership Fee Request</h3>
+                                <p className="text-sm text-slate-500 mt-1">To: <strong>{feeRequestTarget.name}</strong> — member will receive full details by email</p>
                             </div>
-                            <div className="flex gap-3">
-                                <button type="button" disabled={isProcessing} onClick={() => handleRequestFee(confirmFeeRequest)} className="flex-1 py-3 bg-[#002147] text-white rounded-xl text-[10px] font-black uppercase disabled:opacity-50">Confirm & Email</button>
-                                <button type="button" onClick={() => setConfirmFeeRequest(null)} className="px-4 py-3 border rounded-xl text-[10px] font-black uppercase text-slate-500">Cancel</button>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1">Fee Amount (PKR) *</label>
+                                    <input type="number" min="1" required value={feeRequestForm.amount} onChange={(e) => setFeeRequestForm({ ...feeRequestForm, amount: e.target.value })} className={inputCls} />
+                                </div>
+                                <div>
+                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1">Membership Duration (Months) *</label>
+                                    <input type="number" min="1" required value={feeRequestForm.validityMonths} onChange={(e) => setFeeRequestForm({ ...feeRequestForm, validityMonths: e.target.value })} className={inputCls} />
+                                </div>
                             </div>
-                        </div>
-                    </div>
+                            <div>
+                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1">Payment Deadline *</label>
+                                <input type="datetime-local" required value={feeRequestForm.deadline} onChange={(e) => setFeeRequestForm({ ...feeRequestForm, deadline: e.target.value })} className={inputCls} />
+                            </div>
+                            <div>
+                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2">Payment Channels (included in email) *</label>
+                                {allFeeChannels.length === 0 ? (
+                                    <p className="text-xs text-rose-500">No channels configured. Add them in Payment Management → Fee Settings first.</p>
+                                ) : (
+                                    <div className="space-y-2 max-h-40 overflow-y-auto border border-slate-100 rounded-xl p-3">
+                                        {allFeeChannels.map((ch) => (
+                                            <label key={ch.id} className="flex items-start gap-2 text-sm cursor-pointer">
+                                                <input type="checkbox" checked={feeRequestForm.selectedChannelIds.includes(ch.id)} onChange={(e) => {
+                                                    const ids = e.target.checked
+                                                        ? [...feeRequestForm.selectedChannelIds, ch.id]
+                                                        : feeRequestForm.selectedChannelIds.filter((id) => id !== ch.id);
+                                                    setFeeRequestForm({ ...feeRequestForm, selectedChannelIds: ids });
+                                                }} className="mt-1" />
+                                                <span>
+                                                    {ch.type === "Bank" ? `${ch.bankName} — ${ch.accountNumber}` : `${ch.walletType} — ${ch.number}`}
+                                                </span>
+                                            </label>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                            <div>
+                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1">Message to Member (optional)</label>
+                                <textarea rows={3} value={feeRequestForm.message} onChange={(e) => setFeeRequestForm({ ...feeRequestForm, message: e.target.value })} className={`${inputCls} resize-none`} placeholder="Any special instructions..." />
+                            </div>
+                            <div className="flex gap-3 pt-2">
+                                <button type="submit" disabled={isProcessing || !allFeeChannels.length} className="flex-1 py-3 bg-[#002147] text-white rounded-xl text-[10px] font-black uppercase disabled:opacity-50">Send Email & Open Portal</button>
+                                <button type="button" onClick={() => setFeeRequestTarget(null)} className="px-4 py-3 border rounded-xl text-[10px] font-black uppercase text-slate-500">Cancel</button>
+                            </div>
+                        </form>
+                    </AdminModal>
                 )}
 
                 {waiveTarget && (
-                    <div className="fixed inset-0 z-[105] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-                        <form onSubmit={handleWaiveFee} className="bg-white rounded-2xl w-full max-w-md p-8 shadow-2xl space-y-4">
+                    <AdminModal open={!!waiveTarget} onClose={() => setWaiveTarget(null)} maxWidth="max-w-md">
+                        <form onSubmit={handleWaiveFee} className="p-8 space-y-4">
                             <h3 className="text-lg font-bold">Grant Free Membership</h3>
                             <p className="text-sm text-slate-500">Waive fee for <strong>{waiveTarget.name}</strong>. Member will be emailed.</p>
                             <textarea rows={4} value={waiveReason} onChange={(e) => setWaiveReason(e.target.value)} placeholder="Reason (min 10 chars) — e.g. deserving candidate, scholarship" className={`${inputCls} resize-none`} required minLength={10} />
@@ -2982,12 +3036,12 @@ const AdminPortal = () => {
                                 <button type="button" onClick={() => setWaiveTarget(null)} className="px-4 py-3 border rounded-xl text-[10px] font-black uppercase text-slate-500">Cancel</button>
                             </div>
                         </form>
-                    </div>
+                    </AdminModal>
                 )}
 
                 {directApproveTarget && (
-                    <div className="fixed inset-0 z-[105] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-                        <form onSubmit={handleDirectApprove} className="bg-white rounded-2xl w-full max-w-md p-8 shadow-2xl space-y-4">
+                    <AdminModal open={!!directApproveTarget} onClose={() => setDirectApproveTarget(null)} maxWidth="max-w-md">
+                        <form onSubmit={handleDirectApprove} className="p-8 space-y-4">
                             <h3 className="text-lg font-bold">Direct Approve Without Fee</h3>
                             <p className="text-sm text-slate-500">Approve <strong>{directApproveTarget.name}</strong> immediately after interview — skips fee collection. Welcome email will be sent.</p>
                             <textarea rows={3} value={directApproveNote} onChange={(e) => setDirectApproveNote(e.target.value)} placeholder="Optional note (recorded as waiver reason)" className={`${inputCls} resize-none`} />
@@ -2996,7 +3050,7 @@ const AdminPortal = () => {
                                 <button type="button" onClick={() => setDirectApproveTarget(null)} className="px-4 py-3 border rounded-xl text-[10px] font-black uppercase text-slate-500">Cancel</button>
                             </div>
                         </form>
-                    </div>
+                    </AdminModal>
                 )}
 
                 {viewMember && (

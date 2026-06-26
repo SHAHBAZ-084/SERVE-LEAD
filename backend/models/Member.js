@@ -91,6 +91,9 @@ const memberSchema = new mongoose.Schema({
     waivedReason: { type: String, default: '' },
     amount: { type: Number },
     deadline: { type: Date },
+    validityMonths: { type: Number },
+    requestedChannels: { type: mongoose.Schema.Types.Mixed, default: [] },
+    adminMessage: { type: String, default: '' },
   },
   membershipValidUntil: { type: Date },
   profile_pic_url: {
