@@ -236,7 +236,7 @@ const sendInterviewPassedEmail = async (email, name, note) => {
         </div>
         <p style="color:#475569;">You will receive a separate email when your membership fee payment is requested. Please log in to the member portal to stay updated.</p>
         <div style="text-align:center;margin-top:24px;">
-          <a href="${loginUrl}" style="background-color:#002147;color:#ffffff;padding:16px 32px;border-radius:12px;text-decoration:none;font-weight:800;">Member Portal</a>
+          ${emailActionButton(loginUrl, 'Member Portal')}
         </div>
       `),
     });
@@ -328,6 +328,20 @@ const emailShell = (title, bodyHtml) => `
   </div>
 `;
 
+/** Table-based CTA button — renders reliably in Gmail/mobile email clients. */
+const emailActionButton = (href, line1, line2 = '') => `
+  <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" style="margin:32px auto 0 auto;">
+    <tr>
+      <td align="center" bgcolor="#002147" style="border-radius:12px;background-color:#002147;">
+        <a href="${href}" target="_blank" rel="noopener noreferrer"
+          style="display:block;padding:16px 28px;font-family:'Segoe UI',Arial,sans-serif;font-size:15px;font-weight:700;color:#ffffff;text-decoration:none;line-height:1.45;text-align:center;min-width:200px;box-sizing:border-box;">
+          <span style="display:block;color:#ffffff;">${line1}</span>${line2 ? `<span style="display:block;color:#ffffff;font-size:13px;font-weight:600;margin-top:4px;">${line2}</span>` : ''}
+        </a>
+      </td>
+    </tr>
+  </table>
+`;
+
 const formatChannelsHtml = (channels) => {
   if (!channels?.length) return '<p style="color:#64748b;">Contact administration for payment details.</p>';
   return channels.map((ch) => {
@@ -374,9 +388,7 @@ const sendFeeRequestedEmail = async (email, name, amount, channels, deadline, va
         ${messageBlock}
         <h3 style="color:#002147;font-size:14px;text-transform:uppercase;letter-spacing:0.1em;">Payment Channels</h3>
         ${channelsHtml}
-        <div style="text-align:center;margin-top:32px;">
-          <a href="${portalUrl}" style="background-color:#002147;color:#ffffff;padding:16px 32px;border-radius:12px;text-decoration:none;font-weight:800;font-size:14px;text-transform:uppercase;">Open Membership Portal & Submit Proof</a>
-        </div>
+        ${emailActionButton(portalUrl, 'Open Membership Portal', 'Submit Payment Proof')}
         <p style="color:#94a3b8;font-size:12px;text-align:center;margin-top:16px;">Log in with your registered email if prompted.</p>
       `),
     });
@@ -404,9 +416,7 @@ const sendFeeRejectedEmail = async (email, name, reason) => {
           <p style="margin:0;color:#9f1239;font-weight:600;">Reason: ${reason}</p>
         </div>
         <p style="color:#475569;">Please log in and submit corrected payment proof.</p>
-        <div style="text-align:center;margin-top:24px;">
-          <a href="${loginUrl}" style="background-color:#002147;color:#ffffff;padding:16px 32px;border-radius:12px;text-decoration:none;font-weight:800;font-size:14px;">Resubmit Payment Proof</a>
-        </div>
+        ${emailActionButton(loginUrl, 'Resubmit Payment Proof')}
       `),
     });
     return { success: true };
@@ -432,9 +442,7 @@ const sendFeeWaivedEmail = async (email, name, reason) => {
           <p style="margin:0;color:#5b21b6;"><strong>Reason:</strong> ${reason}</p>
         </div>
         <p style="color:#475569;">Final membership approval is pending. You will receive another email once your membership is fully approved.</p>
-        <div style="text-align:center;margin-top:24px;">
-          <a href="${loginUrl}" style="background-color:#002147;color:#ffffff;padding:16px 32px;border-radius:12px;text-decoration:none;font-weight:800;font-size:14px;">Member Portal</a>
-        </div>
+        ${emailActionButton(loginUrl, 'Member Portal')}
       `),
     });
     return { success: true };
