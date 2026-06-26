@@ -2394,10 +2394,9 @@ const AdminPortal = () => {
         const [viewMember, setViewMember] = useState(null);
         const [locationFilter, setLocationFilter] = useState({ ...DEFAULT_ADMIN_LOCATION_FILTER });
         const [memberTypeFilter, setMemberTypeFilter] = useState("All");
-        const [approvalSubView, setApprovalSubView] = useState("general");
         const [executiveApps, setExecutiveApps] = useState([]);
         const [execAppsLoading, setExecAppsLoading] = useState(false);
-        const [expandedExecId, setExpandedExecId] = useState(null);
+        const [viewExecApp, setViewExecApp] = useState(null);
         const [rejectExecTarget, setRejectExecTarget] = useState(null);
         const [rejectExecReason, setRejectExecReason] = useState("");
 
@@ -2413,9 +2412,7 @@ const AdminPortal = () => {
             }
         }, [api, auth, notify]);
 
-        useEffect(() => {
-            if (approvalSubView === "executive") fetchExecutiveApps();
-        }, [approvalSubView, fetchExecutiveApps]);
+        useEffect(() => { fetchExecutiveApps(); }, [fetchExecutiveApps]);
 
         const handleApproveExecutive = async (id) => {
             if (!window.confirm("Approve this member as Executive?")) return;
@@ -2517,9 +2514,26 @@ const AdminPortal = () => {
                 m.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 m.joining_year?.toString().includes(searchTerm);
             const memberRole = m.requestedRole || m.role || "General";
-            const matchesType = memberTypeFilter === "All" || memberRole === memberTypeFilter;
+            const matchesType = memberTypeFilter === "All" || (memberTypeFilter === "General" && memberRole === "General") || (memberTypeFilter === "Executive" && memberRole === "Executive");
             return matchesSearch && matchesAdminLocationFilter(m, locationFilter) && matchesType;
         });
+
+        const filteredExecutiveApps = (executiveApps || []).filter((app) => {
+            if (memberTypeFilter === "General") return false;
+            const email = app.memberId?.email || "";
+            const matchesSearch =
+                app.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                app.member_id_str?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                app.city?.toLowerCase().includes(searchTerm.toLowerCase());
+            const loc = (app.city || app.memberId?.city || "").toLowerCase();
+            const tehsil = (locationFilter.tehsil || "").toLowerCase();
+            const matchesLocation = !tehsil || tehsil === "all" || loc.includes(tehsil) || tehsil.includes(loc);
+            return matchesSearch && matchesLocation;
+        });
+
+        const totalInQueue = (pendingMembers?.length || 0) + (executiveApps?.length || 0);
+        const totalShowing = filtered.length + filteredExecutiveApps.length;
 
         const handleSelectAll = (e) => setSelectedIds(e.target.checked ? filtered.map(m => m._id) : []);
         const toggleSelect = (id) => setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
@@ -2705,32 +2719,15 @@ const AdminPortal = () => {
                     <div>
                         <h2 className="text-xl font-bold text-slate-800">Pending Approvals</h2>
                         <p className="text-slate-400 text-sm mt-1">
-                            {approvalSubView === "general"
-                                ? `${filtered.length} of ${(pendingMembers || []).length} in queue`
-                                : `${executiveApps.length} executive application${executiveApps.length === 1 ? "" : "s"} pending`}
+                            {totalShowing} of {totalInQueue} in queue
+                            {filteredExecutiveApps.length > 0 && (
+                                <span className="text-amber-600"> · {filteredExecutiveApps.length} executive upgrade{filteredExecutiveApps.length === 1 ? "" : "s"}</span>
+                            )}
                         </p>
-                        {approvalSubView === "general" && (
-                            <p className="text-[10px] text-slate-400 mt-2 font-bold uppercase tracking-widest">Interview Call → Record Result → Request Fee / Free / Direct Approve → Final Approve</p>
-                        )}
-                    </div>
-                    <div className="flex bg-slate-100 p-1 rounded-xl">
-                        {[
-                            { id: "general", label: "Pending General Members" },
-                            { id: "executive", label: "Executive Applications" },
-                        ].map(({ id, label }) => (
-                            <button
-                                key={id}
-                                type="button"
-                                onClick={() => setApprovalSubView(id)}
-                                className={`px-3 py-2 rounded-lg text-[9px] sm:text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${approvalSubView === id ? "bg-white text-[#002147] shadow-sm" : "text-slate-500"}`}
-                            >
-                                {label}
-                            </button>
-                        ))}
+                        <p className="text-[10px] text-slate-400 mt-2 font-bold uppercase tracking-widest">General: Interview → Fee → Approve · Executive: Review application → Approve / Reject</p>
                     </div>
                 </div>
 
-                {approvalSubView === "general" && (
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
                     <div className="hidden" />
                     <div className="flex flex-col gap-3 w-full sm:w-auto sm:ml-auto">
@@ -2763,17 +2760,18 @@ const AdminPortal = () => {
                         </div>
                     </div>
                 </div>
-                )}
 
-                {approvalSubView === "general" && (loading ? <Spinner /> : (
+                {(loading || execAppsLoading) ? <Spinner /> : (
                     <>
                         <div className="sm:hidden space-y-2">
-                            {filtered.length === 0 ? (
+                            {totalShowing === 0 ? (
                                 <div className="text-center py-20 text-slate-300 bg-white rounded-[2rem] border-2 border-dashed border-slate-100">
                                     <i className="fas fa-check-circle text-4xl mb-3 block opacity-20" />
-                                    <p className="text-[10px] font-black uppercase tracking-widest">No pending members</p>
+                                    <p className="text-[10px] font-black uppercase tracking-widest">No pending applications</p>
                                 </div>
-                            ) : filtered.map((m) => (
+                            ) : (
+                            <>
+                            {filtered.map((m) => (
                                 <div key={m._id} className="p-3 bg-white rounded-2xl border border-slate-100 shadow-sm space-y-3 relative overflow-hidden transition-all">
                                     <div className="flex justify-between items-center gap-3">
                                         <div className="flex items-center gap-3">
@@ -2860,6 +2858,26 @@ const AdminPortal = () => {
                                     )}
                                 </div>
                             ))}
+                            {filteredExecutiveApps.map((app) => (
+                                <div key={`exec-${app._id}`} className="p-3 bg-amber-50/30 rounded-2xl border border-amber-100 shadow-sm space-y-3">
+                                    <div className="flex justify-between items-start gap-3">
+                                        <div>
+                                            <h4 className="font-bold text-slate-800 text-xs">{app.name}</h4>
+                                            <p className="text-[9px] text-slate-500 mt-1">{app.member_id_str || "—"}</p>
+                                            <p className="text-[8px] text-slate-400">{app.memberId?.email}</p>
+                                            <span className="inline-block mt-2 text-[7px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md border text-amber-700 bg-amber-50 border-amber-200">Exec Upgrade</span>
+                                        </div>
+                                        <span className="text-[8px] font-black text-purple-600 uppercase tracking-widest bg-purple-50 px-2 py-0.5 rounded-md border border-purple-100">{app.area_of_interest}</span>
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <button type="button" onClick={() => setViewExecApp(app)} className="flex-1 text-[9px] bg-white text-slate-600 border border-slate-200 py-2 rounded-lg font-black uppercase tracking-widest">View</button>
+                                        <button type="button" disabled={isProcessing} onClick={() => handleApproveExecutive(app._id)} className="flex-1 text-[9px] bg-emerald-600 text-white py-2 rounded-lg font-black uppercase tracking-widest disabled:opacity-50">Approve</button>
+                                        <button type="button" onClick={() => { setRejectExecTarget(app); setRejectExecReason(""); }} className="flex-1 text-[9px] bg-rose-50 text-rose-600 border border-rose-200 py-2 rounded-lg font-black uppercase tracking-widest">Reject</button>
+                                    </div>
+                                </div>
+                            ))}
+                            </>
+                            )}
                         </div>
 
                         <div className="hidden sm:block bg-white rounded-2xl sm:rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
@@ -2878,12 +2896,14 @@ const AdminPortal = () => {
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-100">
-                                        {filtered.length === 0 ? (
+                                        {totalShowing === 0 ? (
                                             <tr><td colSpan={bulkMode ? 8 : 7} className="text-center py-20 text-slate-400">
                                                 <i className="fas fa-check-circle text-4xl mb-4 block text-emerald-300/50" />
-                                                <p className="text-xs font-black uppercase tracking-widest">No pending members</p>
+                                                <p className="text-xs font-black uppercase tracking-widest">No pending applications</p>
                                             </td></tr>
-                                        ) : filtered.map((m) => {
+                                        ) : (
+                                        <>
+                                        {filtered.map((m) => {
                                             const ib = getInterviewBadge(m);
                                             const fb = getFeeApprovalBadge(m);
                                             return (
@@ -2943,77 +2963,98 @@ const AdminPortal = () => {
                                             </tr>
                                             );
                                         })}
+                                        {filteredExecutiveApps.map((app) => {
+                                            const menuKey = `exec-${app._id}`;
+                                            return (
+                                            <tr key={menuKey} className="align-middle hover:bg-amber-50/30 bg-amber-50/10">
+                                                {bulkMode && (<td className="px-4 py-3" />)}
+                                                <td className="px-4 py-3 align-middle">
+                                                    <span className="text-slate-800 font-bold text-sm block truncate" title={app.name}>{app.name}</span>
+                                                    <span className="text-[9px] text-slate-400 font-mono">{app.member_id_str || "—"}</span>
+                                                </td>
+                                                <td className="px-4 py-3 align-middle">
+                                                    <span className="text-slate-500 text-xs block truncate" title={app.memberId?.email}>{app.memberId?.email || "—"}</span>
+                                                </td>
+                                                <td className="px-4 py-3 align-middle font-bold text-slate-300 font-mono text-xs">—</td>
+                                                <td className="px-4 py-3 align-middle">
+                                                    <span className="text-slate-600 font-semibold text-xs block truncate">{app.city || "—"}</span>
+                                                </td>
+                                                <td className="px-4 py-3 align-middle">
+                                                    <span className="inline-block whitespace-nowrap text-[10px] font-black uppercase tracking-wider px-2 py-1 rounded border text-amber-700 bg-amber-50 border-amber-200">Exec Upgrade</span>
+                                                </td>
+                                                <td className="px-4 py-3 align-middle">
+                                                    <div className="flex flex-wrap gap-1">
+                                                        <span className="text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded border whitespace-nowrap text-amber-700 bg-amber-50 border-amber-200">Pending Review</span>
+                                                        <span className="text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded border whitespace-nowrap text-purple-700 bg-purple-50 border-purple-100">{app.area_of_interest}</span>
+                                                        <span className="text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded border whitespace-nowrap text-blue-700 bg-blue-50 border-blue-100">{app.availability}h/wk</span>
+                                                    </div>
+                                                </td>
+                                                <td className="px-4 py-3 align-middle text-right">
+                                                    <div className="relative inline-block text-left">
+                                                        <button type="button" onClick={() => setOpenActionMenu(openActionMenu === menuKey ? null : menuKey)} className="text-[10px] font-black uppercase tracking-widest px-3 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700">
+                                                            Manage <i className={`fas fa-chevron-${openActionMenu === menuKey ? "up" : "down"} ml-1 text-[8px]`} />
+                                                        </button>
+                                                        {openActionMenu === menuKey && (
+                                                            <div className="absolute right-0 mt-1 w-48 bg-white border border-slate-200 rounded-xl shadow-xl z-20 py-1 text-left">
+                                                                <button type="button" onClick={() => { setViewExecApp(app); setOpenActionMenu(null); }} className="w-full px-3 py-2 text-[10px] font-bold uppercase text-slate-600 hover:bg-slate-50 text-left">View Application</button>
+                                                                <button type="button" onClick={() => { handleApproveExecutive(app._id); setOpenActionMenu(null); }} disabled={isProcessing} className="w-full px-3 py-2 text-[10px] font-bold uppercase text-emerald-600 hover:bg-emerald-50 text-left disabled:opacity-40">Approve Executive</button>
+                                                                <button type="button" onClick={() => { setRejectExecTarget(app); setRejectExecReason(""); setOpenActionMenu(null); }} className="w-full px-3 py-2 text-[10px] font-bold uppercase text-rose-600 hover:bg-rose-50 text-left border-t border-slate-100">Reject</button>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                            );
+                                        })}
+                                        </>
+                                        )}
                                     </tbody>
                                 </table>
                             </div>
                         </div>
                     </>
-                ))}
+                )}
 
-                {approvalSubView === "executive" && (
-                    execAppsLoading ? <Spinner /> : (
-                        <div className="space-y-4">
-                            {executiveApps.length === 0 ? (
-                                <div className="text-center py-20 text-slate-300 bg-white rounded-[2rem] border-2 border-dashed border-slate-100">
-                                    <i className="fas fa-user-tie text-5xl mb-4 block opacity-10" />
-                                    <p className="text-[10px] font-black uppercase tracking-widest">No executive applications pending</p>
-                                </div>
-                            ) : executiveApps.map((app) => (
-                                <div key={app._id} className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
-                                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
-                                        <div>
-                                            <h3 className="font-bold text-slate-800 text-lg">{app.name}</h3>
-                                            <p className="text-xs text-slate-500 mt-1">{app.member_id_str || app.memberId?.member_id || "—"} · {app.city}</p>
-                                            {app.memberId?.email && <p className="text-xs text-slate-400">{app.memberId.email}</p>}
-                                        </div>
-                                        <div className="flex flex-wrap gap-2">
-                                            <span className="text-[9px] font-black uppercase tracking-widest px-3 py-1.5 rounded-lg border bg-purple-50 text-purple-700 border-purple-100">{app.area_of_interest}</span>
-                                            <span className="text-[9px] font-black uppercase tracking-widest px-3 py-1.5 rounded-lg border bg-blue-50 text-blue-700 border-blue-100">{app.availability} hrs/week</span>
-                                        </div>
+                {viewExecApp && (
+                    <AdminModal open={!!viewExecApp} onClose={() => setViewExecApp(null)} maxWidth="max-w-2xl">
+                        <div className="p-8 space-y-5 max-h-[85vh] overflow-y-auto">
+                            <div>
+                                <h3 className="text-xl font-black text-slate-900 uppercase">Executive Application</h3>
+                                <p className="text-sm text-slate-500 mt-1">{viewExecApp.name} · {viewExecApp.member_id_str} · {viewExecApp.city}</p>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                                {[
+                                    ["Mission Statement", viewExecApp.mission_statement],
+                                    ["Short-Term Goals", viewExecApp.short_term_goals],
+                                    ["Long-Term Goals", viewExecApp.long_term_goals],
+                                    ["Why Executive", viewExecApp.why_executive],
+                                    ["Skills", viewExecApp.skills],
+                                    ["Experience", viewExecApp.previous_volunteer_experience || "—"],
+                                    ["Area of Interest", viewExecApp.area_of_interest],
+                                    ["Availability", `${viewExecApp.availability} hours/week`],
+                                    ["Address", viewExecApp.address],
+                                    ["Father Name", viewExecApp.father_name],
+                                ].map(([label, val]) => (
+                                    <div key={label} className={label === "Mission Statement" || label === "Why Executive" ? "md:col-span-2" : ""}>
+                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{label}</p>
+                                        <p className="text-slate-700 whitespace-pre-wrap">{val}</p>
                                     </div>
-                                    <button
-                                        type="button"
-                                        onClick={() => setExpandedExecId(expandedExecId === app._id ? null : app._id)}
-                                        className="text-[10px] font-black uppercase tracking-widest text-[#002147] flex items-center gap-2"
-                                    >
-                                        <i className={`fas fa-chevron-${expandedExecId === app._id ? "up" : "down"}`} />
-                                        {expandedExecId === app._id ? "Hide Details" : "View Full Application"}
-                                    </button>
-                                    {expandedExecId === app._id && (
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-slate-50 rounded-xl border border-slate-100 text-sm">
-                                            {[
-                                                ["Mission Statement", app.mission_statement],
-                                                ["Short-Term Goals", app.short_term_goals],
-                                                ["Long-Term Goals", app.long_term_goals],
-                                                ["Why Executive", app.why_executive],
-                                                ["Skills", app.skills],
-                                                ["Experience", app.previous_volunteer_experience || "—"],
-                                                ["Address", app.address],
-                                                ["Father Name", app.father_name],
-                                            ].map(([label, val]) => (
-                                                <div key={label} className={label === "Mission Statement" || label === "Why Executive" ? "md:col-span-2" : ""}>
-                                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{label}</p>
-                                                    <p className="text-slate-700 whitespace-pre-wrap">{val}</p>
-                                                </div>
-                                            ))}
-                                            <div>
-                                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">LinkedIn</p>
-                                                {app.linkedin_url ? (
-                                                    <a href={app.linkedin_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline break-all">{app.linkedin_url}</a>
-                                                ) : (
-                                                    <p className="text-slate-700">—</p>
-                                                )}
-                                            </div>
-                                        </div>
+                                ))}
+                                <div>
+                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">LinkedIn</p>
+                                    {viewExecApp.linkedin_url ? (
+                                        <a href={viewExecApp.linkedin_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline break-all">{viewExecApp.linkedin_url}</a>
+                                    ) : (
+                                        <p className="text-slate-700">—</p>
                                     )}
-                                    <div className="flex flex-wrap gap-3 pt-2 border-t border-slate-100">
-                                        <button type="button" disabled={isProcessing} onClick={() => handleApproveExecutive(app._id)} className="px-5 py-2.5 bg-emerald-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest disabled:opacity-50">Approve Executive</button>
-                                        <button type="button" onClick={() => { setRejectExecTarget(app); setRejectExecReason(""); }} className="px-5 py-2.5 bg-rose-50 text-rose-600 border border-rose-200 rounded-xl text-[10px] font-black uppercase tracking-widest">Reject</button>
-                                    </div>
                                 </div>
-                            ))}
+                            </div>
+                            <div className="flex gap-3 pt-2 border-t border-slate-100">
+                                <button type="button" disabled={isProcessing} onClick={() => { handleApproveExecutive(viewExecApp._id); setViewExecApp(null); }} className="flex-1 py-3 bg-emerald-600 text-white rounded-xl text-[10px] font-black uppercase disabled:opacity-50">Approve Executive</button>
+                                <button type="button" onClick={() => { setRejectExecTarget(viewExecApp); setRejectExecReason(""); setViewExecApp(null); }} className="flex-1 py-3 bg-rose-50 text-rose-600 border border-rose-200 rounded-xl text-[10px] font-black uppercase">Reject</button>
+                            </div>
                         </div>
-                    )
+                    </AdminModal>
                 )}
 
                 {rejectExecTarget && (
