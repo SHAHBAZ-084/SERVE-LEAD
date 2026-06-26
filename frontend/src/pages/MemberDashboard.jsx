@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import api, { getImgUrl } from "../api";
+import Navbar from "../components/Navbar";
 import { Template1, Template2, Template3, logo, sealImg } from "./CertTemplates";
 import CountdownTimer from "../components/common/CountdownTimer";
 const Spinner = () => (
@@ -1251,6 +1252,14 @@ const MemberDashboard = () => {
     );
 
     // --- MAIN RENDER ---
+
+    if (loading) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-slate-50">
+                <Spinner />
+            </div>
+        );
+    }
 
     if (user.status === "pending" || user.status === "fee_pending") {
         const isInterviewed = user.interview_called;
