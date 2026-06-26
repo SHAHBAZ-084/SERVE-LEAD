@@ -116,7 +116,6 @@ const MemberDashboard = () => {
     const [feeToast, setFeeToast] = useState(null);
 
     const navigate = useNavigate();
-    const [searchParams, setSearchParams] = useSearchParams();
     const feeFormRef = useRef(null);
 
     const auth = useMemo(() => ({
