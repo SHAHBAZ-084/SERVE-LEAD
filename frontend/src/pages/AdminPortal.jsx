@@ -13,7 +13,7 @@ import { FOOTER_DEFAULTS, FOOTER_FIELDS, parseFooterSettings } from "../constant
 import { ABOUT_DEFAULTS, ABOUT_FIELDS, parseAboutSettings } from "../constants/aboutDefaults";
 import { MEMBER_TYPE_FILTER_OPTIONS } from "../constants/pakistanCities";
 import AdminLocationFilters, { DEFAULT_ADMIN_LOCATION_FILTER, ALL_TEHSILS_LABEL, appendLocationFilterParams, matchesAdminLocationFilter } from "../components/common/AdminLocationFilters";
-import PaymentManagementTab, { getFeeApprovalBadge, canApproveMemberFee, getInterviewBadge, needsInterviewResult, canRequestFee, canRequestFeeAgain, canDirectApprove, getExecutiveInterviewBadge, getExecutiveFeeBadge, needsExecutiveInterviewResult, canWaiveExecutive, canFinalApproveExecutive } from "../components/admin/PaymentManagementTab";
+import PaymentManagementTab, { getFeeApprovalBadge, canApproveMemberFee, getInterviewBadge, needsInterviewResult, canRequestFee, canRequestFeeAgain, canDirectApprove, canSkipInterviewPath, getExecutiveInterviewBadge, getExecutiveFeeBadge, needsExecutiveInterviewResult, canWaiveExecutive, canFinalApproveExecutive } from "../components/admin/PaymentManagementTab";
 
 const adminFilterSelectCls =
   "bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold text-slate-700 outline-none focus:border-[#002147] min-w-[140px]";
@@ -2236,6 +2236,7 @@ const ApprovalsTab = ({ pendingMembers, executiveApps, fetchPendingMembers, load
     const [interviewResultForm, setInterviewResultForm] = useState({ result: "passed", note: "" });
     const [submittingResult, setSubmittingResult] = useState(false);
     const [feePromptTarget, setFeePromptTarget] = useState(null);
+    const [skipInterviewTarget, setSkipInterviewTarget] = useState(null);
     const [membershipFee, setMembershipFee] = useState(0);
     const [defaultValidityMonths, setDefaultValidityMonths] = useState("12");
     const [allFeeChannels, setAllFeeChannels] = useState([]);
@@ -2472,7 +2473,7 @@ const ApprovalsTab = ({ pendingMembers, executiveApps, fetchPendingMembers, load
     const toggleSelect = (id) => setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
 
     const approveSingle = async (id) => {
-        if (!window.confirm("Approve this member?")) return;
+        if (!window.confirm("Approve this member? Interview is optional if fee is already verified or waived.")) return;
         setIsProcessing(true);
         try {
             const r = await api.post(`admin/approve-member/${id}`, {}, auth);
@@ -2531,6 +2532,7 @@ const ApprovalsTab = ({ pendingMembers, executiveApps, fetchPendingMembers, load
             setWaiveTarget(null);
             setWaiveReason("");
             setFeePromptTarget(null);
+            setSkipInterviewTarget(null);
             fetchPendingMembers();
         } catch (err) {
             notify(err.response?.data?.error || "Failed to waive fee", "error");
@@ -2547,6 +2549,7 @@ const ApprovalsTab = ({ pendingMembers, executiveApps, fetchPendingMembers, load
             setDirectApproveTarget(null);
             setDirectApproveNote("");
             setFeePromptTarget(null);
+            setSkipInterviewTarget(null);
             fetchPendingMembers();
         } catch (err) {
             notify(err.response?.data?.error || "Direct approval failed", "error");
@@ -2740,6 +2743,12 @@ const ApprovalsTab = ({ pendingMembers, executiveApps, fetchPendingMembers, load
                                         className="flex-1 text-[9px] bg-slate-50 text-slate-600 border border-slate-100 py-2 rounded-lg font-black uppercase tracking-widest transition-all hover:bg-slate-100">
                                         Details
                                     </button>
+                                    {canSkipInterviewPath(m) && (
+                                        <button type="button" onClick={() => setSkipInterviewTarget(m)} disabled={isProcessing}
+                                            className="flex-1 text-[9px] bg-teal-50 text-teal-700 border border-teal-100 py-2 rounded-lg font-black uppercase tracking-widest">
+                                            Direct Approve
+                                        </button>
+                                    )}
                                     <button onClick={() => setInterviewTarget(m)}
                                         className={`flex-1 text-[9px] py-2 rounded-lg font-black uppercase tracking-widest border transition-all ${m.interview_called ? "bg-amber-50 text-amber-600 border-amber-100" : "bg-blue-50 text-blue-600 border-blue-100"
                                             }`}>
@@ -2889,6 +2898,9 @@ const ApprovalsTab = ({ pendingMembers, executiveApps, fetchPendingMembers, load
                                                     {openActionMenu === m._id && (
                                                         <div className="absolute right-0 mt-1 w-48 bg-white border border-slate-200 rounded-xl shadow-xl z-20 py-1 text-left">
                                                             <button type="button" onClick={() => { setViewMember(m); setOpenActionMenu(null); }} className="w-full px-3 py-2 text-[10px] font-bold uppercase text-slate-600 hover:bg-slate-50 text-left">View Details</button>
+                                                            {canSkipInterviewPath(m) && (
+                                                                <button type="button" onClick={() => { setSkipInterviewTarget(m); setOpenActionMenu(null); }} className="w-full px-3 py-2 text-[10px] font-bold uppercase text-teal-600 hover:bg-teal-50 text-left border-b border-slate-100">Direct Approve (Skip Interview)</button>
+                                                            )}
                                                             <button type="button" onClick={() => { setInterviewTarget(m); setOpenActionMenu(null); }} className="w-full px-3 py-2 text-[10px] font-bold uppercase text-slate-600 hover:bg-slate-50 text-left">{m.interview_called ? "Call Again" : "Interview Call"}</button>
                                                             {needsInterviewResult(m) && (
                                                                 <button type="button" onClick={() => { setInterviewResultTarget(m); setInterviewResultForm({ result: "passed", note: "" }); setOpenActionMenu(null); }} className="w-full px-3 py-2 text-[10px] font-bold uppercase text-indigo-600 hover:bg-indigo-50 text-left">Record Result</button>
@@ -3247,6 +3259,23 @@ const ApprovalsTab = ({ pendingMembers, executiveApps, fetchPendingMembers, load
                 </AdminModal>
             )}
 
+            {skipInterviewTarget && (
+                <AdminModal open={!!skipInterviewTarget} onClose={() => setSkipInterviewTarget(null)} maxWidth="max-w-lg">
+                    <div className="p-8 space-y-5">
+                        <h3 className="text-xl font-black text-slate-900 uppercase">Direct Approve — Skip Interview</h3>
+                        <p className="text-sm text-slate-600">
+                            Approve <strong>{skipInterviewTarget.name}</strong> without an interview, or use <strong>Interview Call</strong> in Manage if you prefer the full interview process.
+                        </p>
+                        <div className="space-y-3">
+                            <button type="button" onClick={() => { openFeeRequestModal(skipInterviewTarget); setSkipInterviewTarget(null); }} className="w-full py-3 bg-[#002147] text-white rounded-xl text-[10px] font-black uppercase tracking-widest">Request Fee (PKR {membershipFee || 0})</button>
+                            <button type="button" onClick={() => { setWaiveTarget(skipInterviewTarget); setWaiveReason(""); setSkipInterviewTarget(null); }} className="w-full py-3 bg-purple-50 text-purple-700 border border-purple-200 rounded-xl text-[10px] font-black uppercase tracking-widest">Grant Free Membership</button>
+                            <button type="button" onClick={() => { setDirectApproveTarget(skipInterviewTarget); setDirectApproveNote(""); setSkipInterviewTarget(null); }} className="w-full py-3 bg-teal-50 text-teal-700 border border-teal-200 rounded-xl text-[10px] font-black uppercase tracking-widest">Direct Approve (Skip Fee)</button>
+                            <button type="button" onClick={() => setSkipInterviewTarget(null)} className="w-full py-3 border border-slate-200 text-slate-500 rounded-xl text-[10px] font-black uppercase tracking-widest">Cancel</button>
+                        </div>
+                    </div>
+                </AdminModal>
+            )}
+
             {feeRequestTarget && (
                 <AdminModal open={!!feeRequestTarget} onClose={closeFeeRequestModal} maxWidth="max-w-xl">
                     <form onSubmit={handleRequestFee} className="p-8 space-y-5">
@@ -3330,7 +3359,7 @@ const ApprovalsTab = ({ pendingMembers, executiveApps, fetchPendingMembers, load
                 <AdminModal open={!!directApproveTarget} onClose={() => setDirectApproveTarget(null)} maxWidth="max-w-md">
                     <form onSubmit={handleDirectApprove} className="p-8 space-y-4">
                         <h3 className="text-lg font-bold">Direct Approve Without Fee</h3>
-                        <p className="text-sm text-slate-500">Approve <strong>{directApproveTarget.name}</strong> immediately after interview — skips fee collection. Welcome email will be sent.</p>
+                        <p className="text-sm text-slate-500">Approve <strong>{directApproveTarget.name}</strong> immediately — skips interview (if not taken) and fee collection. Welcome email will be sent.</p>
                         <textarea rows={3} value={directApproveNote} onChange={(e) => setDirectApproveNote(e.target.value)} placeholder="Optional note (recorded as waiver reason)" className={`${inputCls} resize-none`} />
                         <div className="flex gap-3">
                             <button type="submit" disabled={isProcessing} className="flex-1 py-3 bg-teal-600 text-white rounded-xl text-[10px] font-black uppercase disabled:opacity-50">Approve & Email Welcome</button>
@@ -3385,12 +3414,17 @@ const ApprovalsTab = ({ pendingMembers, executiveApps, fetchPendingMembers, load
                             </div>
                         </div>
 
-                        <div className="p-6 bg-slate-50 border-t border-slate-100 flex justify-end gap-3">
+                        <div className="p-6 bg-slate-50 border-t border-slate-100 flex justify-end gap-3 flex-wrap">
                             <button onClick={() => setViewMember(null)} className="px-8 py-3.5 bg-white border border-slate-200 text-slate-500 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-100 transition-all shadow-sm">
                                 Close Portal
                             </button>
-                            <button onClick={() => { approveSingle(viewMember._id); setViewMember(null); }} className="px-8 py-3.5 bg-emerald-500 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-600 transition-all shadow-lg shadow-emerald-900/20">
-                                Approve Member
+                            {canSkipInterviewPath(viewMember) && (
+                                <button onClick={() => { setSkipInterviewTarget(viewMember); setViewMember(null); }} className="px-8 py-3.5 bg-teal-500 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-teal-600 transition-all shadow-lg shadow-teal-900/20">
+                                    Direct Approve
+                                </button>
+                            )}
+                            <button onClick={() => { approveSingle(viewMember._id); setViewMember(null); }} disabled={!canApproveMemberFee(viewMember)} className="px-8 py-3.5 bg-emerald-500 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-600 transition-all shadow-lg shadow-emerald-900/20 disabled:opacity-40 disabled:cursor-not-allowed">
+                                Final Approve
                             </button>
                         </div>
                     </div>

@@ -12,15 +12,19 @@ const ACTION_BADGE = {
 
 export const getInterviewBadge = (m) => {
   const rs = m.interviewResult?.status;
+  if (rs === "passed" && !m.interview_called) return { label: "Skipped", cls: "bg-cyan-100 text-cyan-700 border-cyan-200" };
   if (rs === "passed") return { label: "Passed", cls: "bg-emerald-100 text-emerald-700 border-emerald-200" };
   if (rs === "failed") return { label: "Failed", cls: "bg-rose-100 text-rose-700 border-rose-200" };
   if (m.interview_called) return { label: "Awaiting Result", cls: "bg-amber-100 text-amber-700 border-amber-200" };
   return { label: "Not Called", cls: "bg-slate-100 text-slate-500 border-slate-200" };
 };
 
+export const isInterviewFailed = (m) => m.interviewResult?.status === "failed";
+export const isInterviewCleared = (m) => m.interviewResult?.status === "passed";
+
 export const getFeeApprovalBadge = (m) => {
-  if (m.interviewResult?.status === "failed") return null;
-  if (m.interviewResult?.status !== "passed") return null;
+  if (isInterviewFailed(m)) return null;
+  if (!isInterviewCleared(m)) return null;
   if (m.feeStatus === "requested") return { label: "Fee Due", cls: "bg-blue-100 text-blue-700 border-blue-200" };
   if (m.feeStatus === "submitted") return { label: "Proof Sent", cls: "bg-yellow-100 text-yellow-700 border-yellow-200" };
   if (m.feeStatus === "verified") return { label: "Paid", cls: "bg-emerald-100 text-emerald-700 border-emerald-200" };
@@ -30,23 +34,27 @@ export const getFeeApprovalBadge = (m) => {
 };
 
 export const canApproveMemberFee = (m) =>
-  m.interviewResult?.status === "passed" && (m.feeStatus === "verified" || m.feeStatus === "waived");
+  isInterviewCleared(m) && (m.feeStatus === "verified" || m.feeStatus === "waived");
 
 export const needsInterviewResult = (m) =>
-  m.interview_called && m.interviewResult?.status !== "passed" && m.interviewResult?.status !== "failed";
+  m.interview_called && !isInterviewCleared(m) && !isInterviewFailed(m);
 
 export const canRequestFee = (m) =>
-  m.interviewResult?.status === "passed" && m.feeStatus === "not_requested";
+  isInterviewCleared(m) && m.feeStatus === "not_requested";
 
 export const canRequestFeeAgain = (m) =>
-  m.interviewResult?.status === "passed" && ["requested", "submitted"].includes(m.feeStatus);
+  isInterviewCleared(m) && ["requested", "submitted"].includes(m.feeStatus);
 
 export const canVerifyFee = (m) => m.feeStatus === "submitted";
 
 export const canRejectFee = (m) => m.feeStatus === "submitted";
 
 export const canDirectApprove = (m) =>
-  m.interviewResult?.status === "passed" && !canApproveMemberFee(m);
+  isInterviewCleared(m) && !canApproveMemberFee(m);
+
+/** Pending member who has not started interview — admin may skip interview and approve directly */
+export const canSkipInterviewPath = (m) =>
+  !isInterviewFailed(m) && !isInterviewCleared(m) && ["pending", "fee_pending"].includes(m.status);
 
 export const getExecutiveInterviewBadge = (app) => getInterviewBadge(app);
 

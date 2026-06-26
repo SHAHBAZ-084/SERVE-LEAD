@@ -13,6 +13,7 @@ const { isAdmin, isSuperuser } = require('../../middlewares/adminMiddlewares');
 const { sendWelcomeEmail, sendInterviewEmail, sendInterviewPassedEmail, sendInterviewFailedEmail, sendExecutiveApprovedEmail, sendExecutiveRejectedEmail, sendFeeWaivedEmail } = require('../../utils/emailService');
 const logActivity = require('../../utils/activityLogger');
 const { deleteFile } = require('../../utils/storage');
+const { isInterviewFailed, isInterviewCleared, ensureInterviewCleared } = require('../../utils/memberInterview');
 
 // DELETE member (Admin only)
 router.delete('/members/:id', authMiddleware, isAdmin, asyncHandler(async (req, res) => {
@@ -199,14 +200,18 @@ router.post('/approve-member/:id', authMiddleware, isAdmin, asyncHandler(async (
         });
     }
 
-    if (member.interviewResult?.status !== 'passed') {
-        return res.status(400).json({
-            error: 'Cannot approve. The member must pass the interview before membership approval.',
-        });
+    if (isInterviewFailed(member)) {
+        return res.status(400).json({ error: 'Cannot approve a member who failed the interview.' });
     }
 
     if (!['pending', 'fee_pending'].includes(member.status)) {
         return res.status(400).json({ error: 'Member is not in a pending approval state.' });
+    }
+
+    const admin = await Member.findById(req.user.memberId).select('name member_id');
+    if (!isInterviewCleared(member)) {
+        ensureInterviewCleared(member, admin?.name || 'Admin', 'Interview waived — approved after fee verification');
+        await member.save();
     }
 
     const { nextMemberId } = await finalizeMemberApproval(member);
@@ -214,7 +219,7 @@ router.post('/approve-member/:id', authMiddleware, isAdmin, asyncHandler(async (
     logActivity(req.user.memberId, 'Approved Member', `Approved member: ${member.name} (${nextMemberId})`, member._id);
 }));
 
-// POST Direct approve — after passed interview, skip fee collection and approve immediately
+// POST Direct approve — skip fee collection and approve immediately (interview optional)
 router.post('/direct-approve/:id', authMiddleware, isAdmin, asyncHandler(async (req, res) => {
     const { note } = req.body;
     const member = await Member.findById(req.params.id);
@@ -226,10 +231,8 @@ router.post('/direct-approve/:id', authMiddleware, isAdmin, asyncHandler(async (
 
     if (member.status === 'approved') return res.status(400).json({ error: 'Already approved' });
 
-    if (member.interviewResult?.status !== 'passed') {
-        return res.status(400).json({
-            error: 'Direct approval requires a passed interview.',
-        });
+    if (isInterviewFailed(member)) {
+        return res.status(400).json({ error: 'Cannot approve a member who failed the interview.' });
     }
 
     if (!['pending', 'fee_pending'].includes(member.status)) {
@@ -237,6 +240,9 @@ router.post('/direct-approve/:id', authMiddleware, isAdmin, asyncHandler(async (
     }
 
     const admin = await Member.findById(req.user.memberId).select('name member_id');
+    if (!isInterviewCleared(member)) {
+        ensureInterviewCleared(member, admin?.name || 'Admin', 'Interview waived — direct membership approval');
+    }
     const waiverReason = (note?.trim() || 'Direct membership approval — fee waived by administration').slice(0, 500);
 
     if (!['verified', 'waived'].includes(member.feeStatus || 'not_requested')) {

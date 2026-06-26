@@ -28,6 +28,8 @@ const {
 
 } = require('../utils/emailService');
 
+const { isInterviewFailed, isInterviewCleared, ensureInterviewCleared } = require('../utils/memberInterview');
+
 
 
 const feeUpload = createUpload('fees', 8 * 1024 * 1024);
@@ -170,9 +172,9 @@ router.post('/request/:memberId', authMiddleware, isAdmin, asyncHandler(async (r
 
 
 
-    if (member.interviewResult?.status !== 'passed') {
+    if (isInterviewFailed(member)) {
 
-        return res.status(400).json({ error: 'Fee can only be requested after the member has passed the interview.' });
+        return res.status(400).json({ error: 'Fee cannot be requested for a member who failed the interview.' });
 
     }
 
@@ -213,6 +215,12 @@ router.post('/request/:memberId', authMiddleware, isAdmin, asyncHandler(async (r
     const deadline = await resolveFeeDeadline(req.body.deadline);
 
     const admin = await getAdminActor(req);
+
+    if (!isInterviewCleared(member)) {
+
+        ensureInterviewCleared(member, admin?.name || 'Admin', 'Interview waived — membership fee requested');
+
+    }
 
 
 
@@ -310,9 +318,9 @@ router.post('/request-again/:memberId', authMiddleware, isAdmin, asyncHandler(as
 
 
 
-    if (member.interviewResult?.status !== 'passed') {
+    if (isInterviewFailed(member)) {
 
-        return res.status(400).json({ error: 'Fee can only be re-requested after the member has passed the interview.' });
+        return res.status(400).json({ error: 'Fee cannot be re-requested for a member who failed the interview.' });
 
     }
 
@@ -353,6 +361,12 @@ router.post('/request-again/:memberId', authMiddleware, isAdmin, asyncHandler(as
     const deadline = await resolveFeeDeadline(req.body.deadline);
 
     const admin = await getAdminActor(req);
+
+    if (!isInterviewCleared(member)) {
+
+        ensureInterviewCleared(member, admin?.name || 'Admin', 'Interview waived — updated fee request');
+
+    }
 
 
 
@@ -468,9 +482,9 @@ router.post('/waive/:memberId', authMiddleware, isAdmin, asyncHandler(async (req
 
 
 
-    if (member.interviewResult?.status !== 'passed') {
+    if (isInterviewFailed(member)) {
 
-        return res.status(400).json({ error: 'Fee can only be waived after the member has passed the interview.' });
+        return res.status(400).json({ error: 'Fee cannot be waived for a member who failed the interview.' });
 
     }
 
@@ -483,6 +497,12 @@ router.post('/waive/:memberId', authMiddleware, isAdmin, asyncHandler(async (req
 
 
     const admin = await getAdminActor(req);
+
+    if (!isInterviewCleared(member)) {
+
+        ensureInterviewCleared(member, admin?.name || 'Admin', 'Interview waived — free membership granted');
+
+    }
 
     member.feeStatus = 'waived';
 
