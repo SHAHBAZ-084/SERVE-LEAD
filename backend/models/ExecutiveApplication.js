@@ -22,6 +22,28 @@ const executiveApplicationSchema = new mongoose.Schema({
   why_executive: { type: String, required: true, minlength: 50 },
   availability: { type: Number, required: true, min: 1, max: 40 },
   linkedin_url: { type: String, default: '' },
+  interview_called: { type: Boolean, default: false },
+  interviewDetails: {
+    venue: { type: String, default: '' },
+    message: { type: String, default: '' },
+    dressCode: { type: String, default: '' },
+    arrivalTime: { type: String, default: '' },
+    guideNotes: { type: String, default: '' },
+    focusAreas: { type: String, default: '' },
+    linkUrl: { type: String, default: '' },
+  },
+  interviewResult: {
+    status: {
+      type: String,
+      enum: ['pending', 'passed', 'failed'],
+      default: 'pending',
+    },
+    note: { type: String, default: '' },
+    updatedAt: { type: Date },
+    updatedBy: { type: String, default: '' },
+  },
+  feeWaived: { type: Boolean, default: false },
+  waiverReason: { type: String, default: '' },
   status: {
     type: String,
     enum: ['pending', 'approved', 'rejected'],

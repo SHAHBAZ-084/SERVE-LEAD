@@ -12,7 +12,7 @@ import { FOOTER_DEFAULTS, FOOTER_FIELDS, parseFooterSettings } from "../constant
 import { ABOUT_DEFAULTS, ABOUT_FIELDS, parseAboutSettings } from "../constants/aboutDefaults";
 import { MEMBER_TYPE_FILTER_OPTIONS } from "../constants/pakistanCities";
 import AdminLocationFilters, { DEFAULT_ADMIN_LOCATION_FILTER, ALL_TEHSILS_LABEL, appendLocationFilterParams, matchesAdminLocationFilter } from "../components/common/AdminLocationFilters";
-import PaymentManagementTab, { getFeeApprovalBadge, canApproveMemberFee, getInterviewBadge, needsInterviewResult, canRequestFee, canRequestFeeAgain, canDirectApprove } from "../components/admin/PaymentManagementTab";
+import PaymentManagementTab, { getFeeApprovalBadge, canApproveMemberFee, getInterviewBadge, needsInterviewResult, canRequestFee, canRequestFeeAgain, canDirectApprove, getExecutiveInterviewBadge, getExecutiveFeeBadge, needsExecutiveInterviewResult, canWaiveExecutive, canDirectApproveExecutive, canFinalApproveExecutive } from "../components/admin/PaymentManagementTab";
 
 const adminFilterSelectCls =
   "bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold text-slate-700 outline-none focus:border-[#002147] min-w-[140px]";
@@ -2405,20 +2405,107 @@ const AdminPortal = () => {
         const [locationFilter, setLocationFilter] = useState({ ...DEFAULT_ADMIN_LOCATION_FILTER });
         const [memberTypeFilter, setMemberTypeFilter] = useState("All");
         const [viewExecApp, setViewExecApp] = useState(null);
+        const [execInterviewTarget, setExecInterviewTarget] = useState(null);
+        const [execInterviewResultTarget, setExecInterviewResultTarget] = useState(null);
+        const [execWaiveTarget, setExecWaiveTarget] = useState(null);
+        const [execWaiveReason, setExecWaiveReason] = useState("");
+        const [execDirectApproveTarget, setExecDirectApproveTarget] = useState(null);
+        const [execDirectApproveNote, setExecDirectApproveNote] = useState("");
         const [rejectExecTarget, setRejectExecTarget] = useState(null);
         const [rejectExecReason, setRejectExecReason] = useState("");
 
         const handleApproveExecutive = async (id) => {
-            if (!window.confirm("Approve this member as Executive?")) return;
+            if (!window.confirm("Final approve this member as Executive?")) return;
             setIsProcessing(true);
             try {
                 const r = await api.post(`admin/executive-applications/${id}/approve`, {}, auth);
                 notify(r.data.message || "Executive application approved");
+                setViewExecApp(null);
                 fetchPendingMembers();
             } catch (err) {
                 notify(err.response?.data?.error || "Approval failed", "error");
             } finally {
                 setIsProcessing(false);
+            }
+        };
+
+        const handleExecDirectApprove = async (e) => {
+            e.preventDefault();
+            if (!execDirectApproveTarget) return;
+            setIsProcessing(true);
+            try {
+                const r = await api.post(`admin/executive-applications/${execDirectApproveTarget._id}/direct-approve`, { note: execDirectApproveNote.trim() }, auth);
+                notify(r.data.message || "Executive member approved directly");
+                setExecDirectApproveTarget(null);
+                setExecDirectApproveNote("");
+                setViewExecApp(null);
+                fetchPendingMembers();
+            } catch (err) {
+                notify(err.response?.data?.error || "Direct approval failed", "error");
+            } finally {
+                setIsProcessing(false);
+            }
+        };
+
+        const handleExecWaive = async (e) => {
+            e.preventDefault();
+            if (!execWaiveTarget || execWaiveReason.trim().length < 10) {
+                notify("Waiver reason must be at least 10 characters", "error");
+                return;
+            }
+            setIsProcessing(true);
+            try {
+                const r = await api.post(`admin/executive-applications/${execWaiveTarget._id}/waive`, { reason: execWaiveReason.trim() }, auth);
+                notify(r.data.message || "Free executive membership granted");
+                setExecWaiveTarget(null);
+                setExecWaiveReason("");
+                fetchPendingMembers();
+            } catch (err) {
+                notify(err.response?.data?.error || "Failed to waive fee", "error");
+            } finally {
+                setIsProcessing(false);
+            }
+        };
+
+        const handleExecInterviewResult = async (e) => {
+            e.preventDefault();
+            if (!execInterviewResultTarget) return;
+            setSubmittingResult(true);
+            try {
+                const r = await api.post(`admin/executive-applications/${execInterviewResultTarget._id}/interview-result`, interviewResultForm, auth);
+                notify(r.data.message || "Interview result saved");
+                setExecInterviewResultTarget(null);
+                setInterviewResultForm({ result: "passed", note: "" });
+                fetchPendingMembers();
+            } catch (err) {
+                notify(err.response?.data?.error || "Failed to save interview result", "error");
+            } finally {
+                setSubmittingResult(false);
+            }
+        };
+
+        const handleExecInterviewCall = async (e) => {
+            e.preventDefault();
+            if (!execInterviewTarget) return;
+            setSendingCall(true);
+            try {
+                await api.post(`admin/executive-applications/${execInterviewTarget._id}/interview-call`, interviewForm, auth);
+                notify(`Executive interview call sent to ${execInterviewTarget.name}!`);
+                setExecInterviewTarget(null);
+                setInterviewForm({
+                    venue: "SLS Society HQ, Campus Block B",
+                    message: "",
+                    dressCode: "Business Formal",
+                    arrivalTime: "15 minutes before scheduled time",
+                    guideNotes: "",
+                    focusAreas: "Leadership potential, communication, commitment to service",
+                    linkUrl: "",
+                });
+                fetchPendingMembers();
+            } catch (err) {
+                notify(err.response?.data?.error || "Failed to send interview invitation", "error");
+            } finally {
+                setSendingCall(false);
             }
         };
 
@@ -2857,7 +2944,8 @@ const AdminPortal = () => {
                                 </div>
                             ))}
                             {filteredExecutiveApps.map((app) => {
-                                const execYear = app.member_id_str?.split("-")[0] || "—";
+                                const eib = getExecutiveInterviewBadge(app);
+                                const efb = getExecutiveFeeBadge(app);
                                 return (
                                 <div key={`exec-${app._id}`} className="p-3 bg-white rounded-2xl border border-slate-100 shadow-sm space-y-3 relative overflow-hidden transition-all">
                                     <div className="flex justify-between items-center gap-3">
@@ -2867,16 +2955,26 @@ const AdminPortal = () => {
                                             </div>
                                             <div>
                                                 <h4 className="font-bold text-slate-800 leading-none mb-1 text-xs">{app.name}</h4>
-                                                <span className="inline-block text-[7px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md border text-amber-700 bg-amber-50 border-amber-200">Pending Review</span>
+                                                <div className="flex flex-wrap gap-1 mt-1">
+                                                    {eib && <span className={`text-[7px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded border ${eib.cls}`}>{eib.label}</span>}
+                                                    {efb && <span className={`text-[7px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded border ${efb.cls}`}>{efb.label}</span>}
+                                                </div>
                                                 <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mt-1">{app.city || "—"}</p>
                                                 <p className="text-[8px] font-black text-purple-600 uppercase tracking-widest mt-1">Executive Upgrade</p>
                                             </div>
                                         </div>
                                     </div>
-                                    <div className="flex gap-2">
-                                        <button type="button" onClick={() => setViewExecApp(app)} className="flex-1 text-[9px] bg-slate-50 text-slate-600 border border-slate-100 py-2 rounded-lg font-black uppercase tracking-widest">Details</button>
-                                        <button type="button" disabled={isProcessing} onClick={() => handleApproveExecutive(app._id)} className="flex-1 text-[9px] bg-emerald-50 text-emerald-600 border border-emerald-100 py-2 rounded-lg font-black uppercase tracking-widest disabled:opacity-50">Approve</button>
-                                        <button type="button" onClick={() => { setRejectExecTarget(app); setRejectExecReason(""); }} className="flex-1 text-[9px] bg-rose-50 text-rose-600 border border-rose-100 py-2 rounded-lg font-black uppercase tracking-widest">Reject</button>
+                                    <div className="flex flex-wrap gap-2">
+                                        <button type="button" onClick={() => setViewExecApp(app)} className="flex-1 min-w-[30%] text-[9px] bg-slate-50 text-slate-600 border border-slate-100 py-2 rounded-lg font-black uppercase tracking-widest">Details</button>
+                                        <button type="button" onClick={() => setExecInterviewTarget(app)} className="flex-1 min-w-[30%] text-[9px] bg-blue-50 text-blue-600 border border-blue-100 py-2 rounded-lg font-black uppercase tracking-widest">{app.interview_called ? "Call Again" : "Interview"}</button>
+                                        {needsExecutiveInterviewResult(app) && (
+                                            <button type="button" onClick={() => { setExecInterviewResultTarget(app); setInterviewResultForm({ result: "passed", note: "" }); }} className="flex-1 min-w-[30%] text-[9px] bg-indigo-50 text-indigo-600 border border-indigo-100 py-2 rounded-lg font-black uppercase tracking-widest">Result</button>
+                                        )}
+                                        {canWaiveExecutive(app) && (
+                                            <button type="button" onClick={() => { setExecWaiveTarget(app); setExecWaiveReason(""); }} className="flex-1 min-w-[30%] text-[9px] bg-purple-50 text-purple-600 border border-purple-100 py-2 rounded-lg font-black uppercase tracking-widest">Free</button>
+                                        )}
+                                        <button type="button" disabled={!canFinalApproveExecutive(app) || isProcessing} onClick={() => handleApproveExecutive(app._id)} className="flex-1 min-w-[30%] text-[9px] bg-emerald-50 text-emerald-600 border border-emerald-100 py-2 rounded-lg font-black uppercase tracking-widest disabled:opacity-50">Approve</button>
+                                        <button type="button" onClick={() => { setRejectExecTarget(app); setRejectExecReason(""); }} className="flex-1 min-w-[30%] text-[9px] bg-rose-50 text-rose-600 border border-rose-100 py-2 rounded-lg font-black uppercase tracking-widest">Reject</button>
                                     </div>
                                 </div>
                                 );
@@ -2885,8 +2983,8 @@ const AdminPortal = () => {
                             )}
                         </div>
 
-                        <div className="hidden sm:block bg-white rounded-2xl sm:rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
-                            <div className="overflow-x-auto custom-scrollbar-horizontal">
+                        <div className="hidden sm:block bg-white rounded-2xl sm:rounded-3xl border border-slate-200 shadow-sm overflow-visible">
+                            <div className="overflow-x-auto overflow-y-visible custom-scrollbar-horizontal">
                                 <table className="w-full text-sm table-fixed min-w-[960px]">
                                     <thead>
                                         <tr className="bg-slate-50 border-b border-slate-200 text-left">
@@ -2971,6 +3069,8 @@ const AdminPortal = () => {
                                         {filteredExecutiveApps.map((app) => {
                                             const menuKey = `exec-${app._id}`;
                                             const execYear = app.member_id_str?.split("-")[0] || "—";
+                                            const eib = getExecutiveInterviewBadge(app);
+                                            const efb = getExecutiveFeeBadge(app);
                                             return (
                                             <tr key={menuKey} className="align-middle hover:bg-slate-50/80">
                                                 {bulkMode && (<td className="px-4 py-3" />)}
@@ -2987,20 +3087,31 @@ const AdminPortal = () => {
                                                 <td className="px-4 py-3 align-middle">
                                                     <span className="inline-block whitespace-nowrap text-[10px] font-black uppercase tracking-wider px-2 py-1 rounded border text-purple-700 bg-purple-50 border-purple-100">Executive</span>
                                                 </td>
-                                                <td className="px-4 py-3 align-middle min-w-0">
-                                                    <div className="flex flex-nowrap gap-1 items-center overflow-hidden">
-                                                        <span className="shrink-0 text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded border whitespace-nowrap text-amber-700 bg-amber-50 border-amber-200">Pending Review</span>
+                                                <td className="px-4 py-3 align-middle">
+                                                    <div className="flex flex-wrap gap-1">
+                                                        {eib && <span className={`text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded border whitespace-nowrap ${eib.cls}`}>{eib.label}</span>}
+                                                        {efb && <span className={`text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded border whitespace-nowrap ${efb.cls}`}>{efb.label}</span>}
                                                     </div>
                                                 </td>
-                                                <td className="px-4 py-3 align-middle text-right">
-                                                    <div className="relative inline-block text-left z-10">
+                                                <td className="px-4 py-3 align-middle text-right overflow-visible">
+                                                    <div className="relative inline-block text-left">
                                                         <button type="button" onClick={() => setOpenActionMenu(openActionMenu === menuKey ? null : menuKey)} className="text-[10px] font-black uppercase tracking-widest px-3 py-2 bg-[#002147] text-white rounded-lg hover:bg-slate-800">
                                                             Manage <i className={`fas fa-chevron-${openActionMenu === menuKey ? "up" : "down"} ml-1 text-[8px]`} />
                                                         </button>
                                                         {openActionMenu === menuKey && (
-                                                            <div className="absolute right-0 mt-1 w-48 bg-white border border-slate-200 rounded-xl shadow-xl z-30 py-1 text-left">
+                                                            <div className="absolute right-0 bottom-full mb-1 w-48 bg-white border border-slate-200 rounded-xl shadow-xl z-50 py-1 text-left">
                                                                 <button type="button" onClick={() => { setViewExecApp(app); setOpenActionMenu(null); }} className="w-full px-3 py-2 text-[10px] font-bold uppercase text-slate-600 hover:bg-slate-50 text-left">View Application</button>
-                                                                <button type="button" onClick={() => { handleApproveExecutive(app._id); setOpenActionMenu(null); }} disabled={isProcessing} className="w-full px-3 py-2 text-[10px] font-bold uppercase text-emerald-600 hover:bg-emerald-50 text-left disabled:opacity-40">Approve Executive</button>
+                                                                <button type="button" onClick={() => { setExecInterviewTarget(app); setOpenActionMenu(null); }} className="w-full px-3 py-2 text-[10px] font-bold uppercase text-slate-600 hover:bg-slate-50 text-left">{app.interview_called ? "Call Again" : "Interview Call"}</button>
+                                                                {needsExecutiveInterviewResult(app) && (
+                                                                    <button type="button" onClick={() => { setExecInterviewResultTarget(app); setInterviewResultForm({ result: "passed", note: "" }); setOpenActionMenu(null); }} className="w-full px-3 py-2 text-[10px] font-bold uppercase text-indigo-600 hover:bg-indigo-50 text-left">Record Result</button>
+                                                                )}
+                                                                {canWaiveExecutive(app) && (
+                                                                    <button type="button" onClick={() => { setExecWaiveTarget(app); setExecWaiveReason(""); setOpenActionMenu(null); }} className="w-full px-3 py-2 text-[10px] font-bold uppercase text-purple-600 hover:bg-purple-50 text-left">Free Membership</button>
+                                                                )}
+                                                                {canDirectApproveExecutive(app) && (
+                                                                    <button type="button" onClick={() => { setExecDirectApproveTarget(app); setExecDirectApproveNote(""); setOpenActionMenu(null); }} className="w-full px-3 py-2 text-[10px] font-bold uppercase text-teal-600 hover:bg-teal-50 text-left">Direct Approve</button>
+                                                                )}
+                                                                <button type="button" onClick={() => { handleApproveExecutive(app._id); setOpenActionMenu(null); }} disabled={!canFinalApproveExecutive(app) || isProcessing} className="w-full px-3 py-2 text-[10px] font-bold uppercase text-emerald-600 hover:bg-emerald-50 text-left disabled:opacity-40 disabled:cursor-not-allowed">Final Approve</button>
                                                                 <button type="button" onClick={() => { setRejectExecTarget(app); setRejectExecReason(""); setOpenActionMenu(null); }} className="w-full px-3 py-2 text-[10px] font-bold uppercase text-rose-600 hover:bg-rose-50 text-left border-t border-slate-100">Reject</button>
                                                             </div>
                                                         )}
@@ -3019,45 +3130,71 @@ const AdminPortal = () => {
                 )}
 
                 {viewExecApp && (
-                    <AdminModal open={!!viewExecApp} onClose={() => setViewExecApp(null)} maxWidth="max-w-2xl">
-                        <div className="p-8 space-y-5 max-h-[85vh] overflow-y-auto">
-                            <div>
-                                <h3 className="text-xl font-black text-slate-900 uppercase">Executive Application</h3>
-                                <p className="text-sm text-slate-500 mt-1">{viewExecApp.name} · {viewExecApp.member_id_str} · {viewExecApp.city}</p>
-                            </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                                {[
-                                    ["Mission Statement", viewExecApp.mission_statement],
-                                    ["Short-Term Goals", viewExecApp.short_term_goals],
-                                    ["Long-Term Goals", viewExecApp.long_term_goals],
-                                    ["Why Executive", viewExecApp.why_executive],
-                                    ["Skills", viewExecApp.skills],
-                                    ["Experience", viewExecApp.previous_volunteer_experience || "—"],
-                                    ["Area of Interest", viewExecApp.area_of_interest],
-                                    ["Availability", `${viewExecApp.availability} hours/week`],
-                                    ["Address", viewExecApp.address],
-                                    ["Father Name", viewExecApp.father_name],
-                                ].map(([label, val]) => (
-                                    <div key={label} className={label === "Mission Statement" || label === "Why Executive" ? "md:col-span-2" : ""}>
-                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{label}</p>
-                                        <p className="text-slate-700 whitespace-pre-wrap">{val}</p>
+                    <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-md animate-fade-in" onClick={() => setViewExecApp(null)}>
+                        <div className="bg-white rounded-[3rem] w-full max-w-2xl shadow-2xl border border-white/20 overflow-hidden animate-zoom-in max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+                            <div className="bg-gradient-to-br from-[#002147] to-blue-900 p-8 md:p-10 text-white relative flex-shrink-0">
+                                <button onClick={() => setViewExecApp(null)} className="absolute top-8 right-8 w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center hover:bg-white/20 transition-all">
+                                    <i className="fas fa-times" />
+                                </button>
+                                <div className="flex items-center gap-6">
+                                    <div className="w-20 h-20 bg-white/10 rounded-[2rem] flex items-center justify-center text-3xl font-black border border-white/20 backdrop-blur-xl">
+                                        {viewExecApp.name?.charAt(0)}
                                     </div>
-                                ))}
-                                <div>
-                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">LinkedIn</p>
-                                    {viewExecApp.linkedin_url ? (
-                                        <a href={viewExecApp.linkedin_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline break-all">{viewExecApp.linkedin_url}</a>
-                                    ) : (
-                                        <p className="text-slate-700">—</p>
-                                    )}
+                                    <div>
+                                        <h3 className="text-3xl font-black tracking-tight leading-tight uppercase">{viewExecApp.name}</h3>
+                                        <p className="text-blue-200 text-xs font-bold uppercase tracking-[0.3em] mt-1">Executive Upgrade Application</p>
+                                        <p className="text-white/60 text-xs mt-1">{viewExecApp.member_id_str} · {viewExecApp.city}</p>
+                                    </div>
                                 </div>
                             </div>
-                            <div className="flex gap-3 pt-2 border-t border-slate-100">
-                                <button type="button" disabled={isProcessing} onClick={() => { handleApproveExecutive(viewExecApp._id); setViewExecApp(null); }} className="flex-1 py-3 bg-emerald-600 text-white rounded-xl text-[10px] font-black uppercase disabled:opacity-50">Approve Executive</button>
-                                <button type="button" onClick={() => { setRejectExecTarget(viewExecApp); setRejectExecReason(""); setViewExecApp(null); }} className="flex-1 py-3 bg-rose-50 text-rose-600 border border-rose-200 rounded-xl text-[10px] font-black uppercase">Reject</button>
+                            <div className="p-8 md:p-10 overflow-y-auto custom-scrollbar flex-1 space-y-6">
+                                <div className="flex flex-wrap gap-2">
+                                    {(() => {
+                                        const eib = getExecutiveInterviewBadge(viewExecApp);
+                                        const efb = getExecutiveFeeBadge(viewExecApp);
+                                        return (
+                                            <>
+                                                {eib && <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-1 rounded border ${eib.cls}`}>{eib.label}</span>}
+                                                {efb && <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-1 rounded border ${efb.cls}`}>{efb.label}</span>}
+                                            </>
+                                        );
+                                    })()}
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
+                                    {[
+                                        ["Mission Statement", viewExecApp.mission_statement],
+                                        ["Short-Term Goals", viewExecApp.short_term_goals],
+                                        ["Long-Term Goals", viewExecApp.long_term_goals],
+                                        ["Why Executive", viewExecApp.why_executive],
+                                        ["Skills", viewExecApp.skills],
+                                        ["Experience", viewExecApp.previous_volunteer_experience || "—"],
+                                        ["Area of Interest", viewExecApp.area_of_interest],
+                                        ["Availability", `${viewExecApp.availability} hours/week`],
+                                        ["Address", viewExecApp.address],
+                                        ["Father Name", viewExecApp.father_name],
+                                    ].map(([label, val]) => (
+                                        <div key={label} className={label === "Mission Statement" || label === "Why Executive" ? "md:col-span-2" : ""}>
+                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{label}</p>
+                                            <p className="text-slate-700 whitespace-pre-wrap">{val}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                            <div className="p-6 bg-slate-50 border-t border-slate-100 flex justify-end gap-3">
+                                <button onClick={() => setViewExecApp(null)} className="px-8 py-3.5 bg-white border border-slate-200 text-slate-500 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-100 transition-all shadow-sm">
+                                    Close Portal
+                                </button>
+                                {canDirectApproveExecutive(viewExecApp) && !canFinalApproveExecutive(viewExecApp) && (
+                                    <button onClick={() => { setExecDirectApproveTarget(viewExecApp); setExecDirectApproveNote(""); setViewExecApp(null); }} className="px-8 py-3.5 bg-teal-500 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-teal-600 transition-all shadow-lg">
+                                        Direct Approve
+                                    </button>
+                                )}
+                                <button onClick={() => handleApproveExecutive(viewExecApp._id)} disabled={!canFinalApproveExecutive(viewExecApp) || isProcessing} title={!canFinalApproveExecutive(viewExecApp) ? "Pass interview and grant free membership first" : ""} className="px-8 py-3.5 bg-emerald-500 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-600 transition-all shadow-lg shadow-emerald-900/20 disabled:opacity-40 disabled:cursor-not-allowed">
+                                    Approve Executive
+                                </button>
                             </div>
                         </div>
-                    </AdminModal>
+                    </div>
                 )}
 
                 {rejectExecTarget && (
@@ -3069,6 +3206,81 @@ const AdminPortal = () => {
                             <div className="flex gap-3">
                                 <button type="submit" disabled={isProcessing} className="flex-1 py-3 bg-rose-600 text-white rounded-xl text-[10px] font-black uppercase disabled:opacity-50">Confirm Reject</button>
                                 <button type="button" onClick={() => setRejectExecTarget(null)} className="px-4 py-3 border rounded-xl text-[10px] font-black uppercase text-slate-500">Cancel</button>
+                            </div>
+                        </form>
+                    </AdminModal>
+                )}
+
+                {execInterviewTarget && (
+                    <AdminModal open={!!execInterviewTarget} onClose={() => setExecInterviewTarget(null)} maxWidth="max-w-lg">
+                        <div className="overflow-hidden flex flex-col max-h-[92vh]">
+                            <div className="bg-[#002147] p-6 text-white relative flex-shrink-0">
+                                <button type="button" onClick={() => setExecInterviewTarget(null)} className="absolute top-4 right-4 text-white/40 hover:text-white"><i className="fas fa-times" /></button>
+                                <h3 className="text-xl font-black uppercase">Schedule Executive Interview</h3>
+                                <p className="text-white/60 text-xs mt-1">{execInterviewTarget.name}</p>
+                            </div>
+                            <form onSubmit={handleExecInterviewCall} className="p-6 space-y-4 overflow-y-auto flex-1">
+                                <div className="group">
+                                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 ml-1">Interview Venue / Location</label>
+                                    <input type="text" required value={interviewForm.venue} onChange={e => setInterviewForm({ ...interviewForm, venue: e.target.value })} className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4 text-sm font-bold text-slate-800 placeholder:text-slate-300 focus:bg-white outline-none" placeholder="e.g. Society HQ or Online Link" />
+                                </div>
+                                <div className="group">
+                                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 ml-1">Interview Description / Details</label>
+                                    <textarea rows="3" required value={interviewForm.message} onChange={e => setInterviewForm({ ...interviewForm, message: e.target.value })} className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4 text-sm font-bold resize-none outline-none" placeholder="Schedule, instructions, or requirements..." />
+                                </div>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <input type="text" value={interviewForm.dressCode} onChange={e => setInterviewForm({ ...interviewForm, dressCode: e.target.value })} className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-4 py-3 text-sm font-bold" placeholder="Dress Code" />
+                                    <input type="text" value={interviewForm.arrivalTime} onChange={e => setInterviewForm({ ...interviewForm, arrivalTime: e.target.value })} className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-4 py-3 text-sm font-bold" placeholder="Arrival Time" />
+                                </div>
+                                <button type="submit" disabled={sendingCall} className="w-full py-4 bg-[#002147] text-white rounded-2xl text-[10px] font-black uppercase tracking-widest disabled:opacity-50">
+                                    {sendingCall ? "Sending..." : "Send Interview Call Email"}
+                                </button>
+                            </form>
+                        </div>
+                    </AdminModal>
+                )}
+
+                {execInterviewResultTarget && (
+                    <AdminModal open={!!execInterviewResultTarget} onClose={() => setExecInterviewResultTarget(null)} maxWidth="max-w-md">
+                        <form onSubmit={handleExecInterviewResult} className="p-8 space-y-4">
+                            <h3 className="text-lg font-bold">Record Executive Interview Result</h3>
+                            <p className="text-sm text-slate-500">{execInterviewResultTarget.name}</p>
+                            <select value={interviewResultForm.result} onChange={(e) => setInterviewResultForm({ ...interviewResultForm, result: e.target.value })} className={inputCls}>
+                                <option value="passed">Passed</option>
+                                <option value="failed">Failed</option>
+                            </select>
+                            <textarea rows={4} required value={interviewResultForm.note} onChange={(e) => setInterviewResultForm({ ...interviewResultForm, note: e.target.value })} placeholder="Interview notes (min 5 chars)" className={`${inputCls} resize-none`} minLength={5} />
+                            <div className="flex gap-3">
+                                <button type="submit" disabled={submittingResult} className="flex-1 py-3 bg-[#002147] text-white rounded-xl text-[10px] font-black uppercase disabled:opacity-50">Save Result</button>
+                                <button type="button" onClick={() => setExecInterviewResultTarget(null)} className="px-4 py-3 border rounded-xl text-[10px] font-black uppercase text-slate-500">Cancel</button>
+                            </div>
+                        </form>
+                    </AdminModal>
+                )}
+
+                {execWaiveTarget && (
+                    <AdminModal open={!!execWaiveTarget} onClose={() => setExecWaiveTarget(null)} maxWidth="max-w-md">
+                        <form onSubmit={handleExecWaive} className="p-8 space-y-4">
+                            <h3 className="text-lg font-bold">Grant Free Executive Membership</h3>
+                            <p className="text-sm text-slate-500">Waive executive fee/donation for <strong>{execWaiveTarget.name}</strong>. Member will be emailed.</p>
+                            <textarea rows={4} value={execWaiveReason} onChange={(e) => setExecWaiveReason(e.target.value)} placeholder="Reason (min 10 chars)" className={`${inputCls} resize-none`} required minLength={10} />
+                            <div className="flex gap-3">
+                                <button type="submit" disabled={isProcessing} className="flex-1 py-3 bg-emerald-600 text-white rounded-xl text-[10px] font-black uppercase disabled:opacity-50">Confirm & Notify</button>
+                                <button type="button" onClick={() => setExecWaiveTarget(null)} className="px-4 py-3 border rounded-xl text-[10px] font-black uppercase text-slate-500">Cancel</button>
+                            </div>
+                        </form>
+                    </AdminModal>
+                )}
+
+                {execDirectApproveTarget && (
+                    <AdminModal open={!!execDirectApproveTarget} onClose={() => setExecDirectApproveTarget(null)} maxWidth="max-w-md">
+                        <form onSubmit={handleExecDirectApprove} className="p-8 space-y-4">
+                            <h3 className="text-lg font-bold">Direct Approve Executive</h3>
+                            <p className="text-sm text-slate-500">Approve <strong>{execDirectApproveTarget.name}</strong> as Executive immediately — skips fee collection.</p>
+                            <textarea rows={3} value={execDirectApproveNote} onChange={(e) => setExecDirectApproveNote(e.target.value)} placeholder="Optional note (recorded as waiver reason)" className={`${inputCls} resize-none`} />
+                            <div className="flex gap-3">
+                                <button type="submit" disabled={isProcessing} className="flex-1 py-3 bg-teal-600 text-white rounded-xl text-[10px] font-black uppercase disabled:opacity-50">Approve & Email Welcome</button>
+                                <button type="button" onClick={() => setExecDirectApproveTarget(null)} className="px-4 py-3 border rounded-xl text-[10px] font-black uppercase text-slate-500">Cancel</button>
                             </div>
                         </form>
                     </AdminModal>

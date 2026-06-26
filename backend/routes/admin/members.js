@@ -10,7 +10,7 @@ const SystemSetting = require('../../models/SystemSetting');
 const authMiddleware = require('../../middlewares/authMiddleware');
 const asyncHandler = require('../../middlewares/asyncHandler');
 const { isAdmin, isSuperuser } = require('../../middlewares/adminMiddlewares');
-const { sendWelcomeEmail, sendInterviewEmail, sendInterviewPassedEmail, sendInterviewFailedEmail, sendExecutiveApprovedEmail, sendExecutiveRejectedEmail } = require('../../utils/emailService');
+const { sendWelcomeEmail, sendInterviewEmail, sendInterviewPassedEmail, sendInterviewFailedEmail, sendExecutiveApprovedEmail, sendExecutiveRejectedEmail, sendFeeWaivedEmail } = require('../../utils/emailService');
 const logActivity = require('../../utils/activityLogger');
 const { deleteFile } = require('../../utils/storage');
 
@@ -402,26 +402,157 @@ router.get('/executive-applications', authMiddleware, isAdmin, asyncHandler(asyn
     res.json(applications);
 }));
 
-// POST approve executive application
-router.post('/executive-applications/:id/approve', authMiddleware, isAdmin, asyncHandler(async (req, res) => {
+const finalizeExecutiveApproval = async (application, member, admin) => {
+    application.status = 'approved';
+    application.reviewedAt = new Date();
+    application.reviewedBy = admin?.name || admin?.member_id || 'Admin';
+    member.role = 'Executive';
+    await application.save();
+    await member.save();
+};
+
+// POST executive interview call
+router.post('/executive-applications/:id/interview-call', authMiddleware, isAdmin, asyncHandler(async (req, res) => {
+    const { venue, message, dressCode, arrivalTime, guideNotes, focusAreas, linkUrl } = req.body;
     const application = await ExecutiveApplication.findById(req.params.id);
     if (!application) return res.status(404).json({ error: 'Application not found.' });
-    if (application.status !== 'pending') {
-        return res.status(400).json({ error: 'This application has already been reviewed.' });
+    if (application.status !== 'pending') return res.status(400).json({ error: 'This application has been closed.' });
+
+    const member = await Member.findById(application.memberId);
+    if (!member) return res.status(404).json({ error: 'Linked member not found.' });
+
+    application.interview_called = true;
+    application.interviewDetails = {
+        venue: venue?.trim() || '',
+        message: message?.trim() || '',
+        dressCode: dressCode?.trim() || '',
+        arrivalTime: arrivalTime?.trim() || '',
+        guideNotes: guideNotes?.trim() || '',
+        focusAreas: focusAreas?.trim() || '',
+        linkUrl: linkUrl?.trim() || '',
+    };
+    if (!application.interviewResult?.status || application.interviewResult.status === 'pending') {
+        application.interviewResult = { status: 'pending', note: '', updatedAt: null, updatedBy: '' };
+    }
+    await application.save();
+
+    sendInterviewEmail(member.email, application.name, application.interviewDetails).catch(console.error);
+    logActivity(req.user.memberId, 'Executive Interview Call', `Invited ${application.name} for executive interview`, application._id);
+    res.json({ message: 'Executive interview call sent successfully' });
+}));
+
+// POST record executive interview result
+router.post('/executive-applications/:id/interview-result', authMiddleware, isAdmin, asyncHandler(async (req, res) => {
+    const { result, note } = req.body;
+    if (!['passed', 'failed'].includes(result)) {
+        return res.status(400).json({ error: 'Result must be passed or failed.' });
+    }
+    if (!note?.trim() || note.trim().length < 5) {
+        return res.status(400).json({ error: 'A note of at least 5 characters is required.' });
+    }
+
+    const application = await ExecutiveApplication.findById(req.params.id);
+    if (!application) return res.status(404).json({ error: 'Application not found.' });
+    if (!application.interview_called) {
+        return res.status(400).json({ error: 'Interview must be called before recording a result.' });
+    }
+
+    const admin = await Member.findById(req.user.memberId).select('name member_id');
+    const member = await Member.findById(application.memberId);
+
+    application.interviewResult = {
+        status: result,
+        note: note.trim(),
+        updatedAt: new Date(),
+        updatedBy: admin?.name || admin?.member_id || 'Admin',
+    };
+
+    if (result === 'failed') {
+        application.status = 'rejected';
+        application.rejectionReason = note.trim();
+        application.reviewedAt = new Date();
+        application.reviewedBy = admin?.name || admin?.member_id || 'Admin';
+        await application.save();
+        if (member) sendExecutiveRejectedEmail(member.email, member.name, note.trim()).catch(console.error);
+        logActivity(req.user.memberId, 'Executive Interview Failed', `Marked ${application.name} executive interview failed`, application._id);
+        return res.json({ message: 'Executive interview marked as failed. Applicant notified.' });
+    }
+
+    await application.save();
+    sendInterviewPassedEmail(member?.email, application.name, note.trim()).catch(console.error);
+    logActivity(req.user.memberId, 'Executive Interview Passed', `Marked ${application.name} passed executive interview`, application._id);
+    res.json({ message: 'Executive interview marked as passed.' });
+}));
+
+// POST waive executive fee / grant free executive membership
+router.post('/executive-applications/:id/waive', authMiddleware, isAdmin, asyncHandler(async (req, res) => {
+    const { reason } = req.body;
+    if (!reason?.trim() || reason.trim().length < 10) {
+        return res.status(400).json({ error: 'Waiver reason must be at least 10 characters.' });
+    }
+
+    const application = await ExecutiveApplication.findById(req.params.id);
+    if (!application) return res.status(404).json({ error: 'Application not found.' });
+    if (application.status !== 'pending') return res.status(400).json({ error: 'Application is not pending.' });
+    if (application.interviewResult?.status !== 'passed') {
+        return res.status(400).json({ error: 'Executive interview must be passed before granting free membership.' });
+    }
+
+    const member = await Member.findById(application.memberId);
+    application.feeWaived = true;
+    application.waiverReason = reason.trim();
+    await application.save();
+
+    if (member) sendFeeWaivedEmail(member.email, member.name, reason.trim()).catch(console.error);
+    logActivity(req.user.memberId, 'Executive Fee Waived', `Waived executive fee for ${application.name}`, application._id);
+    res.json({ message: 'Free executive membership recorded. Member notified.' });
+}));
+
+// POST direct approve executive (skip fee — after passed interview)
+router.post('/executive-applications/:id/direct-approve', authMiddleware, isAdmin, asyncHandler(async (req, res) => {
+    const { note } = req.body;
+    const application = await ExecutiveApplication.findById(req.params.id);
+    if (!application) return res.status(404).json({ error: 'Application not found.' });
+    if (application.status !== 'pending') return res.status(400).json({ error: 'Application is not pending.' });
+    if (application.interviewResult?.status !== 'passed') {
+        return res.status(400).json({ error: 'Direct approval requires a passed executive interview.' });
     }
 
     const admin = await Member.findById(req.user.memberId).select('name member_id');
     const member = await Member.findById(application.memberId);
     if (!member) return res.status(404).json({ error: 'Linked member not found.' });
 
-    application.status = 'approved';
-    application.reviewedAt = new Date();
-    application.reviewedBy = admin?.name || admin?.member_id || 'Admin';
+    const waiverReason = (note?.trim() || 'Direct executive approval — fee waived by administration').slice(0, 500);
+    if (!application.feeWaived) {
+        application.feeWaived = true;
+        application.waiverReason = waiverReason;
+    }
 
-    member.role = 'Executive';
+    await finalizeExecutiveApproval(application, member, admin);
+    sendExecutiveApprovedEmail(member.email, member.name).catch(console.error);
+    logActivity(req.user.memberId, 'Direct Executive Approved', `Direct approved executive ${member.name}`, member._id);
+    res.json({ message: 'Executive member approved directly' });
+}));
 
-    await application.save();
-    await member.save();
+// POST approve executive application (final approve — passed + fee waived)
+router.post('/executive-applications/:id/approve', authMiddleware, isAdmin, asyncHandler(async (req, res) => {
+    const application = await ExecutiveApplication.findById(req.params.id);
+    if (!application) return res.status(404).json({ error: 'Application not found.' });
+    if (application.status !== 'pending') {
+        return res.status(400).json({ error: 'This application has already been reviewed.' });
+    }
+    if (application.interviewResult?.status !== 'passed') {
+        return res.status(400).json({ error: 'Executive interview must be passed before final approval.' });
+    }
+    if (!application.feeWaived) {
+        return res.status(400).json({ error: 'Grant free executive membership before final approval.' });
+    }
+
+    const admin = await Member.findById(req.user.memberId).select('name member_id');
+    const member = await Member.findById(application.memberId);
+    if (!member) return res.status(404).json({ error: 'Linked member not found.' });
+
+    await finalizeExecutiveApproval(application, member, admin);
 
     sendExecutiveApprovedEmail(member.email, member.name).catch(console.error);
     logActivity(req.user.memberId, 'Executive Approved', `Approved executive application for ${member.name}`, member._id);
