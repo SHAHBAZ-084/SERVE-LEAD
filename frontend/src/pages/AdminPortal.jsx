@@ -2967,7 +2967,7 @@ const AdminPortal = () => {
                                 <button type="button" onClick={() => setFeePromptTarget(null)} className="w-full py-3 border border-slate-200 text-slate-500 rounded-xl text-[10px] font-black uppercase tracking-widest">Later</button>
                             </div>
                         </div>
-                    </div>
+                    </AdminModal>
                 )}
 
                 {feeRequestTarget && (
