@@ -3,7 +3,7 @@ import jsPDF from "jspdf";
 import { CERT_CANVAS } from "../pages/CertTemplates";
 
 const FONT_LINK =
-  "https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&family=Playfair+Display:ital,wght@0,700;1,400&display=swap";
+  "https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400..700&family=Manrope:wght@400;500;600;700;800&family=Inter:wght@400;600;700;900&family=Playfair+Display:ital,wght@0,700;1,400&display=swap";
 
 /**
  * Captures #cert-export-node (or given element id) into an A4 landscape PDF.

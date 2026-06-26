@@ -1,8 +1,9 @@
 import logo from "../assets/logo.png";
 import sealImg from "../assets/sealcertificate.png";
 import signatureImg from "../assets/signature.png";
+import stampImg from "../assets/sealcertificate.png";
 
-export { logo, sealImg, signatureImg };
+export { logo, sealImg, signatureImg, stampImg };
 
 export const CERT_THEME = {
   navy: "#002147",
@@ -32,6 +33,21 @@ export const CERT_CANVAS = { width: 1123, height: 794 };
 export const FONTS = {
   heading: "'Playfair Display', Georgia, serif",
   body: "'Inter', 'Helvetica Neue', Arial, sans-serif",
+  classicHeading: "'Fraunces', Georgia, serif",
+  classicBody: "'Manrope', 'Helvetica Neue', Arial, sans-serif",
+};
+
+const CLASSIC_V2 = {
+  navy: "#06243f",
+  navy2: "#0c3a63",
+  navy3: "#103a66",
+  cyan: "#19c1e6",
+  cyanDeep: "#0a8fb0",
+  gold: "#d4ad55",
+  goldDeep: "#a9803a",
+  paper: "#fbfaf6",
+  ink: "#16223a",
+  muted: "#5b6b85",
 };
 
 export const CERT_TEMPLATES = [
@@ -74,8 +90,44 @@ export function resolveCertificateContent(data) {
   const eventTitle = data.eventId?.title || "";
   const awardType = data.awardType || "Of Participation";
   const titleLine = data.title || "CERTIFICATE";
+  const memberIdStr = data.member_id_str || data.memberId?.member_id || "";
+  const category =
+    data.category === "Other" ? data.customCategory || "Other" : data.category || "Participation";
+  const issueYear = new Date(data.createdAt || data.issueDate || Date.now()).getFullYear();
+  const certNumber = data._id
+    ? `SLS-${issueYear}-${String(data._id).slice(-5).toUpperCase()}`
+    : `SLS-${issueYear}-PREVIEW`;
 
-  return { issueDate, eventDate, memberName, eventTitle, awardType, titleLine, description: data.description || "" };
+  let classicEyebrow = "Official Certification";
+  let classicHeading = "CERTIFICATE";
+  let classicAwardLine = awardType;
+  const titleMatch = titleLine.match(/^certificate\s+of\s+(.+)$/i);
+  if (titleMatch) {
+    classicEyebrow = `Certificate of ${titleMatch[1]}`;
+    classicHeading = "CERTIFICATE";
+    if (!data.awardType) classicAwardLine = `Of ${titleMatch[1]}`;
+  } else if (titleLine.toUpperCase() === "CERTIFICATE") {
+    classicEyebrow = category ? `Certificate of ${category}` : "Official Certification";
+  } else {
+    classicEyebrow = titleLine;
+    classicHeading = "CERTIFICATE";
+  }
+
+  return {
+    issueDate,
+    eventDate,
+    memberName,
+    eventTitle,
+    awardType,
+    titleLine,
+    description: data.description || "",
+    memberIdStr,
+    category,
+    certNumber,
+    classicEyebrow,
+    classicHeading,
+    classicAwardLine,
+  };
 }
 
 /** Professional navy vector seal — always used instead of low-quality stamp PNG */
@@ -275,9 +327,135 @@ function VerifyFooter({ theme }) {
   );
 }
 
-/** Template 1 — clean professional layout */
+function ClassicThreadMark() {
+  const c = CLASSIC_V2;
+  return (
+    <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: 48, height: 48, filter: "drop-shadow(0 3px 6px rgba(0,0,0,0.35))" }}>
+      <circle cx="24" cy="24" r="22" stroke={c.cyan} strokeWidth="1.4" />
+      <circle cx="24" cy="24" r="16" stroke={c.gold} strokeWidth="1" />
+      <path d="M24 12L34 24L24 36L14 24L24 12Z" stroke="#ffffff" strokeWidth="1.4" fill="none" />
+    </svg>
+  );
+}
+
+function ClassicSealImage({ certAssets, size = 94 }) {
+  const stampSrc = certAssets?.stamp || stampImg || "/stamp.png";
+  return (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
+      <img
+        src={stampSrc}
+        alt="Official Seal"
+        style={{
+          width: size,
+          height: size,
+          objectFit: "contain",
+          display: "block",
+          transform: "rotate(-6deg)",
+          filter: "drop-shadow(0 6px 10px rgba(6,36,63,0.25))",
+        }}
+      />
+      <div style={{ fontSize: 9, letterSpacing: "0.12em", textTransform: "uppercase", color: CLASSIC_V2.muted, fontFamily: FONTS.classicBody }}>
+        Official Seal
+      </div>
+    </div>
+  );
+}
+
+function ClassicSignatureBlock({ certAssets }) {
+  const c = CLASSIC_V2;
+  const sigSrc = certAssets?.signature || signatureImg || "/signature.png";
+  return (
+    <div style={{ width: 230, textAlign: "center" }}>
+      <div style={{ height: 58, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
+        <img
+          src={sigSrc}
+          alt="Chairman Signature"
+          style={{
+            height: 52,
+            width: "auto",
+            maxWidth: 210,
+            objectFit: "contain",
+            display: "block",
+            mixBlendMode: "multiply",
+          }}
+        />
+      </div>
+      <div
+        style={{
+          width: "100%",
+          height: 1,
+          margin: "6px 0 8px",
+          background: "linear-gradient(90deg, transparent, rgba(22,34,58,0.4) 15%, rgba(22,34,58,0.4) 85%, transparent)",
+        }}
+      />
+      <div style={{ fontWeight: 700, fontSize: 13, color: c.navy, fontFamily: FONTS.classicBody }}>{CHAIRMAN_NAME}</div>
+      <div style={{ fontSize: 10.5, color: c.muted, fontStyle: "italic", marginTop: 1, fontFamily: FONTS.classicBody }}>
+        Chairman, Serve &amp; Lead Society
+      </div>
+      <div
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 4,
+          fontSize: 8.5,
+          letterSpacing: "0.08em",
+          textTransform: "uppercase",
+          color: c.cyanDeep,
+          marginTop: 6,
+          opacity: 0.85,
+          fontFamily: FONTS.classicBody,
+        }}
+      >
+        🔒 Fixed on every template
+      </div>
+    </div>
+  );
+}
+
+function ClassicBodyText({ content }) {
+  const c = CLASSIC_V2;
+  if (content.description) {
+    return (
+      <p
+        style={{
+          margin: "24px auto 0",
+          maxWidth: 680,
+          textAlign: "center",
+          fontSize: 13,
+          lineHeight: 1.85,
+          color: c.muted,
+          fontFamily: FONTS.classicBody,
+          whiteSpace: "pre-wrap",
+        }}
+      >
+        {content.description}
+      </p>
+    );
+  }
+  return (
+    <p
+      style={{
+        maxWidth: 680,
+        margin: "24px auto 0",
+        textAlign: "center",
+        fontSize: 13,
+        lineHeight: 1.85,
+        color: c.muted,
+        fontFamily: FONTS.classicBody,
+      }}
+    >
+      for active participation, sound contribution, and demonstrated commitment during{" "}
+      <span style={{ color: c.navy, fontWeight: 700, fontStyle: "normal" }}>
+        &ldquo;{content.eventTitle || "Orientation & How to Add References in MS Word"}&rdquo;
+      </span>
+      {content.eventDate ? `, held on ${content.eventDate}` : ""} — completing all sessions, assessments, and the closing review.
+    </p>
+  );
+}
+
+/** Template 1 — Threadline Navy v2 (from certificate-sample-v2.html) */
 function ClassicCertificate({ data, certAssets, id = "cert-inner" }) {
-  const theme = CERT_THEME;
+  const c = CLASSIC_V2;
   const content = resolveCertificateContent(data);
   const logoSrc = certAssets?.logo || "/logo-certificate.png" || logo;
 
@@ -288,111 +466,315 @@ function ClassicCertificate({ data, certAssets, id = "cert-inner" }) {
         position: "relative",
         width: CERT_CANVAS.width,
         height: CERT_CANVAS.height,
-        background: `linear-gradient(165deg, ${theme.white} 0%, ${theme.slate50} 45%, ${theme.white} 100%)`,
+        background: `radial-gradient(900px 500px at 85% -10%, rgba(25,193,230,0.05), transparent 60%), linear-gradient(180deg, #fffefb 0%, ${c.paper} 100%)`,
         overflow: "hidden",
         boxSizing: "border-box",
-        fontFamily: FONTS.body,
-        color: theme.text,
-        display: "grid",
-        gridTemplateRows: "auto 1fr auto auto",
-        padding: "32px 56px 28px",
+        fontFamily: FONTS.classicBody,
+        color: c.ink,
+        borderRadius: 2,
       }}
     >
-      {/* Frame & subtle accents — no clutter */}
+      {/* Paper grain */}
       <div
         style={{
           position: "absolute",
-          inset: 18,
-          border: `2px solid ${theme.navy}`,
-          borderRadius: 2,
+          inset: 0,
+          backgroundImage: "radial-gradient(rgba(6,36,63,0.03) 1px, transparent 1px)",
+          backgroundSize: "3px 3px",
           pointerEvents: "none",
-          boxShadow: "inset 0 0 40px rgba(0,33,71,0.04)",
+          zIndex: 1,
         }}
       />
-      <div style={{ position: "absolute", inset: 24, border: `1px solid ${theme.navy}33`, pointerEvents: "none" }} />
-      <div style={{ position: "absolute", top: 18, left: 18, right: 18, height: 5, background: `linear-gradient(90deg, ${theme.navy}, ${theme.cyanDeep}, ${theme.navy})`, pointerEvents: "none" }} />
-      <div style={{ position: "absolute", top: 0, right: 0, width: 320, height: 320, background: `radial-gradient(circle at 100% 0%, ${theme.cyan}14 0%, transparent 65%)`, pointerEvents: "none" }} />
-      <div style={{ position: "absolute", bottom: 0, left: 0, width: 280, height: 280, background: `radial-gradient(circle at 0% 100%, ${theme.navy}06 0%, transparent 65%)`, pointerEvents: "none" }} />
-
-      {/* Header — prominent centered logo */}
-      <header style={{ position: "relative", zIndex: 2, textAlign: "center", paddingTop: 8 }}>
-        <BrandLogo src={logoSrc} variant="hero" />
-        <p style={{ margin: "14px 0 0", fontSize: 12, fontWeight: 600, color: theme.textMuted, fontFamily: FONTS.body }}>
-          Date of Issue: <span style={{ color: theme.navy, fontWeight: 800 }}>{content.issueDate}</span>
-        </p>
-      </header>
-
-      {/* Main content */}
-      <main
+      {/* Vignette */}
+      <div
         style={{
-          position: "relative",
+          position: "absolute",
+          inset: 0,
+          background: "radial-gradient(1000px 700px at 50% 45%, transparent 55%, rgba(6,36,63,0.05) 100%)",
+          pointerEvents: "none",
+          zIndex: 1,
+        }}
+      />
+
+      {/* Left rail */}
+      <div
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          width: 104,
+          height: "100%",
+          background: `linear-gradient(160deg, rgba(255,255,255,0.08), transparent 40%), linear-gradient(180deg, ${c.navy} 0%, ${c.navy3} 50%, ${c.navy} 100%)`,
+          boxShadow: "6px 0 24px -8px rgba(6,36,63,0.55), inset -1px 0 0 rgba(255,255,255,0.06)",
           zIndex: 2,
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          textAlign: "center",
-          padding: "8px 40px 0",
         }}
       >
-        <div style={{ width: 80, height: 3, background: `linear-gradient(90deg, transparent, ${theme.gold}, transparent)`, marginBottom: 14 }} />
-
-        <h1 style={{ fontFamily: FONTS.heading, fontSize: 50, fontWeight: 900, color: theme.navy, letterSpacing: "0.08em", textTransform: "uppercase", lineHeight: 1.05, margin: 0 }}>
-          {content.titleLine}
-        </h1>
-        <p style={{ fontFamily: FONTS.heading, fontSize: 22, color: theme.cyanDeep, margin: "10px 0 0", fontStyle: "italic", fontWeight: 600 }}>
-          {content.awardType}
-        </p>
-
-        <p style={{ fontSize: 12, fontStyle: "italic", color: theme.textMuted, marginTop: 20, letterSpacing: "0.05em" }}>
-          This certificate is presented to
-        </p>
-
-        <h2
+        <div
           style={{
-            fontFamily: FONTS.heading,
-            fontSize: 36,
+            position: "absolute",
+            inset: 0,
+            background: "linear-gradient(115deg, transparent 30%, rgba(255,255,255,0.06) 48%, transparent 60%)",
+            pointerEvents: "none",
+          }}
+        />
+        <div
+          style={{
+            position: "absolute",
+            top: 0,
+            right: -1,
+            width: 6,
+            height: "100%",
+            background: `linear-gradient(180deg, ${c.cyan} 0%, ${c.gold} 50%, ${c.cyan} 100%)`,
+            boxShadow: "1px 0 6px rgba(25,193,230,0.5)",
+          }}
+        />
+        <div
+          style={{
+            position: "absolute",
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%) rotate(-90deg)",
+            color: "rgba(255,255,255,0.55)",
+            fontSize: 11,
+            letterSpacing: "0.32em",
             fontWeight: 700,
-            color: theme.text,
-            margin: "22px 0 0",
-            paddingBottom: 8,
-            borderBottom: `2px solid ${theme.navy}`,
-            display: "inline-block",
-            minWidth: 440,
-            maxWidth: "92%",
+            textTransform: "uppercase",
+            whiteSpace: "nowrap",
+            textShadow: "0 1px 2px rgba(0,0,0,0.4)",
           }}
         >
-          {content.memberName}
-        </h2>
-
-        <div style={{ marginTop: 22, maxWidth: 720, width: "100%" }}>
-          <CertBodyText content={content} theme={theme} accent={theme.navyMid} />
+          SERVE &amp; LEAD SOCIETY
         </div>
-      </main>
+        <div style={{ position: "absolute", bottom: 40, left: 0, width: 104, display: "flex", justifyContent: "center" }}>
+          <ClassicThreadMark />
+        </div>
+      </div>
 
-      {/* Footer — signature left, stamp right, both fully visible */}
-      <footer
+      {/* Double frame */}
+      <div
         style={{
-          position: "relative",
+          position: "absolute",
+          top: 18,
+          right: 18,
+          bottom: 18,
+          left: 122,
+          border: "1px solid rgba(6,36,63,0.14)",
+          boxShadow: "0 1px 0 rgba(255,255,255,0.6)",
+          pointerEvents: "none",
           zIndex: 2,
-          display: "grid",
-          gridTemplateColumns: "1fr 1fr",
-          alignItems: "end",
-          gap: 32,
-          padding: "0 20px",
-          minHeight: 160,
+        }}
+      />
+      <div
+        style={{
+          position: "absolute",
+          top: 24,
+          right: 24,
+          bottom: 24,
+          left: 128,
+          border: `1px solid rgba(212,173,85,0.45)`,
+          pointerEvents: "none",
+          zIndex: 2,
+        }}
+      />
+      <div
+        style={{
+          position: "absolute",
+          top: 24,
+          right: 24,
+          width: 20,
+          height: 20,
+          borderTop: `1.5px solid ${c.goldDeep}`,
+          borderRight: `1.5px solid ${c.goldDeep}`,
+          opacity: 0.7,
+          zIndex: 3,
+          pointerEvents: "none",
+        }}
+      />
+      <div
+        style={{
+          position: "absolute",
+          bottom: 24,
+          right: 24,
+          width: 20,
+          height: 20,
+          borderBottom: `1.5px solid ${c.goldDeep}`,
+          borderRight: `1.5px solid ${c.goldDeep}`,
+          opacity: 0.7,
+          zIndex: 3,
+          pointerEvents: "none",
+        }}
+      />
+
+      {/* Content */}
+      <div
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 104,
+          right: 0,
+          bottom: 0,
+          padding: "50px 70px 44px 68px",
+          display: "flex",
+          flexDirection: "column",
+          zIndex: 3,
         }}
       >
-        <SignatureBlock certAssets={certAssets} theme={theme} align="left" />
-        <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "flex-end", paddingBottom: 4 }}>
-          <div style={{ padding: 8, background: "rgba(255,255,255,0.85)", borderRadius: "50%", boxShadow: "0 4px 20px rgba(0,33,71,0.1)" }}>
-            <VerifiedStamp color={theme.navy} id={`${id}-stamp`} size={148} />
+        {/* Header */}
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+            <img
+              src={logoSrc}
+              alt="Serve & Lead Society"
+              style={{ width: 72, height: 72, objectFit: "contain", display: "block", flexShrink: 0 }}
+            />
+            <div>
+              <div style={{ fontWeight: 800, fontSize: 15, color: c.navy, letterSpacing: "0.01em" }}>Serve &amp; Lead Society</div>
+              <div style={{ fontSize: 10.5, color: c.muted, letterSpacing: "0.12em", textTransform: "uppercase", marginTop: 2 }}>
+                Official Certification
+              </div>
+            </div>
+          </div>
+          <div style={{ textAlign: "right", fontSize: 10.5, color: c.muted }}>
+            <div>
+              Certificate No. <span style={{ fontWeight: 700, color: c.navy, letterSpacing: "0.04em" }}>{content.certNumber}</span>
+            </div>
+            <div style={{ marginTop: 3 }}>Issued&nbsp;{content.issueDate}</div>
           </div>
         </div>
-      </footer>
 
-      <div style={{ position: "relative", zIndex: 2, paddingTop: 6 }}>
-        <VerifyFooter theme={theme} />
+        {/* Title */}
+        <div style={{ marginTop: 34, textAlign: "center" }}>
+          <span
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 10,
+              fontSize: 11,
+              letterSpacing: "0.3em",
+              textTransform: "uppercase",
+              color: c.cyanDeep,
+              fontWeight: 700,
+            }}
+          >
+            <span style={{ width: 30, height: 1, background: c.cyanDeep, opacity: 0.5 }} />
+            {content.classicEyebrow}
+            <span style={{ width: 30, height: 1, background: c.cyanDeep, opacity: 0.5 }} />
+          </span>
+          <h1
+            style={{
+              fontFamily: FONTS.classicHeading,
+              fontWeight: 600,
+              fontSize: 56,
+              background: `linear-gradient(180deg, ${c.navy2} 0%, ${c.navy} 70%)`,
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+              backgroundClip: "text",
+              color: "transparent",
+              letterSpacing: "0.005em",
+              marginTop: 6,
+              lineHeight: 1.05,
+              filter: "drop-shadow(0 1px 1px rgba(6,36,63,0.08))",
+            }}
+          >
+            {content.classicHeading}
+          </h1>
+          <div
+            style={{
+              marginTop: 10,
+              fontFamily: FONTS.classicHeading,
+              fontStyle: "italic",
+              fontWeight: 500,
+              fontSize: 19,
+              color: c.cyanDeep,
+            }}
+          >
+            {content.classicAwardLine}
+          </div>
+        </div>
+
+        {/* Recipient */}
+        <div style={{ textAlign: "center" }}>
+          <div
+            style={{
+              marginTop: 26,
+              fontSize: 12.5,
+              letterSpacing: "0.08em",
+              textTransform: "uppercase",
+              color: c.muted,
+            }}
+          >
+            This certificate is proudly presented to
+          </div>
+          <div
+            style={{
+              marginTop: 14,
+              fontFamily: FONTS.classicHeading,
+              fontWeight: 600,
+              fontSize: 41,
+              color: c.ink,
+              position: "relative",
+              display: "inline-block",
+              paddingBottom: 12,
+              textShadow: "0 1px 0 rgba(255,255,255,0.7)",
+            }}
+          >
+            {content.memberName}
+            <span
+              style={{
+                content: '""',
+                position: "absolute",
+                left: "50%",
+                bottom: 0,
+                transform: "translateX(-50%)",
+                width: 360,
+                height: 2,
+                background: `linear-gradient(90deg, transparent, ${c.goldDeep} 15%, ${c.gold} 50%, ${c.goldDeep} 85%, transparent)`,
+                boxShadow: "0 1px 2px rgba(164,128,58,0.35)",
+                display: "block",
+              }}
+            />
+          </div>
+        </div>
+
+        <ClassicBodyText content={content} />
+
+        {/* Footer */}
+        <div
+          style={{
+            marginTop: "auto",
+            display: "flex",
+            alignItems: "flex-end",
+            justifyContent: "space-between",
+            paddingTop: 28,
+            position: "relative",
+          }}
+        >
+          <div
+            style={{
+              position: "absolute",
+              left: 0,
+              right: 0,
+              bottom: -10,
+              height: 1,
+              background: "linear-gradient(90deg, transparent, rgba(6,36,63,0.08) 20%, rgba(6,36,63,0.08) 80%, transparent)",
+            }}
+          />
+          <ClassicSignatureBlock certAssets={certAssets} />
+          <ClassicSealImage certAssets={certAssets} />
+          <div style={{ width: 230, textAlign: "right" }}>
+            {content.memberIdStr && (
+              <div style={{ fontSize: 10.5, color: c.muted, marginBottom: 4 }}>
+                Member ID&nbsp; <b style={{ color: c.navy, fontWeight: 700 }}>{content.memberIdStr}</b>
+              </div>
+            )}
+            <div style={{ fontSize: 10.5, color: c.muted, marginBottom: 4 }}>
+              Category&nbsp; <b style={{ color: c.navy, fontWeight: 700 }}>{content.category}</b>
+            </div>
+            <div style={{ marginTop: 8, fontSize: 9, color: c.muted, fontStyle: "italic" }}>
+              Verify at serveandlead.org/verify using the Member ID above
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

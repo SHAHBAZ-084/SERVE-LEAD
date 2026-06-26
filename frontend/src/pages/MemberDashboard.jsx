@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import api, { getImgUrl } from "../api";
 import Navbar from "../components/Navbar";
 import MemberSupportWhatsApp from "../components/MemberSupportWhatsApp";
-import { RenderCertificate, logo, signatureImg } from "./CertTemplates";
+import { RenderCertificate, logo, signatureImg, stampImg } from "./CertTemplates";
 import { captureCertificatePdf } from "../utils/certificatePdfExport";
 import CountdownTimer from "../components/common/CountdownTimer";
 import ImageUploadHint from "../components/common/ImageUploadHint";
@@ -422,6 +422,7 @@ const MemberDashboard = () => {
         };
         loadToDataURL('/logo-certificate.png', 'logo');
         loadToDataURL(signatureImg, 'signature');
+        loadToDataURL(stampImg, 'stamp');
     }, []);
 
     const handleProfileUpdate = async (e) => {

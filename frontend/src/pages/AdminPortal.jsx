@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import api, { getImgUrl, API_BASE as API_BASE_URL } from "../api";
 import CountdownTimer from "../components/common/CountdownTimer";
-import { RenderCertificate, CERT_TEMPLATES, CHAIRMAN_NAME, logo, signatureImg } from "./CertTemplates";
+import { RenderCertificate, CERT_TEMPLATES, CHAIRMAN_NAME, logo, signatureImg, stampImg } from "./CertTemplates";
 import { captureCertificatePdf } from "../utils/certificatePdfExport";
 import { compressImage } from "../utils/compressImage";
 import ImageUploadHint from "../components/common/ImageUploadHint";
@@ -1047,6 +1047,7 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
         };
         loadToDataURL('/logo-certificate.png', 'logo');
         loadToDataURL(signatureImg, 'signature');
+        loadToDataURL(stampImg, 'stamp');
     }, []);
 
     const fetchCertificates = async () => {
