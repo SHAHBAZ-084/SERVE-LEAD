@@ -1,621 +1,472 @@
 import logo from "../assets/logo.png";
 import sealImg from "../assets/sealcertificate.png";
+
 export { logo, sealImg };
 
-// High-Fidelity Circular Verified Stamp (Pure Vector SVG for crisp rendering & instant loading)
-export const VerifiedStamp = ({ color = "#002b49", id }) => (
-  <svg width="120" height="120" viewBox="0 0 120 120" style={{ display: 'block', transform: 'rotate(-8deg)' }}>
-    {/* Stamp outer rings */}
-    <circle cx="60" cy="60" r="53" fill="none" stroke={color} strokeWidth="1.5" strokeOpacity="0.85" />
-    <circle cx="60" cy="60" r="49" fill="none" stroke={color} strokeWidth="1" strokeDasharray="3 2" strokeOpacity="0.7" />
-    <circle cx="60" cy="60" r="37" fill="none" stroke={color} strokeWidth="1.2" strokeOpacity="0.8" />
-    
-    {/* Center VERIFIED Banner */}
-    <rect x="15" y="47" width="90" height="26" fill="#ffffff" stroke={color} strokeWidth="1.8" rx="2.5" />
-    <text x="60" y="65" fontFamily="'Inter', 'Helvetica', sans-serif" fontSize="13" fontWeight="900" fill={color} textAnchor="middle" letterSpacing="1">
-      VERIFIED
-    </text>
-    
-    {/* Stars */}
-    <text x="60" y="43" fontFamily="'Inter', 'Helvetica', sans-serif" fontSize="7" fill={color} textAnchor="middle" letterSpacing="3">
-      ★★★
-    </text>
-    <text x="60" y="80" fontFamily="'Inter', 'Helvetica', sans-serif" fontSize="7" fill={color} textAnchor="middle" letterSpacing="3">
-      ★★★
-    </text>
+/** Site brand palette — matches Tailwind navy (#002147) + cyan accents used across the app */
+export const CERT_THEME = {
+  navy: "#002147",
+  navyDark: "#001733",
+  navyMid: "#003366",
+  cyan: "#22d3ee",
+  cyanDeep: "#0891b2",
+  cyanDark: "#0e7490",
+  gold: "#c8a951",
+  goldLight: "#e8d5a3",
+  text: "#0f172a",
+  textBody: "#475569",
+  textMuted: "#64748b",
+  white: "#ffffff",
+  slate50: "#f8fafc",
+  slate100: "#f1f5f9",
+  slate200: "#e2e8f0",
+};
 
-    {/* Text Paths */}
-    <path id={`stamp-top-${id}`} d="M 23 60 A 37 37 0 0 1 97 60" fill="none" />
-    <path id={`stamp-bottom-${id}`} d="M 97 60 A 37 37 0 0 1 23 60" fill="none" />
-    
-    <text fontSize="7.5" fontWeight="950" fontFamily="'Inter', 'Helvetica', sans-serif" fill={color} letterSpacing="1.2">
-      <textPath href={`#stamp-top-${id}`} startOffset="50%" textAnchor="middle">
-        SERVE & LEAD
-      </textPath>
-    </text>
-    <text fontSize="7.5" fontWeight="950" fontFamily="'Inter', 'Helvetica', sans-serif" fill={color} letterSpacing="1.2">
-      <textPath href={`#stamp-bottom-${id}`} startOffset="50%" textAnchor="middle">
-        SOCIETY
-      </textPath>
-    </text>
-  </svg>
+export const CHAIRMAN_NAME = "M Farooq Ahmad";
+export const CHAIRMAN_TITLE = "Chairman SLS";
+
+export const CERT_CANVAS = { width: 1123, height: 794 };
+
+export const FONTS = {
+  heading: "'Playfair Display', Georgia, serif",
+  body: "'Inter', 'Helvetica Neue', Arial, sans-serif",
+};
+
+/** Metadata for admin/member template pickers — keep ids 1–7 in sync everywhere */
+export const CERT_TEMPLATES = [
+  { id: 1, name: "Classic", thumb: "🔵", orientation: "landscape", bgColor: CERT_THEME.white, accentColor: CERT_THEME.navy, textColor: CERT_THEME.text, borderColor: CERT_THEME.navy },
+  { id: 2, name: "Modern Minimal", thumb: "◻️", orientation: "landscape", bgColor: CERT_THEME.slate50, accentColor: CERT_THEME.cyanDeep, textColor: CERT_THEME.text, borderColor: CERT_THEME.slate200 },
+  { id: 3, name: "Gold Border", thumb: "🏅", orientation: "landscape", bgColor: CERT_THEME.white, accentColor: CERT_THEME.gold, textColor: CERT_THEME.text, borderColor: CERT_THEME.gold },
+  { id: 4, name: "Corporate Navy", thumb: "🌊", orientation: "landscape", bgColor: CERT_THEME.white, accentColor: CERT_THEME.navy, textColor: CERT_THEME.text, borderColor: CERT_THEME.navy },
+  { id: 5, name: "Elegant Frame", thumb: "✨", orientation: "landscape", bgColor: CERT_THEME.white, accentColor: CERT_THEME.navyMid, textColor: CERT_THEME.text, borderColor: CERT_THEME.navy },
+  { id: 6, name: "Two-Tone Diagonal", thumb: "◆", orientation: "landscape", bgColor: CERT_THEME.white, accentColor: CERT_THEME.cyan, textColor: CERT_THEME.text, borderColor: CERT_THEME.navy },
+  { id: 7, name: "Seal-Centric", thumb: "🔏", orientation: "landscape", bgColor: CERT_THEME.white, accentColor: CERT_THEME.navy, textColor: CERT_THEME.text, borderColor: CERT_THEME.cyanDeep },
+];
+
+const TEMPLATE_LAYOUTS = Object.fromEntries(
+  CERT_TEMPLATES.map((t) => [
+    t.id,
+    {
+      ...t,
+      logoPosition: t.id === 2 || t.id === 4 ? "center" : "left",
+      titleMode: t.id === 5 ? "combined" : "split",
+      issueDateVisible: t.id !== 7,
+      stampPosition: t.id === 7 ? "prominent-right" : t.id === 2 ? "center" : "right",
+      accentStyle: ["classic", "minimal", "gold", "corporate", "elegant", "diagonal", "seal"][t.id - 1],
+    },
+  ])
 );
 
-// Template 1 (Landscape - First Image adapted to Landscape)
-export const Template1 = ({ data, certAssets, id }) => {
-  const issueDate = data.createdAt 
-    ? new Date(data.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
-    : '1 March 2026';
+export function formatCertDate(value, fallback = "") {
+  if (!value) return fallback;
+  try {
+    return new Date(value).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
+  } catch {
+    return fallback;
+  }
+}
 
-  const eventDate = data.eventId?.date 
-    ? new Date(data.eventId.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
-    : '28 February 2026';
+export function resolveCertificateContent(data) {
+  const issueDate = formatCertDate(data.createdAt || data.issueDate, formatCertDate(new Date()));
+  const eventDate = formatCertDate(data.eventId?.date, "");
+  const memberName = data.memberId?.name || data.memberName || "Member Name";
+  const eventTitle = data.eventId?.title || "";
+  const awardType = data.awardType || "Of Participation";
+  const titleLine = data.title || "CERTIFICATE";
 
-  // Handle double 'Chairman SLS' text fallback
-  const chairmanName = data.chairmanName || "M Farooq Ahmad";
-  const finalChairmanName = (chairmanName.toLowerCase().includes("chairman") || chairmanName.toLowerCase().includes("ceo")) 
-    ? "M Farooq Ahmad" 
-    : chairmanName;
+  return { issueDate, eventDate, memberName, eventTitle, awardType, titleLine, description: data.description || "" };
+}
 
+export const VerifiedStamp = ({ color = CERT_THEME.navy, id = "stamp", size = 118, imageSrc }) => {
+  if (imageSrc) {
+    return (
+      <img
+        src={imageSrc}
+        alt="Verified"
+        style={{ width: size, height: size, objectFit: "contain", display: "block", transform: "rotate(-6deg)" }}
+      />
+    );
+  }
   return (
-    <div id={id} style={{
-      position: 'relative', width: '1123px', height: '794px',
-      backgroundColor: '#ffffff', fontFamily: 'sans-serif',
-      overflow: 'hidden', boxSizing: 'border-box', color: '#0f172a'
-    }}>
-      {/* Top-Right Premium Isometric Cube Mesh */}
-      <div style={{ position: 'absolute', top: 0, right: 0, width: '280px', height: '280px', pointerEvents: 'none' }}>
-        <svg width="280" height="280" viewBox="0 0 340 340" style={{ display: 'block' }}>
-          {/* Wireframe Mesh */}
-          <g stroke="#7dd3fc" strokeWidth="1.5" fill="none">
-            <polygon points="40,0 -10,86.6 90,86.6" />
-            <polygon points="-10,86.6 40,173.2 90,86.6" />
-            <polygon points="90,86.6 40,173.2 140,173.2" />
-            <polygon points="40,173.2 -10,259.8 90,259.8" />
-            <polygon points="40,173.2 90,259.8 140,173.2" />
-            <polygon points="90,259.8 40,346.4 140,346.4" />
-            <polygon points="190,259.8 140,346.4 240,346.4" />
-            <polygon points="240,259.8 240,346.4 290,346.4" />
-            <polygon points="290,173.2 240,259.8 340,259.8" />
-            <polygon points="340,259.8 240,259.8 290,346.4" />
-            <polygon points="290,346.4 340,346.4 340,259.8" />
-            <polygon points="-60,173.2 -10,259.8 40,173.2" />
-            <polygon points="-10,259.8 -60,346.4 40,346.4" />
-            <polygon points="-10,259.8 40,346.4 90,259.8" />
-          </g>
-
-          {/* Solid Polygons */}
-          <g stroke="#ffffff" strokeWidth="1">
-            <polygon points="340,0 240,0 240,86.6 340,86.6" fill="#1e3a8a" />
-            <polygon points="240,0 140,0 90,86.6 140,173.2 240,173.2 240,86.6" fill="#0ea5e9" />
-            <polygon points="340,86.6 240,86.6 190,173.2 290,173.2" fill="#3b82f6" />
-            <polygon points="340,86.6 290,173.2 340,259.8" fill="#0ea5e9" />
-            <polygon points="140,0 40,0 90,86.6" fill="#1e3a8a" />
-            <polygon points="140,173.2 90,259.8 190,259.8" fill="#3b82f6" />
-            <polygon points="290,173.2 190,173.2 240,259.8" fill="#1e3a8a" />
-            <polygon points="240,259.8 190,259.8 140,346.4 190,346.4" fill="#0ea5e9" />
-          </g>
-        </svg>
-      </div>
-
-      {/* Bottom-Left Premium Isometric Cube Mesh (Mirrored) */}
-      <div style={{ position: 'absolute', bottom: 0, left: 0, width: '280px', height: '280px', pointerEvents: 'none', transform: 'scale(-1)' }}>
-        <svg width="280" height="280" viewBox="0 0 340 340" style={{ display: 'block' }}>
-          {/* Wireframe Mesh */}
-          <g stroke="#7dd3fc" strokeWidth="1.5" fill="none">
-            <polygon points="40,0 -10,86.6 90,86.6" />
-            <polygon points="-10,86.6 40,173.2 90,86.6" />
-            <polygon points="90,86.6 40,173.2 140,173.2" />
-            <polygon points="40,173.2 -10,259.8 90,259.8" />
-            <polygon points="40,173.2 90,259.8 140,173.2" />
-            <polygon points="90,259.8 40,346.4 140,346.4" />
-            <polygon points="190,259.8 140,346.4 240,346.4" />
-            <polygon points="240,259.8 240,346.4 290,346.4" />
-            <polygon points="290,173.2 240,259.8 340,259.8" />
-            <polygon points="340,259.8 240,259.8 290,346.4" />
-            <polygon points="290,346.4 340,346.4 340,259.8" />
-            <polygon points="-60,173.2 -10,259.8 40,173.2" />
-            <polygon points="-10,259.8 -60,346.4 40,346.4" />
-            <polygon points="-10,259.8 40,346.4 90,259.8" />
-          </g>
-
-          {/* Solid Polygons */}
-          <g stroke="#ffffff" strokeWidth="1">
-            <polygon points="340,0 240,0 240,86.6 340,86.6" fill="#1e3a8a" />
-            <polygon points="240,0 140,0 90,86.6 140,173.2 240,173.2 240,86.6" fill="#0ea5e9" />
-            <polygon points="340,86.6 240,86.6 190,173.2 290,173.2" fill="#3b82f6" />
-            <polygon points="340,86.6 290,173.2 340,259.8" fill="#0ea5e9" />
-            <polygon points="140,0 40,0 90,86.6" fill="#1e3a8a" />
-            <polygon points="140,173.2 90,259.8 190,259.8" fill="#3b82f6" />
-            <polygon points="290,173.2 190,173.2 240,259.8" fill="#1e3a8a" />
-            <polygon points="240,259.8 190,259.8 140,346.4 190,346.4" fill="#0ea5e9" />
-          </g>
-        </svg>
-      </div>
-
-      {/* Double Border Frame */}
-      <div style={{ position: 'absolute', top: '15px', bottom: '15px', left: '15px', right: '15px', border: '1.5px solid #002b49', pointerEvents: 'none' }} />
-      <div style={{ position: 'absolute', top: '20px', bottom: '20px', left: '20px', right: '20px', border: '0.8px solid #002b49', pointerEvents: 'none' }} />
-
-      {/* Logo Top-Left */}
-      <div style={{ position: 'absolute', top: '45px', left: '50px' }}>
-        <img src={certAssets?.logo || logo} alt="Logo" style={{ height: '70px', objectFit: 'contain' }} />
-      </div>
-
-      {/* Date of Issue below logo */}
-      <div style={{ position: 'absolute', top: '135px', left: '50px', fontSize: '11.5px', color: '#475569', fontFamily: 'sans-serif' }}>
-        Date of Issue: {issueDate}
-      </div>
-      {/* Centered Main Content Block (Mathematically centered horizontally & vertically) */}
-      <div style={{
-        position: 'absolute',
-        top: '380px',
-        left: '50%',
-        transform: 'translate(-50%, -50%)',
-        width: '850px',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        textAlign: 'center',
-        zIndex: 5
-      }}>
-        {/* Title */}
-        <h1 style={{ fontSize: '54px', fontWeight: '900', color: '#003366', letterSpacing: '0.04em', textTransform: 'uppercase', lineHeight: 1, margin: 0 }}>
-          CERTIFICATE
-        </h1>
-        {/* Subtitle */}
-        <p style={{ fontSize: '24px', color: '#003366', margin: '8px 0 0', fontStyle: 'italic', fontWeight: 'bold' }}>
-          {data.awardType || "Of Participation"}
-        </p>
-        <p style={{ fontSize: '13px', fontStyle: 'italic', color: '#64748b', marginTop: '12px', letterSpacing: '0.05em' }}>
-          This certificate is presented to
-        </p>
-
-        {/* Recipient Name */}
-        <div style={{ marginTop: '35px', width: '100%' }}>
-          <h2 style={{ fontSize: '38px', fontWeight: 'bold', color: '#0f172a', fontFamily: '"Playfair Display", serif', margin: 0, textTransform: 'none', borderBottom: '1.2px solid #002b49', display: 'inline-block', paddingBottom: '6px', minWidth: '460px' }}>
-            {data.memberId?.name || data.memberName || "Member Name"}
-          </h2>
-        </div>
-
-        {/* Body Description */}
-        <div style={{ marginTop: '35px', width: '100%', fontFamily: 'sans-serif', fontSize: '12.5px', lineHeight: 1.8, color: '#475569', fontStyle: 'italic', padding: '0 40px', boxSizing: 'border-box' }}>
-          {data.description ? (
-            <p style={{ whiteSpace: 'pre-wrap', margin: 0 }}>{data.description}</p>
-          ) : (
-            <div>
-              <p style={{ margin: 0 }}>
-                has successfully participated in the online training session titled
-              </p>
-              <p style={{ margin: '4px 0', fontSize: '14px', fontWeight: 'bold', color: '#003366', fontStyle: 'normal' }}>
-                “{data.eventId?.title || "Orientation & How to Add References in MS Word"}”
-              </p>
-              <p style={{ margin: 0 }}>
-                held on {eventDate}.
-              </p>
-              <p style={{ margin: '8px 0 0', fontSize: '11.5px', color: '#64748b' }}>
-                The participant actively engaged in the orientation, practical demonstration, assessment, and interactive Q&A session.
-              </p>
-              <p style={{ margin: '4px 0', fontSize: '11.5px', fontWeight: 'bold', color: '#0f172a', fontStyle: 'normal' }}>
-                This certificate is issued only after the successful submission of the required assessment.
-              </p>
-              <p style={{ margin: '4px 0 0', fontSize: '11.5px', color: '#64748b' }}>
-                We appreciate the participant's commitment to academic excellence and continuous learning.
-              </p>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Bottom Footer Section: CEO Signature & Verified Stamp */}
-      <div style={{ position: 'absolute', bottom: '65px', left: '280px', right: '280px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
-        {/* CEO Signature Block */}
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
-          <div style={{ height: '70px', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', marginBottom: '5px' }}>
-            {certAssets?.signature ? (
-              <img src={certAssets.signature} alt="Signature" style={{ height: '60px', objectFit: 'contain' }} />
-            ) : (
-              <span style={{ fontSize: '26px', fontFamily: '"Dancing Script", cursive', color: '#0f172a' }}>
-                {finalChairmanName}
-              </span>
-            )}
-          </div>
-          <div style={{ width: '170px', height: '1px', backgroundColor: '#0f172a', marginBottom: '5px' }} />
-          <p style={{ fontWeight: 'bold', fontSize: '13px', color: '#0f172a', margin: 0 }}>
-            {finalChairmanName}
-          </p>
-          <p style={{ fontSize: '10.5px', color: '#64748b', margin: 0, fontStyle: 'italic' }}>
-            CEO of Society
-          </p>
-        </div>
-
-        {/* Dynamic Vector Verified Stamp (Black as Mockup) */}
-        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-          <VerifiedStamp color="#002b49" id="t1" />
-        </div>
-      </div>
-
-      {/* Footer Text */}
-      <div style={{ position: 'absolute', bottom: 25, left: 0, width: '100%', textAlign: 'center', fontSize: '10.5px', color: '#64748b', fontStyle: 'italic', fontWeight: 'bold', letterSpacing: '0.02em' }}>
-        Verify Through SLS Website by Using Membership ID
-      </div>
-    </div>
+    <svg width={size} height={size} viewBox="0 0 120 120" style={{ display: "block", transform: "rotate(-6deg)" }}>
+      <circle cx="60" cy="60" r="53" fill="none" stroke={color} strokeWidth="1.5" strokeOpacity="0.85" />
+      <circle cx="60" cy="60" r="49" fill="none" stroke={color} strokeWidth="1" strokeDasharray="3 2" strokeOpacity="0.7" />
+      <circle cx="60" cy="60" r="37" fill="none" stroke={color} strokeWidth="1.2" strokeOpacity="0.8" />
+      <rect x="15" y="47" width="90" height="26" fill="#ffffff" stroke={color} strokeWidth="1.8" rx="2.5" />
+      <text x="60" y="65" fontFamily={FONTS.body} fontSize="13" fontWeight="900" fill={color} textAnchor="middle" letterSpacing="1">
+        VERIFIED
+      </text>
+      <text x="60" y="43" fontFamily={FONTS.body} fontSize="7" fill={color} textAnchor="middle" letterSpacing="3">
+        ★★★
+      </text>
+      <text x="60" y="80" fontFamily={FONTS.body} fontSize="7" fill={color} textAnchor="middle" letterSpacing="3">
+        ★★★
+      </text>
+      <path id={`stamp-top-${id}`} d="M 23 60 A 37 37 0 0 1 97 60" fill="none" />
+      <path id={`stamp-bottom-${id}`} d="M 97 60 A 37 37 0 0 1 23 60" fill="none" />
+      <text fontSize="7.5" fontWeight="950" fontFamily={FONTS.body} fill={color} letterSpacing="1.2">
+        <textPath href={`#stamp-top-${id}`} startOffset="50%" textAnchor="middle">
+          SERVE & LEAD
+        </textPath>
+      </text>
+      <text fontSize="7.5" fontWeight="950" fontFamily={FONTS.body} fill={color} letterSpacing="1.2">
+        <textPath href={`#stamp-bottom-${id}`} startOffset="50%" textAnchor="middle">
+          SOCIETY
+        </textPath>
+      </text>
+    </svg>
   );
 };
 
-// Template 2 (Landscape - Third Image)
-export const Template2 = ({ data, certAssets, id }) => {
-  const eventDate = data.eventId?.date 
-    ? new Date(data.eventId.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
-    : '28 February 2026';
+function Decorations({ layout, theme }) {
+  const { accentStyle } = layout;
 
-  const issueDate = data.issueDate 
-    ? new Date(data.issueDate).toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' })
-    : '1 March 2026';
+  if (accentStyle === "classic") {
+    return (
+      <>
+        <div style={{ position: "absolute", inset: 16, border: `2px solid ${theme.navy}`, pointerEvents: "none" }} />
+        <div style={{ position: "absolute", inset: 22, border: `1px solid ${theme.navy}`, opacity: 0.45, pointerEvents: "none" }} />
+        <div style={{ position: "absolute", top: 0, right: 0, width: 140, height: 140, background: `linear-gradient(135deg, ${theme.cyan}22 0%, transparent 60%)`, pointerEvents: "none" }} />
+      </>
+    );
+  }
 
-  // Handle double 'Chairman SLS' text fallback
-  const chairmanName = data.chairmanName || "M Farooq Ahmad";
-  const finalChairmanName = (chairmanName.toLowerCase().includes("chairman") || chairmanName.toLowerCase().includes("ceo")) 
-    ? "M Farooq Ahmad" 
-    : chairmanName;
+  if (accentStyle === "minimal") {
+    return (
+      <>
+        <div style={{ position: "absolute", inset: 24, border: `1px solid ${theme.slate200}`, pointerEvents: "none" }} />
+        <div style={{ position: "absolute", top: 32, left: 32, width: 48, height: 48, borderTop: `3px solid ${theme.cyanDeep}`, borderLeft: `3px solid ${theme.cyanDeep}`, pointerEvents: "none" }} />
+        <div style={{ position: "absolute", bottom: 32, right: 32, width: 48, height: 48, borderBottom: `3px solid ${theme.cyanDeep}`, borderRight: `3px solid ${theme.cyanDeep}`, pointerEvents: "none" }} />
+      </>
+    );
+  }
+
+  if (accentStyle === "gold") {
+    return (
+      <>
+        <div style={{ position: "absolute", inset: 14, border: `3px solid ${theme.gold}`, pointerEvents: "none" }} />
+        <div style={{ position: "absolute", inset: 22, border: `1px solid ${theme.navy}`, pointerEvents: "none" }} />
+        <div style={{ position: "absolute", top: 0, left: "50%", transform: "translateX(-50%)", width: 220, height: 6, background: `linear-gradient(90deg, transparent, ${theme.gold}, transparent)` }} />
+      </>
+    );
+  }
+
+  if (accentStyle === "corporate") {
+    return (
+      <>
+        <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 72, background: theme.navy, pointerEvents: "none" }} />
+        <div style={{ position: "absolute", top: 72, left: 0, right: 0, height: 4, background: theme.cyan, pointerEvents: "none" }} />
+        <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 28, background: theme.slate50, pointerEvents: "none" }} />
+      </>
+    );
+  }
+
+  if (accentStyle === "elegant") {
+    return (
+      <>
+        <div style={{ position: "absolute", inset: 18, border: `1px solid ${theme.navy}`, opacity: 0.35, pointerEvents: "none" }} />
+        {["top-left", "top-right", "bottom-left", "bottom-right"].map((corner) => {
+          const pos = {
+            "top-left": { top: 12, left: 12 },
+            "top-right": { top: 12, right: 12 },
+            "bottom-left": { bottom: 12, left: 12 },
+            "bottom-right": { bottom: 12, right: 12 },
+          }[corner];
+          return (
+            <div key={corner} style={{ position: "absolute", ...pos, width: 36, height: 36, border: `2px solid ${theme.cyanDeep}`, borderRadius: 2, pointerEvents: "none" }} />
+          );
+        })}
+      </>
+    );
+  }
+
+  if (accentStyle === "diagonal") {
+    return (
+      <>
+        <svg style={{ position: "absolute", top: 0, right: 0, width: 320, height: 220, pointerEvents: "none" }} viewBox="0 0 320 220">
+          <polygon points="320,0 180,0 320,140" fill={theme.cyan} opacity="0.85" />
+          <polygon points="320,0 240,0 320,80" fill={theme.navy} opacity="0.9" />
+        </svg>
+        <svg style={{ position: "absolute", bottom: 0, left: 0, width: 280, height: 180, pointerEvents: "none" }} viewBox="0 0 280 180">
+          <polygon points="0,180 0,100 200,180" fill={theme.cyanDeep} opacity="0.75" />
+          <polygon points="0,180 80,180 0,120" fill={theme.navy} opacity="0.85" />
+        </svg>
+        <div style={{ position: "absolute", inset: 20, border: `1px solid ${theme.slate200}`, pointerEvents: "none" }} />
+      </>
+    );
+  }
+
+  if (accentStyle === "seal") {
+    return (
+      <>
+        <div style={{ position: "absolute", inset: 20, border: `2px solid ${theme.cyanDeep}`, borderRadius: 4, pointerEvents: "none" }} />
+        <div style={{ position: "absolute", top: "50%", right: 80, transform: "translateY(-50%)", width: 200, height: 200, borderRadius: "50%", border: `1px dashed ${theme.cyan}55`, pointerEvents: "none" }} />
+      </>
+    );
+  }
+
+  return null;
+}
+
+function DefaultBody({ content, theme, layout }) {
+  const { eventDate, eventTitle, description } = content;
+  const accent = layout.accentColor || theme.navy;
+
+  if (description) {
+    return (
+      <p style={{ margin: 0, whiteSpace: "pre-wrap", fontFamily: FONTS.body, fontSize: 13, lineHeight: 1.75, color: theme.textBody, fontStyle: "italic" }}>
+        {description}
+      </p>
+    );
+  }
 
   return (
-    <div id={id} style={{
-      position: 'relative', width: '1123px', height: '794px',
-      backgroundColor: '#ffffff', fontFamily: 'sans-serif',
-      overflow: 'hidden', boxSizing: 'border-box', color: '#0f172a'
-    }}>
-      {/* Top-Left Minimalist Diagonal Band Mesh (Rotated) */}
-      <div style={{ position: 'absolute', top: 0, left: 0, width: '300px', height: '300px', pointerEvents: 'none', transform: 'rotate(180deg)' }}>
-        <svg width="300" height="300" viewBox="0 0 400 400" style={{ display: 'block' }}>
-          {/* Subtle Grey Geometric Background */}
-          <g opacity="0.6">
-            <polygon points="100,0 400,150 250,400" fill="#f1f5f9" />
-            <polygon points="0,150 250,400 50,400" fill="#e2e8f0" />
-            <polygon points="0,0 100,0 0,150" fill="#f8fafc" />
-            <polygon points="100,0 400,0 400,150" fill="#e2e8f0" />
-          </g>
-          {/* Light Blue Diagonal Band */}
-          <polygon points="0,400 0,310 400,170 400,400" fill="#38bdf8" />
-          {/* Dark Blue Diagonal Band */}
-          <polygon points="0,400 0,360 400,240 400,400" fill="#1e40af" />
-          {/* Medium Blue Vertical Bar (in front) */}
-          <polygon points="330,50 400,20 400,400 330,400" fill="#2563eb" />
-        </svg>
+    <div style={{ fontFamily: FONTS.body, fontSize: 12.5, lineHeight: 1.8, color: theme.textBody, fontStyle: "italic" }}>
+      <p style={{ margin: 0 }}>has successfully participated in the online training session titled</p>
+      <p style={{ margin: "6px 0", fontSize: 14, fontWeight: 700, color: accent, fontStyle: "normal" }}>
+        “{eventTitle || "Orientation & How to Add References in MS Word"}”
+      </p>
+      {eventDate && <p style={{ margin: 0 }}>held on {eventDate}.</p>}
+      <p style={{ margin: "10px 0 0", fontSize: 11.5, color: theme.textMuted }}>
+        The participant actively engaged in the orientation, practical demonstration, assessment, and interactive Q&A session.
+      </p>
+      <p style={{ margin: "4px 0", fontSize: 11.5, fontWeight: 700, color: theme.text, fontStyle: "normal" }}>
+        This certificate is issued only after the successful submission of the required assessment.
+      </p>
+      <p style={{ margin: "4px 0 0", fontSize: 11.5, color: theme.textMuted }}>
+        We appreciate the participant&apos;s commitment to academic excellence and continuous learning.
+      </p>
+    </div>
+  );
+}
+
+function SignatureBlock({ certAssets, theme, compact }) {
+  const sigH = compact ? 52 : 58;
+  return (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", minWidth: 180 }}>
+      <div style={{ height: 68, display: "flex", alignItems: "flex-end", justifyContent: "center", marginBottom: 4 }}>
+        <img
+          src={certAssets?.signature || "/signature.png"}
+          alt="Signature"
+          style={{ height: sigH, objectFit: "contain", maxWidth: 200 }}
+        />
       </div>
+      <div style={{ width: 170, height: 1, backgroundColor: theme.text, marginBottom: 6 }} />
+      <p style={{ fontWeight: 700, fontSize: 13, color: theme.text, margin: 0, fontFamily: FONTS.body }}>{CHAIRMAN_NAME}</p>
+      <p style={{ fontSize: 10.5, color: theme.textMuted, margin: 0, fontStyle: "italic", fontFamily: FONTS.body }}>{CHAIRMAN_TITLE}</p>
+    </div>
+  );
+}
 
-      {/* Bottom-Right Minimalist Diagonal Band Mesh */}
-      <div style={{ position: 'absolute', bottom: 0, right: 0, width: '300px', height: '300px', pointerEvents: 'none' }}>
-        <svg width="300" height="300" viewBox="0 0 400 400" style={{ display: 'block' }}>
-          {/* Subtle Grey Geometric Background */}
-          <g opacity="0.6">
-            <polygon points="100,0 400,150 250,400" fill="#f1f5f9" />
-            <polygon points="0,150 250,400 50,400" fill="#e2e8f0" />
-            <polygon points="0,0 100,0 0,150" fill="#f8fafc" />
-            <polygon points="100,0 400,0 400,150" fill="#e2e8f0" />
-          </g>
-          {/* Light Blue Diagonal Band */}
-          <polygon points="0,400 0,310 400,170 400,400" fill="#38bdf8" />
-          {/* Dark Blue Diagonal Band */}
-          <polygon points="0,400 0,360 400,240 400,400" fill="#1e40af" />
-          {/* Medium Blue Vertical Bar (in front) */}
-          <polygon points="330,50 400,20 400,400 330,400" fill="#2563eb" />
-        </svg>
-      </div>
+export function CertificateBase({ data, certAssets, id = "cert-inner", layout }) {
+  const theme = CERT_THEME;
+  const content = resolveCertificateContent(data);
+  const isCorporate = layout.accentStyle === "corporate";
+  const logoSrc = certAssets?.logo || logo;
+  const stampSrc = certAssets?.stamp || certAssets?.seal || "/stamp.png";
 
-      {/* Double Border Frame */}
-      <div style={{ position: 'absolute', top: '15px', bottom: '15px', left: '15px', right: '15px', border: '1.5px solid #002b49', pointerEvents: 'none' }} />
-      <div style={{ position: 'absolute', top: '20px', bottom: '20px', left: '20px', right: '20px', border: '0.8px solid #002b49', pointerEvents: 'none' }} />
+  const titleColor = isCorporate ? theme.white : layout.accentColor || theme.navy;
+  const headerTop = isCorporate ? 88 : layout.logoPosition === "center" ? 48 : 44;
 
-      {/* Logo Top-Center */}
-      <div style={{ position: 'absolute', top: '45px', left: '50%', transform: 'translateX(-50%)' }}>
-        <img src={certAssets?.logo || logo} alt="Logo" style={{ height: '70px', objectFit: 'contain' }} />
-      </div>
+  return (
+    <div
+      id={id}
+      style={{
+        position: "relative",
+        width: CERT_CANVAS.width,
+        height: CERT_CANVAS.height,
+        backgroundColor: layout.bgColor || theme.white,
+        fontFamily: FONTS.body,
+        overflow: "hidden",
+        boxSizing: "border-box",
+        color: theme.text,
+        display: "grid",
+        gridTemplateRows: "auto 1fr auto",
+      }}
+    >
+      <Decorations layout={layout} theme={theme} />
 
-      {/* Date of Issue below logo */}
-      <div style={{ position: 'absolute', top: '135px', left: '50%', transform: 'translateX(-50%)', fontSize: '11.5px', color: '#475569', fontFamily: 'sans-serif', fontWeight: 'bold' }}>
-        Date of Issue: {issueDate}
-      </div>
-
-      {/* Centered Main Content Block */}
-      <div style={{
-        position: 'absolute',
-        top: '400px',
-        left: '50%',
-        transform: 'translate(-50%, -50%)',
-        width: '850px',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        textAlign: 'center',
-        zIndex: 5
-      }}>
-        {/* Title */}
-        <h1 style={{ fontSize: '54px', fontWeight: '900', color: '#003366', letterSpacing: '0.04em', textTransform: 'uppercase', lineHeight: 1, margin: 0 }}>
-          CERTIFICATE
-        </h1>
-        {/* Subtitle */}
-        <p style={{ fontSize: '24px', color: '#003366', margin: '8px 0 0', fontStyle: 'italic', fontWeight: 'bold' }}>
-          {data.awardType || "Of Participation"}
-        </p>
-        <p style={{ fontSize: '13px', fontStyle: 'italic', color: '#64748b', marginTop: '12px', letterSpacing: '0.05em' }}>
-          This certificate is presented to
-        </p>
-
-        {/* Recipient Name */}
-        <div style={{ marginTop: '35px', width: '100%' }}>
-          <h2 style={{ fontSize: '38px', fontWeight: 'bold', color: '#0f172a', fontFamily: '"Playfair Display", serif', margin: 0, textTransform: 'none', borderBottom: '1.2px solid #002b49', display: 'inline-block', paddingBottom: '6px', minWidth: '460px' }}>
-            {data.memberId?.name || data.memberName || "Member Name"}
-          </h2>
+      {/* Header row */}
+      <header
+        style={{
+          position: "relative",
+          zIndex: 2,
+          padding: isCorporate ? "88px 48px 0" : layout.logoPosition === "center" ? "40px 48px 0" : "40px 48px 0",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: layout.logoPosition === "center" ? "center" : "flex-start",
+        }}
+      >
+        <div style={{ marginTop: 0 }}>
+          <img src={logoSrc} alt="Serve & Lead Society" style={{ height: isCorporate ? 56 : 68, objectFit: "contain" }} />
         </div>
+        {layout.issueDateVisible && (
+          <p
+            style={{
+              marginTop: 10,
+              fontSize: 11,
+              color: isCorporate ? theme.white : theme.textBody,
+              opacity: isCorporate ? 0.85 : 1,
+              fontFamily: FONTS.body,
+            }}
+          >
+            Date of Issue: {content.issueDate}
+          </p>
+        )}
+      </header>
 
-        {/* Body Description */}
-        <div style={{ marginTop: '35px', width: '100%', fontFamily: 'sans-serif', fontSize: '12.5px', lineHeight: 1.8, color: '#475569', fontStyle: 'italic', padding: '0 40px', boxSizing: 'border-box' }}>
-          {data.description ? (
-            <p style={{ whiteSpace: 'pre-wrap', margin: 0 }}>{data.description}</p>
-          ) : (
-            <div>
-              <p style={{ margin: 0 }}>
-                has successfully participated in the online training session titled
-              </p>
-              <p style={{ margin: '4px 0', fontSize: '14px', fontWeight: 'bold', color: '#003366', fontStyle: 'normal' }}>
-                “{data.eventId?.title || "Orientation & How to Add References in MS Word"}”
-              </p>
-              <p style={{ margin: 0 }}>
-                held on {eventDate}.
-              </p>
-              <p style={{ margin: '8px 0 0', fontSize: '11.5px', color: '#64748b' }}>
-                The participant actively engaged in the orientation, practical demonstration, assessment, and interactive Q&A session.
-              </p>
-              <p style={{ margin: '4px 0', fontSize: '11.5px', fontWeight: 'bold', color: '#0f172a', fontStyle: 'normal' }}>
-                This certificate is issued only after the successful submission of the required assessment.
-              </p>
-              <p style={{ margin: '4px 0 0', fontSize: '11.5px', color: '#64748b' }}>
-                We appreciate the participant's commitment to academic excellence and continuous learning.
-              </p>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* CEO Signature Block (Bottom Left) */}
-      <div style={{ position: 'absolute', bottom: '65px', left: '160px', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
-        <div style={{ height: '70px', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', marginBottom: '5px' }}>
-          {certAssets?.signature ? (
-            <img src={certAssets.signature} alt="Signature" style={{ height: '60px', objectFit: 'contain' }} />
-          ) : (
-            <span style={{ fontSize: '26px', fontFamily: '"Dancing Script", cursive', color: '#0f172a' }}>
-              {finalChairmanName}
+      {/* Main content — flex-centered in remaining space */}
+      <main
+        style={{
+          position: "relative",
+          zIndex: 2,
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          textAlign: "center",
+          padding: layout.accentStyle === "seal" ? "0 320px 0 64px" : "0 72px",
+          marginTop: layout.logoPosition === "center" ? -8 : headerTop - 40,
+        }}
+      >
+        {layout.titleMode === "combined" ? (
+          <h1
+            style={{
+              fontFamily: FONTS.heading,
+              fontSize: 38,
+              fontWeight: 900,
+              color: layout.accentColor,
+              textTransform: "uppercase",
+              letterSpacing: "0.04em",
+              lineHeight: 1.15,
+              margin: 0,
+            }}
+          >
+            {content.titleLine}
+            <span style={{ display: "block", fontSize: 22, fontWeight: 700, marginTop: 6, fontStyle: "italic", textTransform: "none" }}>
+              {content.awardType}
             </span>
-          )}
-        </div>
-        <div style={{ width: '170px', height: '1px', backgroundColor: '#0f172a', marginBottom: '5px' }} />
-        <p style={{ fontWeight: 'bold', fontSize: '13px', color: '#0f172a', margin: 0 }}>
-          {finalChairmanName}
-        </p>
-        <p style={{ fontSize: '10.5px', color: '#64748b', margin: 0, fontStyle: 'italic' }}>
-          CEO of Society
-        </p>
-      </div>
-
-      {/* Dynamic Vector Verified Stamp (Bottom Center) */}
-      <div style={{ position: 'absolute', bottom: '65px', left: '50%', transform: 'translateX(-50%)', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-        <VerifiedStamp color="#002b49" id="t2" />
-      </div>
-
-      {/* Footer Text */}
-      <div style={{ position: 'absolute', bottom: '25px', left: '50%', transform: 'translateX(-50%)', textAlign: 'center', fontSize: '10.5px', color: '#64748b', fontStyle: 'italic', fontWeight: 'bold', whiteSpace: 'nowrap' }}>
-        Verify Through SLS Website by Using Membership ID
-      </div>
-    </div>
-  );
-};
-
-// Template 3 (Landscape - Second Image)
-export const Template3 = ({ data, certAssets, id }) => {
-  const eventDate = data.eventId?.date 
-    ? new Date(data.eventId.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
-    : '28 February 2026';
-
-  // Handle double 'Chairman SLS' text fallback
-  const chairmanName = data.chairmanName || "Muhammad Farooq Ahmad";
-  const finalChairmanName = (chairmanName.toLowerCase().includes("chairman") || chairmanName.toLowerCase().includes("ceo")) 
-    ? "Muhammad Farooq Ahmad" 
-    : chairmanName;
-
-  return (
-    <div id={id} style={{
-      position: 'relative', width: '1123px', height: '794px',
-      backgroundColor: '#ffffff', fontFamily: 'sans-serif',
-      overflow: 'hidden', boxSizing: 'border-box', color: '#0f172a'
-    }}>
-      {/* Left-Side Soft Organic Geometric Polygonal Background Watermark (Subtle opacity & color for elegant paper feel) */}
-      <div style={{ position: 'absolute', top: 0, left: 0, width: '700px', height: '100%', pointerEvents: 'none', opacity: 0.04 }}>
-        <svg width="700" height="794" viewBox="0 0 700 794" style={{ display: 'block' }}>
-          <polygon points="0,0 200,0 100,150 0,100" fill="#94a3b8" />
-          <polygon points="100,150 300,120 200,280" fill="#94a3b8" />
-          <polygon points="0,100 100,150 0,300" fill="#64748b" />
-          <polygon points="0,300 200,280 150,480 0,420" fill="#94a3b8" />
-          <polygon points="200,280 300,120 400,250 350,420" fill="#64748b" />
-          <polygon points="350,420 400,250 550,300 480,500" fill="#94a3b8" />
-          <polygon points="150,480 350,420 280,620 100,580" fill="#94a3b8" />
-          <polygon points="0,420 150,480 0,600" fill="#64748b" />
-          <polygon points="0,600 280,620 200,794 0,794" fill="#94a3b8" />
-          <polygon points="280,620 480,500 520,680 400,794" fill="#94a3b8" />
-          <polygon points="400,794 520,680 600,794" fill="#64748b" />
-        </svg>
-      </div>
-
-      {/* Right-Edge Advanced Premium Diagonal Fold Overlay (SVG) */}
-      <div style={{ position: 'absolute', top: 0, right: 0, width: '380px', height: '100%', pointerEvents: 'none' }}>
-        <svg width="380" height="794" viewBox="0 0 380 794" style={{ display: 'block' }}>
-          {/* Premium Emerald Green/Teal Dot Grid at top-right */}
-          <g opacity="0.65">
-            <circle cx="260" cy="20" r="2.5" fill="#10b981" />
-            <circle cx="280" cy="20" r="2.5" fill="#10b981" />
-            <circle cx="300" cy="20" r="2.5" fill="#10b981" />
-            <circle cx="320" cy="20" r="2.5" fill="#10b981" />
-            <circle cx="340" cy="20" r="2.5" fill="#10b981" />
-            <circle cx="360" cy="20" r="2.5" fill="#10b981" />
-
-            <circle cx="250" cy="40" r="2.5" fill="#10b981" />
-            <circle cx="270" cy="40" r="2.5" fill="#10b981" />
-            <circle cx="290" cy="40" r="2.5" fill="#10b981" />
-            <circle cx="310" cy="40" r="2.5" fill="#10b981" />
-            <circle cx="330" cy="40" r="2.5" fill="#10b981" />
-            <circle cx="350" cy="40" r="2.5" fill="#10b981" />
-
-            <circle cx="260" cy="60" r="2.5" fill="#10b981" />
-            <circle cx="280" cy="60" r="2.5" fill="#10b981" />
-            <circle cx="300" cy="60" r="2.5" fill="#10b981" />
-            <circle cx="320" cy="60" r="2.5" fill="#10b981" />
-            <circle cx="340" cy="60" r="2.5" fill="#10b981" />
-            <circle cx="360" cy="60" r="2.5" fill="#10b981" />
-
-            <circle cx="270" cy="80" r="2.5" fill="#10b981" />
-            <circle cx="290" cy="80" r="2.5" fill="#10b981" />
-            <circle cx="310" cy="80" r="2.5" fill="#10b981" />
-            <circle cx="330" cy="80" r="2.5" fill="#10b981" />
-            <circle cx="350" cy="80" r="2.5" fill="#10b981" />
-
-            <circle cx="280" cy="100" r="2.5" fill="#10b981" />
-            <circle cx="300" cy="100" r="2.5" fill="#10b981" />
-            <circle cx="320" cy="100" r="2.5" fill="#10b981" />
-            <circle cx="340" cy="100" r="2.5" fill="#10b981" />
-          </g>
-
-          {/* Top Cyan Ribbon */}
-          <polygon points="380,0 220,0 50,170 380,500" fill="#00a8ff" />
-          {/* Top Gold Stripe */}
-          <line x1="220" y1="0" x2="50" y2="170" stroke="#c8a951" strokeWidth="8.5" />
-          {/* Top Parallel Green Line */}
-          <line x1="180" y1="0" x2="10" y2="170" stroke="#0c3d25" strokeWidth="2.5" />
-
-          {/* Bottom Cyan Ribbon */}
-          <polygon points="380,340 50,624 220,794 380,794" fill="#00a8ff" />
-          {/* Bottom Gold Stripe */}
-          <line x1="50" y1="624" x2="220" y2="794" stroke="#c8a951" strokeWidth="8.5" />
-          {/* Bottom Parallel Green Line */}
-          <line x1="10" y1="624" x2="180" y2="794" stroke="#0c3d25" strokeWidth="2.5" />
-
-          {/* Deep Navy front fold pointing left */}
-          <polygon points="380,140 100,420 380,700" fill="#0c213d" />
-          
-          {/* White dot in the navy chevron */}
-          <circle cx="260" cy="420" r="7" fill="#ffffff" />
-
-          {/* Gold Corner Fold at the bottom right */}
-          <polygon points="380,720 306,794 380,794" fill="#c8a951" />
-
-          {/* Horizontal Solid Blue Band at bottom right */}
-          <rect x="145" y="744" width="235" height="50" fill="#00a8ff" />
-        </svg>
-      </div>
-
-      {/* Bottom-Right Blue Bar Text Overlay */}
-      <div style={{ position: 'absolute', bottom: 0, right: 0, width: '250px', height: '50px', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10, pointerEvents: 'none' }}>
-        <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#ffffff', letterSpacing: '0.08em', fontFamily: 'sans-serif' }}>
-          SERVE & LEAD SOCIETY
-        </span>
-      </div>
-
-      {/* Logo Top-Left */}
-      <div style={{ position: 'absolute', top: '35px', left: '50px' }}>
-        <img src={certAssets?.logo || logo} alt="Logo" style={{ height: '70px', objectFit: 'contain' }} />
-      </div>
-
-      {/* Title block */}
-      <div style={{ position: 'absolute', top: '135px', left: 0, width: '743px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-        <h1 style={{ fontSize: '42px', fontWeight: '900', color: '#0f172a', textTransform: 'uppercase', letterSpacing: '0.02em', lineHeight: 1.1, margin: 0 }}>
-          CERTIFICATE OF PARTICIPATION
-        </h1>
-        <p style={{ fontSize: '15px', color: '#475569', marginTop: '12px', fontWeight: 'bold', letterSpacing: '0.05em' }}>
-          This Certificate Is Proudly Presented To
-        </p>
-      </div>
-
-      {/* Recipient Name with underline */}
-      <div style={{ position: 'absolute', top: '260px', left: 0, width: '743px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-        <h2 style={{ fontSize: '38px', fontWeight: 'bold', color: '#0f172a', fontFamily: '"Playfair Display", serif', margin: '0 0 10px 0', textTransform: 'none' }}>
-          {data.memberId?.name || data.memberName || "Member Name"}
-        </h2>
-        <div style={{ width: '460px', height: '1.2px', backgroundColor: '#0f172a' }} />
-      </div>
-
-      {/* Body Description */}
-      <div style={{ position: 'absolute', top: '360px', left: 0, width: '743px', padding: '0 80px', boxSizing: 'border-box', textAlign: 'center', fontSize: '13px', lineHeight: 1.8, color: '#475569', fontWeight: '500' }}>
-        {data.description ? (
-          <p style={{ whiteSpace: 'pre-wrap', margin: 0 }}>{data.description}</p>
+          </h1>
         ) : (
-          <div>
-            <p style={{ margin: 0 }}>
-              has successfully participated in the online training session titled
+          <>
+            <h1
+              style={{
+                fontFamily: FONTS.heading,
+                fontSize: layout.accentStyle === "minimal" ? 48 : 52,
+                fontWeight: 900,
+                color: titleColor === theme.white ? theme.navy : titleColor,
+                letterSpacing: "0.06em",
+                textTransform: "uppercase",
+                lineHeight: 1,
+                margin: 0,
+              }}
+            >
+              {content.titleLine}
+            </h1>
+            <p
+              style={{
+                fontFamily: FONTS.heading,
+                fontSize: 22,
+                color: layout.accentStyle === "gold" ? theme.gold : theme.navyMid,
+                margin: "10px 0 0",
+                fontStyle: "italic",
+                fontWeight: 700,
+              }}
+            >
+              {content.awardType}
             </p>
-            <p style={{ margin: '4px 0', fontSize: '14px', fontWeight: 'bold', color: '#002b49', fontStyle: 'normal' }}>
-              “{data.eventId?.title || "Orientation & How to Add References in MS Word"}”
-            </p>
-            <p style={{ margin: 0 }}>
-              held on {eventDate}.
-            </p>
-            <p style={{ margin: '8px 0 0', fontSize: '11.5px', color: '#64748b' }}>
-              The participant actively engaged in the orientation, practical demonstration, assessment, and interactive Q&A session.
-            </p>
-            <p style={{ margin: '4px 0', fontSize: '11.5px', fontWeight: 'bold', color: '#0f172a', fontStyle: 'normal' }}>
-              This certificate is issued only after the successful submission of the required assessment.
-            </p>
+          </>
+        )}
+
+        <p style={{ fontSize: 12, fontStyle: "italic", color: theme.textMuted, marginTop: 14, letterSpacing: "0.04em" }}>
+          This certificate is presented to
+        </p>
+
+        <h2
+          style={{
+            fontFamily: FONTS.heading,
+            fontSize: 36,
+            fontWeight: 700,
+            color: theme.text,
+            margin: "28px 0 0",
+            paddingBottom: 8,
+            borderBottom: `2px solid ${layout.borderColor || theme.navy}`,
+            minWidth: 420,
+            maxWidth: "90%",
+          }}
+        >
+          {content.memberName}
+        </h2>
+
+        <div style={{ marginTop: 28, maxWidth: 780, width: "100%" }}>
+          <DefaultBody content={content} theme={theme} layout={layout} />
+        </div>
+      </main>
+
+      {/* Footer */}
+      <footer style={{ position: "relative", zIndex: 2, padding: "0 48px 36px" }}>
+        {layout.stampPosition === "prominent-right" ? (
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
+            <SignatureBlock certAssets={certAssets} theme={theme} />
+            <div style={{ marginRight: 40, marginBottom: 8 }}>
+              <VerifiedStamp color={theme.navy} id={`${id}-stamp`} size={130} imageSrc={stampSrc} />
+            </div>
+          </div>
+        ) : (
+          <div
+            style={{
+              display: "flex",
+              justifyContent: layout.stampPosition === "center" ? "center" : "space-between",
+              alignItems: "flex-end",
+              gap: 48,
+              maxWidth: layout.stampPosition === "center" ? 520 : "100%",
+              margin: layout.stampPosition === "center" ? "0 auto" : undefined,
+            }}
+          >
+            <SignatureBlock certAssets={certAssets} theme={theme} compact={layout.stampPosition === "center"} />
+            {layout.stampPosition !== "center" && (
+              <VerifiedStamp color={theme.navy} id={`${id}-stamp`} size={112} imageSrc={stampSrc} />
+            )}
+            {layout.stampPosition === "center" && (
+              <VerifiedStamp color={theme.navy} id={`${id}-stamp`} size={100} imageSrc={stampSrc} />
+            )}
           </div>
         )}
-      </div>
 
-      {/* Footer / Signature and Date section */}
-      <div style={{ position: 'absolute', bottom: '65px', left: '50px', width: '643px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
-        {/* Signature */}
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '220px' }}>
-          <div style={{ height: '65px', display: 'flex', alignItems: 'flex-end', marginBottom: '4px' }}>
-            {certAssets?.signature ? (
-              <img src={certAssets.signature} alt="Signature" style={{ height: '55px', objectFit: 'contain' }} />
-            ) : (
-              <span style={{ fontSize: '24px', fontFamily: '"Dancing Script", cursive', color: '#0f172a' }}>
-                {finalChairmanName}
-              </span>
-            )}
-          </div>
-          <div style={{ width: '200px', height: '1.2px', backgroundColor: '#0f172a', marginBottom: '5px' }} />
-          <p style={{ fontWeight: 'bold', fontSize: '13.5px', color: '#0f172a', margin: 0 }}>
-            {finalChairmanName}
-          </p>
-          <p style={{ fontSize: '10.5px', color: '#64748b', margin: 0, fontStyle: 'italic' }}>
-            Chairman SLS
-          </p>
-        </div>
-
-        {/* Date Line */}
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '180px' }}>
-          <div style={{ height: '65px', display: 'flex', alignItems: 'flex-end', marginBottom: '4px' }}>
-            <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#0f172a', paddingBottom: '5px' }}>
-              {eventDate}
-            </span>
-          </div>
-          <div style={{ width: '160px', height: '1.2px', backgroundColor: '#0f172a', marginBottom: '5px' }} />
-          <p style={{ fontWeight: 'bold', fontSize: '13.5px', color: '#0f172a', margin: 0, opacity: 0 }}>
-            Placeholder
-          </p>
-          <p style={{ fontSize: '10.5px', color: '#64748b', margin: 0, fontStyle: 'italic', opacity: 0 }}>
-            Placeholder
-          </p>
-        </div>
-      </div>
-
-      {/* Dynamic Vector Verified Stamp (Black as Mockup, placed perfectly on the cyan chevron area) */}
-      <div style={{ position: 'absolute', bottom: '80px', right: '190px', zIndex: 10, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-        <VerifiedStamp color="#002b49" id="t3" />
-      </div>
-
-      {/* Bottom Left Verify Text */}
-      <div style={{ position: 'absolute', bottom: '25px', left: '50px', fontSize: '9.5px', color: '#64748b', fontStyle: 'italic', fontWeight: 'bold' }}>
-        Verify Through SLS Website by Using Membership ID
-      </div>
+        <p
+          style={{
+            marginTop: 18,
+            textAlign: "center",
+            fontSize: 10,
+            color: theme.textMuted,
+            fontStyle: "italic",
+            fontWeight: 600,
+            letterSpacing: "0.02em",
+          }}
+        >
+          Verify Through SLS Website by Using Membership ID
+        </p>
+      </footer>
     </div>
   );
-};
+}
 
+export function RenderCertificate({ templateId = 1, data, certAssets, id = "cert-inner" }) {
+  const layout = TEMPLATE_LAYOUTS[Number(templateId)] || TEMPLATE_LAYOUTS[1];
+  return <CertificateBase data={data} certAssets={certAssets} id={id} layout={layout} />;
+}
+
+/** Backward-compatible named exports (ids 1–3 map to first three layouts; 4–7 use registry) */
+export const Template1 = (props) => <RenderCertificate templateId={1} {...props} />;
+export const Template2 = (props) => <RenderCertificate templateId={2} {...props} />;
+export const Template3 = (props) => <RenderCertificate templateId={3} {...props} />;
+export const Template4 = (props) => <RenderCertificate templateId={4} {...props} />;
+export const Template5 = (props) => <RenderCertificate templateId={5} {...props} />;
+export const Template6 = (props) => <RenderCertificate templateId={6} {...props} />;
+export const Template7 = (props) => <RenderCertificate templateId={7} {...props} />;
+
+export function getCertificateComponent(templateId) {
+  const id = Number(templateId) || 1;
+  const map = { 1: Template1, 2: Template2, 3: Template3, 4: Template4, 5: Template5, 6: Template6, 7: Template7 };
+  return map[id] || Template1;
+}

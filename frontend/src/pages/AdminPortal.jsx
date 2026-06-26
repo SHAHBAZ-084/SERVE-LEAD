@@ -2,10 +2,8 @@ import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import api, { getImgUrl, API_BASE as API_BASE_URL } from "../api";
 import CountdownTimer from "../components/common/CountdownTimer";
-import { Template1, Template2, Template3, logo, sealImg } from "./CertTemplates";
-import jsPDF from "jspdf";
-import html2canvas from "html2canvas";
-
+import { RenderCertificate, CERT_TEMPLATES, CHAIRMAN_NAME, logo } from "./CertTemplates";
+import { captureCertificatePdf } from "../utils/certificatePdfExport";
 import { compressImage } from "../utils/compressImage";
 import ImageUploadHint from "../components/common/ImageUploadHint";
 import { inputCls, useCountUp, StatCard, Spinner, AdminModal } from "../components/common/AdminUiComponents";
@@ -34,39 +32,6 @@ const PAK_BANKS = [
     "Dubai Islamic Bank", "Standard Chartered", "Habib Metro", "Soneri Bank",
     "Al Baraka Bank", "Bank Al Habib", "JS Bank", "Samba Bank", "Silk Bank",
     "Summit Bank", "Sindh Bank", "SadaPay", "NayaPay",
-];
-
-const CERT_TEMPLATES = [
-    {
-        id: 1,
-        name: "Classic Blue",
-        thumb: "🔵",
-        orientation: "landscape",
-        bgColor: "#ffffff",
-        accentColor: "#003366",
-        textColor: "#0f172a",
-        borderColor: "#002147",
-    },
-    {
-        id: 2,
-        name: "Modern Blue",
-        thumb: "🔷",
-        orientation: "landscape",
-        bgColor: "#f0f4ff",
-        accentColor: "#1a56db",
-        textColor: "#0f172a",
-        borderColor: "#1a56db",
-    },
-    {
-        id: 3,
-        name: "Gold & Blue",
-        thumb: "🏅",
-        orientation: "landscape",
-        bgColor: "#ffffff",
-        accentColor: "#1a56db",
-        textColor: "#0f172a",
-        borderColor: "#c8a951",
-    },
 ];
 
 const isAbortError = (err) => err?.name === "CanceledError" || err?.code === "ERR_CANCELED";
@@ -1061,7 +1026,6 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
         category: "Appreciation",
         customCategory: "",
         description: "For their outstanding contribution and dedication to the society's goals and initiatives.",
-        chairmanName: "Muhammad Farooq Ahmad",
         title: "CERTIFICATE OF MEMBERSHIP",
         awardType: "Official Membership"
     });
@@ -1081,8 +1045,7 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
                 console.error(`Failed to load ${key} as Base64:`, err);
             }
         };
-        loadToDataURL(logo, 'logo');
-        loadToDataURL(sealImg, 'seal');
+        loadToDataURL('/logo-certificate.png', 'logo');
         loadToDataURL('/signature.png', 'signature');
         loadToDataURL('/stamp.png', 'stamp');
     }, []);
@@ -1108,7 +1071,7 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
         if (!form.memberId) return notify("Please select a member", "error");
         setSubmitting(true);
         try {
-            await api.post("certificates", { ...form, templateId: selectedTemplate.id }, auth);
+            await api.post("certificates", { ...form, chairmanName: CHAIRMAN_NAME, templateId: selectedTemplate.id }, auth);
             notify("Certificate issued successfully!");
             setShowForm(false);
             setForm({
@@ -1117,7 +1080,6 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
                 category: "Appreciation",
                 customCategory: "",
                 description: "For their outstanding contribution and dedication to the society's goals and initiatives.",
-                chairmanName: "Muhammad Farooq Ahmad",
                 title: "CERTIFICATE OF MEMBERSHIP",
                 awardType: "Official Membership"
             });
@@ -1134,7 +1096,7 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
         if (!form.eventId) return notify("Please select an event for bulk issuance", "error");
         setSubmitting(true);
         try {
-            const r = await api.post("certificates/bulk", { ...form, templateId: selectedTemplate.id }, auth);
+            const r = await api.post("certificates/bulk", { ...form, chairmanName: CHAIRMAN_NAME, templateId: selectedTemplate.id }, auth);
             notify(`Successfully issued ${r.data.count} certificates!`);
             setShowForm(false);
             setForm({
@@ -1143,7 +1105,6 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
                 category: "Appreciation",
                 customCategory: "",
                 description: "For their outstanding contribution and dedication to the society's goals and initiatives.",
-                chairmanName: "Muhammad Farooq Ahmad",
                 title: "CERTIFICATE OF MEMBERSHIP",
                 awardType: "Official Membership"
             });
@@ -1159,95 +1120,12 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
     const downloadPDF = async (certData) => {
         setExportData(certData);
         notify("Preparing document...");
-        
-        // Give React time to re-render the unified node with new data
-        await new Promise(r => setTimeout(r, 600));
-
+        await new Promise((r) => setTimeout(r, 600));
         try {
-            const activeTemplateId = Number(certData.templateId || 1);
-            const activeTemplate = CERT_TEMPLATES.find(t => t.id === activeTemplateId) || CERT_TEMPLATES[0];
-            const isLandscape = activeTemplate.orientation === 'landscape';
-            const W = isLandscape ? 1123 : 794;
-            const H = isLandscape ? 794 : 1123;
-
-            // 1. Create a hidden iframe sandbox
-            const iframe = document.createElement('iframe');
-            iframe.style.position = 'fixed';
-            iframe.style.top = '0';
-            iframe.style.left = '0';
-            iframe.style.width = `${W}px`;
-            iframe.style.height = `${H}px`;
-            iframe.style.opacity = '0';
-            iframe.style.pointerEvents = 'none';
-            iframe.style.zIndex = '-1000';
-            document.body.appendChild(iframe);
-
-            const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
-
-            // 2. Inject barebones HTML
-            iframeDoc.open();
-            iframeDoc.write(`
-                <!DOCTYPE html>
-                <html>
-                <head>
-                    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Dancing+Script:wght@400..700&display=swap" rel="stylesheet">
-                    <style>
-                        body { margin: 0; padding: 0; background: white; }
-                        * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; color-adjust: exact !important; }
-                        h1, h2, h3, p { margin: 0; padding: 0; }
-                    </style>
-                </head>
-                <body>
-                    <div id="sandbox-root"></div>
-                </body>
-                </html>
-            `);
-            iframeDoc.close();
-
-            await new Promise(r => setTimeout(r, 1000));
-            await iframeDoc.fonts.ready;
-
-            // 3. Clone the unified node
-            const sourceElement = document.getElementById('cert-export-node');
-            if (!sourceElement) throw new Error("Export engine not found in DOM");
-
-            const clonedNode = sourceElement.cloneNode(true);
-            clonedNode.style.opacity = '1';
-            clonedNode.style.visibility = 'visible';
-            clonedNode.style.display = 'block';
-            clonedNode.style.position = 'static';
-            clonedNode.style.transform = 'none';
-            clonedNode.style.left = 'auto';
-            clonedNode.style.top = 'auto';
-
-            iframeDoc.getElementById('sandbox-root').appendChild(clonedNode);
-
-            // 4. Capture
-            const canvas = await html2canvas(clonedNode, {
-                scale: 2,
-                useCORS: true,
-                allowTaint: false,
-                logging: false,
-                backgroundColor: "#ffffff",
-                windowWidth: W,
-                windowHeight: H
+            const name = certData.memberId?.name || certData.memberName || "Award";
+            await captureCertificatePdf("cert-export-node", {
+                fileName: `SLS_Official_${name.replace(/\s+/g, "_")}.pdf`,
             });
-
-            // 5. Generate PDF
-            const imgData = canvas.toDataURL('image/png', 1.0);
-            const pdf = new jsPDF({
-                orientation: isLandscape ? 'landscape' : 'portrait',
-                unit: 'mm',
-                format: 'a4',
-                compress: true
-            });
-
-            const pdfW = isLandscape ? 297 : 210;
-            const pdfH = isLandscape ? 210 : 297;
-            pdf.addImage(imgData, 'PNG', 0, 0, pdfW, pdfH, undefined, 'FAST');
-            pdf.save(`SLS_Official_${certData.memberId?.name?.replace(/\s+/g, '_') || 'Award'}.pdf`);
-
-            document.body.removeChild(iframe);
             notify("PDF Generated Successfully!");
         } catch (err) {
             console.error("PDF Export Error:", err);
@@ -1491,11 +1369,6 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
                             </div>
 
                             <div>
-                                <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Chairman Name</label>
-                                <input type="text" value={form.chairmanName} onChange={e => setForm({ ...form, chairmanName: e.target.value })} className={inputCls} />
-                            </div>
-
-                            <div>
                                 <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Certificate Title</label>
                                 <input type="text" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} className={inputCls} placeholder="e.g. CERTIFICATE OF MEMBERSHIP" />
                             </div>
@@ -1730,7 +1603,7 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
                                 </button>
 
                                 <button
-                                    onClick={() => downloadPDF({ ...form, memberId: selectedMember, eventId: selectedEvent })}
+                                    onClick={() => downloadPDF({ ...form, memberId: selectedMember, eventId: selectedEvent, templateId: selectedTemplate.id })}
                                     className="flex-1 sm:flex-none px-6 py-3.5 bg-white hover:bg-slate-50 text-[#002147] border-2 border-slate-200 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2"
                                 >
                                     <i className="fas fa-download" />
@@ -1769,10 +1642,8 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
             >
                 {(() => {
                     const tid = Number(exportData?.templateId || selectedTemplate.id);
-                    const dataToUse = exportData || (form.memberId ? { ...form, memberId: selectedMember } : form);
-                    if (tid === 1) return <Template1 data={dataToUse} certAssets={certAssets} id="cert-inner" />;
-                    if (tid === 2) return <Template2 data={dataToUse} certAssets={certAssets} id="cert-inner" />;
-                    return <Template3 data={dataToUse} certAssets={certAssets} id="cert-inner" />;
+                    const dataToUse = exportData || (form.memberId ? { ...form, memberId: selectedMember, templateId: tid } : { ...form, templateId: tid });
+                    return <RenderCertificate templateId={tid} data={dataToUse} certAssets={certAssets} id="cert-inner" />;
                 })()}
             </div>
         </div>

@@ -3,16 +3,16 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import api, { getImgUrl } from "../api";
 import Navbar from "../components/Navbar";
 import MemberSupportWhatsApp from "../components/MemberSupportWhatsApp";
-import { Template1, Template2, Template3, logo, sealImg } from "./CertTemplates";
+import { RenderCertificate, logo } from "./CertTemplates";
+import { captureCertificatePdf } from "../utils/certificatePdfExport";
 import CountdownTimer from "../components/common/CountdownTimer";
 import ImageUploadHint from "../components/common/ImageUploadHint";
+
 const Spinner = () => (
     <div className="flex justify-center py-16">
         <div className="w-8 h-8 border-3 border-[#002147] border-t-transparent rounded-full animate-spin" style={{ borderWidth: "3px" }} />
     </div>
 );
-import jsPDF from "jspdf";
-import html2canvas from "html2canvas";
 
 // ── Shared Primitives ─────────────────────────────────────
 const inputCls =
@@ -420,8 +420,7 @@ const MemberDashboard = () => {
                 console.error(`Failed to load ${key} as Base64:`, err);
             }
         };
-        loadToDataURL(logo, 'logo');
-        loadToDataURL(sealImg, 'seal');
+        loadToDataURL('/logo-certificate.png', 'logo');
         loadToDataURL('/signature.png', 'signature');
         loadToDataURL('/stamp.png', 'stamp');
     }, []);
@@ -453,94 +452,12 @@ const MemberDashboard = () => {
     const downloadPDF = async (certData) => {
         setExportData(certData);
         setExporting(true);
-        
-        // Give React time to re-render the unified node with new data
-        await new Promise(r => setTimeout(r, 600));
-
+        await new Promise((r) => setTimeout(r, 600));
         try {
-            const activeTemplateId = Number(certData.templateId || 1);
-            const isLandscape = true; // All templates (1, 2, 3) are now Landscape
-            const W = 1123;
-            const H = 794;
-
-            // 1. Create a hidden iframe sandbox
-            const iframe = document.createElement('iframe');
-            iframe.style.position = 'fixed';
-            iframe.style.top = '0';
-            iframe.style.left = '0';
-            iframe.style.width = `${W}px`;
-            iframe.style.height = `${H}px`;
-            iframe.style.opacity = '0';
-            iframe.style.pointerEvents = 'none';
-            iframe.style.zIndex = '-1000';
-            document.body.appendChild(iframe);
-
-            const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
-
-            // 2. Inject barebones HTML
-            iframeDoc.open();
-            iframeDoc.write(`
-                <!DOCTYPE html>
-                <html>
-                <head>
-                    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Dancing+Script:wght@400..700&display=swap" rel="stylesheet">
-                    <style>
-                        body { margin: 0; padding: 0; background: white; }
-                        * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; color-adjust: exact !important; }
-                        h1, h2, h3, p { margin: 0; padding: 0; }
-                    </style>
-                </head>
-                <body>
-                    <div id="sandbox-root"></div>
-                </body>
-                </html>
-            `);
-            iframeDoc.close();
-
-            await new Promise(r => setTimeout(r, 1000));
-            await iframeDoc.fonts.ready;
-
-            // 3. Clone the unified node
-            const sourceElement = document.getElementById('cert-export-node');
-            if (!sourceElement) throw new Error("Export engine not found in DOM");
-
-            const clonedNode = sourceElement.cloneNode(true);
-            clonedNode.style.opacity = '1';
-            clonedNode.style.visibility = 'visible';
-            clonedNode.style.display = 'block';
-            clonedNode.style.position = 'static';
-            clonedNode.style.transform = 'none';
-            clonedNode.style.left = 'auto';
-            clonedNode.style.top = 'auto';
-
-            iframeDoc.getElementById('sandbox-root').appendChild(clonedNode);
-
-            // 4. Capture
-            const canvas = await html2canvas(clonedNode, {
-                scale: 2,
-                useCORS: true,
-                allowTaint: false,
-                logging: false,
-                backgroundColor: "#ffffff",
-                windowWidth: W,
-                windowHeight: H
+            const name = certData.memberId?.name || certData.memberName || "Award";
+            await captureCertificatePdf("cert-export-node", {
+                fileName: `SLS_Certificate_${name.replace(/\s+/g, "_")}.pdf`,
             });
-
-            // 5. Generate PDF
-            const imgData = canvas.toDataURL('image/png', 1.0);
-            const pdf = new jsPDF({
-                orientation: isLandscape ? 'landscape' : 'portrait',
-                unit: 'mm',
-                format: 'a4',
-                compress: true
-            });
-
-            const pdfW = isLandscape ? 297 : 210;
-            const pdfH = isLandscape ? 210 : 297;
-            pdf.addImage(imgData, 'PNG', 0, 0, pdfW, pdfH, undefined, 'FAST');
-            pdf.save(`SLS_Certificate_${certData.memberId?.name?.replace(/\s+/g, '_') || 'Award'}.pdf`);
-
-            document.body.removeChild(iframe);
         } catch (err) {
             console.error("PDF Export Error:", err);
             alert(`PDF Error: ${err.message}`);
@@ -834,12 +751,12 @@ const MemberDashboard = () => {
                     zIndex: -1000
                 }}
             >
-                {(() => {
-                    const tid = Number(exportData?.templateId || 1);
-                    if (tid === 1) return <Template1 data={exportData || {}} certAssets={certAssets} id="actual-node" />;
-                    if (tid === 2) return <Template2 data={exportData || {}} certAssets={certAssets} id="actual-node" />;
-                    return <Template3 data={exportData || {}} certAssets={certAssets} id="actual-node" />;
-                })()}
+                <RenderCertificate
+                    templateId={Number(exportData?.templateId || 1)}
+                    data={exportData || {}}
+                    certAssets={certAssets}
+                    id="actual-node"
+                />
             </div>
         </div>
     );
