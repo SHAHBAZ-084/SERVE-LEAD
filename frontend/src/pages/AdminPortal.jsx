@@ -12,7 +12,7 @@ import { FOOTER_DEFAULTS, FOOTER_FIELDS, parseFooterSettings } from "../constant
 import { ABOUT_DEFAULTS, ABOUT_FIELDS, parseAboutSettings } from "../constants/aboutDefaults";
 import { MEMBER_TYPE_FILTER_OPTIONS } from "../constants/pakistanCities";
 import AdminLocationFilters, { DEFAULT_ADMIN_LOCATION_FILTER, ALL_TEHSILS_LABEL, appendLocationFilterParams, matchesAdminLocationFilter } from "../components/common/AdminLocationFilters";
-import PaymentManagementTab, { getFeeApprovalBadge, canApproveMemberFee, getInterviewBadge, needsInterviewResult, canRequestFee, canRequestFeeAgain, canDirectApprove, getExecutiveInterviewBadge, getExecutiveFeeBadge, needsExecutiveInterviewResult, canWaiveExecutive, canDirectApproveExecutive, canFinalApproveExecutive } from "../components/admin/PaymentManagementTab";
+import PaymentManagementTab, { getFeeApprovalBadge, canApproveMemberFee, getInterviewBadge, needsInterviewResult, canRequestFee, canRequestFeeAgain, canDirectApprove, getExecutiveInterviewBadge, getExecutiveFeeBadge, needsExecutiveInterviewResult, canWaiveExecutive, canFinalApproveExecutive } from "../components/admin/PaymentManagementTab";
 
 const adminFilterSelectCls =
   "bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold text-slate-700 outline-none focus:border-[#002147] min-w-[140px]";
@@ -2415,7 +2415,7 @@ const AdminPortal = () => {
         const [rejectExecReason, setRejectExecReason] = useState("");
 
         const handleApproveExecutive = async (id) => {
-            if (!window.confirm("Final approve this member as Executive?")) return;
+            if (!window.confirm("Approve this member as Executive? Interview is optional.")) return;
             setIsProcessing(true);
             try {
                 const r = await api.post(`admin/executive-applications/${id}/approve`, {}, auth);
@@ -2973,7 +2973,7 @@ const AdminPortal = () => {
                                         {canWaiveExecutive(app) && (
                                             <button type="button" onClick={() => { setExecWaiveTarget(app); setExecWaiveReason(""); }} className="flex-1 min-w-[30%] text-[9px] bg-purple-50 text-purple-600 border border-purple-100 py-2 rounded-lg font-black uppercase tracking-widest">Free</button>
                                         )}
-                                        <button type="button" disabled={!canFinalApproveExecutive(app) || isProcessing} onClick={() => handleApproveExecutive(app._id)} className="flex-1 min-w-[30%] text-[9px] bg-emerald-50 text-emerald-600 border border-emerald-100 py-2 rounded-lg font-black uppercase tracking-widest disabled:opacity-50">Approve</button>
+                                        <button type="button" disabled={isProcessing} onClick={() => handleApproveExecutive(app._id)} className="flex-1 min-w-[30%] text-[9px] bg-emerald-50 text-emerald-600 border border-emerald-100 py-2 rounded-lg font-black uppercase tracking-widest disabled:opacity-50">Approve</button>
                                         <button type="button" onClick={() => { setRejectExecTarget(app); setRejectExecReason(""); }} className="flex-1 min-w-[30%] text-[9px] bg-rose-50 text-rose-600 border border-rose-100 py-2 rounded-lg font-black uppercase tracking-widest">Reject</button>
                                     </div>
                                 </div>
@@ -2984,7 +2984,7 @@ const AdminPortal = () => {
                         </div>
 
                         <div className="hidden sm:block bg-white rounded-2xl sm:rounded-3xl border border-slate-200 shadow-sm overflow-visible">
-                            <div className="overflow-x-auto overflow-y-visible custom-scrollbar-horizontal">
+                            <div className={`overflow-x-auto overflow-y-visible custom-scrollbar-horizontal ${openActionMenu?.startsWith("exec-") ? "pb-52" : ""}`}>
                                 <table className="w-full text-sm table-fixed min-w-[960px]">
                                     <thead>
                                         <tr className="bg-slate-50 border-b border-slate-200 text-left">
@@ -3099,7 +3099,7 @@ const AdminPortal = () => {
                                                             Manage <i className={`fas fa-chevron-${openActionMenu === menuKey ? "up" : "down"} ml-1 text-[8px]`} />
                                                         </button>
                                                         {openActionMenu === menuKey && (
-                                                            <div className="absolute right-0 bottom-full mb-1 w-48 bg-white border border-slate-200 rounded-xl shadow-xl z-50 py-1 text-left">
+                                                            <div className="absolute right-0 mt-1 w-48 bg-white border border-slate-200 rounded-xl shadow-xl z-20 py-1 text-left">
                                                                 <button type="button" onClick={() => { setViewExecApp(app); setOpenActionMenu(null); }} className="w-full px-3 py-2 text-[10px] font-bold uppercase text-slate-600 hover:bg-slate-50 text-left">View Application</button>
                                                                 <button type="button" onClick={() => { setExecInterviewTarget(app); setOpenActionMenu(null); }} className="w-full px-3 py-2 text-[10px] font-bold uppercase text-slate-600 hover:bg-slate-50 text-left">{app.interview_called ? "Call Again" : "Interview Call"}</button>
                                                                 {needsExecutiveInterviewResult(app) && (
@@ -3107,9 +3107,6 @@ const AdminPortal = () => {
                                                                 )}
                                                                 {canWaiveExecutive(app) && (
                                                                     <button type="button" onClick={() => { setExecWaiveTarget(app); setExecWaiveReason(""); setOpenActionMenu(null); }} className="w-full px-3 py-2 text-[10px] font-bold uppercase text-purple-600 hover:bg-purple-50 text-left">Free Membership</button>
-                                                                )}
-                                                                {canDirectApproveExecutive(app) && (
-                                                                    <button type="button" onClick={() => { setExecDirectApproveTarget(app); setExecDirectApproveNote(""); setOpenActionMenu(null); }} className="w-full px-3 py-2 text-[10px] font-bold uppercase text-teal-600 hover:bg-teal-50 text-left">Direct Approve</button>
                                                                 )}
                                                                 <button type="button" onClick={() => { handleApproveExecutive(app._id); setOpenActionMenu(null); }} disabled={!canFinalApproveExecutive(app) || isProcessing} className="w-full px-3 py-2 text-[10px] font-bold uppercase text-emerald-600 hover:bg-emerald-50 text-left disabled:opacity-40 disabled:cursor-not-allowed">Final Approve</button>
                                                                 <button type="button" onClick={() => { setRejectExecTarget(app); setRejectExecReason(""); setOpenActionMenu(null); }} className="w-full px-3 py-2 text-[10px] font-bold uppercase text-rose-600 hover:bg-rose-50 text-left border-t border-slate-100">Reject</button>
@@ -3184,12 +3181,7 @@ const AdminPortal = () => {
                                 <button onClick={() => setViewExecApp(null)} className="px-8 py-3.5 bg-white border border-slate-200 text-slate-500 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-100 transition-all shadow-sm">
                                     Close Portal
                                 </button>
-                                {canDirectApproveExecutive(viewExecApp) && !canFinalApproveExecutive(viewExecApp) && (
-                                    <button onClick={() => { setExecDirectApproveTarget(viewExecApp); setExecDirectApproveNote(""); setViewExecApp(null); }} className="px-8 py-3.5 bg-teal-500 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-teal-600 transition-all shadow-lg">
-                                        Direct Approve
-                                    </button>
-                                )}
-                                <button onClick={() => handleApproveExecutive(viewExecApp._id)} disabled={!canFinalApproveExecutive(viewExecApp) || isProcessing} title={!canFinalApproveExecutive(viewExecApp) ? "Pass interview and grant free membership first" : ""} className="px-8 py-3.5 bg-emerald-500 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-600 transition-all shadow-lg shadow-emerald-900/20 disabled:opacity-40 disabled:cursor-not-allowed">
+                                <button onClick={() => handleApproveExecutive(viewExecApp._id)} disabled={!canFinalApproveExecutive(viewExecApp) || isProcessing} className="px-8 py-3.5 bg-emerald-500 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-600 transition-all shadow-lg shadow-emerald-900/20 disabled:opacity-40 disabled:cursor-not-allowed">
                                     Approve Executive
                                 </button>
                             </div>

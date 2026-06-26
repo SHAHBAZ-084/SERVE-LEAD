@@ -51,22 +51,18 @@ export const canDirectApprove = (m) =>
 export const getExecutiveInterviewBadge = (app) => getInterviewBadge(app);
 
 export const getExecutiveFeeBadge = (app) => {
-  if (app.interviewResult?.status !== "passed") return null;
   if (app.feeWaived) return { label: "Free", cls: "bg-purple-100 text-purple-700 border-purple-200" };
-  return { label: "Fee Pending", cls: "bg-amber-100 text-amber-700 border-amber-200" };
+  return null;
 };
 
 export const needsExecutiveInterviewResult = (app) =>
   app.interview_called && app.interviewResult?.status !== "passed" && app.interviewResult?.status !== "failed";
 
 export const canWaiveExecutive = (app) =>
-  app.interviewResult?.status === "passed" && !app.feeWaived && app.status === "pending";
-
-export const canDirectApproveExecutive = (app) =>
-  app.interviewResult?.status === "passed" && app.status === "pending";
+  !app.feeWaived && app.status === "pending";
 
 export const canFinalApproveExecutive = (app) =>
-  app.interviewResult?.status === "passed" && app.feeWaived && app.status === "pending";
+  app.status === "pending";
 
 const PAK_BANKS = ["Allied Bank", "Askari Bank", "Bank Alfalah", "Bank Al-Habib", "Faysal Bank", "HBL", "JS Bank", "MCB", "Meezan Bank", "National Bank", "Standard Chartered", "UBL"];
 

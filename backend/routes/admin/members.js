@@ -494,9 +494,6 @@ router.post('/executive-applications/:id/waive', authMiddleware, isAdmin, asyncH
     const application = await ExecutiveApplication.findById(req.params.id);
     if (!application) return res.status(404).json({ error: 'Application not found.' });
     if (application.status !== 'pending') return res.status(400).json({ error: 'Application is not pending.' });
-    if (application.interviewResult?.status !== 'passed') {
-        return res.status(400).json({ error: 'Executive interview must be passed before granting free membership.' });
-    }
 
     const member = await Member.findById(application.memberId);
     application.feeWaived = true;
@@ -514,9 +511,6 @@ router.post('/executive-applications/:id/direct-approve', authMiddleware, isAdmi
     const application = await ExecutiveApplication.findById(req.params.id);
     if (!application) return res.status(404).json({ error: 'Application not found.' });
     if (application.status !== 'pending') return res.status(400).json({ error: 'Application is not pending.' });
-    if (application.interviewResult?.status !== 'passed') {
-        return res.status(400).json({ error: 'Direct approval requires a passed executive interview.' });
-    }
 
     const admin = await Member.findById(req.user.memberId).select('name member_id');
     const member = await Member.findById(application.memberId);
@@ -540,12 +534,6 @@ router.post('/executive-applications/:id/approve', authMiddleware, isAdmin, asyn
     if (!application) return res.status(404).json({ error: 'Application not found.' });
     if (application.status !== 'pending') {
         return res.status(400).json({ error: 'This application has already been reviewed.' });
-    }
-    if (application.interviewResult?.status !== 'passed') {
-        return res.status(400).json({ error: 'Executive interview must be passed before final approval.' });
-    }
-    if (!application.feeWaived) {
-        return res.status(400).json({ error: 'Grant free executive membership before final approval.' });
     }
 
     const admin = await Member.findById(req.user.memberId).select('name member_id');
