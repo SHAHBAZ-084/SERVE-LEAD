@@ -22,6 +22,8 @@ const {
 
     sendFeeRejectedEmail,
 
+    sendFeeWaivedEmail,
+
     sendFeeVerifiedEmail,
 
 } = require('../utils/emailService');
@@ -299,6 +301,10 @@ router.post('/waive/:memberId', authMiddleware, isAdmin, asyncHandler(async (req
         note: reason.trim(),
 
     });
+
+
+
+    sendFeeWaivedEmail(member.email, member.name, reason.trim()).catch(console.error);
 
 
 
@@ -657,6 +663,48 @@ router.get('/my-fee', authMiddleware, asyncHandler(async (req, res) => {
         interviewDetails: member.interviewDetails || {},
 
     });
+
+}));
+
+
+
+const MEMBERSHIP_SETTING_KEYS = ['membership_fee', 'membership_fee_channels', 'membership_validity_months', 'default_fee_deadline_days'];
+
+
+
+// PUT /api/fees/membership-settings — Admin can configure fee amount, channels, deadline
+
+router.put('/membership-settings', authMiddleware, isAdmin, asyncHandler(async (req, res) => {
+
+    const updates = {};
+
+    for (const key of MEMBERSHIP_SETTING_KEYS) {
+
+        if (req.body[key] !== undefined) updates[key] = String(req.body[key]);
+
+    }
+
+    if (!Object.keys(updates).length) {
+
+        return res.status(400).json({ error: 'No valid membership settings provided.' });
+
+    }
+
+    for (const [key, value] of Object.entries(updates)) {
+
+        await SystemSetting.findOneAndUpdate(
+
+            { key },
+
+            { $set: { key, value } },
+
+            { upsert: true, new: true }
+
+        );
+
+    }
+
+    res.json({ message: 'Membership payment settings updated', settings: updates });
 
 }));
 

@@ -36,8 +36,24 @@ export const getFeeApprovalBadge = (m) => {
 export const canApproveMemberFee = (m) =>
   m.interviewResult?.status === "passed" && (m.feeStatus === "verified" || m.feeStatus === "waived");
 
+export const needsInterviewResult = (m) =>
+  m.interview_called && m.interviewResult?.status !== "passed" && m.interviewResult?.status !== "failed";
+
+export const canRequestFee = (m) =>
+  m.interviewResult?.status === "passed" && m.feeStatus === "not_requested";
+
+export const canDirectApprove = (m) =>
+  m.interviewResult?.status === "passed" && !canApproveMemberFee(m);
+
+const PAK_BANKS = ["Allied Bank", "Askari Bank", "Bank Alfalah", "Bank Al-Habib", "Faysal Bank", "HBL", "JS Bank", "MCB", "Meezan Bank", "National Bank", "Standard Chartered", "UBL"];
+
 const PaymentManagementTab = ({ pendingMembers, fetchPendingMembers, auth, notify, api, Spinner, inputCls }) => {
   const [subView, setSubView] = useState("pending");
+  const [showFeeSettings, setShowFeeSettings] = useState(false);
+  const [membershipValidityMonths, setMembershipValidityMonths] = useState("12");
+  const [defaultFeeDeadlineDays, setDefaultFeeDeadlineDays] = useState("7");
+  const [feeChannels, setFeeChannels] = useState([]);
+  const [savingSettings, setSavingSettings] = useState(false);
   const [membershipFee, setMembershipFee] = useState(0);
   const [confirmRequest, setConfirmRequest] = useState(null);
   const [feeDeadline, setFeeDeadline] = useState("");
@@ -79,6 +95,11 @@ const PaymentManagementTab = ({ pendingMembers, fetchPendingMembers, auth, notif
   useEffect(() => {
     api.get("settings").then((r) => {
       setMembershipFee(Number(r.data.membership_fee) || 0);
+      setMembershipValidityMonths(String(r.data.membership_validity_months || "12"));
+      setDefaultFeeDeadlineDays(String(r.data.default_fee_deadline_days || "7"));
+      if (r.data.membership_fee_channels) {
+        try { setFeeChannels(JSON.parse(r.data.membership_fee_channels)); } catch { setFeeChannels([]); }
+      }
       const days = Number(r.data.default_fee_deadline_days) || 7;
       const d = new Date();
       d.setDate(d.getDate() + days);
@@ -181,6 +202,33 @@ const PaymentManagementTab = ({ pendingMembers, fetchPendingMembers, auth, notif
 
   const roleLabel = (m) => (m.requestedRole || m.role) === "Executive" ? "Executive" : "General";
 
+  const addFeeChannel = (type) => {
+    setFeeChannels([...feeChannels, { id: Date.now(), type, ...(type === "Wallet" ? { walletType: "EasyPaisa", number: "" } : { bankName: PAK_BANKS[0], accountNumber: "", iban: "" }) }]);
+  };
+  const updateFeeChannel = (id, field, value) => setFeeChannels(feeChannels.map((c) => (c.id === id ? { ...c, [field]: value } : c)));
+  const removeFeeChannel = (id) => setFeeChannels(feeChannels.filter((c) => c.id !== id));
+
+  const handleSaveMembershipSettings = async () => {
+    setSavingSettings(true);
+    try {
+      await api.put("fees/membership-settings", {
+        membership_fee: membershipFee,
+        membership_fee_channels: JSON.stringify(feeChannels),
+        membership_validity_months: membershipValidityMonths,
+        default_fee_deadline_days: defaultFeeDeadlineDays,
+      }, auth);
+      notify("Membership payment settings saved");
+      const days = Number(defaultFeeDeadlineDays) || 7;
+      const d = new Date();
+      d.setDate(d.getDate() + days);
+      setFeeDeadline(d.toISOString().slice(0, 16));
+    } catch (err) {
+      notify(err.response?.data?.error || "Failed to save settings", "error");
+    } finally {
+      setSavingSettings(false);
+    }
+  };
+
   return (
     <div className="space-y-6 animate-fade-up">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -199,6 +247,66 @@ const PaymentManagementTab = ({ pendingMembers, fetchPendingMembers, auth, notif
             </button>
           ))}
         </div>
+      </div>
+
+      <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
+        <button type="button" onClick={() => setShowFeeSettings(!showFeeSettings)} className="w-full flex items-center justify-between px-6 py-4 text-left hover:bg-slate-50 transition-colors">
+          <div>
+            <p className="text-sm font-black text-slate-800 uppercase tracking-widest">Membership Fee Settings</p>
+            <p className="text-xs text-slate-500 mt-1">Amount: PKR {membershipFee || 0} · Deadline: {defaultFeeDeadlineDays} days · Channels: {feeChannels.length}</p>
+          </div>
+          <i className={`fas fa-chevron-${showFeeSettings ? "up" : "down"} text-slate-400`} />
+        </button>
+        {showFeeSettings && (
+          <div className="px-6 pb-6 border-t border-slate-100 space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4">
+              <div>
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1">Fee Amount (PKR)</label>
+                <input type="number" min="0" value={membershipFee} onChange={(e) => setMembershipFee(e.target.value)} className={inputCls} />
+              </div>
+              <div>
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1">Validity (Months)</label>
+                <input type="number" min="1" value={membershipValidityMonths} onChange={(e) => setMembershipValidityMonths(e.target.value)} className={inputCls} />
+              </div>
+              <div>
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1">Default Deadline (Days)</label>
+                <input type="number" min="1" value={defaultFeeDeadlineDays} onChange={(e) => setDefaultFeeDeadlineDays(e.target.value)} className={inputCls} />
+              </div>
+            </div>
+            <div>
+              <div className="flex justify-between items-center mb-3">
+                <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Payment Methods (emailed to members)</p>
+                <div className="flex gap-2">
+                  <button type="button" onClick={() => addFeeChannel("Wallet")} className="px-3 py-1.5 bg-emerald-50 text-emerald-600 rounded-lg text-[9px] font-black uppercase">+ Wallet</button>
+                  <button type="button" onClick={() => addFeeChannel("Bank")} className="px-3 py-1.5 bg-blue-50 text-blue-600 rounded-lg text-[9px] font-black uppercase">+ Bank</button>
+                </div>
+              </div>
+              <div className="space-y-3 max-h-48 overflow-y-auto">
+                {feeChannels.length === 0 && <p className="text-xs text-slate-400 italic">No channels configured — donation channels used as fallback.</p>}
+                {feeChannels.map((ch) => (
+                  <div key={ch.id} className="p-4 bg-slate-50 rounded-xl border relative">
+                    <button type="button" onClick={() => removeFeeChannel(ch.id)} className="absolute top-2 right-2 text-slate-300 hover:text-rose-500"><i className="fas fa-trash-alt text-xs" /></button>
+                    {ch.type === "Wallet" ? (
+                      <div className="grid grid-cols-2 gap-2">
+                        <select value={ch.walletType} onChange={(e) => updateFeeChannel(ch.id, "walletType", e.target.value)} className={inputCls}><option>EasyPaisa</option><option>JazzCash</option><option>SadaPay</option></select>
+                        <input placeholder="Number" value={ch.number} onChange={(e) => updateFeeChannel(ch.id, "number", e.target.value)} className={inputCls} />
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 gap-2">
+                        <select value={ch.bankName} onChange={(e) => updateFeeChannel(ch.id, "bankName", e.target.value)} className={inputCls}>{PAK_BANKS.map((b) => <option key={b}>{b}</option>)}</select>
+                        <input placeholder="Account #" value={ch.accountNumber} onChange={(e) => updateFeeChannel(ch.id, "accountNumber", e.target.value)} className={inputCls} />
+                        <input placeholder="IBAN" value={ch.iban} onChange={(e) => updateFeeChannel(ch.id, "iban", e.target.value)} className={inputCls} />
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+            <button type="button" disabled={savingSettings} onClick={handleSaveMembershipSettings} className="px-6 py-3 bg-[#002147] text-white rounded-xl text-[10px] font-black uppercase tracking-widest disabled:opacity-50">
+              {savingSettings ? "Saving..." : "Save Settings"}
+            </button>
+          </div>
+        )}
       </div>
 
       {subView === "pending" && (

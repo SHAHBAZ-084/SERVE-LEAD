@@ -12,7 +12,7 @@ import { FOOTER_DEFAULTS, FOOTER_FIELDS, parseFooterSettings } from "../constant
 import { ABOUT_DEFAULTS, ABOUT_FIELDS, parseAboutSettings } from "../constants/aboutDefaults";
 import { MEMBER_TYPE_FILTER_OPTIONS } from "../constants/pakistanCities";
 import AdminLocationFilters, { DEFAULT_ADMIN_LOCATION_FILTER, appendLocationFilterParams, matchesAdminLocationFilter } from "../components/common/AdminLocationFilters";
-import PaymentManagementTab, { getFeeApprovalBadge, canApproveMemberFee, getInterviewBadge } from "../components/admin/PaymentManagementTab";
+import PaymentManagementTab, { getFeeApprovalBadge, canApproveMemberFee, getInterviewBadge, needsInterviewResult, canRequestFee, canDirectApprove } from "../components/admin/PaymentManagementTab";
 
 const adminFilterSelectCls =
   "bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold text-slate-700 outline-none focus:border-[#002147] min-w-[140px]";
@@ -2377,6 +2377,14 @@ const AdminPortal = () => {
         const [interviewResultTarget, setInterviewResultTarget] = useState(null);
         const [interviewResultForm, setInterviewResultForm] = useState({ result: "passed", note: "" });
         const [submittingResult, setSubmittingResult] = useState(false);
+        const [feePromptTarget, setFeePromptTarget] = useState(null);
+        const [membershipFee, setMembershipFee] = useState(0);
+        const [feeDeadline, setFeeDeadline] = useState("");
+        const [confirmFeeRequest, setConfirmFeeRequest] = useState(null);
+        const [waiveTarget, setWaiveTarget] = useState(null);
+        const [waiveReason, setWaiveReason] = useState("");
+        const [directApproveTarget, setDirectApproveTarget] = useState(null);
+        const [directApproveNote, setDirectApproveNote] = useState("");
         const [sendingCall, setSendingCall] = useState(false);
         const [viewMember, setViewMember] = useState(null);
         const [locationFilter, setLocationFilter] = useState({ ...DEFAULT_ADMIN_LOCATION_FILTER });
@@ -2397,6 +2405,16 @@ const AdminPortal = () => {
             return matchesSearch && matchesAdminLocationFilter(m, locationFilter) && matchesType;
         });
 
+        useEffect(() => {
+            api.get("settings").then((r) => {
+                setMembershipFee(Number(r.data.membership_fee) || 0);
+                const days = Number(r.data.default_fee_deadline_days) || 7;
+                const d = new Date();
+                d.setDate(d.getDate() + days);
+                setFeeDeadline(d.toISOString().slice(0, 16));
+            }).catch(() => {});
+        }, [api]);
+
         const handleSelectAll = (e) => setSelectedIds(e.target.checked ? filtered.map(m => m._id) : []);
         const toggleSelect = (id) => setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
 
@@ -2409,8 +2427,56 @@ const AdminPortal = () => {
                 fetchPendingMembers();
             }
             catch (err) {
-                notify("Failed to approve", "error");
+                notify(err.response?.data?.error || "Failed to approve", "error");
                 if (err.response?.data?.error?.toLowerCase().includes("already")) { fetchPendingMembers(); }
+            } finally { setIsProcessing(false); }
+        };
+
+        const handleRequestFee = async (memberId) => {
+            setIsProcessing(true);
+            try {
+                const r = await api.post(`fees/request/${memberId}`, { deadline: feeDeadline }, auth);
+                notify(r.data.message || "Fee request emailed to member");
+                setConfirmFeeRequest(null);
+                setFeePromptTarget(null);
+                fetchPendingMembers();
+            } catch (err) {
+                notify(err.response?.data?.error || "Failed to request fee", "error");
+            } finally { setIsProcessing(false); }
+        };
+
+        const handleWaiveFee = async (e) => {
+            e.preventDefault();
+            if (!waiveTarget || waiveReason.trim().length < 10) {
+                notify("Waiver reason must be at least 10 characters", "error");
+                return;
+            }
+            setIsProcessing(true);
+            try {
+                await api.post(`fees/waive/${waiveTarget._id}`, { reason: waiveReason.trim() }, auth);
+                notify("Free membership granted — member notified by email");
+                setWaiveTarget(null);
+                setWaiveReason("");
+                setFeePromptTarget(null);
+                fetchPendingMembers();
+            } catch (err) {
+                notify(err.response?.data?.error || "Failed to waive fee", "error");
+            } finally { setIsProcessing(false); }
+        };
+
+        const handleDirectApprove = async (e) => {
+            e.preventDefault();
+            if (!directApproveTarget) return;
+            setIsProcessing(true);
+            try {
+                const r = await api.post(`admin/direct-approve/${directApproveTarget._id}`, { note: directApproveNote.trim() }, auth);
+                notify(`Directly approved! Member ID: ${r.data.member_id}`);
+                setDirectApproveTarget(null);
+                setDirectApproveNote("");
+                setFeePromptTarget(null);
+                fetchPendingMembers();
+            } catch (err) {
+                notify(err.response?.data?.error || "Direct approval failed", "error");
             } finally { setIsProcessing(false); }
         };
 
@@ -2479,12 +2545,15 @@ const AdminPortal = () => {
             e.preventDefault();
             if (!interviewResultTarget) return;
             setSubmittingResult(true);
+            const passed = interviewResultForm.result === "passed";
+            const memberSnapshot = interviewResultTarget;
             try {
                 const r = await api.post(`admin/interview-result/${interviewResultTarget._id}`, interviewResultForm, auth);
                 notify(r.data.message || "Interview result saved");
                 setInterviewResultTarget(null);
                 setInterviewResultForm({ result: "passed", note: "" });
                 fetchPendingMembers();
+                if (passed) setFeePromptTarget(memberSnapshot);
             } catch (err) {
                 notify(err.response?.data?.error || "Failed to save interview result", "error");
             } finally { setSubmittingResult(false); }
@@ -2510,6 +2579,7 @@ const AdminPortal = () => {
                     <div>
                         <h2 className="text-xl font-bold text-slate-800">Pending Approvals</h2>
                         <p className="text-slate-400 text-sm mt-1">{filtered.length} of {(pendingMembers || []).length} in queue</p>
+                        <p className="text-[10px] text-slate-400 mt-2 font-bold uppercase tracking-widest">Interview Call → Record Result → Request Fee / Free / Direct Approve → Final Approve</p>
                     </div>
                     <div className="flex flex-col gap-3 w-full sm:w-auto">
                         <div className="flex flex-wrap gap-3">
@@ -2591,7 +2661,7 @@ const AdminPortal = () => {
                                                 }`}>
                                             Interview
                                         </button>
-                                        {m.interview_called && (m.interviewResult?.status === "pending" || !m.interviewResult?.status) && (
+                                        {needsInterviewResult(m) && (
                                             <button onClick={() => { setInterviewResultTarget(m); setInterviewResultForm({ result: "passed", note: "" }); }}
                                                 className="flex-1 text-[9px] bg-indigo-50 text-indigo-600 border border-indigo-100 py-2 rounded-lg font-black uppercase tracking-widest">
                                                 Result
@@ -2607,6 +2677,28 @@ const AdminPortal = () => {
                                             <i className="fas fa-trash-alt" />
                                         </button>
                                     </div>
+                                    {m.interviewResult?.status === "passed" && (
+                                        <div className="flex flex-wrap gap-2 pt-1 border-t border-slate-100">
+                                            {canRequestFee(m) && (
+                                                <button type="button" onClick={() => setConfirmFeeRequest(m._id)} disabled={isProcessing}
+                                                    className="flex-1 text-[9px] bg-[#002147] text-white py-2 rounded-lg font-black uppercase tracking-widest">
+                                                    Request Fee
+                                                </button>
+                                            )}
+                                            {canRequestFee(m) && (
+                                                <button type="button" onClick={() => { setWaiveTarget(m); setWaiveReason(""); }} disabled={isProcessing}
+                                                    className="flex-1 text-[9px] bg-purple-50 text-purple-700 border border-purple-100 py-2 rounded-lg font-black uppercase tracking-widest">
+                                                    Free Membership
+                                                </button>
+                                            )}
+                                            {canDirectApprove(m) && (
+                                                <button type="button" onClick={() => { setDirectApproveTarget(m); setDirectApproveNote(""); }} disabled={isProcessing}
+                                                    className="flex-1 text-[9px] bg-teal-50 text-teal-700 border border-teal-100 py-2 rounded-lg font-black uppercase tracking-widest">
+                                                    Direct Approve
+                                                </button>
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
                             ))}
                         </div>
@@ -2642,8 +2734,14 @@ const AdminPortal = () => {
                                                     <div className="flex flex-col">
                                                         <span className="text-slate-800 font-bold">{m.name}</span>
                                                         {(() => {
+                                                            const ib = getInterviewBadge(m);
                                                             const fb = getFeeApprovalBadge(m);
-                                                            return fb ? <span className={`inline-block text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded border mt-1 w-fit ${fb.cls}`}>{fb.label}</span> : null;
+                                                            return (
+                                                                <div className="flex flex-wrap gap-1 mt-1">
+                                                                    {ib && <span className={`inline-block text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded border w-fit ${ib.cls}`}>{ib.label}</span>}
+                                                                    {fb && fb.label !== ib?.label && <span className={`inline-block text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded border w-fit ${fb.cls}`}>{fb.label}</span>}
+                                                                </div>
+                                                            );
                                                         })()}
                                                         <div className="flex items-center gap-1.5 mt-1">
                                                             <span className="text-xs font-black text-blue-500 uppercase tracking-widest bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100">Applicant</span>
@@ -2669,7 +2767,8 @@ const AdminPortal = () => {
                                                         {getRequestedRoleLabel(m)}
                                                     </span>
                                                 </td>
-                                                <td className="px-5 py-3.5 text-right flex justify-end gap-2">
+                                                <td className="px-5 py-3.5 text-right">
+                                                    <div className="flex flex-wrap justify-end gap-2">
                                                     <button onClick={() => setViewMember(m)}
                                                         className="text-xs px-4 py-2 rounded-xl transition-all font-bold uppercase tracking-widest flex items-center gap-1.5 shadow-sm border border-slate-200 text-slate-600 hover:bg-slate-50">
                                                         <i className="fas fa-eye" /> Details
@@ -2682,8 +2781,32 @@ const AdminPortal = () => {
                                                         <i className={m.interview_called ? "fas fa-sync-alt" : "fas fa-microphone-alt"} />
                                                         {m.interview_called ? "Call Again" : "Interview Call"}
                                                     </button>
+                                                    {needsInterviewResult(m) && (
+                                                        <button onClick={() => { setInterviewResultTarget(m); setInterviewResultForm({ result: "passed", note: "" }); }}
+                                                            className="text-xs px-4 py-2 rounded-xl font-bold uppercase tracking-widest flex items-center gap-1.5 shadow-sm border bg-indigo-50 text-indigo-600 border-indigo-200 hover:bg-indigo-100">
+                                                            <i className="fas fa-clipboard-check" /> Result
+                                                        </button>
+                                                    )}
+                                                    {canRequestFee(m) && (
+                                                        <button type="button" onClick={() => setConfirmFeeRequest(m._id)} disabled={isProcessing}
+                                                            className="text-xs px-4 py-2 rounded-xl font-bold uppercase tracking-widest flex items-center gap-1.5 shadow-sm border bg-[#002147] text-white border-[#002147] hover:bg-slate-800 disabled:opacity-50">
+                                                            <i className="fas fa-money-check-alt" /> Request Fee
+                                                        </button>
+                                                    )}
+                                                    {canRequestFee(m) && (
+                                                        <button type="button" onClick={() => { setWaiveTarget(m); setWaiveReason(""); }} disabled={isProcessing}
+                                                            className="text-xs px-4 py-2 rounded-xl font-bold uppercase tracking-widest flex items-center gap-1.5 shadow-sm border bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100 disabled:opacity-50">
+                                                            <i className="fas fa-gift" /> Free
+                                                        </button>
+                                                    )}
+                                                    {canDirectApprove(m) && (
+                                                        <button type="button" onClick={() => { setDirectApproveTarget(m); setDirectApproveNote(""); }} disabled={isProcessing}
+                                                            className="text-xs px-4 py-2 rounded-xl font-bold uppercase tracking-widest flex items-center gap-1.5 shadow-sm border bg-teal-50 text-teal-700 border-teal-200 hover:bg-teal-100 disabled:opacity-50">
+                                                            <i className="fas fa-user-check" /> Direct Approve
+                                                        </button>
+                                                    )}
                                                     <button onClick={() => approveSingle(m._id)} disabled={isProcessing || !canApproveMemberFee(m)}
-                                                        title={!canApproveMemberFee(m) ? "Verify or waive fee before approving" : ""}
+                                                        title={!canApproveMemberFee(m) ? "Interview passed + fee verified/waived required" : ""}
                                                         className={`text-xs border px-4 py-2 rounded-xl transition-colors font-bold uppercase tracking-widest flex items-center gap-1.5 shadow-sm ${canApproveMemberFee(m) ? "bg-emerald-50 text-emerald-600 border-emerald-200 hover:bg-emerald-100 disabled:opacity-50" : "bg-slate-50 text-slate-400 border-slate-200 opacity-40 cursor-not-allowed"}`}>
                                                         <i className="fas fa-check" /> Approve
                                                     </button>
@@ -2691,6 +2814,7 @@ const AdminPortal = () => {
                                                         className="text-white bg-rose-500 w-10 h-10 rounded-xl hover:bg-rose-600 transition-all flex items-center justify-center shadow-lg shadow-rose-900/20 active:scale-95 disabled:opacity-50" title="Delete Application">
                                                         <i className="fas fa-trash-alt" />
                                                     </button>
+                                                    </div>
                                                 </td>
                                             </tr>
                                         ))}
@@ -2812,6 +2936,66 @@ const AdminPortal = () => {
                                 </div>
                             </form>
                         </div>
+                    </div>
+                )}
+
+                {feePromptTarget && (
+                    <div className="fixed inset-0 z-[105] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+                        <div className="bg-white rounded-[2.5rem] w-full max-w-lg shadow-2xl overflow-hidden p-8 space-y-5">
+                            <h3 className="text-xl font-black text-slate-900 uppercase">Interview Passed — Next Step</h3>
+                            <p className="text-sm text-slate-600"><strong>{feePromptTarget.name}</strong> has been notified by email. What would you like to do next?</p>
+                            <div className="space-y-3">
+                                <button type="button" onClick={() => { setConfirmFeeRequest(feePromptTarget._id); setFeePromptTarget(null); }} className="w-full py-3 bg-[#002147] text-white rounded-xl text-[10px] font-black uppercase tracking-widest">Request Fee (PKR {membershipFee || 0})</button>
+                                <button type="button" onClick={() => { setWaiveTarget(feePromptTarget); setWaiveReason(""); setFeePromptTarget(null); }} className="w-full py-3 bg-purple-50 text-purple-700 border border-purple-200 rounded-xl text-[10px] font-black uppercase tracking-widest">Grant Free Membership</button>
+                                <button type="button" onClick={() => { setDirectApproveTarget(feePromptTarget); setDirectApproveNote(""); setFeePromptTarget(null); }} className="w-full py-3 bg-teal-50 text-teal-700 border border-teal-200 rounded-xl text-[10px] font-black uppercase tracking-widest">Direct Approve (Skip Fee)</button>
+                                <button type="button" onClick={() => setFeePromptTarget(null)} className="w-full py-3 border border-slate-200 text-slate-500 rounded-xl text-[10px] font-black uppercase tracking-widest">Later</button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {confirmFeeRequest && (
+                    <div className="fixed inset-0 z-[105] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+                        <div className="bg-white rounded-2xl w-full max-w-md p-8 shadow-2xl space-y-4">
+                            <h3 className="text-lg font-bold">Request Membership Fee</h3>
+                            <p className="text-sm text-slate-600">Member will receive an email with amount <strong>PKR {membershipFee || 0}</strong>, payment methods, and deadline.</p>
+                            <div>
+                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1">Payment Deadline</label>
+                                <input type="datetime-local" value={feeDeadline} onChange={(e) => setFeeDeadline(e.target.value)} className={inputCls} />
+                            </div>
+                            <div className="flex gap-3">
+                                <button type="button" disabled={isProcessing} onClick={() => handleRequestFee(confirmFeeRequest)} className="flex-1 py-3 bg-[#002147] text-white rounded-xl text-[10px] font-black uppercase disabled:opacity-50">Confirm & Email</button>
+                                <button type="button" onClick={() => setConfirmFeeRequest(null)} className="px-4 py-3 border rounded-xl text-[10px] font-black uppercase text-slate-500">Cancel</button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {waiveTarget && (
+                    <div className="fixed inset-0 z-[105] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+                        <form onSubmit={handleWaiveFee} className="bg-white rounded-2xl w-full max-w-md p-8 shadow-2xl space-y-4">
+                            <h3 className="text-lg font-bold">Grant Free Membership</h3>
+                            <p className="text-sm text-slate-500">Waive fee for <strong>{waiveTarget.name}</strong>. Member will be emailed.</p>
+                            <textarea rows={4} value={waiveReason} onChange={(e) => setWaiveReason(e.target.value)} placeholder="Reason (min 10 chars) — e.g. deserving candidate, scholarship" className={`${inputCls} resize-none`} required minLength={10} />
+                            <div className="flex gap-3">
+                                <button type="submit" disabled={isProcessing} className="flex-1 py-3 bg-emerald-600 text-white rounded-xl text-[10px] font-black uppercase disabled:opacity-50">Confirm & Notify</button>
+                                <button type="button" onClick={() => setWaiveTarget(null)} className="px-4 py-3 border rounded-xl text-[10px] font-black uppercase text-slate-500">Cancel</button>
+                            </div>
+                        </form>
+                    </div>
+                )}
+
+                {directApproveTarget && (
+                    <div className="fixed inset-0 z-[105] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+                        <form onSubmit={handleDirectApprove} className="bg-white rounded-2xl w-full max-w-md p-8 shadow-2xl space-y-4">
+                            <h3 className="text-lg font-bold">Direct Approve Without Fee</h3>
+                            <p className="text-sm text-slate-500">Approve <strong>{directApproveTarget.name}</strong> immediately after interview — skips fee collection. Welcome email will be sent.</p>
+                            <textarea rows={3} value={directApproveNote} onChange={(e) => setDirectApproveNote(e.target.value)} placeholder="Optional note (recorded as waiver reason)" className={`${inputCls} resize-none`} />
+                            <div className="flex gap-3">
+                                <button type="submit" disabled={isProcessing} className="flex-1 py-3 bg-teal-600 text-white rounded-xl text-[10px] font-black uppercase disabled:opacity-50">Approve & Email Welcome</button>
+                                <button type="button" onClick={() => setDirectApproveTarget(null)} className="px-4 py-3 border rounded-xl text-[10px] font-black uppercase text-slate-500">Cancel</button>
+                            </div>
+                        </form>
                     </div>
                 )}
 

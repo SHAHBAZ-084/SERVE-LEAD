@@ -4,6 +4,7 @@ const bcrypt = require('bcryptjs');
 const Member = require('../../models/Member');
 const Event = require('../../models/Event');
 const Counter = require('../../models/Counter');
+const FeeRecord = require('../../models/FeeRecord');
 const SystemSetting = require('../../models/SystemSetting');
 const authMiddleware = require('../../middlewares/authMiddleware');
 const asyncHandler = require('../../middlewares/asyncHandler');
@@ -142,6 +143,35 @@ router.get('/pending-members', authMiddleware, isAdmin, asyncHandler(async (req,
     res.json(pending);
 }));
 
+const finalizeMemberApproval = async (member) => {
+    const validityDoc = await SystemSetting.findOne({ key: 'membership_validity_months' });
+    const validityMonths = parseInt(validityDoc?.value, 10) || 12;
+    const validUntil = new Date();
+    validUntil.setMonth(validUntil.getMonth() + validityMonths);
+
+    const year = member.joining_year || new Date().getFullYear();
+    const counterId = `member_id_${year}`;
+    const counter = await Counter.findByIdAndUpdate(
+        { _id: counterId },
+        { $inc: { seq: 1 } },
+        { new: true, upsert: true }
+    );
+
+    const nextMemberId = `${year}-SLS-${String(counter.seq).padStart(4, '0')}`;
+    const approvedRole =
+        member.requestedRole === 'Executive' || (!member.requestedRole && member.role === 'Executive')
+            ? 'Executive'
+            : 'General';
+    member.status = 'approved';
+    member.role = approvedRole;
+    member.member_id = nextMemberId;
+    member.membershipValidUntil = validUntil;
+    await member.save();
+
+    sendWelcomeEmail(member.email, member.name, nextMemberId, validUntil).catch(console.error);
+    return { nextMemberId, validUntil };
+};
+
 // POST Approve member
 router.post('/approve-member/:id', authMiddleware, isAdmin, asyncHandler(async (req, res) => {
     const member = await Member.findById(req.params.id);
@@ -170,34 +200,59 @@ router.post('/approve-member/:id', authMiddleware, isAdmin, asyncHandler(async (
         return res.status(400).json({ error: 'Member is not in a pending approval state.' });
     }
 
-    const validityDoc = await SystemSetting.findOne({ key: 'membership_validity_months' });
-    const validityMonths = parseInt(validityDoc?.value, 10) || 12;
-    const validUntil = new Date();
-    validUntil.setMonth(validUntil.getMonth() + validityMonths);
-
-    // ATOMIC ID GENERATION
-    const year = member.joining_year || new Date().getFullYear();
-    const counterId = `member_id_${year}`;
-    const counter = await Counter.findByIdAndUpdate(
-        { _id: counterId },
-        { $inc: { seq: 1 } },
-        { new: true, upsert: true }
-    );
-
-    const nextMemberId = `${year}-SLS-${String(counter.seq).padStart(4, '0')}`;
-    const approvedRole =
-        member.requestedRole === 'Executive' || (!member.requestedRole && member.role === 'Executive')
-            ? 'Executive'
-            : 'General';
-    member.status = 'approved';
-    member.role = approvedRole;
-    member.member_id = nextMemberId;
-    member.membershipValidUntil = validUntil;
-    await member.save();
-
-    sendWelcomeEmail(member.email, member.name, nextMemberId, validUntil).catch(console.error);
+    const { nextMemberId } = await finalizeMemberApproval(member);
     res.json({ message: 'Approved successfully', member_id: nextMemberId });
     logActivity(req.user.memberId, 'Approved Member', `Approved member: ${member.name} (${nextMemberId})`, member._id);
+}));
+
+// POST Direct approve — after passed interview, skip fee collection and approve immediately
+router.post('/direct-approve/:id', authMiddleware, isAdmin, asyncHandler(async (req, res) => {
+    const { note } = req.body;
+    const member = await Member.findById(req.params.id);
+    if (!member) return res.status(404).json({ error: 'Member not found' });
+
+    if (req.user.role === 'Admin' && (member.role === 'Admin' || member.role === 'Superuser')) {
+        return res.status(403).json({ error: 'Permission denied.' });
+    }
+
+    if (member.status === 'approved') return res.status(400).json({ error: 'Already approved' });
+
+    if (member.interviewResult?.status !== 'passed') {
+        return res.status(400).json({
+            error: 'Direct approval requires a passed interview.',
+        });
+    }
+
+    if (!['pending', 'fee_pending'].includes(member.status)) {
+        return res.status(400).json({ error: 'Member is not in a pending approval state.' });
+    }
+
+    const admin = await Member.findById(req.user.memberId).select('name member_id');
+    const waiverReason = (note?.trim() || 'Direct membership approval — fee waived by administration').slice(0, 500);
+
+    if (!['verified', 'waived'].includes(member.feeStatus || 'not_requested')) {
+        member.feeStatus = 'waived';
+        member.feePayment = member.feePayment || {};
+        member.feePayment.waivedAt = new Date();
+        member.feePayment.waivedBy = admin?.member_id || admin?._id?.toString() || '';
+        member.feePayment.waivedReason = waiverReason;
+        await member.save();
+
+        await FeeRecord.create({
+            memberId: member._id,
+            memberName: member.name,
+            recordType: 'membership_fee',
+            action: 'fee_waived',
+            amount: member.feePayment.amount,
+            note: waiverReason,
+            adminId: admin?._id,
+            adminName: admin?.name || 'Admin',
+        });
+    }
+
+    const { nextMemberId } = await finalizeMemberApproval(member);
+    res.json({ message: 'Member approved directly without fee collection', member_id: nextMemberId });
+    logActivity(req.user.memberId, 'Direct Approved Member', `Direct approved ${member.name} (${nextMemberId})`, member._id);
 }));
 
 // POST Call for interview

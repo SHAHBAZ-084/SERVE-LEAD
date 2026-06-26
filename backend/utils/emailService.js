@@ -408,6 +408,34 @@ const sendFeeRejectedEmail = async (email, name, reason) => {
   }
 };
 
+const sendFeeWaivedEmail = async (email, name, reason) => {
+  try {
+    const transporter = createTransporter();
+    const loginUrl = `${process.env.FRONTEND_URL || 'https://serveandlead.org'}/login`;
+    await transporter.sendMail({
+      from: `"Serve & Lead Society" <${process.env.EMAIL_USER}>`,
+      to: email,
+      replyTo: 'serveandleadsociety@serveandlead.org',
+      subject: 'Complimentary Membership — Fee Waived',
+      html: emailShell('Membership Fee Waived', `
+        <h2 style="color:#0f172a;margin-top:0;">Dear ${name},</h2>
+        <p style="font-size:16px;color:#475569;">Your membership fee has been <strong style="color:#7c3aed;">waived</strong> by the administration. You have been granted complimentary membership consideration.</p>
+        <div style="background:#f5f3ff;border-left:4px solid #7c3aed;padding:16px;border-radius:8px;margin:20px 0;">
+          <p style="margin:0;color:#5b21b6;"><strong>Reason:</strong> ${reason}</p>
+        </div>
+        <p style="color:#475569;">Final membership approval is pending. You will receive another email once your membership is fully approved.</p>
+        <div style="text-align:center;margin-top:24px;">
+          <a href="${loginUrl}" style="background-color:#002147;color:#ffffff;padding:16px 32px;border-radius:12px;text-decoration:none;font-weight:800;font-size:14px;">Member Portal</a>
+        </div>
+      `),
+    });
+    return { success: true };
+  } catch (error) {
+    console.error('Email Service Error:', error);
+    return { success: false, error: error.message };
+  }
+};
+
 const sendFeeVerifiedEmail = async (email, name) => {
   try {
     const transporter = createTransporter();
@@ -438,6 +466,7 @@ module.exports = {
   sendOTPEmail,
   sendFeeRequestedEmail,
   sendFeeRejectedEmail,
+  sendFeeWaivedEmail,
   sendFeeVerifiedEmail,
   sendInterviewPassedEmail,
   sendInterviewFailedEmail,
