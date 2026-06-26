@@ -5,6 +5,7 @@ import Navbar from "../components/Navbar";
 import MemberSupportWhatsApp from "../components/MemberSupportWhatsApp";
 import { Template1, Template2, Template3, logo, sealImg } from "./CertTemplates";
 import CountdownTimer from "../components/common/CountdownTimer";
+import ImageUploadHint from "../components/common/ImageUploadHint";
 const Spinner = () => (
     <div className="flex justify-center py-16">
         <div className="w-8 h-8 border-3 border-[#002147] border-t-transparent rounded-full animate-spin" style={{ borderWidth: "3px" }} />
@@ -286,6 +287,7 @@ const MemberDashboard = () => {
                                 <div>
                                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Payment Screenshot</label>
                                     <input type="file" accept="image/jpeg,image/png,image/webp" onChange={handleFeeScreenshot} className="text-sm" required={!feeScreenshot} />
+                                    <ImageUploadHint />
                                     {feePreview && <img src={feePreview} alt="Preview" className="mt-2 max-h-32 rounded-xl border border-slate-200 object-contain" />}
                                 </div>
                                 <p className="text-[10px] text-slate-400 leading-relaxed">By submitting, you confirm this is a genuine transaction. Fraudulent submissions will result in permanent disqualification.</p>
@@ -1355,6 +1357,7 @@ const MemberDashboard = () => {
                                         <div>
                                             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Payment Screenshot *</label>
                                             <input type="file" accept="image/jpeg,image/png,image/webp" onChange={handleFeeScreenshot} className="text-sm" required={!feeScreenshot} />
+                                            <ImageUploadHint />
                                             {feePreview && <img src={feePreview} alt="Preview" className="mt-2 max-h-40 rounded-xl border border-slate-200 object-contain" />}
                                         </div>
                                         {feeError && <p className="text-xs font-bold text-rose-500">{feeError}</p>}

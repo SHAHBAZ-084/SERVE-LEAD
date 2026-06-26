@@ -7,6 +7,7 @@ import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 
 import { compressImage } from "../utils/compressImage";
+import ImageUploadHint from "../components/common/ImageUploadHint";
 import { inputCls, useCountUp, StatCard, Spinner, AdminModal } from "../components/common/AdminUiComponents";
 import { FOOTER_DEFAULTS, FOOTER_FIELDS, parseFooterSettings } from "../constants/footerDefaults";
 import { ABOUT_DEFAULTS, ABOUT_FIELDS, parseAboutSettings } from "../constants/aboutDefaults";
@@ -686,6 +687,7 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
                             </div>
 
                             <div className="p-6 bg-slate-50/50 rounded-3xl border border-slate-100 flex flex-col sm:flex-row gap-8 items-center sm:items-start">
+                                <div className="flex flex-col items-center sm:items-start shrink-0">
                                 <div className="w-32 h-32 rounded-2xl bg-white border border-slate-200 overflow-hidden relative group flex-shrink-0">
                                     {leadership.img ? <img src={getImgUrl(leadership.img)} className="w-full h-full object-cover" /> :
                                         <div className="w-full h-full flex items-center justify-center text-slate-300 text-3xl font-black uppercase">{leadership.name?.charAt(0) || "L"}</div>}
@@ -693,6 +695,8 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
                                         <i className="fas fa-camera text-white text-lg" />
                                         <input type="file" className="hidden" accept="image/*" onChange={e => uploadPhoto('leadership', null, e.target.files[0])} />
                                     </label>
+                                </div>
+                                <ImageUploadHint variant="portrait" className="max-w-[8rem] text-center sm:text-left" />
                                 </div>
                                 <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-4 w-full">
                                     <div className="col-span-1">
@@ -757,6 +761,7 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
                                                 <div key={m.id} className="p-4 sm:p-5 bg-slate-50/50 rounded-2xl border border-slate-100 relative group flex flex-col sm:flex-row gap-5 sm:gap-6 items-center">
                                                     <button type="button" onClick={() => removeMember(cat.id, m.id)} className="absolute top-2 right-2 text-slate-200 hover:text-rose-500 p-2"><i className="fas fa-times" /></button>
 
+                                                    <div className="flex flex-col items-center sm:items-start shrink-0">
                                                     <div className="w-20 h-20 rounded-2xl bg-white border border-slate-200 overflow-hidden relative group/img flex-shrink-0">
                                                         {m.img ? <img src={getImgUrl(m.img)} className="w-full h-full object-cover" /> :
                                                             <div className="w-full h-full flex items-center justify-center text-slate-300 text-xl"><i className="fas fa-user" /></div>}
@@ -764,6 +769,8 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
                                                             <i className="fas fa-camera text-white text-xs" />
                                                             <input type="file" className="hidden" accept="image/*" onChange={e => uploadPhoto(cat.id, m.id, e.target.files[0])} />
                                                         </label>
+                                                    </div>
+                                                    <ImageUploadHint className="max-w-[5rem] text-center sm:text-left" />
                                                     </div>
 
                                                     <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-3 w-full">
@@ -803,6 +810,7 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
                             <div className="space-y-8">
                                 {/* Image & Badge Section */}
                                 <div className="p-4 sm:p-6 bg-slate-50/50 rounded-3xl border border-slate-100 flex flex-col items-center md:flex-row gap-6 sm:gap-8">
+                                    <div className="flex flex-col items-center shrink-0">
                                     <div className="w-full max-w-[200px] aspect-square sm:w-48 sm:h-48 rounded-2xl bg-white border border-slate-200 overflow-hidden relative group flex-shrink-0 animate-fade-up">
                                         {vision.img ? <img src={getImgUrl(vision.img)} className="w-full h-full object-cover" /> :
                                             <div className="w-full h-full flex flex-col items-center justify-center text-slate-300 bg-slate-50">
@@ -814,6 +822,8 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
                                             <span className="text-[9px] text-white font-black uppercase tracking-widest">Update Photo</span>
                                             <input type="file" className="hidden" accept="image/*" onChange={e => uploadPhoto('vision', null, e.target.files[0])} />
                                         </label>
+                                    </div>
+                                    <ImageUploadHint variant="portrait" className="max-w-[12rem] text-center" />
                                     </div>
                                     <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-4 w-full">
                                         <div className="col-span-1">
@@ -3733,6 +3743,7 @@ const AdminPortal = () => {
                                             </div>
                                         )}
                                     </div>
+                                    <ImageUploadHint />
                                 </div>
                             </div>
                             <div>
@@ -5105,6 +5116,7 @@ const AdminPortal = () => {
                                             <input type="file" accept="image/*" multiple onChange={(e) => handleFileChange(e)} className="hidden" />
                                         </label>
                                     </div>
+                                    <ImageUploadHint variant="blog" />
                                 </div>
                             </div>
                             <div className="flex justify-end pt-4 border-t border-slate-50">
@@ -5230,6 +5242,7 @@ const AdminPortal = () => {
                                             <input type="file" accept="image/*" multiple onChange={(e) => handleFileChange(e, true)} className="hidden" />
                                         </label>
                                     </div>
+                                    <ImageUploadHint variant="blog" />
                                 </div>
 
                                 <div className="flex items-center gap-4 py-4 border-t border-slate-50">
