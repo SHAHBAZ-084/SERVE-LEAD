@@ -135,13 +135,19 @@ router.get('/members', authMiddleware, isAdmin, asyncHandler(async (req, res) =>
     res.json({ members, totalPages: Math.ceil(count / limit), currentPage: page });
 }));
 
-// GET all pending members
+// GET all pending members + executive upgrade applications
 router.get('/pending-members', authMiddleware, isAdmin, asyncHandler(async (req, res) => {
-    const pending = await Member.find({ status: { $in: ['pending', 'fee_pending'] } })
-        .select('-password')
-        .sort({ createdAt: -1 })
-        .lean();
-    res.json(pending);
+    const [members, executiveApplications] = await Promise.all([
+        Member.find({ status: { $in: ['pending', 'fee_pending'] } })
+            .select('-password')
+            .sort({ createdAt: -1 })
+            .lean(),
+        ExecutiveApplication.find({ status: 'pending' })
+            .sort({ createdAt: -1 })
+            .populate('memberId', 'name email member_id city')
+            .lean(),
+    ]);
+    res.json({ members, executiveApplications });
 }));
 
 const finalizeMemberApproval = async (member) => {

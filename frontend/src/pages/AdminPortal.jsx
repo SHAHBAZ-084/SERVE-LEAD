@@ -11,7 +11,7 @@ import { inputCls, useCountUp, StatCard, Spinner, AdminModal } from "../componen
 import { FOOTER_DEFAULTS, FOOTER_FIELDS, parseFooterSettings } from "../constants/footerDefaults";
 import { ABOUT_DEFAULTS, ABOUT_FIELDS, parseAboutSettings } from "../constants/aboutDefaults";
 import { MEMBER_TYPE_FILTER_OPTIONS } from "../constants/pakistanCities";
-import AdminLocationFilters, { DEFAULT_ADMIN_LOCATION_FILTER, appendLocationFilterParams, matchesAdminLocationFilter } from "../components/common/AdminLocationFilters";
+import AdminLocationFilters, { DEFAULT_ADMIN_LOCATION_FILTER, ALL_TEHSILS_LABEL, appendLocationFilterParams, matchesAdminLocationFilter } from "../components/common/AdminLocationFilters";
 import PaymentManagementTab, { getFeeApprovalBadge, canApproveMemberFee, getInterviewBadge, needsInterviewResult, canRequestFee, canRequestFeeAgain, canDirectApprove } from "../components/admin/PaymentManagementTab";
 
 const adminFilterSelectCls =
@@ -2143,6 +2143,7 @@ const AdminPortal = () => {
     const [members, setMembers] = useState([]);
     const [allMembers, setAllMembers] = useState([]);
     const [pendingMembers, setPendingMembers] = useState([]);
+    const [executiveApps, setExecutiveApps] = useState([]);
     const [announcements, setAnnouncements] = useState([]);
     const [loading, setLoading] = useState(false);
     const [search, setSearch] = useState("");
@@ -2196,8 +2197,17 @@ const AdminPortal = () => {
 
     const fetchPendingMembers = useCallback(async () => {
         setLoading(true);
-        try { const r = await api.get(`admin/pending-members`, auth); setPendingMembers(r.data); }
-        catch { } finally { setLoading(false); }
+        try {
+            const r = await api.get(`admin/pending-members`, auth);
+            const data = r.data;
+            if (Array.isArray(data)) {
+                setPendingMembers(data);
+                setExecutiveApps([]);
+            } else {
+                setPendingMembers(data.members || []);
+                setExecutiveApps(data.executiveApplications || []);
+            }
+        } catch { /* ignore */ } finally { setLoading(false); }
     }, [auth]);
 
     const fetchEvents = useCallback(async () => {
@@ -2358,7 +2368,7 @@ const AdminPortal = () => {
         </div>
     );
 
-    const ApprovalsTab = ({ pendingMembers, fetchPendingMembers, loading, auth, notify, Spinner, api }) => {
+    const ApprovalsTab = ({ pendingMembers, executiveApps, fetchPendingMembers, loading, auth, notify, Spinner, api }) => {
         const [searchTerm, setSearchTerm] = useState("");
         const [selectedIds, setSelectedIds] = useState([]);
         const [isProcessing, setIsProcessing] = useState(false);
@@ -2394,25 +2404,9 @@ const AdminPortal = () => {
         const [viewMember, setViewMember] = useState(null);
         const [locationFilter, setLocationFilter] = useState({ ...DEFAULT_ADMIN_LOCATION_FILTER });
         const [memberTypeFilter, setMemberTypeFilter] = useState("All");
-        const [executiveApps, setExecutiveApps] = useState([]);
-        const [execAppsLoading, setExecAppsLoading] = useState(false);
         const [viewExecApp, setViewExecApp] = useState(null);
         const [rejectExecTarget, setRejectExecTarget] = useState(null);
         const [rejectExecReason, setRejectExecReason] = useState("");
-
-        const fetchExecutiveApps = useCallback(async () => {
-            setExecAppsLoading(true);
-            try {
-                const r = await api.get("admin/executive-applications", auth);
-                setExecutiveApps(r.data || []);
-            } catch {
-                notify("Failed to load executive applications", "error");
-            } finally {
-                setExecAppsLoading(false);
-            }
-        }, [api, auth, notify]);
-
-        useEffect(() => { fetchExecutiveApps(); }, [fetchExecutiveApps]);
 
         const handleApproveExecutive = async (id) => {
             if (!window.confirm("Approve this member as Executive?")) return;
@@ -2420,7 +2414,7 @@ const AdminPortal = () => {
             try {
                 const r = await api.post(`admin/executive-applications/${id}/approve`, {}, auth);
                 notify(r.data.message || "Executive application approved");
-                fetchExecutiveApps();
+                fetchPendingMembers();
             } catch (err) {
                 notify(err.response?.data?.error || "Approval failed", "error");
             } finally {
@@ -2440,7 +2434,7 @@ const AdminPortal = () => {
                 notify(r.data.message || "Application rejected");
                 setRejectExecTarget(null);
                 setRejectExecReason("");
-                fetchExecutiveApps();
+                fetchPendingMembers();
             } catch (err) {
                 notify(err.response?.data?.error || "Rejection failed", "error");
             } finally {
@@ -2522,13 +2516,17 @@ const AdminPortal = () => {
             if (memberTypeFilter === "General") return false;
             const email = app.memberId?.email || "";
             const matchesSearch =
+                !searchTerm ||
                 app.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 email.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 app.member_id_str?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 app.city?.toLowerCase().includes(searchTerm.toLowerCase());
-            const loc = (app.city || app.memberId?.city || "").toLowerCase();
-            const tehsil = (locationFilter.tehsil || "").toLowerCase();
-            const matchesLocation = !tehsil || tehsil === "all" || loc.includes(tehsil) || tehsil.includes(loc);
+            let matchesLocation = true;
+            if (locationFilter.tehsil !== ALL_TEHSILS_LABEL) {
+                const loc = (app.city || app.memberId?.city || "").trim().toLowerCase();
+                const tehsil = locationFilter.tehsil.trim().toLowerCase();
+                matchesLocation = loc === tehsil || loc.includes(tehsil) || tehsil.includes(loc);
+            }
             return matchesSearch && matchesLocation;
         });
 
@@ -2761,7 +2759,7 @@ const AdminPortal = () => {
                     </div>
                 </div>
 
-                {(loading || execAppsLoading) ? <Spinner /> : (
+                {loading ? <Spinner /> : (
                     <>
                         <div className="sm:hidden space-y-2">
                             {totalShowing === 0 ? (
@@ -5150,7 +5148,7 @@ const AdminPortal = () => {
                             setRoleFilter={setMembersRoleFilter}
                         />
                     )}
-                    {activeTab === "pending" && <ApprovalsTab pendingMembers={pendingMembers} fetchPendingMembers={fetchPendingMembers} loading={loading} auth={auth} notify={notify} Spinner={Spinner} api={api} />}
+                    {activeTab === "pending" && <ApprovalsTab pendingMembers={pendingMembers} executiveApps={executiveApps} fetchPendingMembers={fetchPendingMembers} loading={loading} auth={auth} notify={notify} Spinner={Spinner} api={api} />}
                     {activeTab === "payments" && <PaymentManagementTab pendingMembers={pendingMembers} fetchPendingMembers={fetchPendingMembers} auth={auth} notify={notify} api={api} Spinner={Spinner} inputCls={inputCls} />}
                     {activeTab === "events" && !searchParams.get("eventId") && <EventsTab events={events} fetchEvents={fetchEvents} api={api} auth={auth} notify={notify} setSearchParams={setSearchParams} getImgUrl={getImgUrl} CountdownTimer={CountdownTimer} inputCls={inputCls} />}
                     {activeTab === "events" && searchParams.get("eventId") && (
