@@ -120,6 +120,13 @@ export default function LoginSection() {
             >
               Don't have an ID? Get Membership
             </button>
+            <button
+              type="button"
+              onClick={() => navigate("/executive-register")}
+              className="text-amber-600 font-bold hover:underline transition text-sm flex items-center gap-2"
+            >
+              <i className="fas fa-crown text-xs" /> Already a General Member? Apply for Executive
+            </button>
 
             {/* Admin link */}
             <p className="text-sm text-gray-400 text-center">

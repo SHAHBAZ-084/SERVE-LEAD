@@ -94,6 +94,12 @@ export default function HeroSection() {
                                 Get Membership
                             </button>
                             <button
+                                onClick={() => navigate('/executive-register')}
+                                className="w-full sm:w-auto bg-amber-500 text-white px-10 py-5 rounded-3xl text-xs font-black tracking-widest uppercase hover:bg-amber-600 hover:-translate-y-1.5 transition-all duration-500 shadow-2xl shadow-amber-900/20 flex items-center justify-center gap-2"
+                            >
+                                <i className="fas fa-crown text-[10px]" /> Executive Member
+                            </button>
+                            <button
                                 onClick={() => navigate('/about')}
                                 className="w-full sm:w-auto border-2 border-slate-900 text-slate-900 px-10 py-5 rounded-3xl text-xs font-black tracking-widest uppercase hover:bg-slate-900 hover:text-white hover:-translate-y-1.5 transition-all duration-500 bg-white/5 backdrop-blur-sm"
                             >

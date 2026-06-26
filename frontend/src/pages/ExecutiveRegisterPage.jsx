@@ -46,7 +46,7 @@ export default function ExecutiveRegisterPage() {
   const [step, setStep] = useState(1);
   const [memberId, setMemberId] = useState("");
   const [verifiedName, setVerifiedName] = useState("");
-  const [verifyForm, setVerifyForm] = useState({ member_id: "", email: "" });
+  const [verifyForm, setVerifyForm] = useState({ member_id: "" });
   const [form, setForm] = useState(emptyForm);
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [error, setError] = useState(null);
@@ -61,10 +61,7 @@ export default function ExecutiveRegisterPage() {
     setLoading(true);
     try {
       const r = await api.get("auth/verify-member", {
-        params: {
-          member_id: verifyForm.member_id.trim().toUpperCase(),
-          email: verifyForm.email.trim().toLowerCase(),
-        },
+        params: { member_id: verifyForm.member_id.trim().toUpperCase() },
       });
       setMemberId(r.data.memberId);
       setVerifiedName(r.data.name);
@@ -199,27 +196,17 @@ export default function ExecutiveRegisterPage() {
                     required
                     placeholder="SLS-XXXX-XXXX"
                     value={verifyForm.member_id}
-                    onChange={(e) => setVerifyForm({ ...verifyForm, member_id: e.target.value.toUpperCase() })}
+                    onChange={(e) => setVerifyForm({ member_id: e.target.value.toUpperCase() })}
                     className={inputCls}
                   />
-                </div>
-                <div>
-                  <label className={labelCls}>Your Registered Email</label>
-                  <input
-                    type="email"
-                    required
-                    placeholder="yourname@gmail.com"
-                    value={verifyForm.email}
-                    onChange={(e) => setVerifyForm({ ...verifyForm, email: e.target.value })}
-                    className={inputCls}
-                  />
+                  <p className="text-xs text-slate-400 mt-2">Enter your official SLS Member ID. Must be an approved General Member.</p>
                 </div>
                 <button
                   type="submit"
                   disabled={loading}
                   className="w-full py-4 bg-[#002147] text-white rounded-xl text-[10px] font-black uppercase tracking-widest disabled:opacity-50"
                 >
-                  {loading ? "Verifying..." : "Verify & Continue"}
+                  {loading ? "Verifying..." : "Verify Membership ID & Continue"}
                 </button>
               </form>
             )}

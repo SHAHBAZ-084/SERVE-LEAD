@@ -431,24 +431,22 @@ router.get('/verify/:member_id', asyncHandler(async (req, res) => {
     });
 }));
 
-// Verify General Member eligibility for executive upgrade (public)
+// Verify General Member eligibility for executive upgrade (public — membership ID only)
 router.get('/verify-member', asyncHandler(async (req, res) => {
     const member_id = (req.query.member_id || '').trim().toUpperCase();
-    const email = (req.query.email || '').trim().toLowerCase();
 
-    if (!member_id || !email) {
-        return res.status(400).json({ error: 'Membership ID and email are required.' });
+    if (!member_id) {
+        return res.status(400).json({ error: 'Membership ID is required.' });
     }
 
     const member = await Member.findOne({
         member_id,
-        email,
         role: 'General',
         status: 'approved',
     }).select('name _id');
 
     if (!member) {
-        return res.status(400).json({ error: 'No approved General Member found with this ID and email combination.' });
+        return res.status(400).json({ error: 'No approved General Member found with this Membership ID.' });
     }
 
     res.json({ valid: true, name: member.name, memberId: member._id.toString() });
