@@ -1,4 +1,4 @@
-import membershipBg from "../assets/membership-cert-bg-clean.png";
+import membershipBg from "../assets/membership-cert-bg.png";
 import {
   FONTS,
   CHAIRMAN_NAME,
@@ -6,11 +6,11 @@ import {
   MEMBERSHIP_TEMPLATE_ID,
 } from "./CertTemplates";
 
-/** Reference artboard matches membership-cert-bg.png exactly */
 export const MEMBERSHIP_CANVAS = { width: 1024, height: 723 };
 
 const T = {
   navy: "#002147",
+  paper: "#FDF9F6",
   muted: "#5b6b85",
 };
 
@@ -25,10 +25,7 @@ function formatMembershipDate(value, fallback = "") {
   if (!value) return fallback;
   try {
     const d = new Date(value);
-    const day = String(d.getDate()).padStart(2, "0");
-    const month = String(d.getMonth() + 1).padStart(2, "0");
-    const year = d.getFullYear();
-    return `${day}/${month}/${year}`;
+    return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
   } catch {
     return fallback;
   }
@@ -49,10 +46,22 @@ function resolveMembershipProps(data) {
   };
 }
 
-function Field({ children, style }) {
+/** Tiny paper backing only behind glyph bounds — no full-width bands */
+function TextSlot({ children, boxStyle, textStyle }) {
   return (
-    <div style={{ position: "absolute", zIndex: 2, color: T.navy, margin: 0, boxSizing: "border-box", ...style }}>
-      {children}
+    <div style={{ position: "absolute", zIndex: 2, display: "flex", justifyContent: "center", ...boxStyle }}>
+      <span
+        style={{
+          display: "inline-block",
+          background: T.paper,
+          color: T.navy,
+          margin: 0,
+          boxSizing: "border-box",
+          ...textStyle,
+        }}
+      >
+        {children}
+      </span>
     </div>
   );
 }
@@ -70,118 +79,81 @@ export default function MembershipCertificateExact({ data, id = "cert-inner" }) 
         overflow: "hidden",
         boxSizing: "border-box",
         fontFamily: FONTS.body,
-        backgroundColor: "#FDF9F6",
+        backgroundColor: T.paper,
         backgroundImage: `url(${BG_PATH})`,
         backgroundSize: "100% 100%",
         backgroundRepeat: "no-repeat",
         backgroundPosition: "center",
       }}
     >
-      <Field
-        style={{
-          top: "7.05%",
-          right: "3.8%",
-          fontSize: 11,
-          fontWeight: 600,
-          textAlign: "right",
-          whiteSpace: "nowrap",
-        }}
+      <TextSlot
+        boxStyle={{ top: "7.05%", right: "3.8%", justifyContent: "flex-end", width: "22%" }}
+        textStyle={{ fontSize: 11, fontWeight: 600, textAlign: "right", whiteSpace: "nowrap", padding: "0 2px" }}
       >
         Issued on: {props.issueDate}
-      </Field>
+      </TextSlot>
 
-      <Field
-        style={{
-          top: "32.95%",
-          left: 0,
-          right: 0,
-          textAlign: "center",
+      <TextSlot
+        boxStyle={{ top: "32.95%", left: 0, right: 0 }}
+        textStyle={{
           fontFamily: FONTS.heading,
           fontSize: 30,
           fontWeight: 800,
           letterSpacing: "0.02em",
           lineHeight: 1.1,
-          padding: "0 13%",
+          padding: "0 6px",
+          textAlign: "center",
+          maxWidth: "78%",
         }}
       >
         {props.memberName}
-      </Field>
+      </TextSlot>
 
-      <Field
-        style={{
-          top: "48.25%",
-          left: "50%",
-          transform: "translateX(-50%)",
-          width: "22%",
-          textAlign: "center",
-          fontSize: 10,
-          fontWeight: 600,
-          color: T.muted,
-        }}
+      <TextSlot
+        boxStyle={{ top: "48.25%", left: "50%", transform: "translateX(-50%)", width: "22%" }}
+        textStyle={{ fontSize: 10, fontWeight: 600, color: T.muted, padding: "0 3px", textAlign: "center" }}
       >
         Membership Session
-      </Field>
+      </TextSlot>
 
-      <Field
-        style={{
-          top: "54.55%",
-          left: "8.6%",
-          width: "24.4%",
-          textAlign: "center",
-          fontFamily: FONTS.heading,
-          fontSize: 12,
-          fontWeight: 700,
-        }}
+      <TextSlot
+        boxStyle={{ top: "54.55%", left: "8.6%", width: "24.4%" }}
+        textStyle={{ fontFamily: FONTS.heading, fontSize: 12, fontWeight: 700, padding: "0 4px", textAlign: "center" }}
       >
         {props.memberId}
-      </Field>
-      <Field
-        style={{
-          top: "54.55%",
-          left: "50%",
-          transform: "translateX(-50%)",
-          width: "14.5%",
-          textAlign: "center",
-          fontFamily: FONTS.heading,
-          fontSize: 12,
-          fontWeight: 700,
-        }}
+      </TextSlot>
+      <TextSlot
+        boxStyle={{ top: "54.55%", left: "50%", transform: "translateX(-50%)", width: "14.5%" }}
+        textStyle={{ fontFamily: FONTS.heading, fontSize: 12, fontWeight: 700, padding: "0 3px", textAlign: "center" }}
       >
         {props.session}
-      </Field>
-      <Field
-        style={{
-          top: "54.55%",
-          right: "8.6%",
-          width: "24.4%",
-          textAlign: "center",
-          fontFamily: FONTS.heading,
-          fontSize: 12,
-          fontWeight: 700,
-        }}
+      </TextSlot>
+      <TextSlot
+        boxStyle={{ top: "54.55%", left: "67%", width: "24.4%" }}
+        textStyle={{ fontFamily: FONTS.heading, fontSize: 12, fontWeight: 700, padding: "0 4px", textAlign: "center" }}
       >
         {props.statusLabel}
-      </Field>
+      </TextSlot>
 
-      <Field
-        style={{
-          top: "61.2%",
-          left: "13%",
-          width: "74%",
-          textAlign: "center",
+      <TextSlot
+        boxStyle={{ top: "61.2%", left: "13%", width: "74%" }}
+        textStyle={{
+          display: "block",
+          width: "100%",
           fontFamily: FONTS.body,
           fontSize: 10.5,
           lineHeight: 1.65,
-          color: T.navy,
           fontWeight: 500,
+          padding: "2px 6px",
+          textAlign: "center",
           overflowWrap: "break-word",
           wordWrap: "break-word",
         }}
       >
         This certificate is valid until revoked by the Society. The bearer of this certificate is entitled to all
         privileges and responsibilities associated with the{" "}
-        <strong style={{ color: T.navy, fontWeight: 800 }}>{props.membershipType}</strong>.
-      </Field>
+        <strong style={{ fontWeight: 800 }}>{props.membershipType}</strong>.
+      </TextSlot>
 
       <span style={{ position: "absolute", opacity: 0, pointerEvents: "none", fontSize: 1 }}>
         {CHAIRMAN_NAME} {CHAIRMAN_TITLE}
