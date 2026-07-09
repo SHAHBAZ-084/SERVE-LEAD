@@ -3,6 +3,55 @@ import { useNavigate, useLocation } from "react-router-dom";
 import logo from "../assets/logo.png";
 import { ShieldCheck } from "lucide-react";
 
+function AyatBar() {
+  return (
+    <div style={{
+      backgroundColor: '#00bcd4',
+      borderBottom: '2px solid #0097a7',
+      padding: '6px 20px',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: '24px',
+      flexWrap: 'wrap'
+    }}>
+      <span style={{
+        fontFamily: "'Amiri', 'Scheherazade New', serif",
+        fontSize: '15px',
+        color: 'white',
+        direction: 'rtl',
+        letterSpacing: '0.03em',
+        lineHeight: 1.6
+      }}>
+        مَّا كَانَ مُحَمَّدٌ أَبَآ أَحَدٍ مِّن رِّجَالِكُمْ وَلَٰكِن رَّسُولَ ٱللَّهِ وَخَاتَمَ ٱلنَّبِيِّينَ
+      </span>
+
+      <span className="hidden sm:inline" style={{ color: 'rgba(255,255,255,0.4)', fontSize: '14px' }}>|</span>
+
+      <span className="hidden sm:inline" style={{
+        fontFamily: "'Noto Nastaliq Urdu', 'Jameel Noori Nastaleeq', serif",
+        fontSize: '13px',
+        color: 'rgba(255,255,255,0.92)',
+        direction: 'rtl',
+        lineHeight: 1.7
+      }}>
+        محمد ﷺ تم مردوں میں سے کسی کے باپ نہیں، بلکہ اللہ کے رسول اور تمام نبیوں کے خاتم ہیں
+      </span>
+
+      <span style={{
+        fontFamily: "'Inter', sans-serif",
+        fontSize: '10px',
+        color: 'rgba(255,255,255,0.7)',
+        letterSpacing: '0.06em',
+        whiteSpace: 'nowrap',
+        fontWeight: 500
+      }}>
+        — Surah Al-Ahzab 33:40
+      </span>
+    </div>
+  );
+}
+
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const [activeSection, setActiveSection] = useState("");
@@ -116,6 +165,8 @@ export default function Navbar() {
   `;
 
   return (
+    <>
+    <AyatBar />
     <nav className="bg-white/90 backdrop-blur-md shadow-sm sticky top-0 z-50 transition-all duration-300">
       <div className="max-w-7xl mx-auto flex justify-between items-center py-4 px-6 md:px-10">
 
@@ -217,5 +268,6 @@ export default function Navbar() {
 
       </div>
     </nav>
+    </>
   );
 }
