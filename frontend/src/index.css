@@ -381,3 +381,10 @@ table {
   backdrop-filter: blur(16px);
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
 }
+
+/* ─── AyatBar mobile ─────────────────────────────────────── */
+@media (max-width: 640px) {
+  .ayat-bar-urdu { display: none !important; }
+  .ayat-bar-ref { display: none !important; }
+  .ayat-bar-arabic { font-size: 14px !important; }
+}
