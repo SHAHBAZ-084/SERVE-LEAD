@@ -183,7 +183,7 @@ router.get('/member/me', authMiddleware, async (req, res) => {
 
         const certificates = await Certificate.find(query)
             .populate('eventId', 'title date location')
-            .populate('memberId', 'name member_id role')
+            .populate('memberId', 'name member_id role joining_year status')
             .sort({ createdAt: -1 })
             .lean();
 

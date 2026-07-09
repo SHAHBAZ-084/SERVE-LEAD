@@ -3,8 +3,8 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import api, { getImgUrl } from "../api";
 import Navbar from "../components/Navbar";
 import MemberSupportWhatsApp from "../components/MemberSupportWhatsApp";
-import { RenderCertificate, logo, signatureImg, stampImg } from "./CertTemplates";
-import { captureCertificatePdf } from "../utils/certificatePdfExport";
+import { RenderCertificate, logo, signatureImg, stampImg, MEMBERSHIP_TEMPLATE_ID, enrichCertificateData } from "./CertTemplates";
+import { captureCertificatePdf, captureCertificatePng } from "../utils/certificatePdfExport";
 import CountdownTimer from "../components/common/CountdownTimer";
 import ImageUploadHint from "../components/common/ImageUploadHint";
 
@@ -449,18 +449,46 @@ const MemberDashboard = () => {
         }
     };
 
+    const enrichCertForExport = (cert) =>
+        enrichCertificateData(cert, {
+            session: cert.memberId?.joining_year || user.year,
+            memberStatus: "Active Member",
+        });
+
     const downloadPDF = async (certData) => {
-        setExportData(certData);
+        const enriched = enrichCertForExport(certData);
+        setExportData(enriched);
         setExporting(true);
         await new Promise((r) => setTimeout(r, 600));
         try {
-            const name = certData.memberId?.name || certData.memberName || "Award";
+            const name = enriched.memberId?.name || enriched.memberName || "Award";
+            const suffix = Number(enriched.templateId) === MEMBERSHIP_TEMPLATE_ID ? "Membership" : "Certificate";
             await captureCertificatePdf("cert-export-node", {
-                fileName: `SLS_Certificate_${name.replace(/\s+/g, "_")}.pdf`,
+                fileName: `SLS_${suffix}_${name.replace(/\s+/g, "_")}.pdf`,
             });
         } catch (err) {
             console.error("PDF Export Error:", err);
             alert(`PDF Error: ${err.message}`);
+        } finally {
+            setExporting(false);
+            setExportData(null);
+        }
+    };
+
+    const downloadPNG = async (certData) => {
+        const enriched = enrichCertForExport(certData);
+        setExportData(enriched);
+        setExporting(true);
+        await new Promise((r) => setTimeout(r, 600));
+        try {
+            const name = enriched.memberId?.name || enriched.memberName || "Award";
+            const suffix = Number(enriched.templateId) === MEMBERSHIP_TEMPLATE_ID ? "Membership" : "Certificate";
+            await captureCertificatePng("cert-export-node", {
+                fileName: `SLS_${suffix}_${name.replace(/\s+/g, "_")}.png`,
+            });
+        } catch (err) {
+            console.error("PNG Export Error:", err);
+            alert(`PNG Error: ${err.message}`);
         } finally {
             setExporting(false);
             setExportData(null);
@@ -687,19 +715,61 @@ const MemberDashboard = () => {
         );
     };
 
-    const renderCertificates = () => (
+    const renderCertificates = () => {
+        const membershipCert = certificates.find((c) => Number(c.templateId) === MEMBERSHIP_TEMPLATE_ID);
+        const otherCerts = certificates.filter((c) => Number(c.templateId) !== MEMBERSHIP_TEMPLATE_ID);
+
+        return (
         <div className="animate-fade-up space-y-6">
 
-            {certificates.length === 0 ? (
+            {membershipCert && (
+                <div className="bg-gradient-to-br from-[#002147] to-[#0d3b66] p-8 rounded-[2rem] shadow-2xl shadow-blue-900/30 border border-[#c8a951]/30 relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-48 h-48 bg-[#1ba3e0]/10 blur-3xl -mr-16 -mt-16" />
+                    <div className="relative z-10">
+                        <div className="flex items-center gap-3 mb-4">
+                            <span className="text-[10px] font-black tracking-widest bg-[#c8a951] text-[#002147] px-3 py-1 rounded-lg uppercase">
+                                Official Membership
+                            </span>
+                            <div className="flex items-center gap-2 text-emerald-300 font-bold text-[10px] uppercase">
+                                <i className="fas fa-circle-check" /> Verified
+                            </div>
+                        </div>
+                        <h3 className="font-black text-2xl text-white mb-2 leading-tight uppercase tracking-tight">
+                            Certificate of Membership
+                        </h3>
+                        <p className="text-white/60 text-xs font-bold uppercase tracking-widest mb-6">
+                            Issued: {new Date(membershipCert.createdAt).toLocaleDateString()} · ID: {membershipCert.member_id_str || user.id}
+                        </p>
+                        <div className="flex flex-col sm:flex-row gap-3">
+                            <button
+                                onClick={() => downloadPDF(membershipCert)}
+                                disabled={exporting}
+                                className="flex-1 bg-white text-[#002147] py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-slate-100 transition-all disabled:opacity-50"
+                            >
+                                <i className="fas fa-file-pdf" /> Download PDF
+                            </button>
+                            <button
+                                onClick={() => downloadPNG(membershipCert)}
+                                disabled={exporting}
+                                className="flex-1 bg-[#1ba3e0] text-white py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-cyan-500 transition-all disabled:opacity-50"
+                            >
+                                <i className="fas fa-image" /> Download PNG
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {otherCerts.length === 0 && !membershipCert ? (
                 <div className="text-center py-24 bg-white rounded-[2.5rem] border border-dashed border-slate-200 shadow-sm">
                     <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
                         <i className="fas fa-certificate text-slate-200 text-3xl" />
                     </div>
                     <p className="text-slate-400 font-bold uppercase text-[10px] tracking-widest">No certificates issued yet</p>
                 </div>
-            ) : (
+            ) : otherCerts.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {certificates.map((cert) => (
+                    {otherCerts.map((cert) => (
                         <div key={cert._id} className="bg-white p-8 rounded-[2rem] shadow-xl shadow-slate-200/40 border border-slate-100 hover:-translate-y-1 transition-all group relative overflow-hidden">
                             <div className="absolute top-0 right-0 w-32 h-32 bg-[#002147]/5 blur-3xl -mr-16 -mt-16" />
                             <div className="flex justify-between items-start mb-6 relative z-10">
@@ -732,12 +802,12 @@ const MemberDashboard = () => {
                                 ) : (
                                     <i className="fas fa-cloud-arrow-down" />
                                 )}
-                                {exporting && exportData?._id === cert._id ? "Processing..." : "Retrieve Document"}
+                                {exporting && exportData?._id === cert._id ? "Processing..." : "Download PDF"}
                             </button>
                         </div>
                     ))}
                 </div>
-            )}
+            ) : null}
 
             {/* Unified Certificate Engine (Export Node) */}
             <div 
@@ -759,7 +829,8 @@ const MemberDashboard = () => {
                 />
             </div>
         </div>
-    );
+        );
+    };
 
 
 

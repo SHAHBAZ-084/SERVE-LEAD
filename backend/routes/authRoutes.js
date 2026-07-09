@@ -12,6 +12,7 @@ const otpLimiter = rateLimit({
 });
 
 const Member = require('../models/Member');
+const Certificate = require('../models/Certificate');
 const ExecutiveApplication = require('../models/ExecutiveApplication');
 const OTP = require('../models/OTP');
 const { sendOTPEmail, sendResetPasswordEmail } = require('../utils/emailService');
@@ -411,13 +412,20 @@ router.get('/verify/:member_id', asyncHandler(async (req, res) => {
     
     // Find approved members only
     const member = await Member.findOne({ 
-        member_id: member_id.trim().toUpperCase(), // Ensure uppercase matching
+        member_id: member_id.trim().toUpperCase(),
         status: 'approved'
-    }).select('name joining_year role profile_pic_url');
+    }).select('name joining_year role profile_pic_url member_id _id');
 
     if (!member) {
         return res.status(404).json({ error: 'Invalid ID. No official member found with this ID.' });
     }
+
+    const membershipCertificate = await Certificate.findOne({
+        memberId: member._id,
+        templateId: 2,
+    })
+        .sort({ createdAt: -1 })
+        .lean();
 
     res.json({
         success: true,
@@ -426,8 +434,17 @@ router.get('/verify/:member_id', asyncHandler(async (req, res) => {
             name: member.name,
             joining_year: member.joining_year,
             role: member.role,
-            profile_pic_url: member.profile_pic_url
-        }
+            profile_pic_url: member.profile_pic_url,
+            member_id: member.member_id,
+        },
+        membershipCertificate: membershipCertificate
+            ? {
+                ...membershipCertificate,
+                _id: membershipCertificate._id?.toString(),
+                session: member.joining_year,
+                memberStatus: 'Active Member',
+            }
+            : null,
     });
 }));
 

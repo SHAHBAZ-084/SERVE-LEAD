@@ -5,11 +5,7 @@ import { CERT_CANVAS } from "../pages/CertTemplates";
 const FONT_LINK =
   "https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400..700&family=Manrope:wght@400;500;600;700;800&family=Inter:wght@400;600;700;900&family=Playfair+Display:ital,wght@0,700;1,400&display=swap";
 
-/**
- * Captures #cert-export-node (or given element id) into an A4 landscape PDF.
- * Caller must set export data and wait for React to render before invoking.
- */
-export async function captureCertificatePdf(sourceElementId, { fileName = "SLS_Certificate.pdf" } = {}) {
+async function captureCertificateCanvas(sourceElementId) {
   const W = CERT_CANVAS.width;
   const H = CERT_CANVAS.height;
 
@@ -59,10 +55,27 @@ export async function captureCertificatePdf(sourceElementId, { fileName = "SLS_C
     windowHeight: H,
   });
 
+  document.body.removeChild(iframe);
+  return canvas;
+}
+
+/**
+ * Captures #cert-export-node (or given element id) into an A4 landscape PDF.
+ * Caller must set export data and wait for React to render before invoking.
+ */
+export async function captureCertificatePdf(sourceElementId, { fileName = "SLS_Certificate.pdf" } = {}) {
+  const canvas = await captureCertificateCanvas(sourceElementId);
   const imgData = canvas.toDataURL("image/png", 1.0);
   const pdf = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4", compress: true });
   pdf.addImage(imgData, "PNG", 0, 0, 297, 210, undefined, "FAST");
   pdf.save(fileName);
+}
 
-  document.body.removeChild(iframe);
+/** Download certificate as PNG image */
+export async function captureCertificatePng(sourceElementId, { fileName = "SLS_Certificate.png" } = {}) {
+  const canvas = await captureCertificateCanvas(sourceElementId);
+  const link = document.createElement("a");
+  link.download = fileName;
+  link.href = canvas.toDataURL("image/png", 1.0);
+  link.click();
 }

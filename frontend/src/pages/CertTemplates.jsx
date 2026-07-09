@@ -52,7 +52,7 @@ const CLASSIC_V2 = {
 
 export const CERT_TEMPLATES = [
   { id: 1, name: "Classic", thumb: "🔵", orientation: "landscape", bgColor: CERT_THEME.white, accentColor: CERT_THEME.navy, textColor: CERT_THEME.text, borderColor: CERT_THEME.navy },
-  { id: 2, name: "Modern Minimal", thumb: "◻️", orientation: "landscape", bgColor: CERT_THEME.slate50, accentColor: CERT_THEME.cyanDeep, textColor: CERT_THEME.text, borderColor: CERT_THEME.slate200 },
+  { id: 2, name: "Membership", thumb: "🎖️", orientation: "landscape", bgColor: CERT_THEME.white, accentColor: CERT_THEME.navy, textColor: CERT_THEME.text, borderColor: CERT_THEME.gold },
   { id: 3, name: "Gold Border", thumb: "🏅", orientation: "landscape", bgColor: CERT_THEME.white, accentColor: CERT_THEME.gold, textColor: CERT_THEME.text, borderColor: CERT_THEME.gold },
   { id: 4, name: "Corporate Navy", thumb: "🌊", orientation: "landscape", bgColor: CERT_THEME.white, accentColor: CERT_THEME.navy, textColor: CERT_THEME.text, borderColor: CERT_THEME.navy },
   { id: 5, name: "Elegant Frame", thumb: "✨", orientation: "landscape", bgColor: CERT_THEME.white, accentColor: CERT_THEME.navyMid, textColor: CERT_THEME.text, borderColor: CERT_THEME.navy },
@@ -73,6 +73,19 @@ const TEMPLATE_LAYOUTS = Object.fromEntries(
     },
   ])
 );
+
+export const MEMBERSHIP_TEMPLATE_ID = 2;
+
+export function enrichCertificateData(data, extras = {}) {
+  const session =
+    extras.session ||
+    data.session ||
+    data.memberId?.joining_year ||
+    String(data.member_id_str || "").split("-")[0] ||
+    String(new Date().getFullYear());
+  const memberStatus = extras.memberStatus || data.memberStatus || "Active Member";
+  return { ...data, session, memberStatus };
+}
 
 export function formatCertDate(value, fallback = "") {
   if (!value) return fallback;
@@ -127,6 +140,12 @@ export function resolveCertificateContent(data) {
     classicEyebrow,
     classicHeading,
     classicAwardLine,
+    session:
+      data.session ||
+      data.memberId?.joining_year ||
+      String(memberIdStr).split("-")[0] ||
+      String(new Date().getFullYear()),
+    memberStatus: data.memberStatus || "Active Member",
   };
 }
 
@@ -780,6 +799,292 @@ function ClassicCertificate({ data, certAssets, id = "cert-inner" }) {
   );
 }
 
+const MEMBERSHIP_THEME = {
+  navy: "#002147",
+  navyDeep: "#0d3b66",
+  sky: "#1ba3e0",
+  gold: "#c8a951",
+  goldDeep: "#a9803a",
+  white: "#ffffff",
+  paper: "#fafbfc",
+  text: "#0f172a",
+  muted: "#64748b",
+};
+
+function MembershipCorner({ style }) {
+  return <div style={{ position: "absolute", width: 24, height: 24, pointerEvents: "none", ...style }} />;
+}
+
+function MembershipInfoIcon({ type }) {
+  const c = MEMBERSHIP_THEME.sky;
+  if (type === "id") {
+    return (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2">
+        <rect x="3" y="5" width="18" height="14" rx="2" />
+        <circle cx="9" cy="11" r="2" />
+        <path d="M15 9h4M15 13h4" />
+      </svg>
+    );
+  }
+  if (type === "session") {
+    return (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2">
+        <rect x="3" y="5" width="18" height="16" rx="2" />
+        <path d="M8 3v4M16 3v4M3 10h18" />
+      </svg>
+    );
+  }
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2">
+      <circle cx="12" cy="12" r="9" />
+      <path d="M8.5 12.5l2.5 2.5 5-5" />
+    </svg>
+  );
+}
+
+function MembershipInfoCell({ icon, label, value }) {
+  const t = MEMBERSHIP_THEME;
+  return (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6, flex: 1, minWidth: 0 }}>
+      <MembershipInfoIcon type={icon} />
+      <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "rgba(255,255,255,0.65)", fontFamily: FONTS.body }}>
+        {label}
+      </span>
+      <span style={{ fontSize: 13, fontWeight: 800, color: t.white, fontFamily: FONTS.body, textAlign: "center", wordBreak: "break-word" }}>
+        {value}
+      </span>
+    </div>
+  );
+}
+
+/** Template 2 — Certificate of Membership (auto-issued on approval) */
+function MembershipCertificate({ data, certAssets, id = "cert-inner" }) {
+  const t = MEMBERSHIP_THEME;
+  const content = resolveCertificateContent(data);
+  const logoSrc = certAssets?.logo || "/logo-certificate.png" || logo;
+  const sigSrc = certAssets?.signature || signatureImg || "/signature.png";
+  const stampSrc = certAssets?.stamp || stampImg || "/stamp.png";
+
+  return (
+    <div
+      id={id}
+      style={{
+        position: "relative",
+        width: CERT_CANVAS.width,
+        height: CERT_CANVAS.height,
+        background: `linear-gradient(165deg, ${t.white} 0%, ${t.paper} 50%, ${t.white} 100%)`,
+        overflow: "hidden",
+        boxSizing: "border-box",
+        fontFamily: FONTS.body,
+        color: t.text,
+      }}
+    >
+      {/* Subtle geometric watermark */}
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          opacity: 0.035,
+          backgroundImage:
+            "linear-gradient(30deg, #94a3b8 12%, transparent 12.5%, transparent 87%, #94a3b8 87.5%), linear-gradient(150deg, #94a3b8 12%, transparent 12.5%, transparent 87%, #94a3b8 87.5%)",
+          backgroundSize: "48px 84px",
+          pointerEvents: "none",
+        }}
+      />
+
+      {/* Navy + gold double border */}
+      <div style={{ position: "absolute", inset: 14, border: `3px solid ${t.navy}`, pointerEvents: "none" }} />
+      <div style={{ position: "absolute", inset: 22, border: `1.5px solid ${t.gold}`, pointerEvents: "none" }} />
+
+      <MembershipCorner style={{ top: 22, left: 22, borderTop: `3px solid ${t.gold}`, borderLeft: `3px solid ${t.gold}` }} />
+      <MembershipCorner style={{ top: 22, right: 22, borderTop: `3px solid ${t.gold}`, borderRight: `3px solid ${t.gold}` }} />
+      <MembershipCorner style={{ bottom: 22, left: 22, borderBottom: `3px solid ${t.gold}`, borderLeft: `3px solid ${t.gold}` }} />
+      <MembershipCorner style={{ bottom: 22, right: 22, borderBottom: `3px solid ${t.gold}`, borderRight: `3px solid ${t.gold}` }} />
+
+      {/* Top accent bar */}
+      <div
+        style={{
+          position: "absolute",
+          top: 14,
+          left: 14,
+          right: 14,
+          height: 6,
+          background: `linear-gradient(90deg, ${t.navyDeep}, ${t.sky}, ${t.navyDeep})`,
+          pointerEvents: "none",
+        }}
+      />
+
+      <div
+        style={{
+          position: "relative",
+          zIndex: 2,
+          height: "100%",
+          display: "grid",
+          gridTemplateRows: "auto auto 1fr auto auto",
+          padding: "36px 48px 32px",
+          boxSizing: "border-box",
+        }}
+      >
+        {/* Header — logo + title */}
+        <header style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 24 }}>
+          <img src={logoSrc} alt="Serve & Lead Society" style={{ width: 200, height: "auto", maxHeight: 72, objectFit: "contain" }} />
+          <div style={{ textAlign: "right" }}>
+            <p style={{ fontSize: 10, color: t.muted, letterSpacing: "0.1em", textTransform: "uppercase", margin: 0 }}>Official Document</p>
+            <p style={{ fontSize: 10, color: t.navy, fontWeight: 700, margin: "4px 0 0" }}>No. {content.certNumber}</p>
+          </div>
+        </header>
+
+        {/* Title block */}
+        <div style={{ textAlign: "center", marginTop: 18 }}>
+          <h1
+            style={{
+              fontFamily: FONTS.heading,
+              fontSize: 42,
+              fontWeight: 900,
+              color: t.navy,
+              letterSpacing: "0.06em",
+              textTransform: "uppercase",
+              margin: 0,
+              lineHeight: 1.1,
+            }}
+          >
+            Certificate of Membership
+          </h1>
+          <p style={{ fontSize: 13, fontStyle: "italic", color: t.muted, margin: "12px 0 0", letterSpacing: "0.04em" }}>
+            This Certifies That
+          </p>
+          <h2
+            style={{
+              fontFamily: FONTS.heading,
+              fontSize: 34,
+              fontWeight: 700,
+              color: t.text,
+              margin: "16px 0 0",
+              paddingBottom: 10,
+              borderBottom: `2px solid ${t.navy}`,
+              display: "inline-block",
+              minWidth: 420,
+              maxWidth: "90%",
+            }}
+          >
+            {content.memberName}
+          </h2>
+        </div>
+
+        {/* Body */}
+        <main style={{ display: "flex", flexDirection: "column", justifyContent: "center", gap: 18, padding: "8px 0" }}>
+          {/* Member information band */}
+          <div
+            style={{
+              background: `linear-gradient(90deg, ${t.navyDeep} 0%, ${t.navy} 50%, ${t.navyDeep} 100%)`,
+              borderRadius: 8,
+              border: `1px solid ${t.gold}55`,
+              padding: "16px 20px",
+              boxShadow: "0 4px 16px rgba(0,33,71,0.15)",
+            }}
+          >
+            <p
+              style={{
+                textAlign: "center",
+                fontSize: 9,
+                fontWeight: 800,
+                letterSpacing: "0.2em",
+                textTransform: "uppercase",
+                color: t.gold,
+                margin: "0 0 14px",
+              }}
+            >
+              Member Information
+            </p>
+            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16 }}>
+              <MembershipInfoCell icon="id" label="Membership ID" value={content.memberIdStr || "—"} />
+              <div style={{ width: 1, alignSelf: "stretch", background: "rgba(255,255,255,0.15)" }} />
+              <MembershipInfoCell icon="session" label="Session" value={String(content.session)} />
+              <div style={{ width: 1, alignSelf: "stretch", background: "rgba(255,255,255,0.15)" }} />
+              <MembershipInfoCell icon="status" label="Status" value={content.memberStatus} />
+            </div>
+          </div>
+
+          <p
+            style={{
+              textAlign: "center",
+              fontSize: 13,
+              lineHeight: 1.8,
+              color: t.muted,
+              margin: 0,
+              maxWidth: 720,
+              marginLeft: "auto",
+              marginRight: "auto",
+            }}
+          >
+            {content.description ||
+              "is hereby recognized as an official member of Serve & Lead Society, having fulfilled all membership requirements and demonstrated commitment to our mission of building leaders through service."}
+          </p>
+        </main>
+
+        {/* Together banner */}
+        <div
+          style={{
+            background: `linear-gradient(90deg, ${t.navyDeep}, ${t.sky}, ${t.navyDeep})`,
+            padding: "10px 24px",
+            borderRadius: 4,
+            textAlign: "center",
+            boxShadow: "0 2px 8px rgba(13,59,102,0.2)",
+          }}
+        >
+          <p
+            style={{
+              margin: 0,
+              fontSize: 12,
+              fontWeight: 900,
+              letterSpacing: "0.18em",
+              textTransform: "uppercase",
+              color: t.white,
+              fontFamily: FONTS.body,
+            }}
+          >
+            Together We Serve, Together We Lead
+          </p>
+        </div>
+
+        {/* Footer — signature, issued date, stamp */}
+        <footer style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "end", gap: 24, marginTop: 16 }}>
+          <div>
+            <div style={{ height: 56, display: "flex", alignItems: "flex-end" }}>
+              <img src={sigSrc} alt="Chairman Signature" style={{ height: 50, objectFit: "contain", mixBlendMode: "multiply" }} />
+            </div>
+            <div style={{ width: 180, height: 2, background: t.navy, marginTop: 4, opacity: 0.35 }} />
+            <p style={{ fontWeight: 800, fontSize: 13, color: t.navy, margin: "8px 0 0" }}>{CHAIRMAN_NAME}</p>
+            <p style={{ fontSize: 10, color: t.muted, margin: "2px 0 0", fontStyle: "italic" }}>{CHAIRMAN_TITLE}</p>
+          </div>
+
+          <div style={{ textAlign: "center", paddingBottom: 8 }}>
+            <p style={{ fontSize: 10, color: t.muted, letterSpacing: "0.08em", textTransform: "uppercase", margin: 0 }}>Issued on</p>
+            <p style={{ fontSize: 13, fontWeight: 800, color: t.navy, margin: "4px 0 0" }}>{content.issueDate}</p>
+            <p style={{ fontSize: 9, color: t.muted, margin: "10px 0 0", fontStyle: "italic" }}>
+              Verify at serveandlead.org/verify
+            </p>
+          </div>
+
+          <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "flex-end" }}>
+            <img
+              src={stampSrc}
+              alt="Verified"
+              style={{
+                width: 100,
+                height: 100,
+                objectFit: "contain",
+                transform: "rotate(-8deg)",
+                filter: "drop-shadow(0 4px 8px rgba(0,33,71,0.2))",
+              }}
+            />
+          </div>
+        </footer>
+      </div>
+    </div>
+  );
+}
+
 function Decorations({ layout, theme }) {
   const { accentStyle } = layout;
 
@@ -960,7 +1265,8 @@ export function CertificateBase({ data, certAssets, id = "cert-inner", layout })
 export function RenderCertificate({ templateId = 1, data, certAssets, id = "cert-inner" }) {
   const tid = Number(templateId) || 1;
   if (tid === 1) return <ClassicCertificate data={data} certAssets={certAssets} id={id} />;
-  const layout = TEMPLATE_LAYOUTS[tid] || TEMPLATE_LAYOUTS[2];
+  if (tid === MEMBERSHIP_TEMPLATE_ID) return <MembershipCertificate data={data} certAssets={certAssets} id={id} />;
+  const layout = TEMPLATE_LAYOUTS[tid] || TEMPLATE_LAYOUTS[3];
   return <CertificateBase data={data} certAssets={certAssets} id={id} layout={layout} />;
 }
 

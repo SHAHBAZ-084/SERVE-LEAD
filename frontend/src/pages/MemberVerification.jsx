@@ -1,15 +1,62 @@
-import { useState } from "react";
-import { ShieldCheck, Search, Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
+import { useState, useEffect } from "react";
+import { ShieldCheck, Search, Loader2, AlertCircle, CheckCircle2, Award } from "lucide-react";
 import api, { getImgUrl } from "../api";
 import { motion, AnimatePresence } from "framer-motion";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
+import { RenderCertificate, signatureImg, stampImg, MEMBERSHIP_TEMPLATE_ID, enrichCertificateData } from "./CertTemplates";
+import { captureCertificatePdf, captureCertificatePng } from "../utils/certificatePdfExport";
 
 export default function MemberVerification() {
   const [memberId, setMemberId] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
+  const [membershipCert, setMembershipCert] = useState(null);
   const [error, setError] = useState("");
+  const [exportData, setExportData] = useState(null);
+  const [exporting, setExporting] = useState(false);
+  const [certAssets, setCertAssets] = useState({ logo: null, signature: null, stamp: null });
+
+  useEffect(() => {
+    const loadToDataURL = async (url, key) => {
+      try {
+        const response = await fetch(url);
+        const blob = await response.blob();
+        const reader = new FileReader();
+        reader.onloadend = () => setCertAssets((prev) => ({ ...prev, [key]: reader.result }));
+        reader.readAsDataURL(blob);
+      } catch (err) {
+        console.error(`Failed to load ${key}:`, err);
+      }
+    };
+    loadToDataURL("/logo-certificate.png", "logo");
+    loadToDataURL(signatureImg, "signature");
+    loadToDataURL(stampImg, "stamp");
+  }, []);
+
+  const downloadCert = async (format = "pdf") => {
+    if (!membershipCert) return;
+    const enriched = enrichCertificateData(
+      { ...membershipCert, memberId: { name: result.name, member_id: result.member_id, joining_year: result.joining_year } },
+      { session: result.joining_year, memberStatus: "Active Member" }
+    );
+    setExportData(enriched);
+    setExporting(true);
+    await new Promise((r) => setTimeout(r, 600));
+    try {
+      const name = result.name.replace(/\s+/g, "_");
+      if (format === "png") {
+        await captureCertificatePng("verify-cert-export", { fileName: `SLS_Membership_${name}.png` });
+      } else {
+        await captureCertificatePdf("verify-cert-export", { fileName: `SLS_Membership_${name}.pdf` });
+      }
+    } catch (err) {
+      alert(`Export failed: ${err.message}`);
+    } finally {
+      setExporting(false);
+      setExportData(null);
+    }
+  };
 
   const handleVerify = async (e) => {
     e.preventDefault();
@@ -18,11 +65,13 @@ export default function MemberVerification() {
     setLoading(true);
     setError("");
     setResult(null);
+    setMembershipCert(null);
 
     try {
       const cleanId = memberId.trim().replace(/[\s.]/g, "-").toUpperCase();
       const response = await api.get(`auth/verify/${cleanId}`);
       setResult(response.data.member);
+      setMembershipCert(response.data.membershipCertificate || null);
     } catch (err) {
       setError(err.response?.data?.error || "Invalid ID. No official member found with this ID.");
     } finally {
@@ -135,6 +184,60 @@ export default function MemberVerification() {
                         </div>
                       </div>
                     </div>
+
+                    {membershipCert && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 12 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="mt-6 bg-white border-2 border-[#c8a951]/40 rounded-2xl p-6"
+                      >
+                        <div className="flex items-center gap-3 mb-4">
+                          <Award className="text-[#002147]" size={22} />
+                          <div>
+                            <h5 className="font-black text-[#002147] uppercase tracking-tight text-sm">
+                              Membership Certificate Verified
+                            </h5>
+                            <p className="text-xs text-slate-500 font-medium mt-0.5">
+                              Official Certificate of Membership on file
+                            </p>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-3 gap-3 text-center mb-5">
+                          <div className="bg-slate-50 rounded-xl py-3 px-2">
+                            <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Session</p>
+                            <p className="text-sm font-black text-[#002147] mt-1">{result.joining_year}</p>
+                          </div>
+                          <div className="bg-slate-50 rounded-xl py-3 px-2">
+                            <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Status</p>
+                            <p className="text-sm font-black text-emerald-600 mt-1">Active</p>
+                          </div>
+                          <div className="bg-slate-50 rounded-xl py-3 px-2">
+                            <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Issued</p>
+                            <p className="text-xs font-black text-[#002147] mt-1">
+                              {new Date(membershipCert.createdAt).toLocaleDateString()}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex flex-col sm:flex-row gap-3">
+                          <button
+                            type="button"
+                            onClick={() => downloadCert("pdf")}
+                            disabled={exporting}
+                            className="flex-1 bg-[#002147] text-white py-3 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 disabled:opacity-50"
+                          >
+                            Download PDF
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => downloadCert("png")}
+                            disabled={exporting}
+                            className="flex-1 bg-[#1ba3e0] text-white py-3 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-cyan-500 disabled:opacity-50"
+                          >
+                            Download PNG
+                          </button>
+                        </div>
+                      </motion.div>
+                    )}
                   </motion.div>
                 )}
 
@@ -172,6 +275,18 @@ export default function MemberVerification() {
           </div>
         </div>
       </main>
+
+      <div
+        id="verify-cert-export"
+        style={{ position: "fixed", top: "-9999px", left: "-9999px", opacity: 0, pointerEvents: "none", zIndex: -1000 }}
+      >
+        <RenderCertificate
+          templateId={MEMBERSHIP_TEMPLATE_ID}
+          data={exportData || {}}
+          certAssets={certAssets}
+          id="verify-cert-inner"
+        />
+      </div>
 
       <Footer />
     </div>

@@ -14,6 +14,7 @@ const { sendWelcomeEmail, sendInterviewEmail, sendInterviewPassedEmail, sendInte
 const logActivity = require('../../utils/activityLogger');
 const { deleteFile } = require('../../utils/storage');
 const { isInterviewFailed, isInterviewCleared, ensureInterviewCleared } = require('../../utils/memberInterview');
+const { issueMembershipCertificate } = require('../../utils/membershipCertificate');
 
 // DELETE member (Admin only)
 router.delete('/members/:id', authMiddleware, isAdmin, asyncHandler(async (req, res) => {
@@ -151,7 +152,7 @@ router.get('/pending-members', authMiddleware, isAdmin, asyncHandler(async (req,
     res.json({ members, executiveApplications });
 }));
 
-const finalizeMemberApproval = async (member) => {
+const finalizeMemberApproval = async (member, issuedBy = null) => {
     const perRequestMonths = member.feePayment?.validityMonths;
     const validityDoc = await SystemSetting.findOne({ key: 'membership_validity_months' });
     const defaultMonths = parseInt(validityDoc?.value, 10) || 12;
@@ -177,6 +178,10 @@ const finalizeMemberApproval = async (member) => {
     member.member_id = nextMemberId;
     member.membershipValidUntil = validUntil;
     await member.save();
+
+    await issueMembershipCertificate(member, issuedBy).catch((err) => {
+        console.error('Auto-issue membership certificate failed:', err.message);
+    });
 
     sendWelcomeEmail(member.email, member.name, nextMemberId, validUntil).catch(console.error);
     return { nextMemberId, validUntil };
@@ -214,7 +219,7 @@ router.post('/approve-member/:id', authMiddleware, isAdmin, asyncHandler(async (
         await member.save();
     }
 
-    const { nextMemberId } = await finalizeMemberApproval(member);
+    const { nextMemberId } = await finalizeMemberApproval(member, req.user.memberId);
     res.json({ message: 'Approved successfully', member_id: nextMemberId });
     logActivity(req.user.memberId, 'Approved Member', `Approved member: ${member.name} (${nextMemberId})`, member._id);
 }));
@@ -265,7 +270,7 @@ router.post('/direct-approve/:id', authMiddleware, isAdmin, asyncHandler(async (
         });
     }
 
-    const { nextMemberId } = await finalizeMemberApproval(member);
+    const { nextMemberId } = await finalizeMemberApproval(member, req.user.memberId);
     res.json({ message: 'Member approved directly without fee collection', member_id: nextMemberId });
     logActivity(req.user.memberId, 'Direct Approved Member', `Direct approved ${member.name} (${nextMemberId})`, member._id);
 }));
