@@ -4,7 +4,8 @@ import api, { getImgUrl } from "../api";
 import { motion, AnimatePresence } from "framer-motion";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
-import { RenderCertificate, signatureImg, stampImg, MEMBERSHIP_TEMPLATE_ID, enrichCertificateData } from "./CertTemplates";
+import { signatureImg, stampImg, MEMBERSHIP_TEMPLATE_ID, enrichCertificateData } from "./CertTemplates";
+import MembershipCertificateExact from "./MembershipCertificateExact";
 import { captureCertificatePdf, captureCertificatePng } from "../utils/certificatePdfExport";
 
 export default function MemberVerification() {
@@ -37,8 +38,16 @@ export default function MemberVerification() {
   const downloadCert = async (format = "pdf") => {
     if (!membershipCert) return;
     const enriched = enrichCertificateData(
-      { ...membershipCert, memberId: { name: result.name, member_id: result.member_id, joining_year: result.joining_year } },
-      { session: result.joining_year, memberStatus: "Active Member" }
+      {
+        ...membershipCert,
+        memberId: {
+          name: result.name,
+          member_id: result.member_id,
+          joining_year: result.joining_year,
+          role: result.role,
+        },
+      },
+      { session: result.joining_year }
     );
     setExportData(enriched);
     setExporting(true);
@@ -280,8 +289,7 @@ export default function MemberVerification() {
         id="verify-cert-export"
         style={{ position: "fixed", top: "-9999px", left: "-9999px", opacity: 0, pointerEvents: "none", zIndex: -1000 }}
       >
-        <RenderCertificate
-          templateId={MEMBERSHIP_TEMPLATE_ID}
+        <MembershipCertificateExact
           data={exportData || {}}
           certAssets={certAssets}
           id="verify-cert-inner"

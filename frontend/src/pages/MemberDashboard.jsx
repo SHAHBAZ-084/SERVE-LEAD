@@ -4,6 +4,7 @@ import api, { getImgUrl } from "../api";
 import Navbar from "../components/Navbar";
 import MemberSupportWhatsApp from "../components/MemberSupportWhatsApp";
 import { RenderCertificate, logo, signatureImg, stampImg, MEMBERSHIP_TEMPLATE_ID, enrichCertificateData } from "./CertTemplates";
+import MembershipCertificateExact, { isMembershipCertificate } from "./MembershipCertificateExact";
 import { captureCertificatePdf, captureCertificatePng } from "../utils/certificatePdfExport";
 import CountdownTimer from "../components/common/CountdownTimer";
 import ImageUploadHint from "../components/common/ImageUploadHint";
@@ -450,10 +451,17 @@ const MemberDashboard = () => {
     };
 
     const enrichCertForExport = (cert) =>
-        enrichCertificateData(cert, {
-            session: cert.memberId?.joining_year || user.year,
-            memberStatus: "Active Member",
-        });
+        enrichCertificateData(
+            {
+                ...cert,
+                memberId: {
+                    ...cert.memberId,
+                    role: cert.memberId?.role || user.rawRole,
+                    joining_year: cert.memberId?.joining_year || user.year,
+                },
+            },
+            { session: cert.memberId?.joining_year || user.year }
+        );
 
     const downloadPDF = async (certData) => {
         const enriched = enrichCertForExport(certData);
@@ -821,12 +829,20 @@ const MemberDashboard = () => {
                     zIndex: -1000
                 }}
             >
-                <RenderCertificate
-                    templateId={Number(exportData?.templateId || 1)}
-                    data={exportData || {}}
-                    certAssets={certAssets}
-                    id="actual-node"
-                />
+                {isMembershipCertificate(exportData) ? (
+                    <MembershipCertificateExact
+                        data={exportData || {}}
+                        certAssets={certAssets}
+                        id="actual-node"
+                    />
+                ) : (
+                    <RenderCertificate
+                        templateId={Number(exportData?.templateId || 1)}
+                        data={exportData || {}}
+                        certAssets={certAssets}
+                        id="actual-node"
+                    />
+                )}
             </div>
         </div>
         );

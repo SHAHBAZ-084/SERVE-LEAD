@@ -447,7 +447,8 @@ router.get('/verify/:member_id', asyncHandler(async (req, res) => {
                 ...membershipCertificate,
                 _id: membershipCertificate._id?.toString(),
                 session: member.joining_year,
-                memberStatus: 'Active Member',
+                memberStatus: member.role === 'Executive' ? 'Executive Member' : 'General Member',
+                role: member.role,
             }
             : null,
     });

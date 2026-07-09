@@ -2,7 +2,8 @@ import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import api, { getImgUrl, API_BASE as API_BASE_URL } from "../api";
 import CountdownTimer from "../components/common/CountdownTimer";
-import { RenderCertificate, CERT_TEMPLATES, CHAIRMAN_NAME, logo, signatureImg, stampImg } from "./CertTemplates";
+import { RenderCertificate, CERT_TEMPLATES, CHAIRMAN_NAME, logo, signatureImg, stampImg, MEMBERSHIP_TEMPLATE_ID } from "./CertTemplates";
+import MembershipCertificateExact, { isMembershipCertificate } from "./MembershipCertificateExact";
 import { captureCertificatePdf } from "../utils/certificatePdfExport";
 import { compressImage } from "../utils/compressImage";
 import ImageUploadHint from "../components/common/ImageUploadHint";
@@ -1643,6 +1644,9 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
                 {(() => {
                     const tid = Number(exportData?.templateId || selectedTemplate.id);
                     const dataToUse = exportData || (form.memberId ? { ...form, memberId: selectedMember, templateId: tid } : { ...form, templateId: tid });
+                    if (isMembershipCertificate(dataToUse)) {
+                        return <MembershipCertificateExact data={dataToUse} certAssets={certAssets} id="cert-inner" />;
+                    }
                     return <RenderCertificate templateId={tid} data={dataToUse} certAssets={certAssets} id="cert-inner" />;
                 })()}
             </div>
