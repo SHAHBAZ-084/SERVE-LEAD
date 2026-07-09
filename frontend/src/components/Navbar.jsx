@@ -116,7 +116,7 @@ export default function Navbar() {
   `;
 
   return (
-    <nav className="bg-white/90 backdrop-blur-md shadow-sm sticky site-navbar-below-verse z-50 transition-all duration-300">
+    <nav className="bg-white/90 backdrop-blur-md shadow-sm sticky top-0 z-50 transition-all duration-300">
       <div className="max-w-7xl mx-auto flex justify-between items-center py-4 px-6 md:px-10">
 
         {/* Logo */}

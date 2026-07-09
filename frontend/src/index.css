@@ -382,57 +382,89 @@ table {
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
 }
 
-/* ─── Top verse announcement bar ─────────────────────────── */
+/* ─── Top verse bar (site-wide, above navbar) ────────────── */
 .top-verse-bar {
-  position: sticky;
-  top: 0;
-  z-index: 60;
+  width: 100vw;
+  max-width: 100%;
+  background: linear-gradient(90deg, #0d3b66 0%, #1ba3e0 100%);
+  box-shadow: 0 2px 10px rgba(13, 59, 102, 0.22);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+  padding: 12px 0;
+  overflow: hidden;
+}
+
+.top-verse-bar__inner {
+  max-width: 80rem;
+  margin: 0 auto;
+  padding: 0 1rem;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 1px;
-  padding: 5px 20px;
-  min-height: 36px;
-  background: linear-gradient(90deg, #00bcd4 0%, #0097a7 100%);
-  border-bottom: 1px solid rgba(0, 80, 90, 0.35);
+  gap: 7px;
   text-align: center;
 }
 
-.top-verse-bar-arabic {
+@media (min-width: 768px) {
+  .top-verse-bar__inner {
+    padding: 0 2rem;
+  }
+}
+
+.top-verse-bar__ref {
   margin: 0;
-  font-family: "Amiri Quran", "Amiri", serif;
-  font-size: 13px;
-  line-height: 1.45;
+  font-family: 'Inter', sans-serif;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.07em;
+  color: rgba(255, 255, 255, 0.52);
+  text-transform: none;
+}
+
+.top-verse-bar__arabic {
+  margin: 0;
+  font-family: 'Amiri Quran', 'Amiri', serif;
+  font-size: 16px;
+  line-height: 1.85;
   color: #ffffff;
   direction: rtl;
-  letter-spacing: 0.02em;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
+  word-wrap: break-word;
+  overflow-wrap: anywhere;
+  max-width: 100%;
 }
 
-.top-verse-bar-urdu {
+.top-verse-bar__urdu {
   margin: 0;
-  font-family: "Noto Nastaliq Urdu", "Jameel Noori Nastaleeq", serif;
-  font-size: 11px;
-  line-height: 1.5;
-  color: rgba(255, 255, 255, 0.92);
+  font-family: 'Noto Nastaliq Urdu', serif;
+  font-size: 13px;
+  line-height: 1.9;
+  color: rgba(255, 255, 255, 0.76);
   direction: rtl;
+  word-wrap: break-word;
+  overflow-wrap: anywhere;
+  max-width: 100%;
 }
 
-.site-navbar-below-verse {
-  top: var(--top-verse-bar-height, 48px);
-}
-
-@media (max-width: 640px) {
+@media (max-width: 480px) {
   .top-verse-bar {
-    padding: 4px 12px;
+    padding: 10px 0;
   }
 
-  .top-verse-bar-urdu {
-    display: none;
+  .top-verse-bar__inner {
+    gap: 6px;
   }
 
-  .top-verse-bar-arabic {
+  .top-verse-bar__ref {
+    font-size: 9px;
+  }
+
+  .top-verse-bar__arabic {
     font-size: 11px;
-    line-height: 1.4;
+    line-height: 1.75;
+  }
+
+  .top-verse-bar__urdu {
+    font-size: 10px;
+    line-height: 1.85;
   }
 }
