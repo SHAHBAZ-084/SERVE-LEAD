@@ -1047,8 +1047,8 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
             }
         };
         loadToDataURL('/logo-certificate.png', 'logo');
-        loadToDataURL(signatureImg, 'signature');
-        loadToDataURL(stampImg, 'stamp');
+        loadToDataURL('/signature.png', 'signature');
+        loadToDataURL('/stamp.png', 'stamp');
     }, []);
 
     const fetchCertificates = async () => {

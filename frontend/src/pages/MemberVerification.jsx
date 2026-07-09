@@ -31,8 +31,8 @@ export default function MemberVerification() {
       }
     };
     loadToDataURL("/logo-certificate.png", "logo");
-    loadToDataURL(signatureImg, "signature");
-    loadToDataURL(stampImg, "stamp");
+    loadToDataURL("/signature.png", "signature");
+    loadToDataURL("/stamp.png", "stamp");
   }, []);
 
   const downloadCert = async (format = "pdf") => {

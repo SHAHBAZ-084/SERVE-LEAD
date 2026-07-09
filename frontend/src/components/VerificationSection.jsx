@@ -26,8 +26,8 @@ export default function VerificationSection() {
       }
     };
     loadToDataURL("/logo-certificate.png", "logo");
-    loadToDataURL(signatureImg, "signature");
-    loadToDataURL(stampImg, "stamp");
+    loadToDataURL("/signature.png", "signature");
+    loadToDataURL("/stamp.png", "stamp");
   }, []);
 
   const handleVerify = async (e) => {
