@@ -6,8 +6,13 @@ const FONT_LINK =
   "https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400..700&family=Manrope:wght@400;500;600;700;800&family=Inter:wght@400;600;700;900&family=Playfair+Display:ital,wght@0,700;1,400&display=swap";
 
 async function captureCertificateCanvas(sourceElementId) {
-  const W = CERT_CANVAS.width;
-  const H = CERT_CANVAS.height;
+  const sourceElement = document.getElementById(sourceElementId);
+  if (!sourceElement) {
+    throw new Error("Export engine not found in DOM");
+  }
+
+  const W = sourceElement.offsetWidth || CERT_CANVAS.width;
+  const H = sourceElement.offsetHeight || CERT_CANVAS.height;
 
   const iframe = document.createElement("iframe");
   iframe.style.cssText = `position:fixed;top:0;left:0;width:${W}px;height:${H}px;opacity:0;pointer-events:none;z-index:-1000`;
@@ -26,12 +31,6 @@ async function captureCertificateCanvas(sourceElementId) {
 
   await new Promise((r) => setTimeout(r, 1000));
   await iframeDoc.fonts.ready;
-
-  const sourceElement = document.getElementById(sourceElementId);
-  if (!sourceElement) {
-    document.body.removeChild(iframe);
-    throw new Error("Export engine not found in DOM");
-  }
 
   const clonedNode = sourceElement.cloneNode(true);
   Object.assign(clonedNode.style, {
