@@ -50,8 +50,18 @@ async function issueMembershipCertificate(member, issuedBy = null) {
   return cert;
 }
 
+/**
+ * Ensure an approved member with a membership ID has a certificate.
+ * Backfills existing members who were approved before auto-issue existed.
+ */
+async function ensureMembershipCertificate(member, issuedBy = null) {
+  if (!member?._id || member.status !== 'approved' || !member.member_id) return null;
+  return issueMembershipCertificate(member, issuedBy);
+}
+
 module.exports = {
   issueMembershipCertificate,
+  ensureMembershipCertificate,
   MEMBERSHIP_TEMPLATE_ID,
   CHAIRMAN_NAME,
 };

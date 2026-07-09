@@ -5,6 +5,7 @@ const Certificate = require('../models/Certificate');
 const Member = require('../models/Member');
 const Event = require('../models/Event');
 const authMiddleware = require('../middlewares/authMiddleware');
+const { ensureMembershipCertificate } = require('../utils/membershipCertificate');
 
 // Middleware to check if user is Admin
 const isAdmin = async (req, res, next) => {
@@ -176,6 +177,13 @@ router.get('/member/me', authMiddleware, async (req, res) => {
         const query = {};
         if (mongoose.Types.ObjectId.isValid(queryMemberId)) {
             query.memberId = queryMemberId;
+
+            const member = await Member.findById(queryMemberId).select('name member_id status role joining_year');
+            if (member) {
+                await ensureMembershipCertificate(member).catch((err) => {
+                    console.error('Backfill membership certificate failed:', err.message);
+                });
+            }
         } else {
             // Fallback for older string based tokens
             query.member_id_str = queryMemberId;

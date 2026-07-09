@@ -18,6 +18,7 @@ const OTP = require('../models/OTP');
 const { sendOTPEmail, sendResetPasswordEmail } = require('../utils/emailService');
 const asyncHandler = require('../middlewares/asyncHandler');
 const authMiddleware = require('../middlewares/authMiddleware');
+const { ensureMembershipCertificate } = require('../utils/membershipCertificate');
 const { validateRequest, schemas } = require('../middlewares/validationMiddleware');
 
 // Current Member Profile
@@ -419,6 +420,10 @@ router.get('/verify/:member_id', asyncHandler(async (req, res) => {
     if (!member) {
         return res.status(404).json({ error: 'Invalid ID. No official member found with this ID.' });
     }
+
+    await ensureMembershipCertificate(member).catch((err) => {
+        console.error('Backfill membership certificate on verify failed:', err.message);
+    });
 
     const membershipCertificate = await Certificate.findOne({
         memberId: member._id,
