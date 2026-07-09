@@ -39,8 +39,8 @@ function resolveMembershipProps(data) {
   const role = data.memberId?.role || data.role || "General";
   const memberIdStr = data.member_id_str || data.memberId?.member_id || "";
   return {
-    memberName: (data.memberId?.name || data.memberName || "Member Name").toUpperCase(),
-    memberId: memberIdStr || "20XX-SLS-XXXX",
+    memberName: (data.memberId?.name || data.memberName || "").toUpperCase(),
+    memberId: memberIdStr,
     session: String(
       data.session || data.memberId?.joining_year || memberIdStr.split("-")[0] || new Date().getFullYear()
     ),
@@ -50,6 +50,7 @@ function resolveMembershipProps(data) {
   };
 }
 
+/** Opaque mask — hides baked-in placeholder text from the background image */
 function ErasePatch({ top, left, width, height, right, centerX }) {
   const style = {
     position: "absolute",
@@ -73,7 +74,17 @@ function ErasePatch({ top, left, width, height, right, centerX }) {
 
 function OverlayText({ children, style }) {
   return (
-    <div style={{ position: "absolute", zIndex: 2, color: T.navy, margin: 0, ...style }}>
+    <div
+      style={{
+        position: "absolute",
+        zIndex: 2,
+        color: T.navy,
+        margin: 0,
+        boxSizing: "border-box",
+        background: T.paper,
+        ...style,
+      }}
+    >
       {children}
     </div>
   );
@@ -99,23 +110,24 @@ export default function MembershipCertificateExact({ data, id = "cert-inner" }) 
         backgroundPosition: "center",
       }}
     >
-      {/* Issued date */}
-      <ErasePatch top="6.8%" right="4.4%" width="16%" height="3.6%" />
+      {/* Issued date — mask baked-in "Issued on: 12/12/2026" */}
+      <ErasePatch top="6.2%" right="3.8%" width="22%" height="4.2%" />
       <OverlayText
         style={{
           top: "7.05%",
-          right: "4.4%",
+          right: "3.8%",
           fontSize: 11,
           fontWeight: 600,
           textAlign: "right",
           whiteSpace: "nowrap",
+          padding: "1px 4px",
         }}
       >
         Issued on: {props.issueDate}
       </OverlayText>
 
-      {/* Member name */}
-      <ErasePatch centerX="50%" top="32.2%" width="66%" height="6.5%" />
+      {/* Member name — mask baked-in "MEMBER NAME" */}
+      <ErasePatch centerX="50%" top="31.8%" width="74%" height="9.2%" />
       <OverlayText
         style={{
           top: "32.95%",
@@ -127,26 +139,45 @@ export default function MembershipCertificateExact({ data, id = "cert-inner" }) 
           fontWeight: 800,
           letterSpacing: "0.02em",
           lineHeight: 1.1,
-          padding: "0 7%",
+          padding: "2px 13%",
         }}
       >
         {props.memberName}
       </OverlayText>
 
-      {/* Member info values */}
-      <ErasePatch left="9.5%" top="53.8%" width="22%" height="3.8%" />
-      <ErasePatch centerX="50%" top="53.8%" width="14%" height="3.8%" />
-      <ErasePatch right="9.5%" top="53.8%" width="22%" height="3.8%" />
+      {/* Session label typo in background — "Membershin Session" */}
+      <ErasePatch centerX="50%" top="48.1%" width="22%" height="2.4%" />
+      <OverlayText
+        style={{
+          top: "48.25%",
+          left: "50%",
+          transform: "translateX(-50%)",
+          width: "22%",
+          textAlign: "center",
+          fontSize: 10,
+          fontWeight: 600,
+          color: T.muted,
+          padding: "1px 2px",
+        }}
+      >
+        Membership Session
+      </OverlayText>
+
+      {/* Member info values — mask baked-in "20XX-SLS-XXXX", "20XX", "General Member" */}
+      <ErasePatch left="7%" top="53.1%" width="28%" height="4.5%" />
+      <ErasePatch centerX="50%" top="53.1%" width="16%" height="4.5%" />
+      <ErasePatch right="7%" top="53.1%" width="28%" height="4.5%" />
 
       <OverlayText
         style={{
           top: "54.55%",
-          left: "9.5%",
-          width: "22%",
+          left: "7%",
+          width: "28%",
           textAlign: "center",
           fontFamily: FONTS.heading,
           fontSize: 12,
           fontWeight: 700,
+          padding: "1px 6px",
         }}
       >
         {props.memberId}
@@ -156,11 +187,12 @@ export default function MembershipCertificateExact({ data, id = "cert-inner" }) 
           top: "54.55%",
           left: "50%",
           transform: "translateX(-50%)",
-          width: "14%",
+          width: "16%",
           textAlign: "center",
           fontFamily: FONTS.heading,
           fontSize: 12,
           fontWeight: 700,
+          padding: "1px 4px",
         }}
       >
         {props.session}
@@ -168,30 +200,35 @@ export default function MembershipCertificateExact({ data, id = "cert-inner" }) 
       <OverlayText
         style={{
           top: "54.55%",
-          right: "9.5%",
-          width: "22%",
+          right: "7%",
+          width: "28%",
           textAlign: "center",
           fontFamily: FONTS.heading,
           fontSize: 12,
           fontWeight: 700,
+          padding: "1px 6px",
         }}
       >
         {props.statusLabel}
       </OverlayText>
 
-      {/* Full closing paragraph */}
-      <ErasePatch centerX="50%" top="60.8%" width="80%" height="8.5%" />
+      {/* Closing paragraph — mask baked-in placeholder paragraph */}
+      <ErasePatch centerX="50%" top="60.5%" width="84%" height="10.5%" />
       <OverlayText
         style={{
           top: "61.2%",
-          left: "10%",
-          right: "10%",
+          left: "13%",
+          width: "74%",
           textAlign: "center",
           fontFamily: FONTS.body,
           fontSize: 10.5,
           lineHeight: 1.65,
           color: T.navy,
           fontWeight: 500,
+          overflow: "visible",
+          overflowWrap: "break-word",
+          wordWrap: "break-word",
+          padding: "2px 8px",
         }}
       >
         This certificate is valid until revoked by the Society. The bearer of this certificate is entitled to all
