@@ -3,81 +3,6 @@ import { useNavigate, useLocation } from "react-router-dom";
 import logo from "../assets/logo.png";
 import { ShieldCheck } from "lucide-react";
 
-const AyatBar = () => (
-  <div style={{
-    background: 'linear-gradient(90deg, #007c8a 0%, #00bcd4 40%, #00bcd4 60%, #007c8a 100%)',
-    borderBottom: '2px solid #005f6e',
-    padding: '10px 32px',
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: '5px',
-  }}>
-
-    {/* TOP ROW — Arabic Ayat (largest, most prominent) */}
-    <div className="ayat-bar-arabic" style={{
-      fontFamily: "'Amiri Quran', serif",
-      fontSize: '18px',
-      color: '#ffffff',
-      direction: 'rtl',
-      textAlign: 'center',
-      lineHeight: '2',
-      letterSpacing: '0.04em',
-      textShadow: '0 1px 4px rgba(0,0,0,0.25)',
-    }}>
-      مَّا كَانَ مُحَمَّدٌ أَبَآ أَحَدٍ مِّن رِّجَالِكُمْ وَلَٰكِن رَّسُولَ ٱللَّهِ وَخَاتَمَ ٱلنَّبِيِّينَ ۗ
-    </div>
-
-    {/* Thin divider line */}
-    <div style={{
-      width: '320px',
-      height: '1px',
-      background: 'rgba(255,255,255,0.25)',
-    }}/>
-
-    {/* BOTTOM ROW — Urdu + Reference side by side */}
-    <div style={{
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: '18px',
-      flexWrap: 'wrap',
-    }}>
-      <span className="ayat-bar-urdu" style={{
-        fontFamily: "'Noto Nastaliq Urdu', serif",
-        fontSize: '13px',
-        color: 'rgba(255,255,255,0.90)',
-        direction: 'rtl',
-        lineHeight: '2',
-        textAlign: 'right',
-      }}>
-        محمد ﷺ تم مردوں میں سے کسی کے باپ نہیں، بلکہ اللہ کے رسول اور تمام نبیوں کے خاتم ہیں
-      </span>
-
-      <span style={{
-        width: '1px',
-        height: '16px',
-        background: 'rgba(255,255,255,0.30)',
-        display: 'inline-block',
-        flexShrink: 0,
-      }}/>
-
-      <span className="ayat-bar-ref" style={{
-        fontFamily: "'Inter', sans-serif",
-        fontSize: '11px',
-        color: 'rgba(255,255,255,0.75)',
-        letterSpacing: '0.07em',
-        fontWeight: '500',
-        whiteSpace: 'nowrap',
-      }}>
-        Surah Al-Ahzab · 33:40
-      </span>
-    </div>
-
-  </div>
-);
-
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const [activeSection, setActiveSection] = useState("");
@@ -191,9 +116,7 @@ export default function Navbar() {
   `;
 
   return (
-    <>
-    <AyatBar />
-    <nav className="bg-white/90 backdrop-blur-md shadow-sm sticky top-0 z-50 transition-all duration-300">
+    <nav className="bg-white/90 backdrop-blur-md shadow-sm sticky site-navbar-below-verse z-50 transition-all duration-300">
       <div className="max-w-7xl mx-auto flex justify-between items-center py-4 px-6 md:px-10">
 
         {/* Logo */}
@@ -294,6 +217,5 @@ export default function Navbar() {
 
       </div>
     </nav>
-    </>
   );
 }

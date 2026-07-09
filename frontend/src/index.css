@@ -382,9 +382,57 @@ table {
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
 }
 
-/* ─── AyatBar mobile ─────────────────────────────────────── */
+/* ─── Top verse announcement bar ─────────────────────────── */
+.top-verse-bar {
+  position: sticky;
+  top: 0;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  padding: 5px 20px;
+  min-height: 36px;
+  background: linear-gradient(90deg, #00bcd4 0%, #0097a7 100%);
+  border-bottom: 1px solid rgba(0, 80, 90, 0.35);
+  text-align: center;
+}
+
+.top-verse-bar-arabic {
+  margin: 0;
+  font-family: "Amiri Quran", "Amiri", serif;
+  font-size: 13px;
+  line-height: 1.45;
+  color: #ffffff;
+  direction: rtl;
+  letter-spacing: 0.02em;
+}
+
+.top-verse-bar-urdu {
+  margin: 0;
+  font-family: "Noto Nastaliq Urdu", "Jameel Noori Nastaleeq", serif;
+  font-size: 11px;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.92);
+  direction: rtl;
+}
+
+.site-navbar-below-verse {
+  top: var(--top-verse-bar-height, 48px);
+}
+
 @media (max-width: 640px) {
-  .ayat-bar-urdu { display: none !important; }
-  .ayat-bar-ref { display: none !important; }
-  .ayat-bar-arabic { font-size: 14px !important; }
+  .top-verse-bar {
+    padding: 4px 12px;
+  }
+
+  .top-verse-bar-urdu {
+    display: none;
+  }
+
+  .top-verse-bar-arabic {
+    font-size: 11px;
+    line-height: 1.4;
+  }
 }

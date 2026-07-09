@@ -15,6 +15,7 @@ import MemberLogin from './pages/MemberLogin';
 import ResetPassword from './pages/ResetPassword';
 import MemberVerification from './pages/MemberVerification';
 import FloatingWhatsApp from './components/FloatingWhatsApp';
+import TopVerseBar from './components/TopVerseBar';
 import BlogsPage from './pages/BlogsPage';
 import TermsPage from './pages/TermsPage';
 
@@ -23,6 +24,7 @@ function App() {
 
   return (
     <Router>
+      <TopVerseBar />
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/reset-password/:token" element={<ResetPassword />} />
