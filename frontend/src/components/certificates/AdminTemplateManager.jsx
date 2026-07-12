@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { getImgUrl, withMultipartAuth } from '../../api';
 import ZoneCalibrator from './ZoneCalibrator';
 import { clearCertificateImageCache } from '../../utils/canvasEngine';
+import { isPdfFile, pdfFileToPngFile } from '../../utils/pdfToImage';
 
 function TemplateUploadCard({
   title,
@@ -32,7 +33,7 @@ function TemplateUploadCard({
       <input
         ref={fileRef}
         type="file"
-        accept=".png,.jpg,.jpeg,image/png,image/jpeg"
+        accept=".png,.jpg,.jpeg,.pdf,image/png,image/jpeg,application/pdf"
         className="hidden"
         onChange={(e) => onPickFile(e.target.files?.[0])}
       />
@@ -62,8 +63,8 @@ function TemplateUploadCard({
           </>
         ) : (
           <>
-            <p className="text-sm font-bold text-[#005f6e]">Click to choose PNG/JPEG</p>
-            <p className="text-[10px] text-slate-400 mt-1 uppercase tracking-widest font-bold">Max 15MB · Or drag & drop</p>
+            <p className="text-sm font-bold text-[#005f6e]">Click to choose PNG, JPEG, or PDF</p>
+            <p className="text-[10px] text-slate-400 mt-1 uppercase tracking-widest font-bold">PDF uses page 1 · Max 15MB</p>
           </>
         )}
       </button>
@@ -255,29 +256,43 @@ export default function AdminTemplateManager({ auth, notify, api }) {
     return () => { cancelled = true; };
   }, [api, auth]);
 
-  const pickFile = (kind, file) => {
+  const pickFile = async (kind, file) => {
     if (!file) return;
-    const okType =
+    const isImage =
       file.type === 'image/png'
       || file.type === 'image/jpeg'
       || file.type === 'image/jpg'
       || /\.(png|jpe?g)$/i.test(file.name);
-    if (!okType) {
-      notify('Only PNG and JPEG images are accepted.', 'error');
+    const isPdf = isPdfFile(file);
+    if (!isImage && !isPdf) {
+      notify('Only PNG, JPEG, or PDF files are accepted.', 'error');
       return;
     }
     if (file.size > 15 * 1024 * 1024) {
-      notify('Image must be under 15MB.', 'error');
+      notify('File must be under 15MB.', 'error');
       return;
     }
+
+    let readyFile = file;
+    try {
+      if (isPdf) {
+        notify('Converting PDF page 1 to image…');
+        readyFile = await pdfFileToPngFile(file);
+      }
+    } catch (err) {
+      console.error(err);
+      notify(err.message || 'Could not read PDF. Try exporting as PNG.', 'error');
+      return;
+    }
+
     if (kind === 'membership') {
       if (membershipPreview) URL.revokeObjectURL(membershipPreview);
-      setMembershipFile(file);
-      setMembershipPreview(URL.createObjectURL(file));
+      setMembershipFile(readyFile);
+      setMembershipPreview(URL.createObjectURL(readyFile));
     } else {
       if (generalPreview) URL.revokeObjectURL(generalPreview);
-      setGeneralFile(file);
-      setGeneralPreview(URL.createObjectURL(file));
+      setGeneralFile(readyFile);
+      setGeneralPreview(URL.createObjectURL(readyFile));
     }
   };
 
@@ -354,7 +369,11 @@ export default function AdminTemplateManager({ auth, notify, api }) {
         prev.map((t) => {
           const tKind = (t.kind || 'general') === 'membership' ? 'membership' : 'general';
           if (tKind !== kind) return t;
-          return { ...t, isActive: String(t._id) === idStr };
+          return {
+            ...t,
+            kind: tKind,
+            isActive: String(t._id) === idStr,
+          };
         })
       );
       await refreshTemplates();

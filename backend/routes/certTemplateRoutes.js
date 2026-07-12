@@ -130,9 +130,41 @@ router.post('/upload', authMiddleware, isAdmin, uploadMiddleware, async (req, re
   }
 });
 
+async function enforceSingleActivePerKind() {
+  const membershipActives = await CertTemplate.find({ kind: 'membership', isActive: true })
+    .sort({ uploadedAt: -1 })
+    .select('_id');
+  if (membershipActives.length > 1) {
+    const keep = membershipActives[0]._id;
+    await CertTemplate.updateMany(
+      { kind: 'membership', isActive: true, _id: { $ne: keep } },
+      { $set: { isActive: false } }
+    );
+  }
+
+  const generalActives = await CertTemplate.find({
+    isActive: true,
+    $or: [{ kind: 'general' }, { kind: { $exists: false } }, { kind: null }],
+  })
+    .sort({ uploadedAt: -1 })
+    .select('_id');
+  if (generalActives.length > 1) {
+    const keep = generalActives[0]._id;
+    await CertTemplate.updateMany(
+      {
+        isActive: true,
+        _id: { $ne: keep },
+        $or: [{ kind: 'general' }, { kind: { $exists: false } }, { kind: null }],
+      },
+      { $set: { isActive: false, kind: 'general' } }
+    );
+  }
+}
+
 // GET /api/cert-templates — admin list
 router.get('/', authMiddleware, isAdmin, async (req, res) => {
   try {
+    await enforceSingleActivePerKind();
     const templates = await CertTemplate.find()
       .sort({ kind: 1, isActive: -1, uploadedAt: -1 })
       .select('name fileUrl isActive calibrated uploadedAt kind');
@@ -237,13 +269,46 @@ router.put('/:id/activate', authMiddleware, isAdmin, async (req, res) => {
 
     const kind = exists.kind === 'membership' ? 'membership' : 'general';
 
-    // Only deactivate other templates of the same kind (both kinds can be active)
-    await CertTemplate.updateMany({ kind }, { $set: { isActive: false } });
+    // Deactivate every peer of this kind (include legacy docs with missing kind as "general")
+    if (kind === 'membership') {
+      await CertTemplate.updateMany(
+        { kind: 'membership' },
+        { $set: { isActive: false } }
+      );
+    } else {
+      await CertTemplate.updateMany(
+        {
+          $or: [
+            { kind: 'general' },
+            { kind: { $exists: false } },
+            { kind: null },
+          ],
+        },
+        { $set: { isActive: false, kind: 'general' } }
+      );
+    }
+
     const doc = await CertTemplate.findByIdAndUpdate(
       id,
       { $set: { isActive: true, kind } },
       { new: true }
     );
+
+    // Hard guarantee: only this template is active for its kind
+    if (kind === 'membership') {
+      await CertTemplate.updateMany(
+        { kind: 'membership', _id: { $ne: doc._id } },
+        { $set: { isActive: false } }
+      );
+    } else {
+      await CertTemplate.updateMany(
+        {
+          _id: { $ne: doc._id },
+          $or: [{ kind: 'general' }, { kind: { $exists: false } }, { kind: null }],
+        },
+        { $set: { isActive: false, kind: 'general' } }
+      );
+    }
 
     let membersGranted = 0;
     if (kind === 'membership') {
