@@ -79,12 +79,29 @@ function detectZones(imageWidth = 2048, imageHeight = 1436) {
   };
 }
 
-/** Deep-merge stored zones with defaults so older templates get new keys. */
-function mergeZonesWithDefaults(storedZones, canvasWidth = 2048, canvasHeight = 1436) {
+/**
+ * Merge stored zones with defaults.
+ * - Uncalibrated / empty: return full default set
+ * - Calibrated: keep ONLY keys admin saved (do not re-add removed fields)
+ */
+function mergeZonesWithDefaults(storedZones, canvasWidth = 2048, canvasHeight = 1436, calibrated = false) {
   const defaults = detectZones(canvasWidth, canvasHeight);
+  if (!storedZones || typeof storedZones !== 'object' || Object.keys(storedZones).length === 0) {
+    return defaults;
+  }
+
+  if (calibrated) {
+    const out = {};
+    for (const key of Object.keys(storedZones)) {
+      out[key] = { ...(defaults[key] || {}), ...storedZones[key] };
+    }
+    return out;
+  }
+
   const out = {};
-  for (const key of Object.keys(defaults)) {
-    out[key] = { ...defaults[key], ...(storedZones?.[key] || {}) };
+  const keys = new Set([...Object.keys(defaults), ...Object.keys(storedZones)]);
+  for (const key of keys) {
+    out[key] = { ...(defaults[key] || {}), ...(storedZones[key] || {}) };
   }
   return out;
 }

@@ -163,7 +163,7 @@ router.get('/active-config', authMiddleware, async (req, res) => {
       template: {
         _id: template._id,
         fileUrl: `/api/cert-templates/${template._id}/image`,
-        zones: mergeZonesWithDefaults(template.zones, template.canvasWidth, template.canvasHeight),
+        zones: mergeZonesWithDefaults(template.zones, template.canvasWidth, template.canvasHeight, template.calibrated),
         canvasWidth: template.canvasWidth,
         canvasHeight: template.canvasHeight,
         name: template.name,
@@ -209,7 +209,7 @@ router.get('/:id', authMiddleware, isAdmin, async (req, res) => {
     if (!doc) return res.status(404).json({ error: 'Template not found.' });
     const obj = doc.toObject();
     obj.imageUrl = `/api/cert-templates/${doc._id}/image`;
-    obj.zones = mergeZonesWithDefaults(obj.zones, obj.canvasWidth, obj.canvasHeight);
+    obj.zones = mergeZonesWithDefaults(obj.zones, obj.canvasWidth, obj.canvasHeight, obj.calibrated);
     return res.json(obj);
   } catch (error) {
     console.error('Cert template get error:', error);
@@ -242,7 +242,12 @@ router.put('/:id/zones', authMiddleware, isAdmin, async (req, res) => {
       { new: true }
     );
     if (!doc) return res.status(404).json({ error: 'Template not found.' });
-    return res.json(doc);
+    // Persist exactly what admin saved (including removed fields)
+    return res.json({
+      ...doc.toObject(),
+      imageUrl: `/api/cert-templates/${doc._id}/image`,
+      zones: doc.zones,
+    });
   } catch (error) {
     console.error('Cert template zones error:', error);
     res.status(500).json({ error: 'Failed to save zones.' });

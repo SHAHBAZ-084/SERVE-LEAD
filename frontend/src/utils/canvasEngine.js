@@ -149,13 +149,18 @@ export async function renderCertificateDataUrl({ template, member, scale = 1 }) 
   const serif = "'Playfair Display', 'Times New Roman', serif";
   const sans = "'Inter', 'Helvetica Neue', sans-serif";
 
-  // Order: erase+draw each field in layout order (no mutual overwrite of zones)
-  drawZoneText(ctx, lines.date, zones.date, sans);
-  drawZoneText(ctx, lines.name, zones.name, serif);
-  drawZoneText(ctx, lines.mobile, zones.mobile, sans);
-  drawZoneText(ctx, lines.memberId, zones.memberId, sans);
-  drawZoneText(ctx, lines.joiningYear, zones.joiningYear, sans);
-  drawZoneText(ctx, lines.membershipStatus, zones.membershipStatus, sans);
+  // Draw only zones the admin kept on this template (order preserved)
+  const drawOrder = ['date', 'name', 'mobile', 'memberId', 'joiningYear', 'membershipStatus'];
+  for (const key of drawOrder) {
+    if (!zones[key]) continue;
+    const font = key === 'name' ? serif : sans;
+    drawZoneText(ctx, lines[key], zones[key], font);
+  }
+  // Any extra custom keys (future) — skip if no member line mapping
+  for (const key of Object.keys(zones)) {
+    if (drawOrder.includes(key)) continue;
+    if (lines[key] != null) drawZoneText(ctx, lines[key], zones[key], sans);
+  }
 
   return canvas.toDataURL('image/png');
 }

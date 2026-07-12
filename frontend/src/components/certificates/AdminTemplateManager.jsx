@@ -252,6 +252,9 @@ export default function AdminTemplateManager({ auth, notify, api }) {
         <h3 className="text-sm font-black uppercase tracking-widest text-[#002147]">
           Certificate Templates
         </h3>
+        <p className="text-xs text-slate-500">
+          Upload as many templates as you need. Activate one for members — others stay saved.
+        </p>
         {loading ? (
           <div className="flex justify-center py-10">
             <div className="w-8 h-8 border-3 border-[#00bcd4] border-t-transparent rounded-full animate-spin" style={{ borderWidth: '3px' }} />
@@ -324,6 +327,8 @@ export default function AdminTemplateManager({ auth, notify, api }) {
         <ZoneCalibrator
           templateUrl={calibratorDoc._previewObjectUrl || getImgUrl(calibratorDoc.imageUrl || `/api/cert-templates/${calibratorDoc._id}/image`)}
           zones={calibratorDoc.zones}
+          canvasWidth={calibratorDoc.canvasWidth || 2048}
+          canvasHeight={calibratorDoc.canvasHeight || 1436}
           onSave={async (newZones) => {
             try {
               await api.put(`cert-templates/${previewId}/zones`, { zones: newZones }, auth);
