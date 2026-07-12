@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { getImgUrl, withMultipartAuth } from '../../api';
 import ZoneCalibrator from './ZoneCalibrator';
-import { clearCertificateImageCache } from '../../utils/canvasEngine';
+import { clearCertificateImageCache, renderCertificateDataUrl } from '../../utils/canvasEngine';
 import { isPdfFile, pdfFileToPngFile } from '../../utils/pdfToImage';
+import { PREVIEW_SAMPLE_TEXT } from '../../utils/certZoneTools';
 
 function TemplateUploadCard({
   title,
@@ -95,7 +96,9 @@ function TemplateList({
   templates,
   loading,
   activatingId,
+  previewingId,
   onCalibrate,
+  onPreview,
   onActivate,
   onDelete,
   activateLabel,
@@ -117,6 +120,7 @@ function TemplateList({
             const idStr = String(t._id);
             const isActive = !!t.isActive;
             const isActivating = activatingId === idStr;
+            const isPreviewing = previewingId === idStr;
             return (
               <div
                 key={idStr}
@@ -157,6 +161,14 @@ function TemplateList({
                     className="px-3 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest bg-white border border-slate-200 text-slate-600 hover:border-[#00bcd4] hover:text-[#0097a7]"
                   >
                     Calibrate Zones
+                  </button>
+                  <button
+                    type="button"
+                    disabled={isPreviewing}
+                    onClick={() => onPreview(t)}
+                    className="px-3 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest bg-slate-900 text-white hover:bg-slate-800 disabled:opacity-50"
+                  >
+                    {isPreviewing ? 'Loading…' : 'Preview'}
                   </button>
                   <button
                     type="button"
@@ -203,6 +215,10 @@ export default function AdminTemplateManager({ auth, notify, api }) {
   const [loading, setLoading] = useState(true);
   const [listError, setListError] = useState(null);
   const [activatingId, setActivatingId] = useState(null);
+  const [previewingId, setPreviewingId] = useState(null);
+  const [showTemplatePreview, setShowTemplatePreview] = useState(false);
+  const [templatePreviewUrl, setTemplatePreviewUrl] = useState(null);
+  const [templatePreviewName, setTemplatePreviewName] = useState('');
   const membershipFileRef = useRef(null);
   const generalFileRef = useRef(null);
 
@@ -395,6 +411,39 @@ export default function AdminTemplateManager({ auth, notify, api }) {
     }
   };
 
+  const handlePreview = async (t) => {
+    const idStr = String(t._id);
+    setPreviewingId(idStr);
+    setTemplatePreviewUrl(null);
+    setTemplatePreviewName(t.name || 'Template');
+    try {
+      const full = await api.get(`cert-templates/${idStr}`, auth);
+      const template = {
+        fileUrl: getImgUrl(full.data.imageUrl || `/api/cert-templates/${idStr}/image`),
+        zones: full.data.zones,
+        canvasWidth: full.data.canvasWidth || 2048,
+        canvasHeight: full.data.canvasHeight || 1436,
+      };
+      const member = {
+        name: PREVIEW_SAMPLE_TEXT.name,
+        memberId: PREVIEW_SAMPLE_TEXT.memberId,
+        approvedAt: new Date().toISOString(),
+        city: 'Lahore',
+        mobile: PREVIEW_SAMPLE_TEXT.mobile,
+        joiningYear: PREVIEW_SAMPLE_TEXT.joiningYear,
+        membershipStatus: PREVIEW_SAMPLE_TEXT.membershipStatus,
+      };
+      const dataUrl = await renderCertificateDataUrl({ template, member, scale: 0.55 });
+      setTemplatePreviewUrl(dataUrl);
+      setShowTemplatePreview(true);
+    } catch (err) {
+      console.error(err);
+      notify(err.response?.data?.error || err.message || 'Preview failed. Calibrate zones first.', 'error');
+    } finally {
+      setPreviewingId(null);
+    }
+  };
+
   const handleDelete = async (id) => {
     if (!window.confirm('Delete this template?')) return;
     try {
@@ -431,11 +480,13 @@ export default function AdminTemplateManager({ auth, notify, api }) {
 
       <TemplateList
         title="Membership Templates"
-        hint="Activate one membership template to auto-post it for every member."
+        hint="Preview with sample data, then Post to Members to auto-send to every approved member."
         templates={membershipTemplates}
         loading={loading}
         activatingId={activatingId}
+        previewingId={previewingId}
         onCalibrate={openCalibrator}
+        onPreview={handlePreview}
         onActivate={handleActivate}
         onDelete={handleDelete}
         activateLabel="Post to Members"
@@ -458,16 +509,66 @@ export default function AdminTemplateManager({ auth, notify, api }) {
 
       <TemplateList
         title="Issue Templates"
-        hint="Activate the template you will use for the next admin Issue (preview + issue to selected members)."
+        hint="Preview the layout, then Activate for the next admin Issue."
         templates={generalTemplates}
         loading={loading}
         activatingId={activatingId}
+        previewingId={previewingId}
         onCalibrate={openCalibrator}
+        onPreview={handlePreview}
         onActivate={handleActivate}
         onDelete={handleDelete}
         activateLabel="Activate for Issue"
         activeBadge="Active — ready to issue"
       />
+
+      {showTemplatePreview && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+            onClick={() => { setShowTemplatePreview(false); setTemplatePreviewUrl(null); }}
+          />
+          <div className="relative bg-white rounded-[32px] shadow-2xl flex flex-col max-h-[96vh] w-full max-w-5xl overflow-hidden">
+            <div className="flex justify-between items-center px-8 py-5 border-b border-slate-100">
+              <div>
+                <h3 className="text-[#002147] text-base font-black uppercase tracking-tight">Template Preview</h3>
+                <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">
+                  {templatePreviewName} · sample member data
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => { setShowTemplatePreview(false); setTemplatePreviewUrl(null); }}
+                className="w-10 h-10 rounded-full hover:bg-slate-100 text-slate-400"
+              >
+                <i className="fas fa-times" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-auto p-6 sm:p-10 bg-slate-50/50">
+              {templatePreviewUrl ? (
+                <img
+                  src={templatePreviewUrl}
+                  alt="Template preview"
+                  className="w-full max-w-4xl mx-auto rounded-lg shadow-xl border border-slate-200"
+                />
+              ) : (
+                <div className="py-20 text-center text-slate-400 text-sm font-bold uppercase tracking-widest">
+                  Loading…
+                </div>
+              )}
+            </div>
+            <div className="px-8 py-5 border-t border-slate-100 flex justify-end">
+              <button
+                type="button"
+                onClick={() => { setShowTemplatePreview(false); setTemplatePreviewUrl(null); }}
+                className="px-8 py-3.5 bg-[#002147] text-white rounded-xl text-[11px] font-black uppercase tracking-widest"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showCalibrator && calibratorDoc && (
         <ZoneCalibrator
