@@ -57,14 +57,22 @@ export default function TeamSection({ memberData = "none", hide = false }) {
             {displayTeam.map((member, idx) => (
               <div
                 key={idx}
-                className={`${idx % 2 === 0 ? "reveal-left" : "reveal-right"} delay-${(idx + 1) * 100} flex flex-col ${idx % 2 === 0 ? "md:flex-row" : "md:flex-row-reverse"} items-stretch bg-white rounded-[2.5rem] md:rounded-[3rem] shadow-2xl shadow-slate-200/50 overflow-hidden card-hover border border-slate-100`}
+                className={`${idx % 2 === 0 ? "reveal-left" : "reveal-right"} delay-${(idx + 1) * 100} grid grid-cols-1 ${
+                  idx % 2 === 0
+                    ? "md:grid-cols-[minmax(0,32%)_minmax(0,1fr)]"
+                    : "md:grid-cols-[minmax(0,1fr)_minmax(0,32%)]"
+                } bg-white rounded-[2.5rem] md:rounded-[3rem] shadow-2xl shadow-slate-200/50 overflow-hidden card-hover border border-slate-100`}
               >
-                {/* Image Section - edge-to-edge, no white padding around photo */}
-                <div className="w-full md:w-[35%] lg:w-[30%] flex-shrink-0 overflow-hidden bg-slate-100 relative aspect-[4/5] md:aspect-auto md:min-h-full">
+                {/* Image — full height of card, flush to edges */}
+                <div
+                  className={`relative w-full min-h-[320px] md:min-h-0 md:h-full overflow-hidden bg-slate-200 ${
+                    idx % 2 !== 0 ? "md:col-start-2 md:row-start-1" : ""
+                  }`}
+                >
                   <img
                     src={getImgUrl(member.img)}
                     alt={member.name}
-                    className="absolute inset-0 w-full h-full object-cover object-top hover:scale-105 transition-transform duration-1000"
+                    className="absolute inset-0 block h-full w-full object-cover object-center hover:scale-105 transition-transform duration-1000"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-slate-900/60 via-transparent to-transparent block md:hidden" />
                   <div className="absolute bottom-6 left-6 block md:hidden">
@@ -85,7 +93,9 @@ export default function TeamSection({ memberData = "none", hide = false }) {
                 </div>
 
                 {/* Content Section - Refined Proportions */}
-                <div className="w-full md:w-[65%] lg:w-[70%] p-8 md:p-14 text-center md:text-left flex flex-col justify-center">
+                <div className={`w-full p-8 md:p-14 text-center md:text-left flex flex-col justify-center ${
+                  idx % 2 !== 0 ? "md:col-start-1 md:row-start-1" : ""
+                }`}>
                   <div className="hidden md:flex flex-col md:flex-row md:items-center gap-3 mb-6">
                     <div className="flex items-center gap-2 self-center md:self-start">
                       <span className="inline-block bg-cyan-50 text-cyan-600 text-[10px] font-black tracking-widest uppercase px-5 py-2 rounded-full border border-cyan-100">
@@ -147,15 +157,22 @@ export default function TeamSection({ memberData = "none", hide = false }) {
               {activeCategory.members.map((member, idx) => (
                 <div
                   key={member.id}
-                  className={`${idx % 2 === 0 ? "reveal-left" : "reveal-right"} delay-${(idx + 1) * 100} flex flex-col ${idx % 2 === 0 ? "md:flex-row-reverse" : "md:flex-row"
-                    } items-stretch bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/40 overflow-hidden card-hover border border-slate-100`}
+                  className={`${idx % 2 === 0 ? "reveal-left" : "reveal-right"} delay-${(idx + 1) * 100} grid grid-cols-1 ${
+                    idx % 2 === 0
+                      ? "md:grid-cols-[minmax(0,1fr)_minmax(0,33%)]"
+                      : "md:grid-cols-[minmax(0,33%)_minmax(0,1fr)]"
+                  } bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/40 overflow-hidden card-hover border border-slate-100`}
                 >
-                  <div className="w-full md:w-1/3 flex-shrink-0 overflow-hidden bg-slate-100 relative aspect-[4/5] md:aspect-auto md:min-h-full">
+                  <div
+                    className={`relative w-full min-h-[280px] md:min-h-0 md:h-full overflow-hidden bg-slate-200 ${
+                      idx % 2 === 0 ? "md:col-start-2 md:row-start-1" : ""
+                    }`}
+                  >
                     {member.img ? (
                       <img
                         src={getImgUrl(member.img)}
                         alt={member.name}
-                        className="absolute inset-0 w-full h-full object-cover object-top hover:scale-105 transition-transform duration-1000"
+                        className="absolute inset-0 block h-full w-full object-cover object-center hover:scale-105 transition-transform duration-1000"
                       />
                     ) : (
                       <div className="absolute inset-0 flex items-center justify-center bg-slate-50 text-slate-200 text-5xl">
@@ -164,7 +181,9 @@ export default function TeamSection({ memberData = "none", hide = false }) {
                     )}
                   </div>
 
-                  <div className="w-full md:w-2/3 p-8 md:p-10 text-center md:text-left flex flex-col justify-center">
+                  <div className={`w-full p-8 md:p-10 text-center md:text-left flex flex-col justify-center ${
+                    idx % 2 === 0 ? "md:col-start-1 md:row-start-1" : ""
+                  }`}>
                     <span className="inline-block bg-cyan-50 text-cyan-600 text-[9px] font-black tracking-widest uppercase px-4 py-1.5 rounded-full mb-3 self-center md:self-start border border-cyan-100 w-fit">
                       {member.role}
                     </span>
