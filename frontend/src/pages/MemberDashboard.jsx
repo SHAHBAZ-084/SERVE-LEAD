@@ -731,6 +731,14 @@ const MemberDashboard = () => {
         return (
         <div className="animate-fade-up space-y-6">
 
+            <div className="bg-white rounded-[2rem] border border-teal-100 p-6 sm:p-8 shadow-sm">
+                <h3 className="text-lg font-black text-[#005f6e] mb-1">Membership Certificate</h3>
+                <p className="text-xs text-slate-400 font-medium mb-2">
+                    Download your official SLS membership certificate.
+                </p>
+                <CertificateButton />
+            </div>
+
             {membershipCert && (
                 <div className="bg-gradient-to-br from-[#002147] to-[#0d3b66] p-8 rounded-[2rem] shadow-2xl shadow-blue-900/30 border border-[#c8a951]/30 relative overflow-hidden">
                     <div className="absolute top-0 right-0 w-48 h-48 bg-[#1ba3e0]/10 blur-3xl -mr-16 -mt-16" />
@@ -1197,8 +1205,6 @@ const MemberDashboard = () => {
                     </div>
                 ))}
             </div>
-
-            <CertificateButton />
 
             {/* Disclaimer */}
             <div className="bg-amber-50/50 border border-amber-100 rounded-3xl p-6 flex items-start gap-4">

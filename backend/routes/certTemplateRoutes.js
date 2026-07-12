@@ -1,38 +1,13 @@
 const express = require('express');
 const router = express.Router();
-const path = require('path');
-const fs = require('fs');
-const multer = require('multer');
 const CertTemplate = require('../models/CertTemplate');
 const Member = require('../models/Member');
 const authMiddleware = require('../middlewares/authMiddleware');
 const { isAdmin } = require('../middlewares/adminMiddlewares');
 const { detectZones } = require('../utils/certZoneDetector');
+const { createUpload, getFileUrl, deleteFile } = require('../utils/storage');
 
-const uploadDir = path.join(__dirname, '..', 'uploads', 'cert-templates');
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
-}
-
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, uploadDir),
-  filename: (req, file, cb) => {
-    const sanitized = file.originalname.replace(/[^a-zA-Z0-9.]/g, '_');
-    cb(null, `${Date.now()}-${sanitized}`);
-  },
-});
-
-const upload = multer({
-  storage,
-  limits: { fileSize: 15 * 1024 * 1024 },
-  fileFilter: (req, file, cb) => {
-    if (file.mimetype === 'image/png' || file.mimetype === 'image/jpeg') {
-      cb(null, true);
-    } else {
-      cb(new Error('Only PNG and JPEG accepted'));
-    }
-  },
-});
+const upload = createUpload('cert-templates', 15 * 1024 * 1024);
 
 const uploadMiddleware = (req, res, next) => {
   upload.single('template')(req, res, (err) => {
@@ -53,7 +28,7 @@ router.post('/upload', authMiddleware, isAdmin, uploadMiddleware, async (req, re
       return res.status(400).json({ error: 'No template file uploaded.' });
     }
 
-    const fileUrl = `/uploads/cert-templates/${req.file.filename}`;
+    const fileUrl = getFileUrl(req.file, 'cert-templates');
     const zones = detectZones(2048, 1436);
     const doc = await CertTemplate.create({
       name: req.body.name || 'Untitled',
@@ -182,16 +157,7 @@ router.delete('/:id', authMiddleware, isAdmin, async (req, res) => {
       return res.status(400).json({ error: 'Deactivate this template before deleting.' });
     }
 
-    const relativePath = String(doc.fileUrl || '').replace(/^\//, '');
-    const fullPath = path.join(__dirname, '..', relativePath);
-    if (relativePath.startsWith('uploads' + path.sep) || relativePath.startsWith('uploads/')) {
-      try {
-        if (fs.existsSync(fullPath)) fs.unlinkSync(fullPath);
-      } catch (unlinkErr) {
-        console.error('Cert template file unlink error:', unlinkErr);
-      }
-    }
-
+    await deleteFile(doc.fileUrl);
     await CertTemplate.findByIdAndDelete(req.params.id);
     return res.json({ message: 'Deleted' });
   } catch (error) {

@@ -55,7 +55,10 @@ export default function AdminTemplateManager({ auth, notify, api }) {
   };
 
   const handleUpload = async () => {
-    if (!fileInput) return;
+    if (!fileInput) {
+      notify('Please select a PNG or JPEG file first.', 'error');
+      return;
+    }
     setUploading(true);
     try {
       const fd = new FormData();
@@ -70,7 +73,15 @@ export default function AdminTemplateManager({ auth, notify, api }) {
       await openCalibrator(r.data._id || r.data.templateId);
     } catch (err) {
       console.error(err);
-      notify(err.response?.data?.error || 'Upload failed', 'error');
+      const status = err.response?.status;
+      const msg =
+        err.response?.data?.error
+        || (status === 404 ? 'Upload route not found. Redeploy the backend.' : null)
+        || (status === 403 ? 'Admin access required.' : null)
+        || (status === 401 ? 'Session expired. Log in again.' : null)
+        || err.message
+        || 'Upload failed';
+      notify(msg, 'error');
     } finally {
       setUploading(false);
     }
