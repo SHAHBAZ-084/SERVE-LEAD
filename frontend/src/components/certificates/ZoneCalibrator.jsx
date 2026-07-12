@@ -6,33 +6,23 @@ import {
   createDefaultZone,
   autoDetectAllZoneStyles,
   sampleZoneStyleFromImage,
+  samplePixelAt,
+  hexToRgb,
+  PREVIEW_SAMPLE_TEXT,
 } from '../../utils/certZoneTools';
 
 const CANVAS_W = 2048;
 const CANVAS_H = 1436;
 
-function boxStyle(zone, color, selected) {
+function boxGeometry(zone) {
   const w = zone.maxWidth || 200;
   const h = Math.max(zone.maxHeight || 40, 28);
-  let leftPct;
-  if (zone.align === 'center') leftPct = ((zone.x - w / 2) / CANVAS_W) * 100;
-  else if (zone.align === 'right') leftPct = ((zone.x - w) / CANVAS_W) * 100;
-  else leftPct = (zone.x / CANVAS_W) * 100;
-  const topPct = ((zone.y - h) / CANVAS_H) * 100;
-
-  return {
-    position: 'absolute',
-    left: `${leftPct}%`,
-    top: `${topPct}%`,
-    width: `${(w / CANVAS_W) * 100}%`,
-    height: `${(h / CANVAS_H) * 100}%`,
-    border: selected ? `2px solid ${color}` : `2px dashed ${color}`,
-    background: `${color}22`,
-    cursor: 'move',
-    userSelect: 'none',
-    boxSizing: 'border-box',
-    zIndex: selected ? 5 : 2,
-  };
+  let left;
+  if (zone.align === 'center') left = zone.x - w / 2;
+  else if (zone.align === 'right') left = zone.x - w;
+  else left = zone.x;
+  const top = zone.y - h;
+  return { left, top, w, h };
 }
 
 export default function ZoneCalibrator({
@@ -50,7 +40,11 @@ export default function ZoneCalibrator({
   const [detecting, setDetecting] = useState(false);
   const [activeKey, setActiveKey] = useState(() => Object.keys(zones || {})[0] || 'name');
   const [addKey, setAddKey] = useState('');
+  const [showLivePreview, setShowLivePreview] = useState(true);
+  const [pickMode, setPickMode] = useState(null); // 'color' | 'erase' | null
+  const [lastSample, setLastSample] = useState(null);
   const imgRef = useRef(null);
+  const stageRef = useRef(null);
   const [imgReady, setImgReady] = useState(false);
 
   const zoneKeys = Object.keys(localZones);
@@ -58,7 +52,6 @@ export default function ZoneCalibrator({
 
   useEffect(() => {
     if (!imgReady || !imgRef.current) return;
-    // Auto-detect styles once when image loads (fill missing only)
     setDetecting(true);
     try {
       const next = autoDetectAllZoneStyles(
@@ -72,7 +65,7 @@ export default function ZoneCalibrator({
     } finally {
       setDetecting(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- run once when image becomes ready
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [imgReady]);
 
   const updateZoneField = (key, field, value) => {
@@ -87,8 +80,7 @@ export default function ZoneCalibrator({
     if (!key || localZones[key]) return;
     const zone = createDefaultZone(key, canvasWidth, canvasHeight, zoneKeys.length);
     if (imgRef.current) {
-      const sampled = sampleZoneStyleFromImage(imgRef.current, zone, canvasWidth, canvasHeight);
-      Object.assign(zone, sampled);
+      Object.assign(zone, sampleZoneStyleFromImage(imgRef.current, zone, canvasWidth, canvasHeight));
     }
     setLocalZones((prev) => ({ ...prev, [key]: zone }));
     setActiveKey(key);
@@ -122,20 +114,36 @@ export default function ZoneCalibrator({
     if (!imgRef.current) return;
     setDetecting(true);
     try {
-      const next = autoDetectAllZoneStyles(
-        imgRef.current,
-        localZones,
-        canvasWidth,
-        canvasHeight,
-        { overwrite: true }
+      setLocalZones(
+        autoDetectAllZoneStyles(imgRef.current, localZones, canvasWidth, canvasHeight, {
+          overwrite: true,
+        })
       );
-      setLocalZones(next);
     } finally {
       setDetecting(false);
     }
   };
 
+  const applySampleToActive = (target) => {
+    if (!lastSample || !activeKey || !localZones[activeKey]) return;
+    updateZoneField(activeKey, target === 'erase' ? 'eraseColor' : 'color', lastSample.hex);
+  };
+
+  const handleImageClick = (e) => {
+    if (!pickMode || !imgRef.current) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const rect = imgRef.current.getBoundingClientRect();
+    const sample = samplePixelAt(imgRef.current, rect, e.clientX, e.clientY, canvasWidth, canvasHeight);
+    setLastSample(sample);
+    if (activeKey && localZones[activeKey]) {
+      updateZoneField(activeKey, pickMode === 'erase' ? 'eraseColor' : 'color', sample.hex);
+    }
+    setPickMode(null);
+  };
+
   const startDrag = (e, key) => {
+    if (pickMode) return;
     if (e.target.dataset.resize) return;
     e.preventDefault();
     e.stopPropagation();
@@ -168,6 +176,7 @@ export default function ZoneCalibrator({
   };
 
   const startResize = (e, key) => {
+    if (pickMode) return;
     e.preventDefault();
     e.stopPropagation();
     setActiveKey(key);
@@ -212,6 +221,8 @@ export default function ZoneCalibrator({
   };
 
   const active = activeKey ? localZones[activeKey] : null;
+  const activeRgb = active ? hexToRgb(active.color) : null;
+  const eraseRgb = active ? hexToRgb(active.eraseColor) : null;
 
   return (
     <div className="fixed inset-0 bg-black/80 z-50 overflow-auto flex items-start justify-center p-3 sm:p-6">
@@ -220,7 +231,7 @@ export default function ZoneCalibrator({
           <div>
             <h3 className="text-lg font-bold text-slate-800">Calibrate Certificate Fields</h3>
             <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">
-              Add fields · Resize boxes · Auto color/font from template · Saved permanently
+              Eyedropper · Live preview · Resize · Save permanently
             </p>
           </div>
           <button type="button" onClick={onClose} className="text-slate-400 hover:text-slate-700 text-xl">
@@ -229,7 +240,6 @@ export default function ZoneCalibrator({
         </div>
 
         <div className="flex-1 overflow-auto p-4 sm:p-5 grid grid-cols-1 lg:grid-cols-5 gap-4">
-          {/* Left: field list + add form */}
           <div className="lg:col-span-2 space-y-4">
             <div className="bg-slate-50 rounded-2xl border border-slate-100 p-4 space-y-3">
               <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Add field box</p>
@@ -276,15 +286,14 @@ export default function ZoneCalibrator({
                     }`}
                   >
                     <span
-                      className="w-3 h-3 rounded-sm shrink-0"
-                      style={{ backgroundColor: ZONE_ACCENT[key] || '#64748b' }}
+                      className="w-3 h-3 rounded-sm shrink-0 border border-slate-200"
+                      style={{ backgroundColor: localZones[key]?.color || ZONE_ACCENT[key] }}
                     />
                     <span className="flex-1 text-sm font-bold text-slate-700">{getFieldLabel(key)}</span>
                     <button
                       type="button"
                       onClick={(e) => { e.stopPropagation(); removeZone(key); }}
                       className="text-rose-400 hover:text-rose-600 text-xs px-2"
-                      title="Remove"
                     >
                       <i className="fas fa-trash-alt" />
                     </button>
@@ -295,7 +304,7 @@ export default function ZoneCalibrator({
 
             {active && (
               <div className="bg-slate-50 rounded-2xl border border-slate-100 p-4 space-y-3">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
                   <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">
                     {getFieldLabel(activeKey)} settings
                   </p>
@@ -304,8 +313,72 @@ export default function ZoneCalibrator({
                     onClick={redetectActive}
                     className="text-[10px] font-bold uppercase tracking-widest text-[#0097a7] hover:underline"
                   >
-                    Re-detect from image
+                    Auto from box area
                   </button>
+                </div>
+
+                {/* Color sampler panel */}
+                <div className="bg-white rounded-xl border border-slate-200 p-3 space-y-3">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+                    Sample color from template
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setPickMode(pickMode === 'color' ? null : 'color')}
+                      className={`px-3 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest border ${
+                        pickMode === 'color'
+                          ? 'bg-[#002147] text-white border-[#002147]'
+                          : 'bg-white text-slate-600 border-slate-200'
+                      }`}
+                    >
+                      <i className="fas fa-eye-dropper mr-1" /> Pick text color
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPickMode(pickMode === 'erase' ? null : 'erase')}
+                      className={`px-3 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest border ${
+                        pickMode === 'erase'
+                          ? 'bg-amber-600 text-white border-amber-600'
+                          : 'bg-white text-slate-600 border-slate-200'
+                      }`}
+                    >
+                      <i className="fas fa-eye-dropper mr-1" /> Pick erase fill
+                    </button>
+                  </div>
+                  {pickMode && (
+                    <p className="text-[11px] text-[#0097a7] font-semibold">
+                      Click anywhere on the certificate image to sample RGB…
+                    </p>
+                  )}
+                  {lastSample && (
+                    <div className="flex items-center gap-3 p-2 rounded-lg bg-slate-50 border border-slate-100">
+                      <div
+                        className="w-12 h-12 rounded-lg border border-slate-200 shrink-0 shadow-inner"
+                        style={{ backgroundColor: lastSample.hex }}
+                      />
+                      <div className="text-xs font-mono text-slate-700 space-y-0.5">
+                        <p className="font-bold">{lastSample.hex.toUpperCase()}</p>
+                        <p>RGB({lastSample.r}, {lastSample.g}, {lastSample.b})</p>
+                      </div>
+                      <div className="ml-auto flex flex-col gap-1">
+                        <button
+                          type="button"
+                          onClick={() => applySampleToActive('color')}
+                          className="text-[9px] font-black uppercase tracking-widest text-[#002147] hover:underline"
+                        >
+                          → Text
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => applySampleToActive('erase')}
+                          className="text-[9px] font-black uppercase tracking-widest text-amber-700 hover:underline"
+                        >
+                          → Erase
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
@@ -335,8 +408,8 @@ export default function ZoneCalibrator({
                       className="mt-1 w-full bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-sm"
                     />
                   </label>
-                  <label className="text-xs text-slate-600 font-semibold">
-                    Font size
+                  <label className="text-xs text-slate-600 font-semibold col-span-2">
+                    Font size <span className="text-slate-400 font-normal">(also updates when you resize height)</span>
                     <input
                       type="number"
                       min={10}
@@ -358,63 +431,103 @@ export default function ZoneCalibrator({
                       <option value="right">Right</option>
                     </select>
                   </label>
-                  <label className="text-xs text-slate-600 font-semibold">
+                  <div className="text-xs text-slate-600 font-semibold">
                     Text color
-                    <input
-                      type="color"
-                      value={active.color || '#002147'}
-                      onChange={(e) => updateZoneField(activeKey, 'color', e.target.value)}
-                      className="mt-1 w-full h-9 cursor-pointer bg-white rounded-lg"
-                    />
-                  </label>
-                  <label className="text-xs text-slate-600 font-semibold">
+                    <div className="mt-1 flex items-center gap-2">
+                      <input
+                        type="color"
+                        value={active.color || '#002147'}
+                        onChange={(e) => updateZoneField(activeKey, 'color', e.target.value)}
+                        className="w-10 h-9 cursor-pointer bg-white rounded-lg"
+                      />
+                      <div className="font-mono text-[10px] text-slate-600 leading-tight">
+                        <div>{(active.color || '#002147').toUpperCase()}</div>
+                        {activeRgb && <div>RGB({activeRgb.r}, {activeRgb.g}, {activeRgb.b})</div>}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="text-xs text-slate-600 font-semibold col-span-2">
                     Erase fill
-                    <input
-                      type="color"
-                      value={active.eraseColor || '#F7F3EB'}
-                      onChange={(e) => updateZoneField(activeKey, 'eraseColor', e.target.value)}
-                      className="mt-1 w-full h-9 cursor-pointer bg-white rounded-lg"
-                    />
-                  </label>
-                  <label className="text-xs text-slate-600 font-semibold">
-                    X position
-                    <input
-                      type="number"
-                      value={active.x || 0}
-                      onChange={(e) => updateZoneField(activeKey, 'x', Number(e.target.value))}
-                      className="mt-1 w-full bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-sm"
-                    />
-                  </label>
-                  <label className="text-xs text-slate-600 font-semibold">
-                    Y position
-                    <input
-                      type="number"
-                      value={active.y || 0}
-                      onChange={(e) => updateZoneField(activeKey, 'y', Number(e.target.value))}
-                      className="mt-1 w-full bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-sm"
-                    />
-                  </label>
+                    <div className="mt-1 flex items-center gap-2">
+                      <input
+                        type="color"
+                        value={active.eraseColor || '#F7F3EB'}
+                        onChange={(e) => updateZoneField(activeKey, 'eraseColor', e.target.value)}
+                        className="w-10 h-9 cursor-pointer bg-white rounded-lg"
+                      />
+                      <div className="font-mono text-[10px] text-slate-600 leading-tight">
+                        <div>{(active.eraseColor || '#F7F3EB').toUpperCase()}</div>
+                        {eraseRgb && <div>RGB({eraseRgb.r}, {eraseRgb.g}, {eraseRgb.b})</div>}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Mini live style swatch */}
+                <div
+                  className="rounded-xl border border-slate-200 p-4 text-center"
+                  style={{ backgroundColor: active.eraseColor || '#F7F3EB' }}
+                >
+                  <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-2">
+                    Style preview
+                  </p>
+                  <p
+                    style={{
+                      color: active.color || '#002147',
+                      fontSize: Math.min(28, Math.max(12, (active.fontSize || 22) * 0.45)),
+                      fontFamily: activeKey === 'name'
+                        ? "'Playfair Display', serif"
+                        : "'Inter', sans-serif",
+                      fontWeight: activeKey === 'name' ? 700 : 600,
+                      margin: 0,
+                    }}
+                  >
+                    {PREVIEW_SAMPLE_TEXT[activeKey] || getFieldLabel(activeKey)}
+                  </p>
                 </div>
               </div>
             )}
           </div>
 
-          {/* Right: template canvas */}
           <div className="lg:col-span-3 space-y-3">
             <div className="flex flex-wrap gap-2 justify-between items-center">
               <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                {detecting ? 'Detecting colors…' : 'Drag boxes · Corner handle to resize'}
+                {pickMode
+                  ? `Eyedropper on — click image for ${pickMode === 'erase' ? 'erase' : 'text'} color`
+                  : detecting
+                    ? 'Detecting colors…'
+                    : 'Drag boxes · Corner = resize · Toggle live text preview'}
               </p>
-              <button
-                type="button"
-                onClick={redetectAll}
-                disabled={!imgReady || detecting}
-                className="text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 disabled:opacity-40"
-              >
-                Auto-detect all from template
-              </button>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowLivePreview((v) => !v)}
+                  className={`text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-lg border ${
+                    showLivePreview
+                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                      : 'bg-slate-100 text-slate-600 border-slate-200'
+                  }`}
+                >
+                  {showLivePreview ? 'Live preview ON' : 'Live preview OFF'}
+                </button>
+                <button
+                  type="button"
+                  onClick={redetectAll}
+                  disabled={!imgReady || detecting}
+                  className="text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 disabled:opacity-40"
+                >
+                  Auto-detect all
+                </button>
+              </div>
             </div>
-            <div className="relative inline-block w-full select-none rounded-xl overflow-hidden border border-slate-200 bg-slate-100">
+
+            <div
+              ref={stageRef}
+              className={`relative inline-block w-full select-none rounded-xl overflow-hidden border border-slate-200 bg-slate-100 ${
+                pickMode ? 'cursor-crosshair ring-2 ring-[#00bcd4]' : ''
+              }`}
+              onClick={handleImageClick}
+            >
               <img
                 ref={imgRef}
                 src={templateUrl}
@@ -423,29 +536,67 @@ export default function ZoneCalibrator({
                 draggable={false}
                 onLoad={() => setImgReady(true)}
               />
+
               {zoneKeys.map((key) => {
                 const zone = localZones[key];
                 if (!zone) return null;
-                const color = ZONE_ACCENT[key] || '#64748b';
+                const accent = ZONE_ACCENT[key] || '#64748b';
                 const selected = activeKey === key;
+                const { left, top, w, h } = boxGeometry(zone);
+                const sample = PREVIEW_SAMPLE_TEXT[key] || getFieldLabel(key);
+
                 return (
                   <div
                     key={key}
                     onMouseDown={(e) => startDrag(e, key)}
-                    style={boxStyle(zone, color, selected)}
+                    style={{
+                      position: 'absolute',
+                      left: `${(left / CANVAS_W) * 100}%`,
+                      top: `${(top / CANVAS_H) * 100}%`,
+                      width: `${(w / CANVAS_W) * 100}%`,
+                      height: `${(h / CANVAS_H) * 100}%`,
+                      border: selected ? `2px solid ${accent}` : `2px dashed ${accent}`,
+                      background: showLivePreview
+                        ? (zone.eraseColor || '#F7F3EB')
+                        : `${accent}22`,
+                      cursor: pickMode ? 'crosshair' : 'move',
+                      userSelect: 'none',
+                      boxSizing: 'border-box',
+                      zIndex: selected ? 5 : 2,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent:
+                        zone.align === 'left' ? 'flex-start'
+                          : zone.align === 'right' ? 'flex-end'
+                            : 'center',
+                      overflow: 'hidden',
+                      padding: '0 4px',
+                    }}
                     title={getFieldLabel(key)}
                   >
-                    <span
-                      style={{
-                        fontSize: '9px',
-                        color,
-                        fontWeight: 700,
-                        padding: '0 4px',
-                        whiteSpace: 'nowrap',
-                      }}
-                    >
-                      {getFieldLabel(key)}
-                    </span>
+                    {showLivePreview ? (
+                      <span
+                        style={{
+                          color: zone.color || '#002147',
+                          fontSize: `clamp(8px, ${(zone.fontSize || 22) / CANVAS_W * 100}vw, ${zone.fontSize || 22}px)`,
+                          fontFamily: key === 'name'
+                            ? "'Playfair Display', Georgia, serif"
+                            : "'Inter', sans-serif",
+                          fontWeight: key === 'name' ? 700 : 600,
+                          whiteSpace: 'nowrap',
+                          lineHeight: 1.1,
+                          maxWidth: '100%',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                        }}
+                      >
+                        {sample}
+                      </span>
+                    ) : (
+                      <span style={{ fontSize: 9, color: accent, fontWeight: 700 }}>
+                        {getFieldLabel(key)}
+                      </span>
+                    )}
                     <div
                       data-resize="1"
                       onMouseDown={(e) => startResize(e, key)}
@@ -455,7 +606,7 @@ export default function ZoneCalibrator({
                         bottom: -4,
                         width: 14,
                         height: 14,
-                        background: color,
+                        background: accent,
                         borderRadius: 3,
                         cursor: 'nwse-resize',
                         border: '2px solid white',
@@ -465,12 +616,16 @@ export default function ZoneCalibrator({
                 );
               })}
             </div>
+
+            <p className="text-[10px] text-slate-400 font-medium">
+              Live preview shows sample member data with your erase fill, text color, and font size before you save.
+            </p>
           </div>
         </div>
 
         <div className="px-5 py-4 border-t border-slate-100 flex flex-wrap gap-3 justify-between items-center shrink-0">
           <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">
-            {zoneKeys.length} field(s) · Saved forever on this template until you edit again
+            {zoneKeys.length} field(s) · Calibration saved forever on this template
           </p>
           <div className="flex gap-3">
             <button

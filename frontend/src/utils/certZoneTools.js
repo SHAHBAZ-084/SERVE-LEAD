@@ -37,7 +37,7 @@ export function createDefaultZone(key, canvasW = 2048, canvasH = 1436, index = 0
   };
 }
 
-function rgbToHex(r, g, b) {
+export function rgbToHex(r, g, b) {
   return (
     '#' +
     [r, g, b]
@@ -46,9 +46,76 @@ function rgbToHex(r, g, b) {
   );
 }
 
+export function hexToRgb(hex) {
+  const h = String(hex || '').replace('#', '');
+  if (h.length !== 6) return { r: 0, g: 33, b: 71 };
+  return {
+    r: parseInt(h.slice(0, 2), 16),
+    g: parseInt(h.slice(2, 4), 16),
+    b: parseInt(h.slice(4, 6), 16),
+  };
+}
+
 function luminance(r, g, b) {
   return 0.299 * r + 0.587 * g + 0.114 * b;
 }
+
+/**
+ * Sample a single pixel from the template image at display click coords.
+ * displayRect = getBoundingClientRect of the rendered <img>
+ * clientX/Y = mouse event coords
+ */
+export function samplePixelAt(img, displayRect, clientX, clientY, canvasW = 2048, canvasH = 1436) {
+  if (!img || !displayRect?.width) {
+    return { hex: '#002147', r: 0, g: 33, b: 71 };
+  }
+
+  const relX = (clientX - displayRect.left) / displayRect.width;
+  const relY = (clientY - displayRect.top) / displayRect.height;
+  const px = Math.max(0, Math.min(1, relX));
+  const py = Math.max(0, Math.min(1, relY));
+
+  const sampleW = Math.min(img.naturalWidth || canvasW, 1600);
+  const sampleH = Math.round(sampleW * ((img.naturalHeight || canvasH) / (img.naturalWidth || canvasW)));
+  const canvas = document.createElement('canvas');
+  canvas.width = sampleW;
+  canvas.height = sampleH;
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  ctx.drawImage(img, 0, 0, sampleW, sampleH);
+
+  const x = Math.min(sampleW - 1, Math.max(0, Math.floor(px * sampleW)));
+  const y = Math.min(sampleH - 1, Math.max(0, Math.floor(py * sampleH)));
+
+  // Average a small 5x5 neighborhood for stable sampling
+  let rSum = 0;
+  let gSum = 0;
+  let bSum = 0;
+  let n = 0;
+  for (let dy = -2; dy <= 2; dy++) {
+    for (let dx = -2; dx <= 2; dx++) {
+      const sx = Math.min(sampleW - 1, Math.max(0, x + dx));
+      const sy = Math.min(sampleH - 1, Math.max(0, y + dy));
+      const d = ctx.getImageData(sx, sy, 1, 1).data;
+      rSum += d[0];
+      gSum += d[1];
+      bSum += d[2];
+      n++;
+    }
+  }
+  const r = Math.round(rSum / n);
+  const g = Math.round(gSum / n);
+  const b = Math.round(bSum / n);
+  return { hex: rgbToHex(r, g, b), r, g, b, x: Math.round(px * canvasW), y: Math.round(py * canvasH) };
+}
+
+export const PREVIEW_SAMPLE_TEXT = {
+  name: 'MUHAMMAD SHAHBAZ',
+  date: 'Issued on: 12/07/2026',
+  mobile: '0300-1234567',
+  memberId: '2024-SLS-0098',
+  joiningYear: '2024',
+  membershipStatus: 'General Member',
+};
 
 /**
  * Sample pixels under a zone to suggest erase fill, ink color, and font size.

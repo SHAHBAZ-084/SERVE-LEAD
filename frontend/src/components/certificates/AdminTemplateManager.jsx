@@ -14,6 +14,7 @@ export default function AdminTemplateManager({ auth, notify, api }) {
   const [preview, setPreview] = useState(null);
   const [loading, setLoading] = useState(true);
   const [listError, setListError] = useState(null);
+  const [activatingId, setActivatingId] = useState(null);
   const fileRef = useRef(null);
 
   const refreshTemplates = useCallback(async () => {
@@ -143,13 +144,25 @@ export default function AdminTemplateManager({ auth, notify, api }) {
   };
 
   const handleActivate = async (id) => {
+    const idStr = String(id);
+    setActivatingId(idStr);
     try {
-      await api.put(`cert-templates/${id}/activate`, {}, auth);
+      await api.put(`cert-templates/${idStr}/activate`, {}, auth);
+      clearCertificateImageCache();
+      // Optimistic UI: only this template active
+      setTemplates((prev) =>
+        prev.map((t) => ({
+          ...t,
+          isActive: String(t._id) === idStr,
+        }))
+      );
       await refreshTemplates();
-      notify('Template activated. All members will use this template.');
+      notify('Template activated. Members will use this one.');
     } catch (err) {
       console.error(err);
-      notify(err.response?.data?.error || 'Failed to activate', 'error');
+      notify(err.response?.data?.error || 'Failed to activate template', 'error');
+    } finally {
+      setActivatingId(null);
     }
   };
 
@@ -263,17 +276,25 @@ export default function AdminTemplateManager({ auth, notify, api }) {
           <p className="text-sm text-slate-400 text-center py-8">No templates uploaded yet.</p>
         ) : (
           <div className="space-y-3">
-            {templates.map((t) => (
+            {templates.map((t) => {
+              const idStr = String(t._id);
+              const isActive = !!t.isActive;
+              const isActivating = activatingId === idStr;
+              return (
               <div
-                key={t._id}
-                className="flex flex-col sm:flex-row sm:items-center gap-3 p-4 rounded-2xl border border-slate-100 bg-slate-50/50"
+                key={idStr}
+                className={`flex flex-col sm:flex-row sm:items-center gap-3 p-4 rounded-2xl border ${
+                  isActive
+                    ? 'border-emerald-300 bg-emerald-50/60 ring-2 ring-emerald-100'
+                    : 'border-slate-100 bg-slate-50/50'
+                }`}
               >
                 <div className="flex-1 min-w-0">
                   <div className="flex flex-wrap items-center gap-2 mb-1">
                     <h4 className="font-bold text-slate-800 text-sm">{t.name}</h4>
-                    {t.isActive && (
+                    {isActive && (
                       <span className="text-[9px] font-black uppercase tracking-widest bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-md">
-                        Active
+                        Active — used by members
                       </span>
                     )}
                     {!t.calibrated && (
@@ -302,15 +323,19 @@ export default function AdminTemplateManager({ auth, notify, api }) {
                   </button>
                   <button
                     type="button"
-                    disabled={t.isActive}
+                    disabled={isActive || isActivating}
                     onClick={() => handleActivate(t._id)}
-                    className="px-3 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest bg-emerald-50 text-emerald-700 border border-emerald-100 disabled:opacity-40"
+                    className={`px-3 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest border ${
+                      isActive
+                        ? 'bg-emerald-200 text-emerald-800 border-emerald-300 cursor-default'
+                        : 'bg-emerald-50 text-emerald-700 border-emerald-100 hover:bg-emerald-100'
+                    } disabled:opacity-50`}
                   >
-                    Activate
+                    {isActivating ? 'Activating…' : isActive ? 'Currently Active' : 'Activate'}
                   </button>
                   <button
                     type="button"
-                    disabled={t.isActive}
+                    disabled={isActive}
                     onClick={() => handleDelete(t._id)}
                     className="px-3 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest bg-rose-50 text-rose-600 border border-rose-100 disabled:opacity-40"
                   >
@@ -318,7 +343,8 @@ export default function AdminTemplateManager({ auth, notify, api }) {
                   </button>
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

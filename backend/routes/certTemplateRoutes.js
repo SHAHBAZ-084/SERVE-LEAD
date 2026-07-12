@@ -220,10 +220,23 @@ router.get('/:id', authMiddleware, isAdmin, async (req, res) => {
 // PUT /api/cert-templates/:id/activate
 router.put('/:id/activate', authMiddleware, isAdmin, async (req, res) => {
   try {
-    await CertTemplate.updateMany({}, { isActive: false });
-    const doc = await CertTemplate.findByIdAndUpdate(req.params.id, { isActive: true }, { new: true });
-    if (!doc) return res.status(404).json({ error: 'Template not found.' });
-    return res.json({ message: 'Template activated' });
+    const id = req.params.id;
+    const exists = await CertTemplate.findById(id);
+    if (!exists) return res.status(404).json({ error: 'Template not found.' });
+
+    await CertTemplate.updateMany({}, { $set: { isActive: false } });
+    const doc = await CertTemplate.findByIdAndUpdate(
+      id,
+      { $set: { isActive: true } },
+      { new: true }
+    );
+
+    return res.json({
+      message: 'Template activated',
+      templateId: doc._id,
+      name: doc.name,
+      isActive: true,
+    });
   } catch (error) {
     console.error('Cert template activate error:', error);
     res.status(500).json({ error: 'Failed to activate template.' });
