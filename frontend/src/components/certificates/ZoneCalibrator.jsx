@@ -9,6 +9,7 @@ import {
   samplePixelAt,
   hexToRgb,
   PREVIEW_SAMPLE_TEXT,
+  FIELD_DEFAULT_PREFIXES,
 } from '../../utils/certZoneTools';
 import { fitZoneFontSize } from '../../utils/canvasEngine';
 
@@ -454,6 +455,19 @@ export default function ZoneCalibrator({
                       <option value="right">Right</option>
                     </select>
                   </label>
+                  <label className="text-xs text-slate-600 font-semibold col-span-2">
+                    Text prefix{' '}
+                    <span className="text-slate-400 font-normal">
+                      (text shown before value — e.g. &quot;Issued on: &quot;)
+                    </span>
+                    <input
+                      type="text"
+                      placeholder={FIELD_DEFAULT_PREFIXES[activeKey] ?? ''}
+                      value={active.prefix != null ? active.prefix : (FIELD_DEFAULT_PREFIXES[activeKey] ?? '')}
+                      onChange={(e) => updateZoneField(activeKey, 'prefix', e.target.value)}
+                      className="mt-1 w-full bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-sm font-mono"
+                    />
+                  </label>
                   <div className="text-xs text-slate-600 font-semibold">
                     Text color
                     <div className="mt-1 flex items-center gap-2">
@@ -504,7 +518,8 @@ export default function ZoneCalibrator({
                       lineHeight: 1.1,
                     }}
                   >
-                    {PREVIEW_SAMPLE_TEXT[activeKey] || getFieldLabel(activeKey)}
+                    {(active.prefix != null ? active.prefix : (FIELD_DEFAULT_PREFIXES[activeKey] ?? ''))
+                      + (PREVIEW_SAMPLE_TEXT[activeKey] || getFieldLabel(activeKey))}
                   </p>
                   <p className="text-[9px] text-slate-400 mt-2">
                     On template &amp; Preview Draft this size scales with the image
@@ -568,7 +583,9 @@ export default function ZoneCalibrator({
                 const accent = ZONE_ACCENT[key] || '#64748b';
                 const selected = activeKey === key;
                 const { left, top, w, h } = boxGeometry(zone);
-                const sample = PREVIEW_SAMPLE_TEXT[key] || getFieldLabel(key);
+                const rawSample = PREVIEW_SAMPLE_TEXT[key] || getFieldLabel(key);
+                const prefix = zone.prefix != null ? zone.prefix : (FIELD_DEFAULT_PREFIXES[key] ?? '');
+                const sample = prefix + rawSample;
                 const fontFamily = key === 'name' ? SERIF_FONT : SANS_FONT;
                 // Exact same fitted canvas font as Preview Draft / PDF, scaled to on-screen image
                 const canvasFont = showLivePreview

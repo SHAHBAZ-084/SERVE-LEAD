@@ -4,9 +4,22 @@ export const CERT_FIELD_CATALOG = [
   { key: 'date', label: 'Issue Date', defaultAlign: 'right', defaultFontSize: 20 },
   { key: 'mobile', label: 'Mobile Number', defaultAlign: 'center', defaultFontSize: 18 },
   { key: 'memberId', label: 'Member ID', defaultAlign: 'center', defaultFontSize: 22 },
-  { key: 'joiningYear', label: 'Joining Year', defaultAlign: 'center', defaultFontSize: 22 },
+  { key: 'joiningYear', label: 'Joining Year / Session', defaultAlign: 'center', defaultFontSize: 22 },
   { key: 'membershipStatus', label: 'Membership Status', defaultAlign: 'center', defaultFontSize: 20 },
 ];
+
+/**
+ * Default prefix prepended to each field value when no custom prefix is saved on the zone.
+ * Admin can override these per-template in ZoneCalibrator.
+ */
+export const FIELD_DEFAULT_PREFIXES = {
+  date: 'Issued on: ',
+  name: '',
+  mobile: '',
+  memberId: '',
+  joiningYear: '',
+  membershipStatus: '',
+};
 
 export const ZONE_ACCENT = {
   name: '#00bcd4',
@@ -108,12 +121,13 @@ export function samplePixelAt(img, displayRect, clientX, clientY, canvasW = 2048
   return { hex: rgbToHex(r, g, b), r, g, b, x: Math.round(px * canvasW), y: Math.round(py * canvasH) };
 }
 
+/** Raw member values used for live preview — prefixes are added separately from zone.prefix */
 export const PREVIEW_SAMPLE_TEXT = {
   name: 'MUHAMMAD SHAHBAZ',
-  date: 'Issued on: 12/07/2026',
+  date: '12/07/2026',
   mobile: '0300-1234567',
-  memberId: '2024-SLS-0098',
-  joiningYear: '2024',
+  memberId: '2025-SLS-0098',
+  joiningYear: '2025',
   membershipStatus: 'General Member',
 };
 

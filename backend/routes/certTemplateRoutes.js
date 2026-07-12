@@ -209,7 +209,7 @@ router.get('/active-config', authMiddleware, async (req, res) => {
         approvedAt: member.approvedAt || member.updatedAt,
         city: member.city,
         mobile: member.whatsapp || '',
-        joiningYear: member.joining_year || '',
+        joiningYear: member.joining_year || '2025',
         membershipStatus,
       },
     });

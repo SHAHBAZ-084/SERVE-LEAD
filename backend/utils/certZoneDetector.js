@@ -31,6 +31,7 @@ function detectZones(imageWidth = 2048, imageHeight = 1436) {
       fontSize: Math.round(W * 0.011),
       color: ink,
       eraseColor: erase,
+      prefix: 'Issued on: ',
     },
     // Optional mobile line under name / above member info strip
     mobile: {

@@ -1,4 +1,5 @@
 import { jsPDF } from 'jspdf';
+import { FIELD_DEFAULT_PREFIXES } from './certZoneTools';
 
 const imageCache = new Map();
 
@@ -119,15 +120,16 @@ function formatIssueDate(approvedAt) {
   });
 }
 
+/** Returns raw field values — prefixes are applied from zone.prefix when drawing. */
 function buildMemberLines(member) {
   return {
     name: member.name || '',
-    date: `Issued on: ${formatIssueDate(member.approvedAt || member.issueDate)}`,
+    date: formatIssueDate(member.approvedAt || member.issueDate),
     mobile: member.mobile ? String(member.mobile) : '',
     memberId: member.memberId || '',
     joiningYear: member.joiningYear != null && member.joiningYear !== ''
       ? String(member.joiningYear)
-      : '',
+      : '2025',
     membershipStatus: member.membershipStatus || 'General Member',
   };
 }
@@ -163,13 +165,19 @@ export async function renderCertificateDataUrl({ template, member, scale = 1 }) 
   const drawOrder = ['date', 'name', 'mobile', 'memberId', 'joiningYear', 'membershipStatus'];
   for (const key of drawOrder) {
     if (!zones[key]) continue;
+    const zone = zones[key];
     const font = key === 'name' ? serif : sans;
-    drawZoneText(ctx, lines[key], zones[key], font);
+    const prefix = zone.prefix != null ? zone.prefix : (FIELD_DEFAULT_PREFIXES[key] ?? '');
+    drawZoneText(ctx, prefix + (lines[key] ?? ''), zone, font);
   }
   // Any extra custom keys (future) — skip if no member line mapping
   for (const key of Object.keys(zones)) {
     if (drawOrder.includes(key)) continue;
-    if (lines[key] != null) drawZoneText(ctx, lines[key], zones[key], sans);
+    if (lines[key] != null) {
+      const zone = zones[key];
+      const prefix = zone.prefix != null ? zone.prefix : '';
+      drawZoneText(ctx, prefix + lines[key], zone, sans);
+    }
   }
 
   return canvas.toDataURL('image/png');

@@ -43,7 +43,7 @@ function buildMemberRenderPayload(member) {
     approvedAt: member.approvedAt || member.updatedAt || member.createdAt,
     city: member.city,
     mobile: member.whatsapp || member.phone || '',
-    joiningYear: member.joining_year || '',
+    joiningYear: member.joining_year || '2025',
     membershipStatus,
   };
 }
