@@ -160,8 +160,8 @@ export const PREVIEW_SAMPLE_TEXT = {
   name: 'MUHAMMAD SHAHBAZ',
   date: '12/07/2026',
   mobile: '0300-1234567',
-  memberId: '2025-SLS-0098',
-  joiningYear: '2025',
+  memberId: '2026-SLS-0098',
+  joiningYear: '2026',
   membershipStatus: 'General Member',
 };
 

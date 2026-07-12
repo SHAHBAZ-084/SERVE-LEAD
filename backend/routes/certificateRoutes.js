@@ -37,13 +37,18 @@ function buildMemberRenderPayload(member) {
     member.role === 'Executive' || member.role === 'Admin' || member.role === 'Superuser'
       ? 'Executive Member'
       : 'General Member';
+  const memberId = member.member_id || '';
+  const sessionMatch = String(memberId).trim().match(/^(\d{4})(?:-|$)/);
+  const joiningYear = sessionMatch
+    ? sessionMatch[1]
+    : (member.joining_year != null && member.joining_year !== '' ? String(member.joining_year) : '');
   return {
     name: member.name,
-    memberId: member.member_id,
+    memberId,
     approvedAt: member.approvedAt || member.updatedAt || member.createdAt,
     city: member.city,
     mobile: member.whatsapp || member.phone || '',
-    joiningYear: member.joining_year || '2025',
+    joiningYear,
     membershipStatus,
   };
 }

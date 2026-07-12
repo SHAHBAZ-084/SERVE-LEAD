@@ -128,16 +128,23 @@ function formatIssueDate(approvedAt) {
   });
 }
 
+/** Membership session = year prefix of ID (e.g. 2026-SLS-0098 → 2026). */
+function sessionYearFromMemberId(memberId, fallback = '') {
+  const match = String(memberId || '').trim().match(/^(\d{4})(?:-|$)/);
+  if (match) return match[1];
+  if (fallback != null && fallback !== '') return String(fallback);
+  return '';
+}
+
 /** Returns raw field values — prefixes are applied from zone.prefix when drawing. */
 function buildMemberLines(member) {
+  const memberId = member.memberId || '';
   return {
     name: member.name || '',
     date: formatIssueDate(member.approvedAt || member.issueDate),
     mobile: member.mobile ? String(member.mobile) : '',
-    memberId: member.memberId || '',
-    joiningYear: member.joiningYear != null && member.joiningYear !== ''
-      ? String(member.joiningYear)
-      : '2025',
+    memberId,
+    joiningYear: sessionYearFromMemberId(memberId, member.joiningYear),
     membershipStatus: member.membershipStatus || 'General Member',
   };
 }

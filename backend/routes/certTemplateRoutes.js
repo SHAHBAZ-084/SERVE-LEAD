@@ -194,6 +194,12 @@ router.get('/active-config', authMiddleware, async (req, res) => {
         ? 'Executive Member'
         : 'General Member';
 
+    const memberId = member.member_id || '';
+    const sessionMatch = String(memberId).trim().match(/^(\d{4})(?:-|$)/);
+    const joiningYear = sessionMatch
+      ? sessionMatch[1]
+      : (member.joining_year != null && member.joining_year !== '' ? String(member.joining_year) : '');
+
     return res.json({
       template: {
         _id: template._id,
@@ -205,11 +211,11 @@ router.get('/active-config', authMiddleware, async (req, res) => {
       },
       member: {
         name: member.name,
-        memberId: member.member_id,
+        memberId,
         approvedAt: member.approvedAt || member.updatedAt,
         city: member.city,
         mobile: member.whatsapp || '',
-        joiningYear: member.joining_year || '2025',
+        joiningYear,
         membershipStatus,
       },
     });
