@@ -35,7 +35,7 @@ async function resolveIssueTemplate(certTemplateId) {
 function buildMemberRenderPayload(member) {
   const membershipStatus =
     member.role === 'Executive' || member.role === 'Admin' || member.role === 'Superuser'
-      ? 'Active Member'
+      ? 'Executive Member'
       : 'General Member';
   return {
     name: member.name,

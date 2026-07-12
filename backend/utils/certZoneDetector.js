@@ -65,7 +65,7 @@ function detectZones(imageWidth = 2048, imageHeight = 1436) {
       color: ink,
       eraseColor: erase,
     },
-    // Right column — Status (General Member / Active Member)
+    // Right column — Status (General Member / Executive Member)
     membershipStatus: {
       x: Math.round(W * 0.78),
       y: Math.round(H * 0.635),

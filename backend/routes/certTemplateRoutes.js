@@ -191,7 +191,7 @@ router.get('/active-config', authMiddleware, async (req, res) => {
 
     const membershipStatus =
       member.role === 'Executive' || member.role === 'Admin' || member.role === 'Superuser'
-        ? 'Active Member'
+        ? 'Executive Member'
         : 'General Member';
 
     return res.json({

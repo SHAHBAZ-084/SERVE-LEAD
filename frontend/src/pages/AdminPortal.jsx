@@ -1176,7 +1176,7 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
                 joiningYear: previewMember.joining_year || '',
                 membershipStatus:
                     role === 'Executive' || role === 'Admin' || role === 'Superuser'
-                        ? 'Active Member'
+                        ? 'Executive Member'
                         : 'General Member',
             };
             const dataUrl = await renderCertificateDataUrl({ template, member, scale: 0.55 });
