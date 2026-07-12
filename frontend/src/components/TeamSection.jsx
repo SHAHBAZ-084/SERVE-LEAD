@@ -57,14 +57,14 @@ export default function TeamSection({ memberData = "none", hide = false }) {
             {displayTeam.map((member, idx) => (
               <div
                 key={idx}
-                className={`${idx % 2 === 0 ? "reveal-left" : "reveal-right"} delay-${(idx + 1) * 100} flex flex-col ${idx % 2 === 0 ? "md:flex-row" : "md:flex-row-reverse"} items-center bg-white rounded-[2.5rem] md:rounded-[3rem] shadow-2xl shadow-slate-200/50 overflow-hidden card-hover border border-slate-100`}
+                className={`${idx % 2 === 0 ? "reveal-left" : "reveal-right"} delay-${(idx + 1) * 100} flex flex-col ${idx % 2 === 0 ? "md:flex-row" : "md:flex-row-reverse"} items-stretch bg-white rounded-[2.5rem] md:rounded-[3rem] shadow-2xl shadow-slate-200/50 overflow-hidden card-hover border border-slate-100`}
               >
-                {/* Image Section - High Impact Full-Bleed */}
-                <div className="w-full md:w-[35%] lg:w-[30%] flex-shrink-0 overflow-hidden bg-slate-100 relative aspect-square">
+                {/* Image Section - edge-to-edge, no white padding around photo */}
+                <div className="w-full md:w-[35%] lg:w-[30%] flex-shrink-0 overflow-hidden bg-slate-100 relative aspect-[4/5] md:aspect-auto md:min-h-full">
                   <img
                     src={getImgUrl(member.img)}
                     alt={member.name}
-                    className="absolute inset-0 w-full h-full object-cover hover:scale-110 transition-transform duration-1000"
+                    className="absolute inset-0 w-full h-full object-cover object-top hover:scale-105 transition-transform duration-1000"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-slate-900/60 via-transparent to-transparent block md:hidden" />
                   <div className="absolute bottom-6 left-6 block md:hidden">
@@ -148,14 +148,14 @@ export default function TeamSection({ memberData = "none", hide = false }) {
                 <div
                   key={member.id}
                   className={`${idx % 2 === 0 ? "reveal-left" : "reveal-right"} delay-${(idx + 1) * 100} flex flex-col ${idx % 2 === 0 ? "md:flex-row-reverse" : "md:flex-row"
-                    } items-center bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/40 overflow-hidden card-hover border border-slate-100`}
+                    } items-stretch bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/40 overflow-hidden card-hover border border-slate-100`}
                 >
-                  <div className="w-full md:w-1/3 flex-shrink-0 overflow-hidden bg-slate-100 relative aspect-square">
+                  <div className="w-full md:w-1/3 flex-shrink-0 overflow-hidden bg-slate-100 relative aspect-[4/5] md:aspect-auto md:min-h-full">
                     {member.img ? (
                       <img
                         src={getImgUrl(member.img)}
                         alt={member.name}
-                        className="absolute inset-0 w-full h-full object-cover hover:scale-110 transition-transform duration-1000"
+                        className="absolute inset-0 w-full h-full object-cover object-top hover:scale-105 transition-transform duration-1000"
                       />
                     ) : (
                       <div className="absolute inset-0 flex items-center justify-center bg-slate-50 text-slate-200 text-5xl">
