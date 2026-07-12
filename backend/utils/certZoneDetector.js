@@ -1,46 +1,92 @@
 /**
- * Returns intelligent default zone coordinates for a certificate canvas.
- * Admin calibrates visually after upload — these are starting estimates only.
+ * Default zone coordinates tuned for SLS membership certificate layout
+ * (2048×1436). Values sit on placeholder slots — not labels — to avoid overlap.
+ * Admin can fine-tune in ZoneCalibrator after upload.
  */
-function detectZones(imageWidth, imageHeight) {
+function detectZones(imageWidth = 2048, imageHeight = 1436) {
+  const W = imageWidth;
+  const H = imageHeight;
+  const ink = '#002147';
+  const erase = '#F7F3EB';
+
   return {
+    // Center hero name over "MEMBER NAME" placeholder
     name: {
-      x: Math.round(imageWidth / 2),
-      y: 490,
-      maxWidth: Math.round(imageWidth * 0.75),
-      maxHeight: 102,
+      x: Math.round(W * 0.5),
+      y: Math.round(H * 0.47),
+      maxWidth: Math.round(W * 0.72),
+      maxHeight: Math.round(H * 0.08),
       align: 'center',
-      fontSize: 90,
-      color: '#ffffff',
+      fontSize: Math.round(W * 0.031),
+      color: ink,
+      eraseColor: erase,
     },
-    memberId: {
-      x: Math.round(imageWidth * 0.88),
-      y: 1370,
-      maxWidth: 700,
-      maxHeight: 50,
-      align: 'right',
-      fontSize: 28,
-      color: '#ffffff',
-    },
+    // Top-right date value (covers "Issued on: …" sample date)
     date: {
-      x: Math.round(imageWidth * 0.12),
-      y: 1370,
-      maxWidth: 700,
-      maxHeight: 50,
-      align: 'left',
-      fontSize: 28,
-      color: '#ffffff',
+      x: Math.round(W * 0.92),
+      y: Math.round(H * 0.105),
+      maxWidth: Math.round(W * 0.28),
+      maxHeight: Math.round(H * 0.035),
+      align: 'right',
+      fontSize: Math.round(W * 0.011),
+      color: ink,
+      eraseColor: erase,
     },
-    city: {
-      x: Math.round(imageWidth / 2),
-      y: 1300,
-      maxWidth: Math.round(imageWidth * 0.5),
-      maxHeight: 40,
+    // Optional mobile line under name / above member info strip
+    mobile: {
+      x: Math.round(W * 0.5),
+      y: Math.round(H * 0.545),
+      maxWidth: Math.round(W * 0.4),
+      maxHeight: Math.round(H * 0.03),
       align: 'center',
-      fontSize: 22,
-      color: '#ffffff',
+      fontSize: Math.round(W * 0.01),
+      color: ink,
+      eraseColor: erase,
+    },
+    // Left column — Membership ID value under label
+    memberId: {
+      x: Math.round(W * 0.22),
+      y: Math.round(H * 0.635),
+      maxWidth: Math.round(W * 0.22),
+      maxHeight: Math.round(H * 0.035),
+      align: 'center',
+      fontSize: Math.round(W * 0.012),
+      color: ink,
+      eraseColor: erase,
+    },
+    // Middle column — Membership Session / joining year
+    joiningYear: {
+      x: Math.round(W * 0.5),
+      y: Math.round(H * 0.635),
+      maxWidth: Math.round(W * 0.18),
+      maxHeight: Math.round(H * 0.035),
+      align: 'center',
+      fontSize: Math.round(W * 0.013),
+      color: ink,
+      eraseColor: erase,
+    },
+    // Right column — Status (General Member / Active Member)
+    membershipStatus: {
+      x: Math.round(W * 0.78),
+      y: Math.round(H * 0.635),
+      maxWidth: Math.round(W * 0.22),
+      maxHeight: Math.round(H * 0.035),
+      align: 'center',
+      fontSize: Math.round(W * 0.011),
+      color: ink,
+      eraseColor: erase,
     },
   };
 }
 
-module.exports = { detectZones };
+/** Deep-merge stored zones with defaults so older templates get new keys. */
+function mergeZonesWithDefaults(storedZones, canvasWidth = 2048, canvasHeight = 1436) {
+  const defaults = detectZones(canvasWidth, canvasHeight);
+  const out = {};
+  for (const key of Object.keys(defaults)) {
+    out[key] = { ...defaults[key], ...(storedZones?.[key] || {}) };
+  }
+  return out;
+}
+
+module.exports = { detectZones, mergeZonesWithDefaults };

@@ -739,52 +739,16 @@ const MemberDashboard = () => {
                 <CertificateButton />
             </div>
 
-            {membershipCert && (
-                <div className="bg-gradient-to-br from-[#002147] to-[#0d3b66] p-8 rounded-[2rem] shadow-2xl shadow-blue-900/30 border border-[#c8a951]/30 relative overflow-hidden">
-                    <div className="absolute top-0 right-0 w-48 h-48 bg-[#1ba3e0]/10 blur-3xl -mr-16 -mt-16" />
-                    <div className="relative z-10">
-                        <div className="flex items-center gap-3 mb-4">
-                            <span className="text-[10px] font-black tracking-widest bg-[#c8a951] text-[#002147] px-3 py-1 rounded-lg uppercase">
-                                Official Membership
-                            </span>
-                            <div className="flex items-center gap-2 text-emerald-300 font-bold text-[10px] uppercase">
-                                <i className="fas fa-circle-check" /> Verified
-                            </div>
-                        </div>
-                        <h3 className="font-black text-2xl text-white mb-2 leading-tight uppercase tracking-tight">
-                            Certificate of Membership
-                        </h3>
-                        <p className="text-white/60 text-xs font-bold uppercase tracking-widest mb-6">
-                            Issued: {new Date(membershipCert.createdAt).toLocaleDateString()} · ID: {membershipCert.member_id_str || user.id}
-                        </p>
-                        <div className="flex flex-col sm:flex-row gap-3">
-                            <button
-                                onClick={() => downloadPDF(membershipCert)}
-                                disabled={exporting}
-                                className="flex-1 bg-white text-[#002147] py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-slate-100 transition-all disabled:opacity-50"
-                            >
-                                <i className="fas fa-file-pdf" /> Download PDF
-                            </button>
-                            <button
-                                onClick={() => downloadPNG(membershipCert)}
-                                disabled={exporting}
-                                className="flex-1 bg-[#1ba3e0] text-white py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-cyan-500 transition-all disabled:opacity-50"
-                            >
-                                <i className="fas fa-image" /> Download PNG
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {otherCerts.length === 0 && !membershipCert ? (
+            {otherCerts.length === 0 ? (
+                membershipCert ? null : (
                 <div className="text-center py-24 bg-white rounded-[2.5rem] border border-dashed border-slate-200 shadow-sm">
                     <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
                         <i className="fas fa-certificate text-slate-200 text-3xl" />
                     </div>
-                    <p className="text-slate-400 font-bold uppercase text-[10px] tracking-widest">No certificates issued yet</p>
+                    <p className="text-slate-400 font-bold uppercase text-[10px] tracking-widest">No event certificates issued yet</p>
                 </div>
-            ) : otherCerts.length > 0 ? (
+                )
+            ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {otherCerts.map((cert) => (
                         <div key={cert._id} className="bg-white p-8 rounded-[2rem] shadow-xl shadow-slate-200/40 border border-slate-100 hover:-translate-y-1 transition-all group relative overflow-hidden">
@@ -824,7 +788,7 @@ const MemberDashboard = () => {
                         </div>
                     ))}
                 </div>
-            ) : null}
+            )}
 
             {/* Unified Certificate Engine (Export Node) */}
             <div 

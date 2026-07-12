@@ -9,7 +9,7 @@ const CertTemplate = require('../models/CertTemplate');
 const Member = require('../models/Member');
 const authMiddleware = require('../middlewares/authMiddleware');
 const { isAdmin } = require('../middlewares/adminMiddlewares');
-const { detectZones } = require('../utils/certZoneDetector');
+const { detectZones, mergeZonesWithDefaults } = require('../utils/certZoneDetector');
 const { createUpload, getFileUrl, deleteFile } = require('../utils/storage');
 
 const upload = createUpload('cert-templates', 15 * 1024 * 1024);
@@ -144,7 +144,7 @@ router.get('/', authMiddleware, isAdmin, async (req, res) => {
 router.get('/active-config', authMiddleware, async (req, res) => {
   try {
     const member = await Member.findById(req.user.memberId || req.user.id)
-      .select('name member_id approvedAt city status updatedAt');
+      .select('name member_id approvedAt city status updatedAt whatsapp joining_year role');
     if (!member || member.status !== 'approved') {
       return res.status(403).json({ error: 'Certificate not available. Membership not approved.' });
     }
@@ -154,11 +154,16 @@ router.get('/active-config', authMiddleware, async (req, res) => {
       return res.status(404).json({ error: 'No active certificate template. Contact admin.' });
     }
 
+    const membershipStatus =
+      member.role === 'Executive' || member.role === 'Admin' || member.role === 'Superuser'
+        ? 'Active Member'
+        : 'General Member';
+
     return res.json({
       template: {
         _id: template._id,
         fileUrl: `/api/cert-templates/${template._id}/image`,
-        zones: template.zones,
+        zones: mergeZonesWithDefaults(template.zones, template.canvasWidth, template.canvasHeight),
         canvasWidth: template.canvasWidth,
         canvasHeight: template.canvasHeight,
         name: template.name,
@@ -168,6 +173,9 @@ router.get('/active-config', authMiddleware, async (req, res) => {
         memberId: member.member_id,
         approvedAt: member.approvedAt || member.updatedAt,
         city: member.city,
+        mobile: member.whatsapp || '',
+        joiningYear: member.joining_year || '',
+        membershipStatus,
       },
     });
   } catch (error) {
@@ -201,6 +209,7 @@ router.get('/:id', authMiddleware, isAdmin, async (req, res) => {
     if (!doc) return res.status(404).json({ error: 'Template not found.' });
     const obj = doc.toObject();
     obj.imageUrl = `/api/cert-templates/${doc._id}/image`;
+    obj.zones = mergeZonesWithDefaults(obj.zones, obj.canvasWidth, obj.canvasHeight);
     return res.json(obj);
   } catch (error) {
     console.error('Cert template get error:', error);

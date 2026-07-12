@@ -5,7 +5,7 @@ import CountdownTimer from "../components/common/CountdownTimer";
 import { RenderCertificate, CERT_TEMPLATES, CHAIRMAN_NAME, logo, signatureImg, stampImg, MEMBERSHIP_TEMPLATE_ID } from "./CertTemplates";
 import MembershipCertificateExact, { isMembershipCertificate } from "./MembershipCertificateExact";
 import { captureCertificatePdf } from "../utils/certificatePdfExport";
-import { generateCertificate, renderCertificateDataUrl } from "../utils/canvasEngine";
+import { generateCertificate, renderCertificateDataUrl, clearCertificateImageCache } from "../utils/canvasEngine";
 import AdminTemplateManager from "../components/certificates/AdminTemplateManager";
 import { compressImage } from "../utils/compressImage";
 import ImageUploadHint from "../components/common/ImageUploadHint";
@@ -1078,6 +1078,12 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
         setSubmitting(true);
         try {
             await api.post("certificates", { ...form, chairmanName: CHAIRMAN_NAME, templateId: selectedTemplate.id }, auth);
+
+            // Generate PDF from active uploaded template for the issued member
+            try {
+                await downloadActiveTemplatePdf();
+            } catch { /* PDF optional if template missing */ }
+
             notify("Certificate issued successfully!");
             setShowForm(false);
             setForm({
@@ -1156,6 +1162,11 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
                 return;
             }
             const full = await api.get(`cert-templates/${active._id}`, auth);
+            const role = selectedMember.role;
+            const membershipStatus =
+                role === 'Executive' || role === 'Admin' || role === 'Superuser'
+                    ? 'Active Member'
+                    : 'General Member';
             const template = {
                 fileUrl: getImgUrl(full.data.imageUrl || `/api/cert-templates/${active._id}/image`),
                 zones: full.data.zones,
@@ -1167,8 +1178,11 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
                 memberId: selectedMember.member_id,
                 approvedAt: selectedMember.approvedAt || selectedMember.updatedAt || selectedMember.createdAt,
                 city: selectedMember.city,
+                mobile: selectedMember.whatsapp || selectedMember.phone || '',
+                joiningYear: selectedMember.joining_year || '',
+                membershipStatus,
             };
-            const dataUrl = await renderCertificateDataUrl({ template, member });
+            const dataUrl = await renderCertificateDataUrl({ template, member, scale: 0.55 });
             setActivePreviewUrl(dataUrl);
             setActivePreviewPayload({ template, member });
             setShowPreview(true);
@@ -1189,6 +1203,7 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
                 const active = (list.data || []).find((t) => t.isActive);
                 if (!active) return notify("Activate an uploaded template first.", "error");
                 const full = await api.get(`cert-templates/${active._id}`, auth);
+                const role = selectedMember.role;
                 payload = {
                     template: {
                         fileUrl: getImgUrl(full.data.imageUrl || `/api/cert-templates/${active._id}/image`),
@@ -1201,6 +1216,12 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
                         memberId: selectedMember.member_id,
                         approvedAt: selectedMember.approvedAt || selectedMember.updatedAt || selectedMember.createdAt,
                         city: selectedMember.city,
+                        mobile: selectedMember.whatsapp || selectedMember.phone || '',
+                        joiningYear: selectedMember.joining_year || '',
+                        membershipStatus:
+                            role === 'Executive' || role === 'Admin' || role === 'Superuser'
+                                ? 'Active Member'
+                                : 'General Member',
                     },
                 };
             }

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { getImgUrl, withMultipartAuth } from '../../api';
 import ZoneCalibrator from './ZoneCalibrator';
+import { clearCertificateImageCache } from '../../utils/canvasEngine';
 
 export default function AdminTemplateManager({ auth, notify, api }) {
   const [templates, setTemplates] = useState([]);
@@ -123,6 +124,7 @@ export default function AdminTemplateManager({ auth, notify, api }) {
       setPreview(null);
       if (fileRef.current) fileRef.current.value = '';
       notify('Template uploaded. Calibrate the zones.');
+      clearCertificateImageCache();
       await openCalibrator(r.data._id || r.data.templateId);
     } catch (err) {
       console.error(err);
