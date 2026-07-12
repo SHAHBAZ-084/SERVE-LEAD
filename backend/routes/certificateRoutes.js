@@ -238,4 +238,24 @@ router.delete('/:id', authMiddleware, isAdmin, async (req, res) => {
     }
 });
 
+// GET /api/certificates/my-data - Member certificate data for PDF generation
+router.get('/my-data', authMiddleware, async (req, res) => {
+  try {
+    const member = await Member.findById(req.user.memberId || req.user.id)
+      .select('name member_id approvedAt city status updatedAt');
+    if (!member) return res.status(404).json({ error: 'Member not found' });
+    if (member.status !== 'approved')
+      return res.status(403).json({ error: 'Certificate not available. Membership not approved.' });
+    return res.json({
+      name: member.name,
+      memberId: member.member_id,
+      approvedAt: member.approvedAt || member.updatedAt,
+      city: member.city,
+    });
+  } catch (error) {
+    console.error('Certificate my-data error:', error);
+    res.status(500).json({ error: 'Server error fetching certificate data.' });
+  }
+});
+
 module.exports = router;

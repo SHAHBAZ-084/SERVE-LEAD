@@ -8,6 +8,7 @@ import MembershipCertificateExact, { isMembershipCertificate } from "./Membershi
 import { captureCertificatePdf, captureCertificatePng } from "../utils/certificatePdfExport";
 import CountdownTimer from "../components/common/CountdownTimer";
 import ImageUploadHint from "../components/common/ImageUploadHint";
+import CertificateGenerator from "../components/certificates/CertificateGenerator";
 
 const Spinner = () => (
     <div className="flex justify-center py-16">
@@ -1196,6 +1197,8 @@ const MemberDashboard = () => {
                     </div>
                 ))}
             </div>
+
+            <CertificateGenerator />
 
             {/* Disclaimer */}
             <div className="bg-amber-50/50 border border-amber-100 rounded-3xl p-6 flex items-start gap-4">
