@@ -65,6 +65,16 @@ function eraseZone(ctx, zone) {
   ctx.fillRect(left - padX, zone.y - h + padY, w + padX * 2, h + padY);
 }
 
+/**
+ * Same font fitting used by PDF / Preview Draft — exported so calibrator
+ * live preview stays visually identical after save.
+ */
+export function fitZoneFontSize(text, zone, fontFamily = 'sans-serif') {
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+  return fitText(ctx, String(text || ''), zone, fontFamily).fontSize;
+}
+
 function fitText(ctx, text, zone, fontFamily) {
   const maxW = zone.maxWidth || 400;
   const maxH = zone.maxHeight || 80;
@@ -172,15 +182,26 @@ function resolveJsPdf() {
 }
 
 /**
- * @param {{ template: object, member: object }} opts
+ * @param {{ template: object, member: object, format?: 'pdf' | 'png' }} opts
  */
-export async function generateCertificate({ template, member }) {
+export async function generateCertificate({ template, member, format = 'pdf' }) {
   try {
-    const JsPDF = resolveJsPdf();
     const imgData = await renderCertificateDataUrl({ template, member, scale: 1 });
+    const safeName = (member.name || 'Member').replace(/\s+/g, '_');
+
+    if (format === 'png') {
+      const a = document.createElement('a');
+      a.href = imgData;
+      a.download = `${safeName}_SLS_Certificate.png`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      return;
+    }
+
+    const JsPDF = resolveJsPdf();
     const canvasWidth = template.canvasWidth || 2048;
     const canvasHeight = template.canvasHeight || 1436;
-
     const pdf = new JsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
     const pageW = 297;
     const pageH = 210;
@@ -190,8 +211,7 @@ export async function generateCertificate({ template, member }) {
     const offsetX = (pageW - drawW) / 2;
     const offsetY = (pageH - drawH) / 2;
     pdf.addImage(imgData, 'PNG', offsetX, offsetY, drawW, drawH);
-    const filename = (member.name || 'Member').replace(/\s+/g, '_') + '_SLS_Certificate.pdf';
-    pdf.save(filename);
+    pdf.save(`${safeName}_SLS_Certificate.pdf`);
   } catch (err) {
     if (
       err.message?.includes('Template image')
@@ -201,7 +221,7 @@ export async function generateCertificate({ template, member }) {
       throw err;
     }
     console.error('Certificate generation error:', err);
-    throw new Error(err.message || 'PDF generation failed. Try again.');
+    throw new Error(err.message || 'Certificate download failed. Try again.');
   }
 }
 

@@ -10,9 +10,13 @@ import {
   hexToRgb,
   PREVIEW_SAMPLE_TEXT,
 } from '../../utils/certZoneTools';
+import { fitZoneFontSize } from '../../utils/canvasEngine';
 
 const CANVAS_W = 2048;
 const CANVAS_H = 1436;
+
+const SERIF_FONT = "'Playfair Display', 'Times New Roman', serif";
+const SANS_FONT = "'Inter', 'Helvetica Neue', sans-serif";
 
 function boxGeometry(zone) {
   const w = zone.maxWidth || 200;
@@ -46,9 +50,28 @@ export default function ZoneCalibrator({
   const imgRef = useRef(null);
   const stageRef = useRef(null);
   const [imgReady, setImgReady] = useState(false);
+  /** Display px per canvas px — keeps live preview font identical to Preview Draft */
+  const [displayScale, setDisplayScale] = useState(1);
 
   const zoneKeys = Object.keys(localZones);
   const availableToAdd = CERT_FIELD_CATALOG.filter((f) => !localZones[f.key]);
+
+  useEffect(() => {
+    const el = stageRef.current;
+    if (!el) return undefined;
+    const updateScale = () => {
+      const w = el.clientWidth || 0;
+      setDisplayScale(w > 0 ? w / CANVAS_W : 1);
+    };
+    updateScale();
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(updateScale) : null;
+    ro?.observe(el);
+    window.addEventListener('resize', updateScale);
+    return () => {
+      ro?.disconnect();
+      window.removeEventListener('resize', updateScale);
+    };
+  }, [imgReady]);
 
   useEffect(() => {
     if (!imgReady || !imgRef.current) return;
@@ -463,26 +486,28 @@ export default function ZoneCalibrator({
                   </div>
                 </div>
 
-                {/* Mini live style swatch */}
+                {/* Mini live style swatch — same canvas font size as Preview Draft */}
                 <div
                   className="rounded-xl border border-slate-200 p-4 text-center"
                   style={{ backgroundColor: active.eraseColor || '#F7F3EB' }}
                 >
                   <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-2">
-                    Style preview
+                    Style preview · {active.fontSize || 22}px canvas
                   </p>
                   <p
                     style={{
                       color: active.color || '#002147',
-                      fontSize: Math.min(28, Math.max(12, (active.fontSize || 22) * 0.45)),
-                      fontFamily: activeKey === 'name'
-                        ? "'Playfair Display', serif"
-                        : "'Inter', sans-serif",
+                      fontSize: Math.min(36, active.fontSize || 22),
+                      fontFamily: activeKey === 'name' ? SERIF_FONT : SANS_FONT,
                       fontWeight: activeKey === 'name' ? 700 : 600,
                       margin: 0,
+                      lineHeight: 1.1,
                     }}
                   >
                     {PREVIEW_SAMPLE_TEXT[activeKey] || getFieldLabel(activeKey)}
+                  </p>
+                  <p className="text-[9px] text-slate-400 mt-2">
+                    On template &amp; Preview Draft this size scales with the image
                   </p>
                 </div>
               </div>
@@ -544,6 +569,12 @@ export default function ZoneCalibrator({
                 const selected = activeKey === key;
                 const { left, top, w, h } = boxGeometry(zone);
                 const sample = PREVIEW_SAMPLE_TEXT[key] || getFieldLabel(key);
+                const fontFamily = key === 'name' ? SERIF_FONT : SANS_FONT;
+                // Exact same fitted canvas font as Preview Draft / PDF, scaled to on-screen image
+                const canvasFont = showLivePreview
+                  ? fitZoneFontSize(sample, zone, fontFamily)
+                  : (zone.fontSize || 22);
+                const screenFont = Math.max(1, canvasFont * displayScale);
 
                 return (
                   <div
@@ -570,24 +601,22 @@ export default function ZoneCalibrator({
                           : zone.align === 'right' ? 'flex-end'
                             : 'center',
                       overflow: 'hidden',
-                      padding: '0 4px',
+                      padding: 0,
                     }}
-                    title={getFieldLabel(key)}
+                    title={`${getFieldLabel(key)} · ${canvasFont}px`}
                   >
                     {showLivePreview ? (
                       <span
                         style={{
                           color: zone.color || '#002147',
-                          fontSize: `clamp(8px, ${(zone.fontSize || 22) / CANVAS_W * 100}vw, ${zone.fontSize || 22}px)`,
-                          fontFamily: key === 'name'
-                            ? "'Playfair Display', Georgia, serif"
-                            : "'Inter', sans-serif",
+                          fontSize: `${screenFont}px`,
+                          fontFamily,
                           fontWeight: key === 'name' ? 700 : 600,
                           whiteSpace: 'nowrap',
-                          lineHeight: 1.1,
+                          lineHeight: 1,
                           maxWidth: '100%',
                           overflow: 'hidden',
-                          textOverflow: 'ellipsis',
+                          textOverflow: 'clip',
                         }}
                       >
                         {sample}
@@ -618,7 +647,7 @@ export default function ZoneCalibrator({
             </div>
 
             <p className="text-[10px] text-slate-400 font-medium">
-              Live preview shows sample member data with your erase fill, text color, and font size before you save.
+              Live preview uses the same canvas font size as Preview Draft / PDF (scaled to this image).
             </p>
           </div>
         </div>

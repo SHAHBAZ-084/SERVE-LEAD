@@ -734,7 +734,7 @@ const MemberDashboard = () => {
             <div className="bg-white rounded-[2rem] border border-teal-100 p-6 sm:p-8 shadow-sm">
                 <h3 className="text-lg font-black text-[#005f6e] mb-1">Membership Certificate</h3>
                 <p className="text-xs text-slate-400 font-medium mb-2">
-                    Download your official SLS membership certificate.
+                    Official SLS membership — name, ID, and session filled automatically after approval.
                 </p>
                 <CertificateButton />
             </div>
@@ -745,48 +745,60 @@ const MemberDashboard = () => {
                     <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
                         <i className="fas fa-certificate text-slate-200 text-3xl" />
                     </div>
-                    <p className="text-slate-400 font-bold uppercase text-[10px] tracking-widest">No event certificates issued yet</p>
+                    <p className="text-slate-400 font-bold uppercase text-[10px] tracking-widest">No other certificates issued yet</p>
                 </div>
                 )
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {otherCerts.map((cert) => (
+                    {otherCerts.map((cert) => {
+                        const typeLabel = cert.category === 'Other' ? (cert.customCategory || 'Other') : cert.category;
+                        const nameLabel = cert.title || cert.eventId?.title || 'Society Award';
+                        return (
                         <div key={cert._id} className="bg-white p-8 rounded-[2rem] shadow-xl shadow-slate-200/40 border border-slate-100 hover:-translate-y-1 transition-all group relative overflow-hidden">
                             <div className="absolute top-0 right-0 w-32 h-32 bg-[#002147]/5 blur-3xl -mr-16 -mt-16" />
                             <div className="flex justify-between items-start mb-6 relative z-10">
                                 <span className="text-[10px] font-bold tracking-widest bg-[#002147] text-white px-3 py-1 rounded-lg uppercase">
-                                    {cert.category === 'Other' ? cert.customCategory : cert.category}
+                                    {typeLabel}
                                 </span>
                                 <div className="flex items-center gap-2 text-emerald-500 font-bold text-[10px] uppercase">
                                     <i className="fas fa-circle-check" /> Verified
                                 </div>
                             </div>
                             <h3 className="font-bold text-2xl text-slate-800 mb-2 leading-tight">
-                                {cert.eventId?.title || "Society Award"}
+                                {nameLabel}
                             </h3>
-                            <div className="flex justify-between items-center mb-6">
-                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                                    Awarded: {new Date(cert.createdAt).toLocaleDateString()}
-                                </p>
-                                <span className="text-[8px] font-black bg-slate-50 text-slate-400 px-2 py-1 rounded-md uppercase border border-slate-100">
-                                    Template {cert.templateId || 1}
-                                </span>
-                            </div>
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-6">
+                                Awarded: {new Date(cert.createdAt).toLocaleDateString()}
+                                {cert.eventId?.title ? ` · ${cert.eventId.title}` : ''}
+                            </p>
 
-                            <button
-                                onClick={() => downloadPDF(cert)}
-                                disabled={exporting}
-                                className="w-full bg-[#002147] text-white py-4 rounded-2xl text-[10px] font-bold uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-slate-800 transition-all shadow-lg shadow-blue-900/20 disabled:opacity-50"
-                            >
-                                {exporting && exportData?._id === cert._id ? (
-                                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                ) : (
-                                    <i className="fas fa-cloud-arrow-down" />
-                                )}
-                                {exporting && exportData?._id === cert._id ? "Processing..." : "Download PDF"}
-                            </button>
+                            <div className="flex flex-col sm:flex-row gap-3 relative z-10">
+                                <button
+                                    type="button"
+                                    onClick={() => downloadPDF(cert)}
+                                    disabled={exporting}
+                                    className="flex-1 bg-[#002147] text-white py-3.5 rounded-2xl text-[10px] font-bold uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-slate-800 transition-all shadow-lg shadow-blue-900/20 disabled:opacity-50"
+                                >
+                                    {exporting && exportData?._id === cert._id ? (
+                                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                    ) : (
+                                        <i className="fas fa-file-pdf" />
+                                    )}
+                                    PDF
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => downloadPNG(cert)}
+                                    disabled={exporting}
+                                    className="flex-1 bg-white text-[#002147] border-2 border-slate-100 py-3.5 rounded-2xl text-[10px] font-bold uppercase tracking-widest flex items-center justify-center gap-2 hover:border-[#002147] transition-all disabled:opacity-50"
+                                >
+                                    <i className="fas fa-image" />
+                                    PNG
+                                </button>
+                            </div>
                         </div>
-                    ))}
+                        );
+                    })}
                 </div>
             )}
 

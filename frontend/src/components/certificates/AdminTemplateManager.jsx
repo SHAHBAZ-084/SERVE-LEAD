@@ -147,9 +147,8 @@ export default function AdminTemplateManager({ auth, notify, api }) {
     const idStr = String(id);
     setActivatingId(idStr);
     try {
-      await api.put(`cert-templates/${idStr}/activate`, {}, auth);
+      const r = await api.put(`cert-templates/${idStr}/activate`, {}, auth);
       clearCertificateImageCache();
-      // Optimistic UI: only this template active
       setTemplates((prev) =>
         prev.map((t) => ({
           ...t,
@@ -157,10 +156,15 @@ export default function AdminTemplateManager({ auth, notify, api }) {
         }))
       );
       await refreshTemplates();
-      notify('Template activated. Members will use this one.');
+      const n = r.data?.membersGranted;
+      notify(
+        n != null
+          ? `Posted to members. Membership certificate is live for ${n} member(s).`
+          : 'Membership template posted. All members can download it now.'
+      );
     } catch (err) {
       console.error(err);
-      notify(err.response?.data?.error || 'Failed to activate template', 'error');
+      notify(err.response?.data?.error || 'Failed to post template', 'error');
     } finally {
       setActivatingId(null);
     }
@@ -185,7 +189,7 @@ export default function AdminTemplateManager({ auth, notify, api }) {
           Upload Membership Template
         </h3>
         <p className="text-xs text-slate-500">
-          1) Enter a name · 2) Choose a PNG/JPEG file · 3) Click Upload & Analyze · 4) Calibrate · 5) Activate
+          1) Upload PNG/JPEG · 2) Calibrate zones · 3) Click <strong>Post to Members</strong> — stays forever until you post another
         </p>
 
         {listError && (
@@ -266,7 +270,7 @@ export default function AdminTemplateManager({ auth, notify, api }) {
           Certificate Templates
         </h3>
         <p className="text-xs text-slate-500">
-          Upload as many templates as you need. Activate one for members — others stay saved.
+          Calibrate once, then <strong>Post to Members</strong>. New approvals get this membership certificate automatically.
         </p>
         {loading ? (
           <div className="flex justify-center py-10">
@@ -294,7 +298,7 @@ export default function AdminTemplateManager({ auth, notify, api }) {
                     <h4 className="font-bold text-slate-800 text-sm">{t.name}</h4>
                     {isActive && (
                       <span className="text-[9px] font-black uppercase tracking-widest bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-md">
-                        Active — used by members
+                        Posted — live for all members
                       </span>
                     )}
                     {!t.calibrated && (
@@ -331,7 +335,7 @@ export default function AdminTemplateManager({ auth, notify, api }) {
                         : 'bg-emerald-50 text-emerald-700 border-emerald-100 hover:bg-emerald-100'
                     } disabled:opacity-50`}
                   >
-                    {isActivating ? 'Activating…' : isActive ? 'Currently Active' : 'Activate'}
+                    {isActivating ? 'Posting…' : isActive ? 'Currently Posted' : 'Post to Members'}
                   </button>
                   <button
                     type="button"
@@ -362,7 +366,11 @@ export default function AdminTemplateManager({ auth, notify, api }) {
               setShowCalibrator(false);
               setCalibratorDoc(null);
               await refreshTemplates();
-              notify('Calibration saved');
+              notify('Calibration saved. Click Post to Members when ready.');
+              // Offer one-click post after calibrate
+              if (window.confirm('Post this membership template to all members now?')) {
+                await handleActivate(previewId);
+              }
             } catch (err) {
               console.error(err);
               notify(err.response?.data?.error || 'Failed to save calibration', 'error');

@@ -217,7 +217,7 @@ router.get('/:id', authMiddleware, isAdmin, async (req, res) => {
   }
 });
 
-// PUT /api/cert-templates/:id/activate
+// PUT /api/cert-templates/:id/activate — Post membership template to all members
 router.put('/:id/activate', authMiddleware, isAdmin, async (req, res) => {
   try {
     const id = req.params.id;
@@ -231,15 +231,30 @@ router.put('/:id/activate', authMiddleware, isAdmin, async (req, res) => {
       { new: true }
     );
 
+    // Ensure every approved member has a membership certificate entry
+    const { ensureMembershipCertificate } = require('../utils/membershipCertificate');
+    const approved = await Member.find({
+      status: 'approved',
+      member_id: { $exists: true, $ne: null },
+      role: { $nin: ['Admin', 'Superuser'] },
+    }).select('_id name member_id status');
+
+    let granted = 0;
+    for (const m of approved) {
+      const cert = await ensureMembershipCertificate(m, req.user.memberId);
+      if (cert) granted += 1;
+    }
+
     return res.json({
-      message: 'Template activated',
+      message: 'Membership template posted to all members',
       templateId: doc._id,
       name: doc.name,
       isActive: true,
+      membersGranted: granted,
     });
   } catch (error) {
     console.error('Cert template activate error:', error);
-    res.status(500).json({ error: 'Failed to activate template.' });
+    res.status(500).json({ error: 'Failed to post template to members.' });
   }
 });
 

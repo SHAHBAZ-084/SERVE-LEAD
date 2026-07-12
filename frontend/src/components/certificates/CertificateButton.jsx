@@ -3,11 +3,11 @@ import api, { getImgUrl } from '../../api';
 import { generateCertificate } from '../../utils/canvasEngine';
 
 export default function CertificateButton() {
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(null); // 'pdf' | 'png' | null
   const [error, setError] = useState(null);
 
-  const handleDownload = async () => {
-    setLoading(true);
+  const runDownload = async (format) => {
+    setLoading(format);
     setError(null);
     try {
       const token = localStorage.getItem('token');
@@ -21,12 +21,13 @@ export default function CertificateButton() {
           fileUrl: getImgUrl(template.fileUrl),
         },
         member,
+        format,
       });
     } catch (err) {
       if (err.response?.status === 403) {
         setError('Your membership is not yet approved.');
       } else if (err.response?.status === 404) {
-        setError('No certificate template available. Contact admin.');
+        setError('No membership certificate posted yet. Contact admin.');
       } else if (err.message === 'PDF library unavailable') {
         setError('PDF library unavailable');
       } else if (err.message === 'Template image could not be loaded') {
@@ -36,19 +37,19 @@ export default function CertificateButton() {
       }
       console.error(err);
     } finally {
-      setLoading(false);
+      setLoading(null);
     }
   };
 
   if (error) {
     return (
-      <div className="flex flex-col items-center gap-4 py-8">
+      <div className="flex flex-col items-center gap-4 py-6">
         <div className="bg-teal-50 border border-teal-200 text-[#005f6e] rounded-xl px-6 py-4 text-sm max-w-md text-center">
           {error}
         </div>
         <button
           type="button"
-          onClick={handleDownload}
+          onClick={() => runDownload('pdf')}
           className="bg-[#00bcd4] hover:bg-[#0097a7] text-white font-semibold px-8 py-3 rounded-2xl transition-all"
         >
           Try Again
@@ -58,19 +59,25 @@ export default function CertificateButton() {
   }
 
   return (
-    <div className="flex flex-col items-center gap-4 py-8">
+    <div className="flex flex-col sm:flex-row items-center justify-center gap-3 py-4">
       <button
         type="button"
-        onClick={handleDownload}
-        disabled={loading}
-        className="bg-[#00bcd4] hover:bg-[#0097a7] disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold text-base px-10 py-4 rounded-2xl shadow-lg shadow-[#00bcd4]/30 transition-all duration-200 flex items-center gap-3"
+        onClick={() => runDownload('pdf')}
+        disabled={!!loading}
+        className="w-full sm:w-auto bg-[#00bcd4] hover:bg-[#0097a7] disabled:opacity-60 text-white font-semibold px-8 py-3.5 rounded-2xl shadow-lg shadow-[#00bcd4]/25 transition-all flex items-center justify-center gap-2"
       >
-        <i className={`fas ${loading ? 'fa-spinner fa-spin' : 'fa-download'}`} />
-        {loading ? 'Generating PDF...' : 'Download Membership Certificate'}
+        <i className={`fas ${loading === 'pdf' ? 'fa-spinner fa-spin' : 'fa-file-pdf'}`} />
+        {loading === 'pdf' ? 'Generating…' : 'Download PDF'}
       </button>
-      <p className="text-slate-400 text-xs text-center">
-        Your certificate is generated automatically.
-      </p>
+      <button
+        type="button"
+        onClick={() => runDownload('png')}
+        disabled={!!loading}
+        className="w-full sm:w-auto bg-white hover:bg-slate-50 disabled:opacity-60 text-[#005f6e] font-semibold px-8 py-3.5 rounded-2xl border-2 border-teal-100 transition-all flex items-center justify-center gap-2"
+      >
+        <i className={`fas ${loading === 'png' ? 'fa-spinner fa-spin' : 'fa-image'}`} />
+        {loading === 'png' ? 'Generating…' : 'Download PNG'}
+      </button>
     </div>
   );
 }

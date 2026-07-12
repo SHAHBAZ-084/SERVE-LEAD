@@ -2,10 +2,7 @@ import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import api, { getImgUrl, API_BASE as API_BASE_URL } from "../api";
 import CountdownTimer from "../components/common/CountdownTimer";
-import { RenderCertificate, CERT_TEMPLATES, CHAIRMAN_NAME, logo, signatureImg, stampImg, MEMBERSHIP_TEMPLATE_ID } from "./CertTemplates";
-import MembershipCertificateExact, { isMembershipCertificate } from "./MembershipCertificateExact";
-import { captureCertificatePdf } from "../utils/certificatePdfExport";
-import { generateCertificate, renderCertificateDataUrl, clearCertificateImageCache } from "../utils/canvasEngine";
+import { CERT_TEMPLATES, CHAIRMAN_NAME, logo } from "./CertTemplates";
 import AdminTemplateManager from "../components/certificates/AdminTemplateManager";
 import { compressImage } from "../utils/compressImage";
 import ImageUploadHint from "../components/common/ImageUploadHint";
@@ -1012,56 +1009,35 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
     const [submitting, setSubmitting] = useState(false);
     const [showForm, setShowForm] = useState(false);
     const [isBulkMode, setIsBulkMode] = useState(false);
-    const [showPreview, setShowPreview] = useState(false);
-    const [exportData, setExportData] = useState(null);
     const [searchMember, setSearchMember] = useState("");
     const [searchCert, setSearchCert] = useState("");
     const [selectedCertIds, setSelectedCertIds] = useState([]);
     const [selectMode, setSelectMode] = useState(false);
     const [isRevoking, setIsRevoking] = useState(false);
-    const [isDownloading, setIsDownloading] = useState(false);
-    const [activePreviewUrl, setActivePreviewUrl] = useState(null);
-    const [activePreviewPayload, setActivePreviewPayload] = useState(null);
-    const [previewLoading, setPreviewLoading] = useState(false);
+    const [bulkMemberIds, setBulkMemberIds] = useState([]);
 
-    const [selectedTemplate, setSelectedTemplate] = useState(CERT_TEMPLATES[0]);
+    const [selectedTemplate] = useState(CERT_TEMPLATES[0]);
 
     const [form, setForm] = useState({
         memberId: "",
         eventId: "",
         category: "Appreciation",
         customCategory: "",
-        description: "For their outstanding contribution and dedication to the society's goals and initiatives.",
-        title: "CERTIFICATE OF MEMBERSHIP",
-        awardType: "Official Membership"
+        description: "",
+        title: "",
+        awardType: "Official Recognition",
     });
 
-    const [certAssets, setCertAssets] = useState({ logo: null, seal: null, signature: null, stamp: null });
-
     useEffect(() => {
-        // Pre-load assets into Base64 to bypass CORS/Taint issues during capture
-        const loadToDataURL = async (url, key) => {
-            try {
-                const response = await fetch(url);
-                const blob = await response.blob();
-                const reader = new FileReader();
-                reader.onloadend = () => setCertAssets(prev => ({ ...prev, [key]: reader.result }));
-                reader.readAsDataURL(blob);
-            } catch (err) {
-                console.error(`Failed to load ${key} as Base64:`, err);
-            }
-        };
-        loadToDataURL('/logo-certificate.png', 'logo');
-        loadToDataURL('/signature.png', 'signature');
-        loadToDataURL('/stamp.png', 'stamp');
+        fetchCertificates();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     const fetchCertificates = async () => {
         setLoading(true);
         try {
             const r = await api.get("certificates/admin/all", auth);
-            // Filter out certificates issued to Admins or Superusers
-            const nonAdminCerts = r.data.filter(c => {
+            const nonAdminCerts = (r.data || []).filter((c) => {
                 const role = c.memberId?.role;
                 return role && role !== 'Admin' && role !== 'Superuser';
             });
@@ -1073,29 +1049,36 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
         }
     };
 
+    const resetForm = () => {
+        setForm({
+            memberId: "",
+            eventId: "",
+            category: "Appreciation",
+            customCategory: "",
+            description: "",
+            title: "",
+            awardType: "Official Recognition",
+        });
+        setSearchMember("");
+        setBulkMemberIds([]);
+    };
+
     const handleIssue = async () => {
         if (!form.memberId) return notify("Please select a member", "error");
+        if (!form.title?.trim()) return notify("Enter certificate name", "error");
+        if (form.category === 'Other' && !form.customCategory?.trim()) {
+            return notify("Enter custom type name", "error");
+        }
         setSubmitting(true);
         try {
-            await api.post("certificates", { ...form, chairmanName: CHAIRMAN_NAME, templateId: selectedTemplate.id }, auth);
-
-            // Generate PDF from active uploaded template for the issued member
-            try {
-                await downloadActiveTemplatePdf();
-            } catch { /* PDF optional if template missing */ }
-
-            notify("Certificate issued successfully!");
+            await api.post("certificates", {
+                ...form,
+                chairmanName: CHAIRMAN_NAME,
+                templateId: selectedTemplate.id,
+            }, auth);
+            notify("Certificate issued — it appears in the member's Certificates section.");
             setShowForm(false);
-            setForm({
-                memberId: "",
-                eventId: "",
-                category: "Appreciation",
-                customCategory: "",
-                description: "For their outstanding contribution and dedication to the society's goals and initiatives.",
-                title: "CERTIFICATE OF MEMBERSHIP",
-                awardType: "Official Membership"
-            });
-            setSearchMember("");
+            resetForm();
             fetchCertificates();
         } catch (err) {
             notify(err.response?.data?.error || "Failed to issue certificate", "error");
@@ -1105,131 +1088,32 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
     };
 
     const handleBulkIssue = async () => {
-        if (!form.eventId) return notify("Please select an event for bulk issuance", "error");
+        if (bulkMemberIds.length === 0) return notify("Select at least one member", "error");
+        if (!form.title?.trim()) return notify("Enter certificate name", "error");
+        if (form.category === 'Other' && !form.customCategory?.trim()) {
+            return notify("Enter custom type name", "error");
+        }
         setSubmitting(true);
         try {
-            const r = await api.post("certificates/bulk", { ...form, chairmanName: CHAIRMAN_NAME, templateId: selectedTemplate.id }, auth);
-            notify(`Successfully issued ${r.data.count} certificates!`);
+            const r = await api.post("certificates/bulk", {
+                memberIds: bulkMemberIds,
+                eventId: form.eventId || undefined,
+                category: form.category,
+                customCategory: form.customCategory,
+                description: form.description,
+                title: form.title,
+                awardType: form.awardType,
+                chairmanName: CHAIRMAN_NAME,
+                templateId: selectedTemplate.id,
+            }, auth);
+            notify(`Issued ${r.data.count} certificate(s) to members — no download on your PC.`);
             setShowForm(false);
-            setForm({
-                memberId: "",
-                eventId: "",
-                category: "Appreciation",
-                customCategory: "",
-                description: "For their outstanding contribution and dedication to the society's goals and initiatives.",
-                title: "CERTIFICATE OF MEMBERSHIP",
-                awardType: "Official Membership"
-            });
-            setSearchMember("");
+            resetForm();
             fetchCertificates();
         } catch (err) {
             notify(err.response?.data?.error || "Failed to bulk issue certificates", "error");
         } finally {
             setSubmitting(false);
-        }
-    };
-
-    const downloadPDF = async (certData) => {
-        setExportData(certData);
-        notify("Preparing document...");
-        await new Promise((r) => setTimeout(r, 600));
-        try {
-            const name = certData.memberId?.name || certData.memberName || "Award";
-            await captureCertificatePdf("cert-export-node", {
-                fileName: `SLS_Official_${name.replace(/\s+/g, "_")}.pdf`,
-            });
-            notify("PDF Generated Successfully!");
-        } catch (err) {
-            console.error("PDF Export Error:", err);
-            notify(`PDF Error: ${err.message}`, "error");
-        } finally {
-            setExportData(null);
-        }
-    };
-
-    const openActiveTemplatePreview = async () => {
-        if (!form.memberId || !selectedMember) {
-            return notify("Please select a member", "error");
-        }
-        setPreviewLoading(true);
-        setActivePreviewUrl(null);
-        setActivePreviewPayload(null);
-        try {
-            const list = await api.get("cert-templates", auth);
-            const active = (list.data || []).find((t) => t.isActive);
-            if (!active) {
-                notify("Activate an uploaded template first.", "error");
-                return;
-            }
-            const full = await api.get(`cert-templates/${active._id}`, auth);
-            const role = selectedMember.role;
-            const membershipStatus =
-                role === 'Executive' || role === 'Admin' || role === 'Superuser'
-                    ? 'Active Member'
-                    : 'General Member';
-            const template = {
-                fileUrl: getImgUrl(full.data.imageUrl || `/api/cert-templates/${active._id}/image`),
-                zones: full.data.zones,
-                canvasWidth: full.data.canvasWidth,
-                canvasHeight: full.data.canvasHeight,
-            };
-            const member = {
-                name: selectedMember.name,
-                memberId: selectedMember.member_id,
-                approvedAt: selectedMember.approvedAt || selectedMember.updatedAt || selectedMember.createdAt,
-                city: selectedMember.city,
-                mobile: selectedMember.whatsapp || selectedMember.phone || '',
-                joiningYear: selectedMember.joining_year || '',
-                membershipStatus,
-            };
-            const dataUrl = await renderCertificateDataUrl({ template, member, scale: 0.55 });
-            setActivePreviewUrl(dataUrl);
-            setActivePreviewPayload({ template, member });
-            setShowPreview(true);
-        } catch (err) {
-            console.error(err);
-            notify(err.response?.data?.error || err.message || "Preview failed", "error");
-        } finally {
-            setPreviewLoading(false);
-        }
-    };
-
-    const downloadActiveTemplatePdf = async () => {
-        try {
-            let payload = activePreviewPayload;
-            if (!payload) {
-                if (!selectedMember) return notify("Please select a member", "error");
-                const list = await api.get("cert-templates", auth);
-                const active = (list.data || []).find((t) => t.isActive);
-                if (!active) return notify("Activate an uploaded template first.", "error");
-                const full = await api.get(`cert-templates/${active._id}`, auth);
-                const role = selectedMember.role;
-                payload = {
-                    template: {
-                        fileUrl: getImgUrl(full.data.imageUrl || `/api/cert-templates/${active._id}/image`),
-                        zones: full.data.zones,
-                        canvasWidth: full.data.canvasWidth,
-                        canvasHeight: full.data.canvasHeight,
-                    },
-                    member: {
-                        name: selectedMember.name,
-                        memberId: selectedMember.member_id,
-                        approvedAt: selectedMember.approvedAt || selectedMember.updatedAt || selectedMember.createdAt,
-                        city: selectedMember.city,
-                        mobile: selectedMember.whatsapp || selectedMember.phone || '',
-                        joiningYear: selectedMember.joining_year || '',
-                        membershipStatus:
-                            role === 'Executive' || role === 'Admin' || role === 'Superuser'
-                                ? 'Active Member'
-                                : 'General Member',
-                    },
-                };
-            }
-            await generateCertificate(payload);
-            notify("PDF downloaded from your uploaded template!");
-        } catch (err) {
-            console.error(err);
-            notify(err.message || "PDF download failed", "error");
         }
     };
 
@@ -1263,32 +1147,17 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
         setIsRevoking(false);
     };
 
-    const handleBulkDownload = async () => {
-        setIsDownloading(true);
-        notify(`Starting batch download for ${selectedCertIds.length} items...`);
-
-        for (const id of selectedCertIds) {
-            const cert = issuedCertificates.find(c => c._id === id);
-            if (cert) {
-                try {
-                    await downloadPDF(cert);
-                    // Add a small delay for browser stability
-                    await new Promise(r => setTimeout(r, 500));
-                } catch (err) {
-                    console.error("Bulk Download Error:", err);
-                }
-            }
-        }
-
-        notify("Batch export completed!");
-        setSelectedCertIds([]);
-        setIsDownloading(false);
+    const toggleBulkMember = (id) => {
+        setBulkMemberIds((prev) =>
+            prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+        );
     };
 
     const certMatchesSearch = (c, term) =>
         (c.memberId?.name || c.memberName || "").toLowerCase().includes(term) ||
         (c.memberId?.member_id || c.member_id_str || "").toLowerCase().includes(term) ||
         (c.eventId?.title || "").toLowerCase().includes(term) ||
+        (c.title || "").toLowerCase().includes(term) ||
         (c.category || "").toLowerCase().includes(term);
 
     const filteredCertificates = useMemo(() => {
@@ -1296,24 +1165,22 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
         return issuedCertificates.filter((c) => certMatchesSearch(c, term));
     }, [issuedCertificates, searchCert]);
 
-    const filteredMembers = members.filter(m =>
-        (m.role !== 'Admin' && m.role !== 'Superuser') && (
-            m.name.toLowerCase().includes(searchMember.toLowerCase()) ||
-            m.member_id.toLowerCase().includes(searchMember.toLowerCase())
-        )
+    const approvedMembers = useMemo(() =>
+        members.filter(m =>
+            m.status === 'approved'
+            && m.role !== 'Admin'
+            && m.role !== 'Superuser'
+        ), [members]);
+
+    const filteredMembers = approvedMembers.filter(m =>
+        m.name.toLowerCase().includes(searchMember.toLowerCase()) ||
+        (m.member_id || "").toLowerCase().includes(searchMember.toLowerCase())
     );
 
     const selectedMember = members.find(m => m._id === form.memberId);
-    const selectedEvent = events.find(e => e._id === form.eventId);
 
     const updateDefaultDescription = (cat) => {
-        let desc = "";
-        if (cat === "Appreciation") desc = "For their outstanding contribution and dedication to the society's goals and initiatives.";
-        else if (cat === "Achievement") desc = "In recognition of their exceptional performance and reaching significant milestones within the society.";
-        else if (cat === "Participation") desc = "For their active participation and engagement in society events and programs.";
-        else if (cat === "Excellence") desc = "Awarded for demonstrating excellence and high standards of brilliance in their assigned responsibilities.";
-
-        setForm({ ...form, category: cat, description: desc || form.description });
+        setForm({ ...form, category: cat });
     };
 
 
@@ -1341,19 +1208,62 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
                 <div className="max-w-3xl mx-auto animate-fade-up">
                     <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm space-y-6">
                         <div className="space-y-4">
-                            <div className="flex justify-between items-center mb-6">
+                            <div className="flex justify-between items-center mb-2">
                                 <h3 className="text-sm font-black uppercase tracking-widest text-[#002147]">
-                                    {isBulkMode ? 'Bulk Issue Event Certificates' : 'Issue New Certificate'}
+                                    {isBulkMode ? 'Bulk Issue Certificates' : 'Issue Certificate'}
                                 </h3>
                                 <button
-                                    onClick={() => { setIsBulkMode(!isBulkMode); setForm({ ...form, memberId: "", eventId: "" }); setSearchMember(""); }}
+                                    type="button"
+                                    onClick={() => {
+                                        setIsBulkMode(!isBulkMode);
+                                        setForm({ ...form, memberId: "" });
+                                        setSearchMember("");
+                                        setBulkMemberIds([]);
+                                    }}
                                     className="px-4 py-1.5 rounded-lg text-[10px] font-bold border border-slate-200 text-slate-500 hover:bg-slate-50 transition-colors"
                                 >
                                     Switch to {isBulkMode ? 'Single Issue' : 'Bulk Issue'}
                                 </button>
                             </div>
+                            <p className="text-xs text-slate-500">
+                                Enter type and name — certificate goes to the member dashboard (no download on your PC).
+                            </p>
 
-                            {!isBulkMode && (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Type</label>
+                                    <select
+                                        value={form.category}
+                                        onChange={(e) => updateDefaultDescription(e.target.value)}
+                                        className={inputCls}
+                                    >
+                                        <option value="Appreciation">Appreciation</option>
+                                        <option value="Achievement">Achievement</option>
+                                        <option value="Participation">Participation</option>
+                                        <option value="Excellence">Excellence</option>
+                                        <option value="Other">Other (custom)…</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Certificate Name</label>
+                                    <input
+                                        type="text"
+                                        value={form.title}
+                                        onChange={e => setForm({ ...form, title: e.target.value })}
+                                        className={inputCls}
+                                        placeholder="e.g. Best Organizer 2026"
+                                    />
+                                </div>
+                            </div>
+
+                            {form.category === 'Other' && (
+                                <div>
+                                    <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Custom Type Label</label>
+                                    <input type="text" placeholder="Shown on member card" value={form.customCategory} onChange={e => setForm({ ...form, customCategory: e.target.value })} className={inputCls} />
+                                </div>
+                            )}
+
+                            {!isBulkMode ? (
                                 <div className="relative">
                                     <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Recipient Member</label>
                                     <input
@@ -1368,6 +1278,7 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
                                             {filteredMembers.map(m => (
                                                 <button
                                                     key={m._id}
+                                                    type="button"
                                                     onClick={() => {
                                                         setForm({ ...form, memberId: m._id });
                                                         setSearchMember(m.name);
@@ -1375,7 +1286,7 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
                                                     className="w-full px-4 py-3 text-left hover:bg-slate-50 border-b border-slate-100 last:border-0 flex justify-between items-center group"
                                                 >
                                                     <span className="text-xs font-bold text-slate-700 group-hover:text-[#002147] transition-colors">{m.name}</span>
-                                                    <span className="text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full font-bold group-hover:bg-[#002147]/10 group-hover:text-[#002147] transition-colors">{m.member_id}</span>
+                                                    <span className="text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full font-bold">{m.member_id}</span>
                                                 </button>
                                             ))}
                                         </div>
@@ -1386,99 +1297,98 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
                                                 <i className="fas fa-check-circle text-emerald-500" />
                                                 <span className="text-xs font-bold text-emerald-700">{selectedMember?.name} ({selectedMember?.member_id})</span>
                                             </div>
-                                            <button onClick={() => { setForm({ ...form, memberId: "" }); setSearchMember(""); }} className="text-emerald-700 hover:text-emerald-900"><i className="fas fa-times" /></button>
+                                            <button type="button" onClick={() => { setForm({ ...form, memberId: "" }); setSearchMember(""); }} className="text-emerald-700 hover:text-emerald-900"><i className="fas fa-times" /></button>
                                         </div>
                                     )}
                                 </div>
-                            )}
-
-                            <div className="grid grid-cols-2 gap-4">
+                            ) : (
                                 <div>
-                                    <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Category</label>
-                                    <select
-                                        value={form.category}
-                                        onChange={(e) => updateDefaultDescription(e.target.value)}
-                                        className={inputCls}
-                                    >
-                                        <option value="Appreciation">Appreciation</option>
-                                        <option value="Achievement">Achievement</option>
-                                        <option value="Participation">Participation</option>
-                                        <option value="Excellence">Excellence</option>
-                                        <option value="Other">Other Category...</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Associated Event</label>
-                                    <select
-                                        value={form.eventId}
-                                        onChange={(e) => {
-                                            setForm({ ...form, eventId: e.target.value });
-                                        }}
-                                        className={inputCls}
-                                    >
-                                        <option value="">{isBulkMode ? 'Select an event...' : 'No Specific Event'}</option>
-                                        {events.map(e => <option key={e._id} value={e._id}>{e.title}</option>)}
-                                    </select>
-                                    {isBulkMode && form.eventId && (
-                                        <div className="mt-2 flex items-center justify-between p-3 bg-blue-50 rounded-xl border border-blue-100">
-                                            <div className="flex items-center gap-2">
-                                                <i className="fas fa-info-circle text-blue-500" />
-                                                <span className="text-[10px] font-bold text-blue-700 uppercase tracking-widest">
-                                                    {events.find(e => e._id === form.eventId)?.participants?.filter(p => p.attended).length || 0} Members Marked Present
-                                                </span>
-                                            </div>
-                                            <p className="text-[9px] font-bold text-blue-500 italic">Certificate target group filtered</p>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-
-                            {form.category === 'Other' && (
-                                <div>
-                                    <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Provide Category Name</label>
-                                    <input type="text" placeholder="e.g. Best Organizer 2026" value={form.customCategory} onChange={e => setForm({ ...form, customCategory: e.target.value })} className={inputCls} />
+                                    <div className="flex justify-between items-center mb-2">
+                                        <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400">Select Members</label>
+                                        <span className="text-[10px] font-bold text-[#002147]">{bulkMemberIds.length} selected</span>
+                                    </div>
+                                    <input
+                                        type="text"
+                                        placeholder="Filter members..."
+                                        value={searchMember}
+                                        onChange={(e) => setSearchMember(e.target.value)}
+                                        className={`${inputCls} mb-2`}
+                                    />
+                                    <div className="max-h-56 overflow-y-auto rounded-xl border border-slate-100 divide-y divide-slate-50">
+                                        {filteredMembers.length === 0 ? (
+                                            <p className="text-xs text-slate-400 p-4 text-center">No members found</p>
+                                        ) : filteredMembers.map((m) => (
+                                            <label key={m._id} className="flex items-center gap-3 px-4 py-2.5 hover:bg-slate-50 cursor-pointer">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={bulkMemberIds.includes(m._id)}
+                                                    onChange={() => toggleBulkMember(m._id)}
+                                                    className="w-4 h-4 text-[#002147] border-slate-300 rounded focus:ring-[#002147]"
+                                                />
+                                                <span className="text-xs font-bold text-slate-700 flex-1">{m.name}</span>
+                                                <span className="text-[10px] text-slate-400 font-bold">{m.member_id}</span>
+                                            </label>
+                                        ))}
+                                    </div>
+                                    <div className="mt-2 flex gap-2">
+                                        <button
+                                            type="button"
+                                            onClick={() => setBulkMemberIds(filteredMembers.map((m) => m._id))}
+                                            className="text-[10px] font-bold uppercase tracking-widest text-[#002147] hover:underline"
+                                        >
+                                            Select filtered
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setBulkMemberIds([])}
+                                            className="text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:underline"
+                                        >
+                                            Clear
+                                        </button>
+                                    </div>
                                 </div>
                             )}
 
                             <div>
-                                <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Description</label>
+                                <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Event (optional)</label>
+                                <select
+                                    value={form.eventId}
+                                    onChange={(e) => setForm({ ...form, eventId: e.target.value })}
+                                    className={inputCls}
+                                >
+                                    <option value="">No specific event</option>
+                                    {events.map(e => <option key={e._id} value={e._id}>{e.title}</option>)}
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Note (optional)</label>
                                 <textarea
-                                    rows={3}
+                                    rows={2}
                                     value={form.description}
                                     onChange={e => setForm({ ...form, description: e.target.value })}
                                     className={inputCls}
-                                    placeholder="Add certificate specific lines..."
+                                    placeholder="Optional description line…"
                                 />
-                            </div>
-
-                            <div>
-                                <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Certificate Title</label>
-                                <input type="text" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} className={inputCls} placeholder="e.g. CERTIFICATE OF MEMBERSHIP" />
-                            </div>
-
-                            <div>
-                                <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Award Type</label>
-                                <input type="text" value={form.awardType} onChange={e => setForm({ ...form, awardType: e.target.value })} className={inputCls} placeholder="e.g. Official Membership" />
                             </div>
                         </div>
 
-                        <div className="flex flex-col sm:flex-row gap-4 pt-4 border-t border-slate-100">
+                        <div className="pt-4 border-t border-slate-100">
                             <button
                                 type="button"
-                                onClick={openActiveTemplatePreview}
-                                disabled={(!isBulkMode && !form.memberId) || (isBulkMode && !form.eventId) || submitting || previewLoading}
-                                className="w-full sm:flex-1 py-4 bg-white border-2 border-slate-200 text-slate-600 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:border-[#002147] hover:text-[#002147] transition-all disabled:opacity-50"
-                            >
-                                <i className={`fas ${previewLoading ? 'fa-spinner fa-spin' : 'fa-eye'} mr-2`} />
-                                {previewLoading ? 'Rendering Preview...' : 'Preview Draft'}
-                            </button>
-                            <button
                                 onClick={isBulkMode ? handleBulkIssue : handleIssue}
-                                disabled={(!isBulkMode && !form.memberId) || (isBulkMode && !form.eventId) || submitting}
-                                className="w-full sm:flex-1 py-4 bg-[#002147] text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 shadow-xl shadow-blue-900/10 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                                disabled={
+                                    submitting
+                                    || !form.title?.trim()
+                                    || (!isBulkMode && !form.memberId)
+                                    || (isBulkMode && bulkMemberIds.length === 0)
+                                }
+                                className="w-full py-4 bg-[#002147] text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 shadow-xl shadow-blue-900/10 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
                             >
-                                {submitting ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <i className="fas fa-check" />}
-                                {isBulkMode ? 'Bulk Issue to All Participants' : 'Issue & Save'}
+                                {submitting ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <i className="fas fa-paper-plane" />}
+                                {isBulkMode
+                                    ? `Issue to ${bulkMemberIds.length || 0} Member(s)`
+                                    : 'Issue to Member'}
                             </button>
                         </div>
                     </div>
@@ -1490,14 +1400,9 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
                     <div className="fixed sm:absolute bottom-6 sm:bottom-auto sm:top-4 left-1/2 -translate-x-1/2 z-[100] bg-slate-900 text-white px-5 sm:px-8 py-3 rounded-2xl sm:rounded-2xl shadow-2xl shadow-blue-900/40 flex flex-wrap items-center justify-center gap-4 sm:gap-6 animate-fade-up border border-slate-700 w-[90%] sm:w-auto ring-4 ring-slate-900/20 backdrop-blur-md">
                         <span className="text-[9px] sm:text-[10px] font-black bg-white/10 px-3 py-1.5 rounded-xl uppercase tracking-widest whitespace-nowrap">{selectedCertIds.length} Selected</span>
                         <div className="hidden sm:block w-px h-4 bg-white/20" />
-                        <div className="flex items-center gap-5 sm:gap-6">
-                            <button onClick={handleBulkDownload} disabled={isDownloading} className="text-blue-400 hover:text-blue-300 text-[9px] sm:text-[10px] font-black uppercase tracking-widest transition-colors flex items-center gap-2">
-                                {isDownloading ? <i className="fas fa-spinner fa-spin" /> : <i className="fas fa-file-arrow-down" />} Download
-                            </button>
-                            <button onClick={handleBulkRevoke} disabled={isRevoking} className="text-rose-400 hover:text-rose-300 text-[9px] sm:text-[10px] font-black uppercase tracking-widest transition-colors flex items-center gap-2">
-                                {isRevoking ? <i className="fas fa-spinner fa-spin" /> : <i className="fas fa-trash-alt" />} Revoke
-                            </button>
-                        </div>
+                        <button onClick={handleBulkRevoke} disabled={isRevoking} className="text-rose-400 hover:text-rose-300 text-[9px] sm:text-[10px] font-black uppercase tracking-widest transition-colors flex items-center gap-2">
+                            {isRevoking ? <i className="fas fa-spinner fa-spin" /> : <i className="fas fa-trash-alt" />} Revoke
+                        </button>
                     </div>
                 )}
 
@@ -1559,9 +1464,6 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
                                     </div>
 
                                     <div className="flex gap-2 pt-1 border-t border-slate-50">
-                                        <button onClick={() => downloadPDF(cert)} className="flex-1 bg-blue-50 text-blue-600 border border-blue-100 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest flex items-center justify-center gap-1.5 hover:bg-blue-600 hover:text-white transition-all">
-                                            <i className="fas fa-file-pdf" /> PDF
-                                        </button>
                                         <button onClick={() => revokeCertificate(cert._id)} className="flex-1 bg-rose-50 text-rose-500 border border-rose-100 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest flex items-center justify-center gap-1.5 hover:bg-rose-500 hover:text-white transition-all">
                                             <i className="fas fa-trash-alt" /> Revoke
                                         </button>
@@ -1617,9 +1519,14 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
                                                     </div>
                                                 </td>
                                                 <td className="px-8 py-6 font-bold text-xs text-slate-600">
-                                                    <span className="px-3 py-1 rounded-lg bg-slate-50 border border-slate-100">
-                                                        {cert.category === 'Other' ? cert.customCategory : cert.category}
-                                                    </span>
+                                                    <div className="space-y-1">
+                                                        <span className="px-3 py-1 rounded-lg bg-slate-50 border border-slate-100 inline-block">
+                                                            {cert.category === 'Other' ? cert.customCategory : cert.category}
+                                                        </span>
+                                                        {cert.title && (
+                                                            <p className="text-[10px] font-bold text-slate-500 mt-1">{cert.title}</p>
+                                                        )}
+                                                    </div>
                                                 </td>
                                                 <td className="px-8 py-6 text-xs font-bold text-slate-400 italic">
                                                     {cert.eventId?.title || "Society Delegate"}
@@ -1628,14 +1535,9 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
                                                     {new Date(cert.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
                                                 </td>
                                                 <td className="px-8 py-6 text-right">
-                                                    <div className="flex justify-end gap-3">
-                                                        <button onClick={() => downloadPDF(cert)} className="w-9 h-9 flex items-center justify-center bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-600 hover:text-white transition-all shadow-sm" title="Download Document">
-                                                            <i className="fas fa-file-pdf text-xs" />
-                                                        </button>
-                                                        <button onClick={() => revokeCertificate(cert._id)} className="w-9 h-9 flex items-center justify-center bg-rose-50 text-rose-500 rounded-xl hover:bg-rose-500 hover:text-white transition-all shadow-sm" title="Revoke Certificate">
-                                                            <i className="fas fa-trash-alt text-xs" />
-                                                        </button>
-                                                    </div>
+                                                    <button onClick={() => revokeCertificate(cert._id)} className="w-9 h-9 flex items-center justify-center bg-rose-50 text-rose-500 rounded-xl hover:bg-rose-500 hover:text-white transition-all shadow-sm" title="Revoke Certificate">
+                                                        <i className="fas fa-trash-alt text-xs" />
+                                                    </button>
                                                 </td>
                                             </tr>
                                         )))
@@ -1645,102 +1547,6 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
                         </div>
                     </div>
                 )}
-            </div>
-
-            {showPreview && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-                    <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => { setShowPreview(false); setActivePreviewUrl(null); }} />
-
-                    <div className="relative bg-white rounded-[32px] shadow-2xl flex flex-col max-h-[96vh] w-full max-w-5xl overflow-hidden animate-in fade-in zoom-in duration-200">
-                        <div className="flex justify-between items-center px-8 py-5 border-b border-slate-100 bg-white">
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-xl bg-[#002147]/5 flex items-center justify-center">
-                                    <i className="fas fa-file-certificate text-[#002147] text-lg" />
-                                </div>
-                                <div className="flex flex-col">
-                                    <h3 className="text-[#002147] text-base font-black uppercase tracking-tight">Review Certificate Proof</h3>
-                                    <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">
-                                        {activePreviewUrl ? 'Your uploaded template + member data' : 'Final layout verification before official issuance'}
-                                    </p>
-                                </div>
-                            </div>
-                            <button onClick={() => { setShowPreview(false); setActivePreviewUrl(null); }} className="w-10 h-10 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-all flex items-center justify-center">
-                                <i className="fas fa-times text-lg" />
-                            </button>
-                        </div>
-
-                        <div className="flex-1 overflow-auto p-6 sm:p-10 bg-slate-50/50 custom-scrollbar">
-                            {activePreviewUrl ? (
-                                <div className="flex justify-center w-full">
-                                    <img
-                                        src={activePreviewUrl}
-                                        alt="Certificate preview"
-                                        className="w-full max-w-4xl rounded-lg shadow-xl border border-slate-200"
-                                    />
-                                </div>
-                            ) : (
-                                <div className="flex justify-center min-h-[400px] w-full items-center text-slate-400 text-sm font-bold uppercase tracking-widest">
-                                    Loading preview…
-                                </div>
-                            )}
-                        </div>
-
-                        <div className="px-8 py-5 bg-white border-t border-slate-100 flex flex-col sm:flex-row justify-between items-center gap-4">
-                            <div className="hidden sm:flex items-center gap-2 text-slate-400 text-[11px] font-bold uppercase tracking-wide">
-                                <i className="fas fa-shield-check text-emerald-500" />
-                                Prepared for generation
-                            </div>
-
-                            <div className="flex items-center gap-3 w-full sm:w-auto">
-                                <button
-                                    onClick={() => { setShowPreview(false); setActivePreviewUrl(null); }}
-                                    className="flex-1 sm:flex-none px-6 py-3.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all"
-                                >
-                                    Cancel
-                                </button>
-
-                                <button
-                                    onClick={downloadActiveTemplatePdf}
-                                    className="flex-1 sm:flex-none px-6 py-3.5 bg-white hover:bg-slate-50 text-[#002147] border-2 border-slate-200 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2"
-                                >
-                                    <i className="fas fa-download" />
-                                    Download Proof
-                                </button>
-
-                                <button
-                                    onClick={() => { setShowPreview(false); setActivePreviewUrl(null); isBulkMode ? handleBulkIssue() : handleIssue(); }}
-                                    className="flex-1 sm:flex-none px-10 py-3.5 bg-[#002147] text-white hover:bg-slate-800 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-900/20"
-                                >
-                                    <i className="fas fa-paper-plane" />
-                                    {isBulkMode ? 'Bulk Issue Certificates' : 'Issue Official Certificate'}
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Unified Certificate Engine (Serves Export Capture for issuance history downloads) */}
-            <div 
-                id="cert-export-node" 
-                style={{ 
-                    position: 'fixed', 
-                    top: '-9999px',
-                    left: '-9999px',
-                    zIndex: -1000,
-                    pointerEvents: 'none',
-                    opacity: 0,
-                    overflow: 'hidden',
-                }}
-            >
-                {(() => {
-                    const tid = Number(exportData?.templateId || selectedTemplate.id);
-                    const dataToUse = exportData || (form.memberId ? { ...form, memberId: selectedMember, templateId: tid } : { ...form, templateId: tid });
-                    if (isMembershipCertificate(dataToUse)) {
-                        return <MembershipCertificateExact data={dataToUse} certAssets={certAssets} id="cert-inner" />;
-                    }
-                    return <RenderCertificate templateId={tid} data={dataToUse} certAssets={certAssets} id="cert-inner" />;
-                })()}
             </div>
         </div>
     );

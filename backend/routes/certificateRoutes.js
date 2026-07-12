@@ -63,23 +63,26 @@ router.post('/', authMiddleware, isAdmin, async (req, res) => {
        return res.status(400).json({ error: 'Custom category name is required.' });
     }
 
-    if(!chairmanName) {
-        return res.status(400).json({ error: 'Chairman name is required to sign the certificate.' });
+    if (!chairmanName) {
+      return res.status(400).json({ error: 'Chairman name is required to sign the certificate.' });
+    }
+    if (!title || !String(title).trim()) {
+      return res.status(400).json({ error: 'Certificate name is required.' });
     }
 
     const newCert = new Certificate({
       memberId: member._id,
-      memberName: member.name, 
+      memberName: member.name,
       member_id_str: member.member_id,
       eventId: validEventId,
       category,
       customCategory: category === 'Other' ? (customCategory || 'Unspecified') : undefined,
       description,
       chairmanName,
-      title: title || 'CERTIFICATE OF ATTENDANCE',
+      title: String(title).trim(),
       awardType: awardType || 'Official Recognition',
       issuedBy: req.user.memberId,
-      templateId: templateId || 1
+      templateId: templateId || 1,
     });
 
     await newCert.save();
@@ -92,78 +95,102 @@ router.post('/', authMiddleware, isAdmin, async (req, res) => {
   }
 });
 
-// POST /api/certificates/bulk - Bulk issue certificates for an event (Admin only)
+// POST /api/certificates/bulk - Bulk issue to selected members (or event attendees)
 router.post('/bulk', authMiddleware, isAdmin, async (req, res) => {
   try {
-    const { eventId, category, customCategory, description, chairmanName, title, awardType, templateId } = req.body;
+    const {
+      memberIds,
+      eventId,
+      category,
+      customCategory,
+      description,
+      chairmanName,
+      title,
+      awardType,
+      templateId,
+    } = req.body;
 
-    if (!eventId) {
-      return res.status(400).json({ error: 'Event ID is required for bulk issuance.' });
-    }
-
-    const event = await Event.findById(eventId).populate('participants.memberId');
-    if (!event) {
-      return res.status(404).json({ error: 'Event not found.' });
-    }
-
-    if (!event.participants || event.participants.length === 0) {
-      return res.status(400).json({ error: 'No participants found for this event.' });
-    }
-
-    // Category check
     const validCategories = ['Appreciation', 'Achievement', 'Participation', 'Excellence', 'Other'];
     if (!validCategories.includes(category)) {
       return res.status(400).json({ error: 'Invalid category selected.' });
     }
-    
     if (category === 'Other' && (!customCategory || customCategory.trim() === '')) {
-       return res.status(400).json({ error: 'Custom category name is required.' });
+      return res.status(400).json({ error: 'Custom category name is required.' });
     }
-
     if (!chairmanName) {
-        return res.status(400).json({ error: 'Chairman name is required to sign the certificate.' });
+      return res.status(400).json({ error: 'Chairman name is required to sign the certificate.' });
+    }
+    if (!title || !String(title).trim()) {
+      return res.status(400).json({ error: 'Certificate name is required.' });
     }
 
-    let issuedCount = 0;
+    let targetMembers = [];
+    let validEventId = null;
+
+    // Preferred: admin picks members directly
+    if (Array.isArray(memberIds) && memberIds.length > 0) {
+      targetMembers = await Member.find({
+        _id: { $in: memberIds },
+        status: 'approved',
+        role: { $nin: ['Admin', 'Superuser'] },
+      }).select('_id name member_id');
+      if (targetMembers.length === 0) {
+        return res.status(400).json({ error: 'No valid approved members selected.' });
+      }
+      if (eventId) {
+        const event = await Event.findById(eventId);
+        if (!event) return res.status(404).json({ error: 'Event not found.' });
+        validEventId = event._id;
+      }
+    } else if (eventId) {
+      // Fallback: all attended participants of an event
+      const event = await Event.findById(eventId).populate('participants.memberId');
+      if (!event) return res.status(404).json({ error: 'Event not found.' });
+      validEventId = event._id;
+      targetMembers = (event.participants || [])
+        .filter((p) => p.attended === true && p.memberId)
+        .map((p) => p.memberId);
+      if (targetMembers.length === 0) {
+        return res.status(400).json({
+          error: 'No members selected. Pick members, or mark event attendees as Present first.',
+        });
+      }
+    } else {
+      return res.status(400).json({ error: 'Select at least one member (or an event) for bulk issue.' });
+    }
+
     const certificates = [];
-
-    for (const participant of event.participants) {
-      if (!participant.memberId) continue; // Skip if member was deleted
-      
-      // EXCLUSIVE: Only issue to members marked as "Attended"
-      if (participant.attended !== true) continue;
-
-      // Prevent duplicates
-      const existingCert = await Certificate.findOne({ memberId: participant.memberId._id, eventId });
-      if (existingCert) continue;
-
+    for (const member of targetMembers) {
+      const mid = member._id || member;
+      if (validEventId) {
+        const existing = await Certificate.findOne({ memberId: mid, eventId: validEventId });
+        if (existing) continue;
+      }
       certificates.push({
-        memberId: participant.memberId._id,
-        memberName: participant.memberId.name,
-        member_id_str: participant.memberId.member_id,
-        eventId,
+        memberId: mid,
+        memberName: member.name,
+        member_id_str: member.member_id,
+        eventId: validEventId,
         category,
         customCategory: category === 'Other' ? customCategory : undefined,
-        title,
-        awardType,
+        title: String(title).trim(),
+        awardType: awardType || 'Official Recognition',
         description,
         chairmanName,
         issuedBy: req.user.memberId,
-        templateId: templateId || 1
+        templateId: templateId || 1,
       });
-      issuedCount++;
     }
 
-    if (issuedCount === 0 && event.participants.some(p => p.attended !== true)) {
-        return res.status(400).json({ error: 'No certificates issued. Please mark members as "Attended" in the event dashboard before issuing certificates.' });
+    if (certificates.length === 0) {
+      return res.status(400).json({ error: 'No new certificates to issue (duplicates skipped).' });
     }
 
-    if (certificates.length > 0) {
-      await Certificate.insertMany(certificates);
-    }
-
-    res.status(201).json({ message: `Successfully issued ${issuedCount} certificates.`, count: issuedCount });
-
+    await Certificate.insertMany(certificates);
+    res.status(201).json({
+      message: `Successfully issued ${certificates.length} certificates.`,
+      count: certificates.length,
+    });
   } catch (error) {
     console.error('CRITICAL: Bulk Issue Certificate Error:', error.message, error.stack);
     res.status(500).json({ error: 'An unexpected error occurred during bulk issuance.' });
