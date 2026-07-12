@@ -3,63 +3,88 @@ function loadImage(src) {
     const img = new Image();
     img.crossOrigin = 'anonymous';
     img.onload = () => resolve(img);
-    img.onerror = () => reject(new Error('Certificate template not found.'));
-    img.src = src + '?v=' + Date.now();
+    img.onerror = () => reject(new Error('Template image could not be loaded'));
+    img.src = src + (src.includes('?') ? '&' : '?') + 'v=' + Date.now();
   });
 }
 
-export async function generateCertificate(memberData, template) {
+function drawZoneText(ctx, text, zone, fontFamily) {
+  if (!zone || text == null || text === '') return;
+  const fontSize = zone.fontSize || 28;
+  ctx.font = `${fontSize}px ${fontFamily}`;
+  ctx.fillStyle = zone.color || '#ffffff';
+  ctx.textAlign = zone.align || 'left';
+  ctx.textBaseline = 'alphabetic';
+  ctx.fillText(String(text), zone.x, zone.y);
+}
+
+/**
+ * @param {{ template: object, member: object }} opts
+ * template: { fileUrl, zones, canvasWidth, canvasHeight }
+ * member: { name, memberId, approvedAt, city }
+ */
+export async function generateCertificate({ template, member }) {
   try {
     if (!window.jspdf?.jsPDF) {
-      throw new Error('PDF library not loaded. Check connection.');
+      throw new Error('PDF library unavailable');
     }
 
     await document.fonts.ready;
-    if (!document.fonts.check("12px 'Great Vibes'")) {
-      await document.fonts.load("90px 'Great Vibes'");
+    try {
+      if (!document.fonts.check("12px 'Great Vibes'")) {
+        await document.fonts.load("90px 'Great Vibes'");
+      }
+    } catch {
+      throw new Error('Font loading failed. Try refreshing.');
     }
 
+    const canvasWidth = template.canvasWidth || 2048;
+    const canvasHeight = template.canvasHeight || 1436;
+    const zones = template.zones || {};
+
     const canvas = document.createElement('canvas');
-    canvas.width = 2048;
-    canvas.height = 1436;
+    canvas.width = canvasWidth;
+    canvas.height = canvasHeight;
     const ctx = canvas.getContext('2d');
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = 'high';
 
-    const img = await loadImage(template.file);
-    ctx.drawImage(img, 0, 0, 2048, 1436);
+    const img = await loadImage(template.fileUrl);
+    ctx.drawImage(img, 0, 0, canvasWidth, canvasHeight);
 
-    const { top, bottom, centerX } = template.nameZone;
-    const safeHeight = bottom - top;
-    let fontSize = 90;
+    // Name — auto-shrink within zone bounds
+    const nameZone = zones.name || {};
+    const safeHeight = nameZone.maxHeight || 102;
+    const maxWidth = nameZone.maxWidth || canvasWidth * 0.75;
+    let fontSize = nameZone.fontSize || 90;
     ctx.font = `${fontSize}px 'Great Vibes', cursive`;
-    let metrics = ctx.measureText(memberData.name);
-    let textHeight = metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent;
+    let metrics = ctx.measureText(member.name || '');
+    let textHeight = (metrics.actualBoundingBoxAscent || fontSize * 0.8)
+      + (metrics.actualBoundingBoxDescent || fontSize * 0.2);
     let attempts = 0;
     while (
-      (textHeight > safeHeight * 0.92 || metrics.width > 2048 * 0.75)
+      (textHeight > safeHeight * 0.92 || metrics.width > maxWidth)
       && attempts < 15
     ) {
       fontSize -= 4;
       ctx.font = `${fontSize}px 'Great Vibes', cursive`;
-      metrics = ctx.measureText(memberData.name);
-      textHeight = metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent;
+      metrics = ctx.measureText(member.name || '');
+      textHeight = (metrics.actualBoundingBoxAscent || fontSize * 0.8)
+        + (metrics.actualBoundingBoxDescent || fontSize * 0.2);
       attempts++;
     }
 
-    const nameY = top + (safeHeight / 2) + (textHeight / 2) - metrics.actualBoundingBoxDescent + 10;
-    ctx.fillStyle = template.textColor;
-    ctx.textAlign = 'center';
-    ctx.fillText(memberData.name, centerX, nameY);
+    const nameY = (nameZone.y || 490)
+      + (textHeight / 2)
+      - (metrics.actualBoundingBoxDescent || 0)
+      + 10;
+    ctx.fillStyle = nameZone.color || '#ffffff';
+    ctx.textAlign = nameZone.align || 'center';
+    ctx.textBaseline = 'alphabetic';
+    ctx.fillText(member.name || '', nameZone.x || canvasWidth / 2, nameY);
 
-    ctx.fillStyle = template.barColor;
-    ctx.fillRect(200, 1340, 700, 60);
-    ctx.fillRect(1100, 1340, 748, 60);
-    ctx.fillStyle = '#ffffff';
-    ctx.font = "28px 'Inter', sans-serif";
-    ctx.textAlign = 'left';
-    const dateStr = memberData.approvedAt
-      ? new Date(memberData.approvedAt).toLocaleDateString('en-PK', {
+    const dateStr = member.approvedAt
+      ? new Date(member.approvedAt).toLocaleDateString('en-PK', {
           day: 'numeric',
           month: 'long',
           year: 'numeric',
@@ -69,32 +94,38 @@ export async function generateCertificate(memberData, template) {
           month: 'long',
           year: 'numeric',
         });
-    ctx.fillText(dateStr, 220, 1378);
-    ctx.textAlign = 'right';
-    ctx.fillText(`ID: ${memberData.memberId}`, 1828, 1378);
+
+    drawZoneText(ctx, dateStr, zones.date, "'Inter', sans-serif");
+    drawZoneText(
+      ctx,
+      member.memberId ? `ID: ${member.memberId}` : '',
+      zones.memberId,
+      "'Inter', sans-serif"
+    );
+    if (zones.city && member.city) {
+      drawZoneText(ctx, member.city, zones.city, "'Inter', sans-serif");
+    }
 
     const imgData = canvas.toDataURL('image/png');
     const { jsPDF } = window.jspdf;
     const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
     const pageW = 297;
     const pageH = 210;
-    const ratio = Math.min(pageW / 2048, pageH / 1436);
-    const drawW = 2048 * ratio;
-    const drawH = 1436 * ratio;
+    const ratio = Math.min(pageW / canvasWidth, pageH / canvasHeight);
+    const drawW = canvasWidth * ratio;
+    const drawH = canvasHeight * ratio;
     const offsetX = (pageW - drawW) / 2;
     const offsetY = (pageH - drawH) / 2;
     pdf.addImage(imgData, 'PNG', offsetX, offsetY, drawW, drawH);
-    const filename = memberData.name.replace(/\s+/g, '_') + '_SLS_Certificate.pdf';
+    const filename = (member.name || 'Member').replace(/\s+/g, '_') + '_SLS_Certificate.pdf';
     pdf.save(filename);
   } catch (err) {
-    if (err.message?.includes('template not found')) {
+    if (
+      err.message?.includes('Template image')
+      || err.message?.includes('PDF library')
+      || err.message?.includes('Font loading')
+    ) {
       throw err;
-    }
-    if (err.message?.includes('PDF library')) {
-      throw err;
-    }
-    if (err.name === 'NetworkError' || err.message?.includes('font')) {
-      throw new Error('Font loading failed. Try refreshing.');
     }
     console.error('Certificate generation error:', err);
     throw err;

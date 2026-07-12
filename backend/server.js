@@ -114,6 +114,7 @@ app.use('/api/contact', require('./routes/contactRoutes'));
 app.use('/api/tasks', require('./routes/taskRoutes'));
 app.use('/api/blogs', require('./routes/blogRoutes'));
 app.use('/api/fees', require('./routes/feeRoutes'));
+app.use('/api/cert-templates', require('./routes/certTemplateRoutes'));
 
 // Root
 app.get('/', (req, res) => res.json({ status: 'active', env: process.env.NODE_ENV }));

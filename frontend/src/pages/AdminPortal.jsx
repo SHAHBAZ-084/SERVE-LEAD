@@ -5,8 +5,7 @@ import CountdownTimer from "../components/common/CountdownTimer";
 import { RenderCertificate, CERT_TEMPLATES, CHAIRMAN_NAME, logo, signatureImg, stampImg, MEMBERSHIP_TEMPLATE_ID } from "./CertTemplates";
 import MembershipCertificateExact, { isMembershipCertificate } from "./MembershipCertificateExact";
 import { captureCertificatePdf } from "../utils/certificatePdfExport";
-import { generateCertificate } from "../utils/canvasEngine";
-import { TEMPLATES } from "../utils/certTemplates.config";
+import AdminTemplateManager from "../components/certificates/AdminTemplateManager";
 import { compressImage } from "../utils/compressImage";
 import ImageUploadHint from "../components/common/ImageUploadHint";
 import { inputCls, useCountUp, StatCard, Spinner, AdminModal } from "../components/common/AdminUiComponents";
@@ -1020,8 +1019,6 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
     const [selectMode, setSelectMode] = useState(false);
     const [isRevoking, setIsRevoking] = useState(false);
     const [isDownloading, setIsDownloading] = useState(false);
-    const [selectedMembershipIds, setSelectedMembershipIds] = useState([]);
-    const [pdfProgress, setPdfProgress] = useState("");
 
     const [selectedTemplate, setSelectedTemplate] = useState(CERT_TEMPLATES[0]);
 
@@ -1073,26 +1070,11 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
     };
 
     const handleIssue = async () => {
-        if (!form.memberId && selectedMembershipIds.length === 0) return notify("Please select a member", "error");
+        if (!form.memberId) return notify("Please select a member", "error");
         setSubmitting(true);
         try {
-            if (form.memberId) {
-                await api.post("certificates", { ...form, chairmanName: CHAIRMAN_NAME, templateId: selectedTemplate.id }, auth);
-            }
-            const membersToGenerate = selectedMembershipIds.length > 0
-                ? members.filter(m => selectedMembershipIds.includes(m._id))
-                : selectedMember ? [selectedMember] : [];
-            if (membersToGenerate.length > 0) {
-                try {
-                    await generateMembershipPdfs(membersToGenerate);
-                    notify(`Generated ${membersToGenerate.length} certificate PDF(s)!`);
-                } catch (err) {
-                    console.error(err);
-                    notify(err.message || "Failed to generate certificate PDF", "error");
-                }
-            } else {
-                notify("Certificate issued successfully!");
-            }
+            await api.post("certificates", { ...form, chairmanName: CHAIRMAN_NAME, templateId: selectedTemplate.id }, auth);
+            notify("Certificate issued successfully!");
             setShowForm(false);
             setForm({
                 memberId: "",
@@ -1104,8 +1086,7 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
                 awardType: "Official Membership"
             });
             setSearchMember("");
-            setSelectedMembershipIds([]);
-            if (form.memberId) fetchCertificates();
+            fetchCertificates();
         } catch (err) {
             notify(err.response?.data?.error || "Failed to issue certificate", "error");
         } finally {
@@ -1226,39 +1207,6 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
         )
     );
 
-    const approvedMembersForCerts = useMemo(() =>
-        members.filter(m =>
-            m.status === 'approved' &&
-            m.role !== 'Admin' &&
-            m.role !== 'Superuser' &&
-            (m.name.toLowerCase().includes(searchMember.toLowerCase()) ||
-             (m.member_id || '').toLowerCase().includes(searchMember.toLowerCase()))
-        ),
-    [members, searchMember]);
-
-    const toggleMembershipSelect = (id) => {
-        setSelectedMembershipIds(prev =>
-            prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
-        );
-    };
-
-    const generateMembershipPdfs = async (memberList) => {
-        const templateId = selectedTemplate.id <= 6 ? selectedTemplate.id : 1;
-        const template = TEMPLATES.find(t => t.id === templateId) || TEMPLATES[0];
-        let index = 0;
-        for (const member of memberList) {
-            index++;
-            setPdfProgress(`Generating ${index} of ${memberList.length}...`);
-            await generateCertificate({
-                name: member.name,
-                memberId: member.member_id,
-                approvedAt: member.approvedAt || member.updatedAt,
-                city: member.city,
-            }, template);
-        }
-        setPdfProgress("");
-    };
-
     const selectedMember = members.find(m => m._id === form.memberId);
     const selectedEvent = events.find(e => e._id === form.eventId);
 
@@ -1282,23 +1230,6 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
                     </div>
                     <div>
                         <h2 className="text-xl font-bold text-slate-800">Certificates Hub</h2>
-                        
-                        {/* Template Selector */}
-                        <div className="flex gap-3 mt-3 flex-wrap">
-                          {CERT_TEMPLATES.map(t => (
-                            <button
-                              key={t.id}
-                              onClick={() => setSelectedTemplate(t)}
-                              className={`flex flex-col items-center gap-1 px-4 py-2 rounded-xl border-2 text-xs font-bold transition-all
-                                ${selectedTemplate.id === t.id
-                                  ? 'border-[#002147] bg-[#002147] text-white shadow-lg scale-105'
-                                  : 'border-slate-200 bg-white text-slate-600 hover:border-[#002147]'}`}
-                            >
-                              <span className="text-2xl">{t.thumb}</span>
-                              {t.name}
-                            </button>
-                          ))}
-                        </div>
                         <p className="text-xs text-slate-500 font-medium tracking-wide">Generate and manage official society credentials</p>
                     </div>
                 </div>
@@ -1307,6 +1238,8 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
                     {showForm ? 'Cancel Issuance' : 'Generate New Certificate'}
                 </button>
             </div>
+
+            <AdminTemplateManager auth={auth} notify={notify} api={api} />
 
             {showForm && (
                 <div className="max-w-3xl mx-auto animate-fade-up">
@@ -1359,31 +1292,6 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
                                             </div>
                                             <button onClick={() => { setForm({ ...form, memberId: "" }); setSearchMember(""); }} className="text-emerald-700 hover:text-emerald-900"><i className="fas fa-times" /></button>
                                         </div>
-                                    )}
-                                </div>
-                            )}
-
-                            {!isBulkMode && (
-                                <div className="space-y-3">
-                                    <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400">Select Members for PDF Generation</label>
-                                    <div className="max-h-48 overflow-y-auto border border-slate-100 rounded-xl divide-y divide-slate-50">
-                                        {approvedMembersForCerts.length === 0 ? (
-                                            <p className="p-4 text-xs text-slate-400 text-center">No approved members found</p>
-                                        ) : approvedMembersForCerts.map(m => (
-                                            <label key={m._id} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 cursor-pointer">
-                                                <input
-                                                    type="checkbox"
-                                                    checked={selectedMembershipIds.includes(m._id)}
-                                                    onChange={() => toggleMembershipSelect(m._id)}
-                                                    className="w-4 h-4 text-[#00bcd4] border-slate-300 rounded focus:ring-[#00bcd4]"
-                                                />
-                                                <span className="text-xs font-bold text-slate-700 flex-1">{m.name}</span>
-                                                <span className="text-[10px] font-bold text-slate-400">{m.member_id}</span>
-                                            </label>
-                                        ))}
-                                    </div>
-                                    {selectedMembershipIds.length > 0 && (
-                                        <p className="text-[10px] font-bold text-[#0097a7] uppercase tracking-widest">{selectedMembershipIds.length} member(s) selected</p>
                                     )}
                                 </div>
                             )}
@@ -1459,13 +1367,10 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
                         </div>
 
                         <div className="flex flex-col sm:flex-row gap-4 pt-4 border-t border-slate-100">
-                            {pdfProgress && (
-                                <p className="w-full text-center text-xs font-bold text-[#0097a7] uppercase tracking-widest">{pdfProgress}</p>
-                            )}
                             <button
                                 type="button"
                                 onClick={() => setShowPreview(true)}
-                                disabled={(!isBulkMode && !form.memberId && selectedMembershipIds.length === 0) || (isBulkMode && !form.eventId) || submitting}
+                                disabled={(!isBulkMode && !form.memberId) || (isBulkMode && !form.eventId) || submitting}
                                 className="w-full sm:flex-1 py-4 bg-white border-2 border-slate-200 text-slate-600 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:border-[#002147] hover:text-[#002147] transition-all disabled:opacity-50"
                             >
                                 <i className="fas fa-eye mr-2" />
@@ -1473,7 +1378,7 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
                             </button>
                             <button
                                 onClick={isBulkMode ? handleBulkIssue : handleIssue}
-                                disabled={(!isBulkMode && !form.memberId && selectedMembershipIds.length === 0) || (isBulkMode && !form.eventId) || submitting}
+                                disabled={(!isBulkMode && !form.memberId) || (isBulkMode && !form.eventId) || submitting}
                                 className="w-full sm:flex-1 py-4 bg-[#002147] text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 shadow-xl shadow-blue-900/10 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
                             >
                                 {submitting ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <i className="fas fa-check" />}
