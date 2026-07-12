@@ -5,6 +5,7 @@ import CountdownTimer from "../components/common/CountdownTimer";
 import { RenderCertificate, CERT_TEMPLATES, CHAIRMAN_NAME, logo, signatureImg, stampImg, MEMBERSHIP_TEMPLATE_ID } from "./CertTemplates";
 import MembershipCertificateExact, { isMembershipCertificate } from "./MembershipCertificateExact";
 import { captureCertificatePdf } from "../utils/certificatePdfExport";
+import { generateCertificate, renderCertificateDataUrl } from "../utils/canvasEngine";
 import AdminTemplateManager from "../components/certificates/AdminTemplateManager";
 import { compressImage } from "../utils/compressImage";
 import ImageUploadHint from "../components/common/ImageUploadHint";
@@ -1019,6 +1020,9 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
     const [selectMode, setSelectMode] = useState(false);
     const [isRevoking, setIsRevoking] = useState(false);
     const [isDownloading, setIsDownloading] = useState(false);
+    const [activePreviewUrl, setActivePreviewUrl] = useState(null);
+    const [activePreviewPayload, setActivePreviewPayload] = useState(null);
+    const [previewLoading, setPreviewLoading] = useState(false);
 
     const [selectedTemplate, setSelectedTemplate] = useState(CERT_TEMPLATES[0]);
 
@@ -1134,6 +1138,77 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
             notify(`PDF Error: ${err.message}`, "error");
         } finally {
             setExportData(null);
+        }
+    };
+
+    const openActiveTemplatePreview = async () => {
+        if (!form.memberId || !selectedMember) {
+            return notify("Please select a member", "error");
+        }
+        setPreviewLoading(true);
+        setActivePreviewUrl(null);
+        setActivePreviewPayload(null);
+        try {
+            const list = await api.get("cert-templates", auth);
+            const active = (list.data || []).find((t) => t.isActive);
+            if (!active) {
+                notify("Activate an uploaded template first.", "error");
+                return;
+            }
+            const full = await api.get(`cert-templates/${active._id}`, auth);
+            const template = {
+                fileUrl: getImgUrl(full.data.fileUrl),
+                zones: full.data.zones,
+                canvasWidth: full.data.canvasWidth,
+                canvasHeight: full.data.canvasHeight,
+            };
+            const member = {
+                name: selectedMember.name,
+                memberId: selectedMember.member_id,
+                approvedAt: selectedMember.approvedAt || selectedMember.updatedAt || selectedMember.createdAt,
+                city: selectedMember.city,
+            };
+            const dataUrl = await renderCertificateDataUrl({ template, member });
+            setActivePreviewUrl(dataUrl);
+            setActivePreviewPayload({ template, member });
+            setShowPreview(true);
+        } catch (err) {
+            console.error(err);
+            notify(err.response?.data?.error || err.message || "Preview failed", "error");
+        } finally {
+            setPreviewLoading(false);
+        }
+    };
+
+    const downloadActiveTemplatePdf = async () => {
+        try {
+            let payload = activePreviewPayload;
+            if (!payload) {
+                if (!selectedMember) return notify("Please select a member", "error");
+                const list = await api.get("cert-templates", auth);
+                const active = (list.data || []).find((t) => t.isActive);
+                if (!active) return notify("Activate an uploaded template first.", "error");
+                const full = await api.get(`cert-templates/${active._id}`, auth);
+                payload = {
+                    template: {
+                        fileUrl: getImgUrl(full.data.fileUrl),
+                        zones: full.data.zones,
+                        canvasWidth: full.data.canvasWidth,
+                        canvasHeight: full.data.canvasHeight,
+                    },
+                    member: {
+                        name: selectedMember.name,
+                        memberId: selectedMember.member_id,
+                        approvedAt: selectedMember.approvedAt || selectedMember.updatedAt || selectedMember.createdAt,
+                        city: selectedMember.city,
+                    },
+                };
+            }
+            await generateCertificate(payload);
+            notify("PDF downloaded from your uploaded template!");
+        } catch (err) {
+            console.error(err);
+            notify(err.message || "PDF download failed", "error");
         }
     };
 
@@ -1369,12 +1444,12 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
                         <div className="flex flex-col sm:flex-row gap-4 pt-4 border-t border-slate-100">
                             <button
                                 type="button"
-                                onClick={() => setShowPreview(true)}
-                                disabled={(!isBulkMode && !form.memberId) || (isBulkMode && !form.eventId) || submitting}
+                                onClick={openActiveTemplatePreview}
+                                disabled={(!isBulkMode && !form.memberId) || (isBulkMode && !form.eventId) || submitting || previewLoading}
                                 className="w-full sm:flex-1 py-4 bg-white border-2 border-slate-200 text-slate-600 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:border-[#002147] hover:text-[#002147] transition-all disabled:opacity-50"
                             >
-                                <i className="fas fa-eye mr-2" />
-                                Preview Draft
+                                <i className={`fas ${previewLoading ? 'fa-spinner fa-spin' : 'fa-eye'} mr-2`} />
+                                {previewLoading ? 'Rendering Preview...' : 'Preview Draft'}
                             </button>
                             <button
                                 onClick={isBulkMode ? handleBulkIssue : handleIssue}
@@ -1553,7 +1628,7 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
 
             {showPreview && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-                    <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setShowPreview(false)} />
+                    <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => { setShowPreview(false); setActivePreviewUrl(null); }} />
 
                     <div className="relative bg-white rounded-[32px] shadow-2xl flex flex-col max-h-[96vh] w-full max-w-5xl overflow-hidden animate-in fade-in zoom-in duration-200">
                         <div className="flex justify-between items-center px-8 py-5 border-b border-slate-100 bg-white">
@@ -1563,16 +1638,30 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
                                 </div>
                                 <div className="flex flex-col">
                                     <h3 className="text-[#002147] text-base font-black uppercase tracking-tight">Review Certificate Proof</h3>
-                                    <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">Final layout verification before official issuance</p>
+                                    <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">
+                                        {activePreviewUrl ? 'Your uploaded template + member data' : 'Final layout verification before official issuance'}
+                                    </p>
                                 </div>
                             </div>
-                            <button onClick={() => setShowPreview(false)} className="w-10 h-10 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-all flex items-center justify-center">
+                            <button onClick={() => { setShowPreview(false); setActivePreviewUrl(null); }} className="w-10 h-10 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-all flex items-center justify-center">
                                 <i className="fas fa-times text-lg" />
                             </button>
                         </div>
 
-                        <div className="flex-1 overflow-auto p-8 sm:p-14 bg-slate-50/50 custom-scrollbar">
-                            <div className="flex justify-center min-h-[1150px] w-full" />
+                        <div className="flex-1 overflow-auto p-6 sm:p-10 bg-slate-50/50 custom-scrollbar">
+                            {activePreviewUrl ? (
+                                <div className="flex justify-center w-full">
+                                    <img
+                                        src={activePreviewUrl}
+                                        alt="Certificate preview"
+                                        className="w-full max-w-4xl rounded-lg shadow-xl border border-slate-200"
+                                    />
+                                </div>
+                            ) : (
+                                <div className="flex justify-center min-h-[400px] w-full items-center text-slate-400 text-sm font-bold uppercase tracking-widest">
+                                    Loading preview…
+                                </div>
+                            )}
                         </div>
 
                         <div className="px-8 py-5 bg-white border-t border-slate-100 flex flex-col sm:flex-row justify-between items-center gap-4">
@@ -1583,14 +1672,14 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
 
                             <div className="flex items-center gap-3 w-full sm:w-auto">
                                 <button
-                                    onClick={() => setShowPreview(false)}
+                                    onClick={() => { setShowPreview(false); setActivePreviewUrl(null); }}
                                     className="flex-1 sm:flex-none px-6 py-3.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all"
                                 >
                                     Cancel
                                 </button>
 
                                 <button
-                                    onClick={() => downloadPDF({ ...form, memberId: selectedMember, eventId: selectedEvent, templateId: selectedTemplate.id })}
+                                    onClick={downloadActiveTemplatePdf}
                                     className="flex-1 sm:flex-none px-6 py-3.5 bg-white hover:bg-slate-50 text-[#002147] border-2 border-slate-200 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2"
                                 >
                                     <i className="fas fa-download" />
@@ -1598,7 +1687,7 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
                                 </button>
 
                                 <button
-                                    onClick={() => { setShowPreview(false); isBulkMode ? handleBulkIssue() : handleIssue(); }}
+                                    onClick={() => { setShowPreview(false); setActivePreviewUrl(null); isBulkMode ? handleBulkIssue() : handleIssue(); }}
                                     className="flex-1 sm:flex-none px-10 py-3.5 bg-[#002147] text-white hover:bg-slate-800 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-900/20"
                                 >
                                     <i className="fas fa-paper-plane" />
@@ -1610,21 +1699,17 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
                 </div>
             )}
 
-            {/* Unified Certificate Engine (Serves both Preview Modal and Export Capture) */}
+            {/* Unified Certificate Engine (Serves Export Capture for issuance history downloads) */}
             <div 
                 id="cert-export-node" 
                 style={{ 
                     position: 'fixed', 
-                    top: showPreview ? '50%' : '-9999px',
-                    left: showPreview ? '50%' : '-9999px',
-                    transform: showPreview ? 'translate(-50%, -50%) scale(0.65)' : 'none',
-                    zIndex: showPreview ? 200 : -1000,
-                    pointerEvents: showPreview ? 'auto' : 'none',
-                    opacity: showPreview ? 1 : 0,
-                    boxShadow: showPreview ? '0 20px 50px rgba(0,33,71,0.25)' : 'none',
-                    borderRadius: '4px',
+                    top: '-9999px',
+                    left: '-9999px',
+                    zIndex: -1000,
+                    pointerEvents: 'none',
+                    opacity: 0,
                     overflow: 'hidden',
-                    transition: 'opacity 0.2s, transform 0.2s'
                 }}
             >
                 {(() => {
