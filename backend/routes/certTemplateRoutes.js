@@ -98,12 +98,14 @@ router.post('/upload', authMiddleware, isAdmin, uploadMiddleware, async (req, re
       return res.status(400).json({ error: 'No template file uploaded.' });
     }
 
+    const kind = req.body.kind === 'membership' ? 'membership' : 'general';
     const fileUrl = getFileUrl(req.file, 'cert-templates');
     const zones = detectZones(2048, 1436);
     const doc = await CertTemplate.create({
       name: req.body.name || 'Untitled',
       fileUrl,
       zones,
+      kind,
       uploadedBy: req.user.memberId || req.user.id,
     });
 
@@ -111,6 +113,7 @@ router.post('/upload', authMiddleware, isAdmin, uploadMiddleware, async (req, re
       templateId: doc._id,
       _id: doc._id,
       name: doc.name,
+      kind: doc.kind,
       fileUrl: doc.fileUrl,
       imageUrl: `/api/cert-templates/${doc._id}/image`,
       zones: doc.zones,
@@ -131,8 +134,8 @@ router.post('/upload', authMiddleware, isAdmin, uploadMiddleware, async (req, re
 router.get('/', authMiddleware, isAdmin, async (req, res) => {
   try {
     const templates = await CertTemplate.find()
-      .sort({ isActive: -1, uploadedAt: -1 })
-      .select('name fileUrl isActive calibrated uploadedAt');
+      .sort({ kind: 1, isActive: -1, uploadedAt: -1 })
+      .select('name fileUrl isActive calibrated uploadedAt kind');
     return res.json(templates);
   } catch (error) {
     console.error('Cert template list error:', error);
@@ -149,9 +152,9 @@ router.get('/active-config', authMiddleware, async (req, res) => {
       return res.status(403).json({ error: 'Certificate not available. Membership not approved.' });
     }
 
-    const template = await CertTemplate.findOne({ isActive: true });
+    const template = await CertTemplate.findOne({ isActive: true, kind: 'membership' });
     if (!template) {
-      return res.status(404).json({ error: 'No active certificate template. Contact admin.' });
+      return res.status(404).json({ error: 'No membership certificate posted yet. Contact admin.' });
     }
 
     const membershipStatus =
@@ -192,7 +195,15 @@ router.get('/:id/image', authMiddleware, async (req, res) => {
 
     const isAdminUser = req.user && (req.user.role === 'Admin' || req.user.role === 'Superuser');
     if (!isAdminUser && !doc.isActive) {
-      return res.status(403).json({ error: 'Template image not available.' });
+      // Members may download templates tied to certificates issued to them
+      const Certificate = require('../models/Certificate');
+      const owns = await Certificate.exists({
+        memberId: req.user.memberId || req.user.id,
+        certTemplateId: doc._id,
+      });
+      if (!owns) {
+        return res.status(403).json({ error: 'Template image not available.' });
+      }
     }
 
     return streamTemplateFile(doc, res);
@@ -217,44 +228,51 @@ router.get('/:id', authMiddleware, isAdmin, async (req, res) => {
   }
 });
 
-// PUT /api/cert-templates/:id/activate — Post membership template to all members
+// PUT /api/cert-templates/:id/activate — activate within kind (membership auto-posts to all)
 router.put('/:id/activate', authMiddleware, isAdmin, async (req, res) => {
   try {
     const id = req.params.id;
     const exists = await CertTemplate.findById(id);
     if (!exists) return res.status(404).json({ error: 'Template not found.' });
 
-    await CertTemplate.updateMany({}, { $set: { isActive: false } });
+    const kind = exists.kind === 'membership' ? 'membership' : 'general';
+
+    // Only deactivate other templates of the same kind (both kinds can be active)
+    await CertTemplate.updateMany({ kind }, { $set: { isActive: false } });
     const doc = await CertTemplate.findByIdAndUpdate(
       id,
-      { $set: { isActive: true } },
+      { $set: { isActive: true, kind } },
       { new: true }
     );
 
-    // Ensure every approved member has a membership certificate entry
-    const { ensureMembershipCertificate } = require('../utils/membershipCertificate');
-    const approved = await Member.find({
-      status: 'approved',
-      member_id: { $exists: true, $ne: null },
-      role: { $nin: ['Admin', 'Superuser'] },
-    }).select('_id name member_id status');
+    let membersGranted = 0;
+    if (kind === 'membership') {
+      const { ensureMembershipCertificate } = require('../utils/membershipCertificate');
+      const approved = await Member.find({
+        status: 'approved',
+        member_id: { $exists: true, $ne: null },
+        role: { $nin: ['Admin', 'Superuser'] },
+      }).select('_id name member_id status');
 
-    let granted = 0;
-    for (const m of approved) {
-      const cert = await ensureMembershipCertificate(m, req.user.memberId);
-      if (cert) granted += 1;
+      for (const m of approved) {
+        const cert = await ensureMembershipCertificate(m, req.user.memberId);
+        if (cert) membersGranted += 1;
+      }
     }
 
     return res.json({
-      message: 'Membership template posted to all members',
+      message: kind === 'membership'
+        ? 'Membership template posted to all members'
+        : 'Template activated for issuing',
       templateId: doc._id,
       name: doc.name,
+      kind: doc.kind,
       isActive: true,
-      membersGranted: granted,
+      membersGranted,
     });
   } catch (error) {
     console.error('Cert template activate error:', error);
-    res.status(500).json({ error: 'Failed to post template to members.' });
+    res.status(500).json({ error: 'Failed to activate template.' });
   }
 });
 

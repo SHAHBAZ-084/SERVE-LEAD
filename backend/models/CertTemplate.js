@@ -7,7 +7,12 @@ const CertTemplateSchema = new mongoose.Schema({
   uploadedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'Member' },
   isActive: { type: Boolean, default: false },
   calibrated: { type: Boolean, default: false },
-  // Flexible map of fieldKey -> zone config (admin chooses which fields to include)
+  /** membership = auto for all members; general = used when admin issues awards */
+  kind: {
+    type: String,
+    enum: ['membership', 'general'],
+    default: 'general',
+  },
   zones: { type: mongoose.Schema.Types.Mixed, default: {} },
   canvasWidth: { type: Number, default: 2048 },
   canvasHeight: { type: Number, default: 1436 },

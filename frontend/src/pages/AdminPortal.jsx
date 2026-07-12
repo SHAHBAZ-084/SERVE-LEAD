@@ -4,6 +4,7 @@ import api, { getImgUrl, API_BASE as API_BASE_URL } from "../api";
 import CountdownTimer from "../components/common/CountdownTimer";
 import { CERT_TEMPLATES, CHAIRMAN_NAME, logo } from "./CertTemplates";
 import AdminTemplateManager from "../components/certificates/AdminTemplateManager";
+import { renderCertificateDataUrl } from "../utils/canvasEngine";
 import { compressImage } from "../utils/compressImage";
 import ImageUploadHint from "../components/common/ImageUploadHint";
 import { inputCls, useCountUp, StatCard, Spinner, AdminModal } from "../components/common/AdminUiComponents";
@@ -1015,8 +1016,11 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
     const [selectMode, setSelectMode] = useState(false);
     const [isRevoking, setIsRevoking] = useState(false);
     const [bulkMemberIds, setBulkMemberIds] = useState([]);
-
-    const [selectedTemplate] = useState(CERT_TEMPLATES[0]);
+    const [activeUploadedTemplate, setActiveUploadedTemplate] = useState(null);
+    const [showPreview, setShowPreview] = useState(false);
+    const [previewUrl, setPreviewUrl] = useState(null);
+    const [previewPayload, setPreviewPayload] = useState(null);
+    const [previewLoading, setPreviewLoading] = useState(false);
 
     const [form, setForm] = useState({
         memberId: "",
@@ -1028,8 +1032,19 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
         awardType: "Official Recognition",
     });
 
+    const refreshActiveTemplate = async () => {
+        try {
+            const r = await api.get("cert-templates", auth);
+            const active = (r.data || []).find((t) => t.isActive && (t.kind || 'general') !== 'membership') || null;
+            setActiveUploadedTemplate(active);
+        } catch {
+            setActiveUploadedTemplate(null);
+        }
+    };
+
     useEffect(() => {
         fetchCertificates();
+        refreshActiveTemplate();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
@@ -1061,7 +1076,18 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
         });
         setSearchMember("");
         setBulkMemberIds([]);
+        setShowPreview(false);
+        setPreviewUrl(null);
+        setPreviewPayload(null);
     };
+
+    const buildIssueBody = (extra = {}) => ({
+        ...form,
+        ...extra,
+        chairmanName: CHAIRMAN_NAME,
+        templateId: CERT_TEMPLATES[0].id,
+        certTemplateId: activeUploadedTemplate?._id,
+    });
 
     const handleIssue = async () => {
         if (!form.memberId) return notify("Please select a member", "error");
@@ -1069,14 +1095,13 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
         if (form.category === 'Other' && !form.customCategory?.trim()) {
             return notify("Enter custom type name", "error");
         }
+        if (!activeUploadedTemplate) {
+            return notify("Activate an uploaded template first", "error");
+        }
         setSubmitting(true);
         try {
-            await api.post("certificates", {
-                ...form,
-                chairmanName: CHAIRMAN_NAME,
-                templateId: selectedTemplate.id,
-            }, auth);
-            notify("Certificate issued — it appears in the member's Certificates section.");
+            await api.post("certificates", buildIssueBody(), auth);
+            notify("Certificate issued — it appears only in that member's Certificates section.");
             setShowForm(false);
             resetForm();
             fetchCertificates();
@@ -1093,20 +1118,16 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
         if (form.category === 'Other' && !form.customCategory?.trim()) {
             return notify("Enter custom type name", "error");
         }
+        if (!activeUploadedTemplate) {
+            return notify("Activate an uploaded template first", "error");
+        }
         setSubmitting(true);
         try {
-            const r = await api.post("certificates/bulk", {
+            const r = await api.post("certificates/bulk", buildIssueBody({
                 memberIds: bulkMemberIds,
                 eventId: form.eventId || undefined,
-                category: form.category,
-                customCategory: form.customCategory,
-                description: form.description,
-                title: form.title,
-                awardType: form.awardType,
-                chairmanName: CHAIRMAN_NAME,
-                templateId: selectedTemplate.id,
-            }, auth);
-            notify(`Issued ${r.data.count} certificate(s) to members — no download on your PC.`);
+            }), auth);
+            notify(`Issued ${r.data.count} certificate(s) to members.`);
             setShowForm(false);
             resetForm();
             fetchCertificates();
@@ -1114,6 +1135,59 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
             notify(err.response?.data?.error || "Failed to bulk issue certificates", "error");
         } finally {
             setSubmitting(false);
+        }
+    };
+
+    const openPreview = async () => {
+        const previewMember = isBulkMode
+            ? members.find((m) => m._id === bulkMemberIds[0])
+            : selectedMember;
+        if (!previewMember) {
+            return notify(isBulkMode ? "Select at least one member to preview" : "Please select a member", "error");
+        }
+        if (!form.title?.trim()) return notify("Enter certificate name", "error");
+        await refreshActiveTemplate();
+        let active = activeUploadedTemplate;
+        try {
+            const list = await api.get("cert-templates", auth);
+            active = (list.data || []).find((t) => t.isActive && (t.kind || 'general') !== 'membership') || null;
+            setActiveUploadedTemplate(active);
+        } catch { /* keep previous */ }
+        if (!active) return notify("Activate an uploaded template first", "error");
+
+        setPreviewLoading(true);
+        setPreviewUrl(null);
+        setPreviewPayload(null);
+        try {
+            const full = await api.get(`cert-templates/${active._id}`, auth);
+            const role = previewMember.role;
+            const template = {
+                fileUrl: getImgUrl(full.data.imageUrl || `/api/cert-templates/${active._id}/image`),
+                zones: full.data.zones,
+                canvasWidth: full.data.canvasWidth,
+                canvasHeight: full.data.canvasHeight,
+            };
+            const member = {
+                name: previewMember.name,
+                memberId: previewMember.member_id,
+                approvedAt: previewMember.approvedAt || previewMember.updatedAt || previewMember.createdAt,
+                city: previewMember.city,
+                mobile: previewMember.whatsapp || previewMember.phone || '',
+                joiningYear: previewMember.joining_year || '',
+                membershipStatus:
+                    role === 'Executive' || role === 'Admin' || role === 'Superuser'
+                        ? 'Active Member'
+                        : 'General Member',
+            };
+            const dataUrl = await renderCertificateDataUrl({ template, member, scale: 0.55 });
+            setPreviewUrl(dataUrl);
+            setPreviewPayload({ template, member });
+            setShowPreview(true);
+        } catch (err) {
+            console.error(err);
+            notify(err.response?.data?.error || err.message || "Preview failed", "error");
+        } finally {
+            setPreviewLoading(false);
         }
     };
 
@@ -1226,8 +1300,21 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
                                 </button>
                             </div>
                             <p className="text-xs text-slate-500">
-                                Enter type and name — certificate goes to the member dashboard (no download on your PC).
+                                Type + name → Preview on the active template → Issue (member downloads from their dashboard).
                             </p>
+                            {activeUploadedTemplate ? (
+                                <div className="flex items-center gap-2 p-3 rounded-xl bg-emerald-50 border border-emerald-100 text-xs font-bold text-emerald-800">
+                                    <i className="fas fa-check-circle text-emerald-500" />
+                                    Active template: {activeUploadedTemplate.name}
+                                    <button type="button" onClick={refreshActiveTemplate} className="ml-auto text-[10px] uppercase tracking-widest text-emerald-600 hover:underline">
+                                        Refresh
+                                    </button>
+                                </div>
+                            ) : (
+                                <div className="p-3 rounded-xl bg-amber-50 border border-amber-100 text-xs font-bold text-amber-800">
+                                    No active issue template. Upload/calibrate under Issue Templates, then Activate.
+                                </div>
+                            )}
 
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div>
@@ -1373,17 +1460,33 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
                             </div>
                         </div>
 
-                        <div className="pt-4 border-t border-slate-100">
+                        <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-slate-100">
+                            <button
+                                type="button"
+                                onClick={openPreview}
+                                disabled={
+                                    previewLoading
+                                    || submitting
+                                    || !form.title?.trim()
+                                    || (!isBulkMode && !form.memberId)
+                                    || (isBulkMode && bulkMemberIds.length === 0)
+                                }
+                                className="w-full sm:flex-1 py-4 bg-white border-2 border-slate-200 text-slate-600 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:border-[#002147] hover:text-[#002147] transition-all disabled:opacity-50"
+                            >
+                                <i className={`fas ${previewLoading ? 'fa-spinner fa-spin' : 'fa-eye'} mr-2`} />
+                                {previewLoading ? 'Rendering…' : 'Preview Before Issue'}
+                            </button>
                             <button
                                 type="button"
                                 onClick={isBulkMode ? handleBulkIssue : handleIssue}
                                 disabled={
                                     submitting
                                     || !form.title?.trim()
+                                    || !activeUploadedTemplate
                                     || (!isBulkMode && !form.memberId)
                                     || (isBulkMode && bulkMemberIds.length === 0)
                                 }
-                                className="w-full py-4 bg-[#002147] text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 shadow-xl shadow-blue-900/10 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                                className="w-full sm:flex-1 py-4 bg-[#002147] text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 shadow-xl shadow-blue-900/10 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
                             >
                                 {submitting ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <i className="fas fa-paper-plane" />}
                                 {isBulkMode
@@ -1548,6 +1651,49 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
                     </div>
                 )}
             </div>
+
+            {showPreview && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => { setShowPreview(false); setPreviewUrl(null); }} />
+                    <div className="relative bg-white rounded-[32px] shadow-2xl flex flex-col max-h-[96vh] w-full max-w-5xl overflow-hidden">
+                        <div className="flex justify-between items-center px-8 py-5 border-b border-slate-100">
+                            <div>
+                                <h3 className="text-[#002147] text-base font-black uppercase tracking-tight">Preview Before Issue</h3>
+                                <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">
+                                    {form.title || 'Certificate'} · Active template layout
+                                </p>
+                            </div>
+                            <button type="button" onClick={() => { setShowPreview(false); setPreviewUrl(null); }} className="w-10 h-10 rounded-full hover:bg-slate-100 text-slate-400">
+                                <i className="fas fa-times" />
+                            </button>
+                        </div>
+                        <div className="flex-1 overflow-auto p-6 sm:p-10 bg-slate-50/50">
+                            {previewUrl ? (
+                                <img src={previewUrl} alt="Certificate preview" className="w-full max-w-4xl mx-auto rounded-lg shadow-xl border border-slate-200" />
+                            ) : (
+                                <div className="py-20 text-center text-slate-400 text-sm font-bold uppercase tracking-widest">Loading…</div>
+                            )}
+                        </div>
+                        <div className="px-8 py-5 border-t border-slate-100 flex flex-col sm:flex-row justify-end gap-3">
+                            <button
+                                type="button"
+                                onClick={() => { setShowPreview(false); setPreviewUrl(null); }}
+                                className="px-6 py-3.5 bg-slate-100 text-slate-600 rounded-xl text-[11px] font-black uppercase tracking-widest"
+                            >
+                                Back
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => { setShowPreview(false); setPreviewUrl(null); isBulkMode ? handleBulkIssue() : handleIssue(); }}
+                                disabled={submitting}
+                                className="px-10 py-3.5 bg-[#002147] text-white rounded-xl text-[11px] font-black uppercase tracking-widest shadow-lg"
+                            >
+                                Confirm Issue
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

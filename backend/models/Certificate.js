@@ -49,6 +49,13 @@ const certificateSchema = new mongoose.Schema({
     ref: 'Member', // Admin who issued it
     required: true,
   },
+  /** Uploaded canvas template used for this issue (preferred) */
+  certTemplateId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'CertTemplate',
+    default: null,
+  },
+  /** Legacy React layout id (1–7); kept for older records */
   templateId: {
     type: Number,
     default: 1,
