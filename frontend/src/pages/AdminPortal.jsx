@@ -1157,7 +1157,7 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
             }
             const full = await api.get(`cert-templates/${active._id}`, auth);
             const template = {
-                fileUrl: getImgUrl(full.data.fileUrl),
+                fileUrl: getImgUrl(full.data.imageUrl || `/api/cert-templates/${active._id}/image`),
                 zones: full.data.zones,
                 canvasWidth: full.data.canvasWidth,
                 canvasHeight: full.data.canvasHeight,
@@ -1191,7 +1191,7 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
                 const full = await api.get(`cert-templates/${active._id}`, auth);
                 payload = {
                     template: {
-                        fileUrl: getImgUrl(full.data.fileUrl),
+                        fileUrl: getImgUrl(full.data.imageUrl || `/api/cert-templates/${active._id}/image`),
                         zones: full.data.zones,
                         canvasWidth: full.data.canvasWidth,
                         canvasHeight: full.data.canvasHeight,

@@ -1,10 +1,37 @@
 function loadImage(src) {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-    img.onload = () => resolve(img);
-    img.onerror = () => reject(new Error('Template image could not be loaded'));
-    img.src = src + (src.includes('?') ? '&' : '?') + 'v=' + Date.now();
+  return new Promise(async (resolve, reject) => {
+    try {
+      const headers = {};
+      const memberToken = localStorage.getItem('token');
+      const adminToken = localStorage.getItem('adminToken');
+      const token = adminToken || memberToken;
+      if (token && token !== 'cookie-auth-active') {
+        headers.Authorization = `Bearer ${token}`;
+      }
+
+      const res = await fetch(src, {
+        credentials: 'include',
+        headers,
+      });
+      if (!res.ok) {
+        reject(new Error('Template image could not be loaded'));
+        return;
+      }
+      const blob = await res.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const img = new Image();
+      img.onload = () => {
+        URL.revokeObjectURL(objectUrl);
+        resolve(img);
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(objectUrl);
+        reject(new Error('Template image could not be loaded'));
+      };
+      img.src = objectUrl;
+    } catch {
+      reject(new Error('Template image could not be loaded'));
+    }
   });
 }
 

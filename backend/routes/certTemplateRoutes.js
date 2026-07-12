@@ -1,5 +1,10 @@
 const express = require('express');
 const router = express.Router();
+const path = require('path');
+const fs = require('fs');
+const https = require('https');
+const http = require('http');
+const { GetObjectCommand, S3Client } = require('@aws-sdk/client-s3');
 const CertTemplate = require('../models/CertTemplate');
 const Member = require('../models/Member');
 const authMiddleware = require('../middlewares/authMiddleware');
@@ -8,6 +13,14 @@ const { detectZones } = require('../utils/certZoneDetector');
 const { createUpload, getFileUrl, deleteFile } = require('../utils/storage');
 
 const upload = createUpload('cert-templates', 15 * 1024 * 1024);
+
+const s3 = new S3Client({
+  region: process.env.AWS_REGION || 'ap-south-1',
+  credentials: {
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+  },
+});
 
 const uploadMiddleware = (req, res, next) => {
   upload.single('template')(req, res, (err) => {
@@ -20,6 +33,63 @@ const uploadMiddleware = (req, res, next) => {
     next();
   });
 };
+
+function streamRemoteUrl(url, res) {
+  const client = url.startsWith('https') ? https : http;
+  client
+    .get(url, (upstream) => {
+      if (upstream.statusCode && upstream.statusCode >= 400) {
+        res.status(upstream.statusCode).json({ error: 'Template image unavailable.' });
+        upstream.resume();
+        return;
+      }
+      res.setHeader('Content-Type', upstream.headers['content-type'] || 'image/png');
+      res.setHeader('Cache-Control', 'private, max-age=300');
+      upstream.pipe(res);
+    })
+    .on('error', (err) => {
+      console.error('Template image proxy error:', err.message);
+      if (!res.headersSent) res.status(502).json({ error: 'Failed to load template image.' });
+    });
+}
+
+async function streamTemplateFile(doc, res) {
+  const fileUrl = doc.fileUrl || '';
+
+  if (fileUrl.includes('.amazonaws.com') && process.env.AWS_S3_BUCKET_NAME) {
+    try {
+      const key = fileUrl.split('.amazonaws.com/')[1];
+      if (!key) throw new Error('Invalid S3 key');
+      const out = await s3.send(new GetObjectCommand({
+        Bucket: process.env.AWS_S3_BUCKET_NAME,
+        Key: key,
+      }));
+      res.setHeader('Content-Type', out.ContentType || 'image/png');
+      res.setHeader('Cache-Control', 'private, max-age=300');
+      if (out.Body && typeof out.Body.pipe === 'function') {
+        out.Body.pipe(res);
+      } else {
+        const bytes = await out.Body.transformToByteArray();
+        res.send(Buffer.from(bytes));
+      }
+      return;
+    } catch (err) {
+      console.error('S3 GetObject failed, falling back to URL stream:', err.message);
+      return streamRemoteUrl(fileUrl, res);
+    }
+  }
+
+  if (fileUrl.startsWith('http://') || fileUrl.startsWith('https://')) {
+    return streamRemoteUrl(fileUrl, res);
+  }
+
+  const relativePath = String(fileUrl).replace(/^\//, '');
+  const fullPath = path.join(__dirname, '..', relativePath);
+  if (!fs.existsSync(fullPath)) {
+    return res.status(404).json({ error: 'Template image file missing on server.' });
+  }
+  return res.sendFile(fullPath);
+}
 
 // POST /api/cert-templates/upload
 router.post('/upload', authMiddleware, isAdmin, uploadMiddleware, async (req, res) => {
@@ -42,6 +112,7 @@ router.post('/upload', authMiddleware, isAdmin, uploadMiddleware, async (req, re
       _id: doc._id,
       name: doc.name,
       fileUrl: doc.fileUrl,
+      imageUrl: `/api/cert-templates/${doc._id}/image`,
       zones: doc.zones,
       isActive: doc.isActive,
       calibrated: doc.calibrated,
@@ -85,7 +156,8 @@ router.get('/active-config', authMiddleware, async (req, res) => {
 
     return res.json({
       template: {
-        fileUrl: template.fileUrl,
+        _id: template._id,
+        fileUrl: `/api/cert-templates/${template._id}/image`,
         zones: template.zones,
         canvasWidth: template.canvasWidth,
         canvasHeight: template.canvasHeight,
@@ -104,12 +176,32 @@ router.get('/active-config', authMiddleware, async (req, res) => {
   }
 });
 
+// GET /api/cert-templates/:id/image — CORS-safe proxy for canvas
+router.get('/:id/image', authMiddleware, async (req, res) => {
+  try {
+    const doc = await CertTemplate.findById(req.params.id);
+    if (!doc) return res.status(404).json({ error: 'Template not found.' });
+
+    const isAdminUser = req.user && (req.user.role === 'Admin' || req.user.role === 'Superuser');
+    if (!isAdminUser && !doc.isActive) {
+      return res.status(403).json({ error: 'Template image not available.' });
+    }
+
+    return streamTemplateFile(doc, res);
+  } catch (error) {
+    console.error('Cert template image error:', error);
+    if (!res.headersSent) res.status(500).json({ error: 'Failed to load template image.' });
+  }
+});
+
 // GET /api/cert-templates/:id
 router.get('/:id', authMiddleware, isAdmin, async (req, res) => {
   try {
     const doc = await CertTemplate.findById(req.params.id);
     if (!doc) return res.status(404).json({ error: 'Template not found.' });
-    return res.json(doc);
+    const obj = doc.toObject();
+    obj.imageUrl = `/api/cert-templates/${doc._id}/image`;
+    return res.json(obj);
   } catch (error) {
     console.error('Cert template get error:', error);
     res.status(500).json({ error: 'Failed to load template.' });

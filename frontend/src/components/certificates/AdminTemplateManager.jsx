@@ -87,12 +87,20 @@ export default function AdminTemplateManager({ auth, notify, api }) {
   const openCalibrator = async (id) => {
     try {
       const r = await api.get(`cert-templates/${id}`, auth);
-      setCalibratorDoc(r.data);
+      const imagePath = r.data.imageUrl || `/api/cert-templates/${id}/image`;
+      const imgRes = await fetch(getImgUrl(imagePath), {
+        credentials: 'include',
+        headers: auth?.headers || {},
+      });
+      if (!imgRes.ok) throw new Error('Failed to load template image');
+      const blob = await imgRes.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      setCalibratorDoc({ ...r.data, _previewObjectUrl: objectUrl });
       setPreviewId(id);
       setShowCalibrator(true);
     } catch (err) {
       console.error(err);
-      notify(err.response?.data?.error || 'Failed to load template for calibration', 'error');
+      notify(err.response?.data?.error || err.message || 'Failed to load template for calibration', 'error');
     }
   };
 
@@ -312,11 +320,12 @@ export default function AdminTemplateManager({ auth, notify, api }) {
 
       {showCalibrator && calibratorDoc && (
         <ZoneCalibrator
-          templateUrl={getImgUrl(calibratorDoc.fileUrl)}
+          templateUrl={calibratorDoc._previewObjectUrl || getImgUrl(calibratorDoc.imageUrl || `/api/cert-templates/${calibratorDoc._id}/image`)}
           zones={calibratorDoc.zones}
           onSave={async (newZones) => {
             try {
               await api.put(`cert-templates/${previewId}/zones`, { zones: newZones }, auth);
+              if (calibratorDoc._previewObjectUrl) URL.revokeObjectURL(calibratorDoc._previewObjectUrl);
               setShowCalibrator(false);
               setCalibratorDoc(null);
               await refreshTemplates();
@@ -328,6 +337,7 @@ export default function AdminTemplateManager({ auth, notify, api }) {
             }
           }}
           onClose={() => {
+            if (calibratorDoc._previewObjectUrl) URL.revokeObjectURL(calibratorDoc._previewObjectUrl);
             setShowCalibrator(false);
             setCalibratorDoc(null);
           }}
