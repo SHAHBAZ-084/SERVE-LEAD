@@ -21,6 +21,40 @@ export const FIELD_DEFAULT_PREFIXES = {
   membershipStatus: '',
 };
 
+/** Font family presets for zone text (stored as short id on zone.fontFamily). */
+export const FONT_STYLE_OPTIONS = [
+  { id: 'serif', label: 'Serif · Playfair', stack: "'Playfair Display', 'Times New Roman', serif" },
+  { id: 'sans', label: 'Sans · Inter', stack: "'Inter', 'Helvetica Neue', sans-serif" },
+  { id: 'times', label: 'Classic Times', stack: "'Times New Roman', Times, serif" },
+  { id: 'georgia', label: 'Georgia', stack: "Georgia, 'Times New Roman', serif" },
+  { id: 'arial', label: 'Arial', stack: "Arial, Helvetica, sans-serif" },
+  { id: 'mono', label: 'Monospace', stack: "'Courier New', Courier, monospace" },
+];
+
+export const FONT_WEIGHT_OPTIONS = [
+  { id: '400', label: 'Regular' },
+  { id: '600', label: 'Semi Bold' },
+  { id: '700', label: 'Bold' },
+  { id: '800', label: 'Extra Bold' },
+];
+
+/** Resolve canvas/CSS font parts from a zone (+ field key for defaults). */
+export function resolveZoneFont(zone, fieldKey = '') {
+  const defaultId = fieldKey === 'name' ? 'serif' : 'sans';
+  const styleId = zone?.fontFamily || defaultId;
+  const opt = FONT_STYLE_OPTIONS.find((f) => f.id === styleId) || FONT_STYLE_OPTIONS.find((f) => f.id === defaultId);
+  const weight = String(zone?.fontWeight || (fieldKey === 'name' ? '700' : '600'));
+  const italic = zone?.fontStyle === 'italic';
+  return {
+    id: opt.id,
+    family: opt.stack,
+    weight,
+    italic,
+    /** Full CSS font shorthand without size — size is inserted by callers */
+    cssPrefix: `${italic ? 'italic ' : ''}${weight}`,
+  };
+}
+
 export const ZONE_ACCENT = {
   name: '#00bcd4',
   date: '#22c55e',

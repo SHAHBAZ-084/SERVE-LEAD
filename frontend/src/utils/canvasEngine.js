@@ -1,5 +1,5 @@
 import { jsPDF } from 'jspdf';
-import { FIELD_DEFAULT_PREFIXES } from './certZoneTools';
+import { FIELD_DEFAULT_PREFIXES, resolveZoneFont } from './certZoneTools';
 
 const imageCache = new Map();
 
@@ -69,22 +69,29 @@ function eraseZone(ctx, zone) {
 /**
  * Same font fitting used by PDF / Preview Draft — exported so calibrator
  * live preview stays visually identical after save.
+ * @param {string} text
+ * @param {object} zone
+ * @param {string} [fontFamily] — optional override; otherwise uses zone.fontFamily
+ * @param {string} [fieldKey]
  */
-export function fitZoneFontSize(text, zone, fontFamily = 'sans-serif') {
+export function fitZoneFontSize(text, zone, fontFamily, fieldKey = '') {
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d');
-  return fitText(ctx, String(text || ''), zone, fontFamily).fontSize;
+  const resolved = resolveZoneFont(zone, fieldKey);
+  const family = fontFamily || resolved.family;
+  return fitText(ctx, String(text || ''), zone, family, resolved.weight, resolved.italic).fontSize;
 }
 
-function fitText(ctx, text, zone, fontFamily) {
+function fitText(ctx, text, zone, fontFamily, fontWeight = '600', italic = false) {
   const maxW = zone.maxWidth || 400;
   const maxH = zone.maxHeight || 80;
   let fontSize = zone.fontSize || 28;
   let metrics;
   let textHeight;
   let attempts = 0;
+  const stylePart = italic ? 'italic ' : '';
   do {
-    ctx.font = `${fontSize}px ${fontFamily}`;
+    ctx.font = `${stylePart}${fontWeight} ${fontSize}px ${fontFamily}`;
     metrics = ctx.measureText(text);
     textHeight = (metrics.actualBoundingBoxAscent || fontSize * 0.8)
       + (metrics.actualBoundingBoxDescent || fontSize * 0.2);
@@ -92,15 +99,16 @@ function fitText(ctx, text, zone, fontFamily) {
     fontSize -= 2;
     attempts++;
   } while (fontSize > 10 && attempts < 30);
-  return { fontSize, metrics, textHeight };
+  return { fontSize, metrics, textHeight, fontWeight, italic };
 }
 
-function drawZoneText(ctx, text, zone, fontFamily) {
+function drawZoneText(ctx, text, zone, fontFamily, fontWeight = '600', italic = false) {
   if (!zone || text == null || String(text).trim() === '') return;
   const value = String(text).trim();
   eraseZone(ctx, zone);
-  const { fontSize, metrics, textHeight } = fitText(ctx, value, zone, fontFamily);
-  ctx.font = `${fontSize}px ${fontFamily}`;
+  const { fontSize, metrics, textHeight } = fitText(ctx, value, zone, fontFamily, fontWeight, italic);
+  const stylePart = italic ? 'italic ' : '';
+  ctx.font = `${stylePart}${fontWeight} ${fontSize}px ${fontFamily}`;
   ctx.fillStyle = zone.color || '#002147';
   ctx.textAlign = zone.align || 'left';
   ctx.textBaseline = 'alphabetic';
@@ -158,25 +166,24 @@ export async function renderCertificateDataUrl({ template, member, scale = 1 }) 
   ctx.drawImage(img, 0, 0, canvasWidth, canvasHeight);
 
   const lines = buildMemberLines(member);
-  const serif = "'Playfair Display', 'Times New Roman', serif";
-  const sans = "'Inter', 'Helvetica Neue', sans-serif";
 
   // Draw only zones the admin kept on this template (order preserved)
   const drawOrder = ['date', 'name', 'mobile', 'memberId', 'joiningYear', 'membershipStatus'];
   for (const key of drawOrder) {
     if (!zones[key]) continue;
     const zone = zones[key];
-    const font = key === 'name' ? serif : sans;
+    const font = resolveZoneFont(zone, key);
     const prefix = zone.prefix != null ? zone.prefix : (FIELD_DEFAULT_PREFIXES[key] ?? '');
-    drawZoneText(ctx, prefix + (lines[key] ?? ''), zone, font);
+    drawZoneText(ctx, prefix + (lines[key] ?? ''), zone, font.family, font.weight, font.italic);
   }
   // Any extra custom keys (future) — skip if no member line mapping
   for (const key of Object.keys(zones)) {
     if (drawOrder.includes(key)) continue;
     if (lines[key] != null) {
       const zone = zones[key];
+      const font = resolveZoneFont(zone, key);
       const prefix = zone.prefix != null ? zone.prefix : '';
-      drawZoneText(ctx, prefix + lines[key], zone, sans);
+      drawZoneText(ctx, prefix + lines[key], zone, font.family, font.weight, font.italic);
     }
   }
 

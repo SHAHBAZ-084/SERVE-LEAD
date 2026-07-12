@@ -2135,7 +2135,7 @@ const DetailItem = ({ label, value, icon, fullWidth }) => (
     </div>
 );
 
-const ApprovalsTab = ({ pendingMembers, executiveApps, fetchPendingMembers, loading, auth, notify, Spinner, api }) => {
+const ApprovalsTab = ({ pendingMembers, executiveApps, fetchPendingMembers, loading, auth, notify, Spinner, api, isSuper }) => {
     const [searchTerm, setSearchTerm] = useState("");
     const [selectedIds, setSelectedIds] = useState([]);
     const [isProcessing, setIsProcessing] = useState(false);
@@ -2579,7 +2579,11 @@ const ApprovalsTab = ({ pendingMembers, executiveApps, fetchPendingMembers, load
                             <span className="text-amber-600"> · {filteredExecutiveApps.length} executive upgrade{filteredExecutiveApps.length === 1 ? "" : "s"}</span>
                         )}
                     </p>
-                    <p className="text-[10px] text-slate-400 mt-2 font-bold uppercase tracking-widest">General: Interview → Fee → Approve · Executive: Review application → Approve / Reject</p>
+                    <p className="text-[10px] text-slate-400 mt-2 font-bold uppercase tracking-widest">
+                      {isSuper
+                        ? 'General: Interview → Fee → Approve · Executive: Super Admin only → Approve / Reject'
+                        : 'General members only · Interview → Fee → Approve (Executive requests go to Super Admin)'}
+                    </p>
                 </div>
             </div>
 
@@ -2597,7 +2601,10 @@ const ApprovalsTab = ({ pendingMembers, executiveApps, fetchPendingMembers, load
                             onChange={(e) => setMemberTypeFilter(e.target.value)}
                             className={adminFilterSelectCls}
                         >
-                            {MEMBER_TYPE_FILTER_OPTIONS.map(({ value, label }) => (
+                            {(isSuper
+                                ? MEMBER_TYPE_FILTER_OPTIONS
+                                : MEMBER_TYPE_FILTER_OPTIONS.filter((o) => o.value !== 'Executive')
+                            ).map(({ value, label }) => (
                                 <option key={value} value={value}>{label}</option>
                             ))}
                         </select>
@@ -5354,7 +5361,7 @@ const AdminPortal = () => {
                             setRoleFilter={setMembersRoleFilter}
                         />
                     )}
-                    {activeTab === "pending" && <ApprovalsTab pendingMembers={pendingMembers} executiveApps={executiveApps} fetchPendingMembers={fetchPendingMembers} loading={loading} auth={auth} notify={notify} Spinner={Spinner} api={api} />}
+                    {activeTab === "pending" && <ApprovalsTab pendingMembers={pendingMembers} executiveApps={isSuper ? executiveApps : []} fetchPendingMembers={fetchPendingMembers} loading={loading} auth={auth} notify={notify} Spinner={Spinner} api={api} isSuper={isSuper} />}
                     {activeTab === "payments" && <PaymentManagementTab pendingMembers={pendingMembers} fetchPendingMembers={fetchPendingMembers} auth={auth} notify={notify} api={api} Spinner={Spinner} inputCls={inputCls} />}
                     {activeTab === "events" && !searchParams.get("eventId") && <EventsTab events={events} fetchEvents={fetchEvents} api={api} auth={auth} notify={notify} setSearchParams={setSearchParams} getImgUrl={getImgUrl} CountdownTimer={CountdownTimer} inputCls={inputCls} />}
                     {activeTab === "events" && searchParams.get("eventId") && (

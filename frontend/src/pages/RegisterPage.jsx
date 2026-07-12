@@ -13,6 +13,20 @@ const pakistaniUniversities = [
   "SZABIST", "IBA Karachi", "Bahria University", "Air University", "Habib University", "Other"
 ].sort();
 
+const APPLICANT_TYPES = [
+  { id: 'university', label: 'University Student', icon: 'fa-university', hint: 'Currently enrolled in a university' },
+  { id: 'college', label: 'College Student', icon: 'fa-building-columns', hint: 'Intermediate / college level' },
+  { id: 'school', label: 'School Student', icon: 'fa-school', hint: 'Matric / school level' },
+  { id: 'not_student', label: 'Not a Student', icon: 'fa-briefcase', hint: 'Working / other profession' },
+];
+
+const EDUCATION_BY_TYPE = {
+  university: ['Bachelor', 'Master', 'PhD', 'Other'],
+  college: ['Inter', 'Other'],
+  school: ['Matric', 'Other'],
+  not_student: ['Matric', 'Inter', 'Bachelor', 'Master', 'PhD', 'Other'],
+};
+
 const DEFAULT_PROVINCE = "Punjab";
 const DEFAULT_DISTRICT = getDefaultDistrict(DEFAULT_PROVINCE);
 const DEFAULT_TEHSIL = getDefaultTehsil(DEFAULT_PROVINCE, DEFAULT_DISTRICT);
@@ -38,10 +52,13 @@ export default function RegisterPage() {
     whatsapp: "",
     email: "",
     password: "",
+    applicant_type: "university",
     education_level: "Bachelor",
     program: "",
     passing_year: new Date().getFullYear().toString(),
     university: "UET Lahore",
+    institution_name: "",
+    occupation: "",
     province: DEFAULT_PROVINCE,
     district: DEFAULT_DISTRICT,
     tehsil: DEFAULT_TEHSIL,
@@ -62,6 +79,19 @@ export default function RegisterPage() {
   const [waLink, setWaLink] = useState("");
 
   const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
+
+  const setApplicantType = (type) => {
+    const levels = EDUCATION_BY_TYPE[type] || EDUCATION_BY_TYPE.university;
+    setFormData((prev) => ({
+      ...prev,
+      applicant_type: type,
+      education_level: levels.includes(prev.education_level) ? prev.education_level : levels[0],
+      university: type === 'university' ? (prev.university || 'UET Lahore') : '',
+      institution_name: type === 'university' ? '' : prev.institution_name,
+      occupation: type === 'not_student' ? prev.occupation : '',
+      program: type === 'not_student' ? '' : prev.program,
+    }));
+  };
 
   const handleLocationChange = (e) => {
     const { name, value } = e.target;
@@ -99,7 +129,22 @@ export default function RegisterPage() {
       if (!otpSent) return "Please verify your Gmail address first.";
       if (!otp || otp.length !== 6) return "Please enter the 6-digit verification code.";
     } else if (step === 2) {
-      if (!program || !passing_year) return "Education details are required.";
+      const { applicant_type, program, passing_year, university, institution_name, occupation, education_level } = formData;
+      if (!applicant_type) return "Please select your status (university, college, school, or not a student).";
+      if (!education_level) return "Education level is required.";
+      if (applicant_type === 'not_student') {
+        if (!occupation?.trim()) return "Please enter your occupation / profession.";
+      } else {
+        if (!program?.trim()) {
+          if (applicant_type === 'school') return "Please enter your class / grade.";
+          return "Program / field of study is required.";
+        }
+        if (!passing_year) return "Year is required.";
+        if (applicant_type === 'university' && !university) return "Please select your university.";
+        if ((applicant_type === 'college' || applicant_type === 'school') && !institution_name?.trim()) {
+          return applicant_type === 'college' ? "College name is required." : "School name is required.";
+        }
+      }
     } else if (step === 3) {
       if (!province || !district || !tehsil) return "Please select province, district, and tehsil.";
       if (!address?.trim()) return "Residential address is required.";
@@ -346,27 +391,121 @@ export default function RegisterPage() {
 
                 {step === 2 && (
                   <div className="space-y-8 animate-fade-up">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 ml-2">
+                        I am a…
+                      </label>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {APPLICANT_TYPES.map((t) => {
+                          const active = formData.applicant_type === t.id;
+                          return (
+                            <button
+                              key={t.id}
+                              type="button"
+                              onClick={() => setApplicantType(t.id)}
+                              className={`text-left px-4 py-4 rounded-[1.25rem] border-2 transition-all ${
+                                active
+                                  ? 'border-[#002147] bg-[#002147]/5 shadow-md'
+                                  : 'border-slate-100 bg-white hover:border-slate-200'
+                              }`}
+                            >
+                              <div className="flex items-start gap-3">
+                                <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
+                                  active ? 'bg-[#002147] text-white' : 'bg-slate-100 text-slate-500'
+                                }`}>
+                                  <i className={`fas ${t.icon} text-xs`} />
+                                </div>
+                                <div>
+                                  <p className="text-sm font-black text-slate-800">{t.label}</p>
+                                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">{t.hint}</p>
+                                </div>
+                                {active && <i className="fas fa-check-circle text-[#002147] ml-auto mt-1" />}
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-7">
                       <div className="group">
-                        <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 ml-2 group-focus-within:text-[#002147] transition-colors">Education Level</label>
+                        <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 ml-2 group-focus-within:text-[#002147] transition-colors">
+                          {formData.applicant_type === 'not_student' ? 'Highest Education' : 'Education Level'}
+                        </label>
                         <select name="education_level" value={formData.education_level} onChange={handleChange} className={selectCls}>
-                          {['Matric', 'Inter', 'Bachelor', 'Master', 'PhD', 'Other'].map(l => <option key={l} value={l}>{l.toUpperCase()}</option>)}
+                          {(EDUCATION_BY_TYPE[formData.applicant_type] || EDUCATION_BY_TYPE.university).map((l) => (
+                            <option key={l} value={l}>{l.toUpperCase()}</option>
+                          ))}
                         </select>
                       </div>
-                      <div className="group">
-                        <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 ml-2 group-focus-within:text-[#002147] transition-colors">Program</label>
-                        <input name="program" placeholder="E.G. BS COMPUTER SCIENCE" value={formData.program} onChange={handleChange} className="w-full bg-slate-50 border border-slate-100 rounded-[1.5rem] px-6 py-5 text-sm font-bold text-slate-800 placeholder:text-slate-200 placeholder:font-black focus:ring-8 focus:ring-blue-500/5 focus:border-[#002147] outline-none transition-all shadow-inner" />
-                      </div>
-                      <div className="group">
-                        <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 ml-2 group-focus-within:text-[#002147] transition-colors">Graduation Year</label>
-                        <input type="number" name="passing_year" value={formData.passing_year} onChange={handleChange} className="w-full bg-slate-50 border border-slate-100 rounded-[1.25rem] md:rounded-[1.5rem] px-5 py-4 md:px-6 md:py-5 text-sm font-bold text-slate-800 placeholder:text-slate-200 placeholder:font-black focus:ring-8 focus:ring-blue-500/5 focus:border-[#002147] outline-none transition-all shadow-inner" />
-                      </div>
-                      <div className="group">
-                        <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 ml-2 group-focus-within:text-[#002147] transition-colors">Institution</label>
-                        <select name="university" value={formData.university} onChange={handleChange} className={selectCls}>
-                          {pakistaniUniversities.map(u => <option key={u} value={u}>{u.toUpperCase()}</option>)}
-                        </select>
-                      </div>
+
+                      {formData.applicant_type === 'not_student' ? (
+                        <div className="group">
+                          <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 ml-2 group-focus-within:text-[#002147] transition-colors">Occupation / Profession</label>
+                          <input name="occupation" placeholder="E.G. SOFTWARE ENGINEER" value={formData.occupation} onChange={handleChange} className="w-full bg-slate-50 border border-slate-100 rounded-[1.5rem] px-6 py-5 text-sm font-bold text-slate-800 placeholder:text-slate-200 placeholder:font-black focus:ring-8 focus:ring-blue-500/5 focus:border-[#002147] outline-none transition-all shadow-inner" />
+                        </div>
+                      ) : (
+                        <div className="group">
+                          <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 ml-2 group-focus-within:text-[#002147] transition-colors">
+                            {formData.applicant_type === 'school' ? 'Class / Grade' : 'Program / Field'}
+                          </label>
+                          <input
+                            name="program"
+                            placeholder={formData.applicant_type === 'school' ? 'E.G. CLASS 10' : 'E.G. BS COMPUTER SCIENCE'}
+                            value={formData.program}
+                            onChange={handleChange}
+                            className="w-full bg-slate-50 border border-slate-100 rounded-[1.5rem] px-6 py-5 text-sm font-bold text-slate-800 placeholder:text-slate-200 placeholder:font-black focus:ring-8 focus:ring-blue-500/5 focus:border-[#002147] outline-none transition-all shadow-inner"
+                          />
+                        </div>
+                      )}
+
+                      {formData.applicant_type !== 'not_student' && (
+                        <div className="group">
+                          <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 ml-2 group-focus-within:text-[#002147] transition-colors">
+                            {formData.applicant_type === 'school' ? 'Expected / Passing Year' : 'Graduation Year'}
+                          </label>
+                          <input type="number" name="passing_year" value={formData.passing_year} onChange={handleChange} className="w-full bg-slate-50 border border-slate-100 rounded-[1.25rem] md:rounded-[1.5rem] px-5 py-4 md:px-6 md:py-5 text-sm font-bold text-slate-800 placeholder:text-slate-200 placeholder:font-black focus:ring-8 focus:ring-blue-500/5 focus:border-[#002147] outline-none transition-all shadow-inner" />
+                        </div>
+                      )}
+
+                      {formData.applicant_type === 'university' && (
+                        <div className="group">
+                          <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 ml-2 group-focus-within:text-[#002147] transition-colors">University</label>
+                          <select name="university" value={formData.university} onChange={handleChange} className={selectCls}>
+                            {pakistaniUniversities.map((u) => <option key={u} value={u}>{u.toUpperCase()}</option>)}
+                          </select>
+                        </div>
+                      )}
+
+                      {(formData.applicant_type === 'college' || formData.applicant_type === 'school') && (
+                        <div className="group md:col-span-2">
+                          <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 ml-2 group-focus-within:text-[#002147] transition-colors">
+                            {formData.applicant_type === 'college' ? 'College Name' : 'School Name'}
+                          </label>
+                          <input
+                            name="institution_name"
+                            placeholder={formData.applicant_type === 'college' ? 'E.G. GOVERNMENT COLLEGE LAHORE' : 'E.G. ABC HIGH SCHOOL'}
+                            value={formData.institution_name}
+                            onChange={handleChange}
+                            className="w-full bg-slate-50 border border-slate-100 rounded-[1.5rem] px-6 py-5 text-sm font-bold text-slate-800 placeholder:text-slate-200 placeholder:font-black focus:ring-8 focus:ring-blue-500/5 focus:border-[#002147] outline-none transition-all shadow-inner"
+                          />
+                        </div>
+                      )}
+
+                      {formData.applicant_type === 'not_student' && (
+                        <div className="group md:col-span-2">
+                          <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 ml-2 group-focus-within:text-[#002147] transition-colors">
+                            Workplace / Organization <span className="text-slate-300">(optional)</span>
+                          </label>
+                          <input
+                            name="institution_name"
+                            placeholder="E.G. COMPANY / ORGANIZATION NAME"
+                            value={formData.institution_name}
+                            onChange={handleChange}
+                            className="w-full bg-slate-50 border border-slate-100 rounded-[1.5rem] px-6 py-5 text-sm font-bold text-slate-800 placeholder:text-slate-200 placeholder:font-black focus:ring-8 focus:ring-blue-500/5 focus:border-[#002147] outline-none transition-all shadow-inner"
+                          />
+                        </div>
+                      )}
                     </div>
                     <div className="flex gap-5">
                       <button onClick={prevStep} className="flex-1 bg-slate-50 text-slate-400 py-6 rounded-[2rem] text-xs font-bold uppercase tracking-widest hover:bg-slate-100 transition-all">Previous</button>

@@ -138,16 +138,33 @@ router.get('/members', authMiddleware, isAdmin, asyncHandler(async (req, res) =>
 }));
 
 // GET all pending members + executive upgrade applications
+// General pending → Admin + Superuser
+// Executive applications / Executive requestedRole → Superuser only
 router.get('/pending-members', authMiddleware, isAdmin, asyncHandler(async (req, res) => {
+    const isSuper = req.user.role === 'Superuser';
+
+    const memberQuery = isSuper
+        ? { status: { $in: ['pending', 'fee_pending'] } }
+        : {
+            status: { $in: ['pending', 'fee_pending'] },
+            $or: [
+                { requestedRole: { $exists: false } },
+                { requestedRole: null },
+                { requestedRole: 'General' },
+            ],
+        };
+
     const [members, executiveApplications] = await Promise.all([
-        Member.find({ status: { $in: ['pending', 'fee_pending'] } })
+        Member.find(memberQuery)
             .select('-password')
             .sort({ createdAt: -1 })
             .lean(),
-        ExecutiveApplication.find({ status: 'pending' })
-            .sort({ createdAt: -1 })
-            .populate('memberId', 'name email member_id city')
-            .lean(),
+        isSuper
+            ? ExecutiveApplication.find({ status: 'pending' })
+                .sort({ createdAt: -1 })
+                .populate('memberId', 'name email member_id city')
+                .lean()
+            : Promise.resolve([]),
     ]);
     res.json({ members, executiveApplications });
 }));
@@ -195,6 +212,9 @@ router.post('/approve-member/:id', authMiddleware, isAdmin, asyncHandler(async (
     if (req.user.role === 'Admin' && (member.role === 'Admin' || member.role === 'Superuser')) {
         return res.status(403).json({ error: 'Permission denied.' });
     }
+    if (req.user.role === 'Admin' && member.requestedRole === 'Executive') {
+        return res.status(403).json({ error: 'Executive applications can only be approved by Super Admin.' });
+    }
 
     if (member.status === 'approved') return res.status(400).json({ error: 'Already approved' });
 
@@ -232,6 +252,9 @@ router.post('/direct-approve/:id', authMiddleware, isAdmin, asyncHandler(async (
 
     if (req.user.role === 'Admin' && (member.role === 'Admin' || member.role === 'Superuser')) {
         return res.status(403).json({ error: 'Permission denied.' });
+    }
+    if (req.user.role === 'Admin' && member.requestedRole === 'Executive') {
+        return res.status(403).json({ error: 'Executive applications can only be approved by Super Admin.' });
     }
 
     if (member.status === 'approved') return res.status(400).json({ error: 'Already approved' });
@@ -404,7 +427,7 @@ router.patch('/members/:id/demote', authMiddleware, isSuperuser, asyncHandler(as
 }));
 
 // GET pending executive upgrade applications
-router.get('/executive-applications', authMiddleware, isAdmin, asyncHandler(async (req, res) => {
+router.get('/executive-applications', authMiddleware, isSuperuser, asyncHandler(async (req, res) => {
     const applications = await ExecutiveApplication.find({ status: 'pending' })
         .sort({ createdAt: -1 })
         .populate('memberId', 'name email member_id city')
@@ -423,7 +446,7 @@ const finalizeExecutiveApproval = async (application, member, admin) => {
 };
 
 // POST executive interview call
-router.post('/executive-applications/:id/interview-call', authMiddleware, isAdmin, asyncHandler(async (req, res) => {
+router.post('/executive-applications/:id/interview-call', authMiddleware, isSuperuser, asyncHandler(async (req, res) => {
     const { venue, message, dressCode, arrivalTime, guideNotes, focusAreas, linkUrl } = req.body;
     const application = await ExecutiveApplication.findById(req.params.id);
     if (!application) return res.status(404).json({ error: 'Application not found.' });
@@ -453,7 +476,7 @@ router.post('/executive-applications/:id/interview-call', authMiddleware, isAdmi
 }));
 
 // POST record executive interview result
-router.post('/executive-applications/:id/interview-result', authMiddleware, isAdmin, asyncHandler(async (req, res) => {
+router.post('/executive-applications/:id/interview-result', authMiddleware, isSuperuser, asyncHandler(async (req, res) => {
     const { result, note } = req.body;
     if (!['passed', 'failed'].includes(result)) {
         return res.status(400).json({ error: 'Result must be passed or failed.' });
@@ -496,7 +519,7 @@ router.post('/executive-applications/:id/interview-result', authMiddleware, isAd
 }));
 
 // POST waive executive fee / grant free executive membership
-router.post('/executive-applications/:id/waive', authMiddleware, isAdmin, asyncHandler(async (req, res) => {
+router.post('/executive-applications/:id/waive', authMiddleware, isSuperuser, asyncHandler(async (req, res) => {
     const { reason } = req.body;
     if (!reason?.trim() || reason.trim().length < 10) {
         return res.status(400).json({ error: 'Waiver reason must be at least 10 characters.' });
@@ -517,7 +540,7 @@ router.post('/executive-applications/:id/waive', authMiddleware, isAdmin, asyncH
 }));
 
 // POST direct approve executive (skip fee — after passed interview)
-router.post('/executive-applications/:id/direct-approve', authMiddleware, isAdmin, asyncHandler(async (req, res) => {
+router.post('/executive-applications/:id/direct-approve', authMiddleware, isSuperuser, asyncHandler(async (req, res) => {
     const { note } = req.body;
     const application = await ExecutiveApplication.findById(req.params.id);
     if (!application) return res.status(404).json({ error: 'Application not found.' });
@@ -540,7 +563,7 @@ router.post('/executive-applications/:id/direct-approve', authMiddleware, isAdmi
 }));
 
 // POST approve executive application (final approve — passed + fee waived)
-router.post('/executive-applications/:id/approve', authMiddleware, isAdmin, asyncHandler(async (req, res) => {
+router.post('/executive-applications/:id/approve', authMiddleware, isSuperuser, asyncHandler(async (req, res) => {
     const application = await ExecutiveApplication.findById(req.params.id);
     if (!application) return res.status(404).json({ error: 'Application not found.' });
     if (application.status !== 'pending') {
@@ -560,7 +583,7 @@ router.post('/executive-applications/:id/approve', authMiddleware, isAdmin, asyn
 }));
 
 // POST reject executive application
-router.post('/executive-applications/:id/reject', authMiddleware, isAdmin, asyncHandler(async (req, res) => {
+router.post('/executive-applications/:id/reject', authMiddleware, isSuperuser, asyncHandler(async (req, res) => {
     const { reason } = req.body;
     if (!reason?.trim() || reason.trim().length < 10) {
         return res.status(400).json({ error: 'Rejection reason must be at least 10 characters.' });

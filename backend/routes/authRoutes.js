@@ -170,9 +170,12 @@ router.post('/register', validateRequest(schemas.register), asyncHandler(async (
         father_name,
         whatsapp,
         education_level,
+        applicant_type: rawApplicantType,
         program,
         passing_year,
         university,
+        institution_name,
+        occupation,
         address,
         province,
         district,
@@ -188,6 +191,8 @@ router.post('/register', validateRequest(schemas.register), asyncHandler(async (
     if (!password) return res.status(400).json({ error: 'Password is required' });
 
     const requestedRole = rawRequestedRole === 'Executive' ? 'Executive' : 'General';
+    const allowedTypes = ['university', 'college', 'school', 'not_student'];
+    const applicant_type = allowedTypes.includes(rawApplicantType) ? rawApplicantType : 'university';
 
     if (requestedRole === 'Executive') {
         if (!sls_official_id?.trim() || !cnic_number?.trim()) {
@@ -239,9 +244,14 @@ router.post('/register', validateRequest(schemas.register), asyncHandler(async (
         father_name,
         whatsapp,
         education_level,
-        program,
+        applicant_type,
+        program: applicant_type === 'not_student' ? (occupation || program || '') : (program || ''),
         passing_year,
-        university,
+        university: (applicant_type === 'university')
+            ? (university || '')
+            : (institution_name || university || ''),
+        institution_name: institution_name || '',
+        occupation: occupation || '',
         address: address?.trim(),
         province: province?.trim(),
         district: district?.trim(),

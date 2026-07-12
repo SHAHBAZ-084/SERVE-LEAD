@@ -112,6 +112,12 @@ const memberSchema = new mongoose.Schema({
     type: String,
     enum: ['Matric', 'Inter', 'Bachelor', 'Master', 'PhD', 'Other'],
   },
+  /** Who is registering: university / college / school student, or not a student */
+  applicant_type: {
+    type: String,
+    enum: ['university', 'college', 'school', 'not_student'],
+    default: 'university',
+  },
   program: {
     type: String,
   },
@@ -120,6 +126,15 @@ const memberSchema = new mongoose.Schema({
   },
   university: {
     type: String,
+  },
+  /** Free-text school/college/workplace when not using university list */
+  institution_name: {
+    type: String,
+    default: '',
+  },
+  occupation: {
+    type: String,
+    default: '',
   },
   address: {
     type: String,

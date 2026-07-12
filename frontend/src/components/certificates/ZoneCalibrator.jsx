@@ -10,14 +10,14 @@ import {
   hexToRgb,
   PREVIEW_SAMPLE_TEXT,
   FIELD_DEFAULT_PREFIXES,
+  FONT_STYLE_OPTIONS,
+  FONT_WEIGHT_OPTIONS,
+  resolveZoneFont,
 } from '../../utils/certZoneTools';
 import { fitZoneFontSize } from '../../utils/canvasEngine';
 
 const CANVAS_W = 2048;
 const CANVAS_H = 1436;
-
-const SERIF_FONT = "'Playfair Display', 'Times New Roman', serif";
-const SANS_FONT = "'Inter', 'Helvetica Neue', sans-serif";
 
 function boxGeometry(zone) {
   const w = zone.maxWidth || 200;
@@ -443,6 +443,41 @@ export default function ZoneCalibrator({
                       className="mt-1 w-full bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-sm"
                     />
                   </label>
+                  <label className="text-xs text-slate-600 font-semibold col-span-2">
+                    Font style
+                    <select
+                      value={resolveZoneFont(active, activeKey).id}
+                      onChange={(e) => updateZoneField(activeKey, 'fontFamily', e.target.value)}
+                      className="mt-1 w-full bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-sm"
+                    >
+                      {FONT_STYLE_OPTIONS.map((f) => (
+                        <option key={f.id} value={f.id}>{f.label}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="text-xs text-slate-600 font-semibold">
+                    Font weight
+                    <select
+                      value={String(active.fontWeight || resolveZoneFont(active, activeKey).weight)}
+                      onChange={(e) => updateZoneField(activeKey, 'fontWeight', e.target.value)}
+                      className="mt-1 w-full bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-sm"
+                    >
+                      {FONT_WEIGHT_OPTIONS.map((w) => (
+                        <option key={w.id} value={w.id}>{w.label}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="text-xs text-slate-600 font-semibold">
+                    Italic
+                    <select
+                      value={active.fontStyle === 'italic' ? 'italic' : 'normal'}
+                      onChange={(e) => updateZoneField(activeKey, 'fontStyle', e.target.value)}
+                      className="mt-1 w-full bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-sm"
+                    >
+                      <option value="normal">Normal</option>
+                      <option value="italic">Italic</option>
+                    </select>
+                  </label>
                   <label className="text-xs text-slate-600 font-semibold">
                     Align
                     <select
@@ -512,8 +547,9 @@ export default function ZoneCalibrator({
                     style={{
                       color: active.color || '#002147',
                       fontSize: Math.min(36, active.fontSize || 22),
-                      fontFamily: activeKey === 'name' ? SERIF_FONT : SANS_FONT,
-                      fontWeight: activeKey === 'name' ? 700 : 600,
+                      fontFamily: resolveZoneFont(active, activeKey).family,
+                      fontWeight: resolveZoneFont(active, activeKey).weight,
+                      fontStyle: resolveZoneFont(active, activeKey).italic ? 'italic' : 'normal',
                       margin: 0,
                       lineHeight: 1.1,
                     }}
@@ -586,10 +622,11 @@ export default function ZoneCalibrator({
                 const rawSample = PREVIEW_SAMPLE_TEXT[key] || getFieldLabel(key);
                 const prefix = zone.prefix != null ? zone.prefix : (FIELD_DEFAULT_PREFIXES[key] ?? '');
                 const sample = prefix + rawSample;
-                const fontFamily = key === 'name' ? SERIF_FONT : SANS_FONT;
+                const resolved = resolveZoneFont(zone, key);
+                const fontFamily = resolved.family;
                 // Exact same fitted canvas font as Preview Draft / PDF, scaled to on-screen image
                 const canvasFont = showLivePreview
-                  ? fitZoneFontSize(sample, zone, fontFamily)
+                  ? fitZoneFontSize(sample, zone, fontFamily, key)
                   : (zone.fontSize || 22);
                 const screenFont = Math.max(1, canvasFont * displayScale);
 
@@ -628,7 +665,8 @@ export default function ZoneCalibrator({
                           color: zone.color || '#002147',
                           fontSize: `${screenFont}px`,
                           fontFamily,
-                          fontWeight: key === 'name' ? 700 : 600,
+                          fontWeight: resolved.weight,
+                          fontStyle: resolved.italic ? 'italic' : 'normal',
                           whiteSpace: 'nowrap',
                           lineHeight: 1,
                           maxWidth: '100%',
