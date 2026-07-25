@@ -139,25 +139,17 @@ const getAdminActor = async (req) => {
 
 
 const resolveFeeDeadline = async (bodyDeadline) => {
-
     if (bodyDeadline) {
-
         const d = new Date(bodyDeadline);
-
-        if (!Number.isNaN(d.getTime()) && d > new Date()) return d;
-
+        // Accept any valid date the admin explicitly provides — never override it
+        if (!Number.isNaN(d.getTime())) return d;
     }
-
+    // Only fall back to default days when NO deadline was provided at all
     const defaultDays = parseInt(await getSettingValue('default_fee_deadline_days', '7'), 10) || 7;
-
     const deadline = new Date();
-
     deadline.setDate(deadline.getDate() + defaultDays);
-
     deadline.setHours(23, 59, 59, 999);
-
     return deadline;
-
 };
 
 

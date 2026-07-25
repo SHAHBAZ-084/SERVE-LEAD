@@ -466,7 +466,7 @@ const MemberDashboard = () => {
         if (templateId) {
             setExporting(true);
             try {
-                const r = await api.get(`certificates/${certData._id}/render-config`);
+                const r = await api.get(`certificates/${certData._id}/render-config`, auth);
                 await generateCertificate({
                     template: { ...r.data.template, fileUrl: getImgUrl(r.data.template.fileUrl) },
                     member: r.data.member,
@@ -503,7 +503,7 @@ const MemberDashboard = () => {
         if (templateId) {
             setExporting(true);
             try {
-                const r = await api.get(`certificates/${certData._id}/render-config`);
+                const r = await api.get(`certificates/${certData._id}/render-config`, auth);
                 await generateCertificate({
                     template: { ...r.data.template, fileUrl: getImgUrl(r.data.template.fileUrl) },
                     member: r.data.member,
@@ -843,11 +843,12 @@ const MemberDashboard = () => {
                 id="cert-export-node"
                 style={{
                     position: 'fixed',
-                    top: '-9999px',
-                    left: '-9999px',
+                    top: 0,
+                    left: 0,
                     opacity: 0,
                     pointerEvents: 'none',
-                    zIndex: -1000
+                    zIndex: -1000,
+                    visibility: 'hidden'
                 }}
             >
                 {isMembershipCertificate(exportData) ? (

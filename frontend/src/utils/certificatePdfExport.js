@@ -65,8 +65,21 @@ async function captureCertificateCanvas(sourceElementId) {
 export async function captureCertificatePdf(sourceElementId, { fileName = "SLS_Certificate.pdf" } = {}) {
   const canvas = await captureCertificateCanvas(sourceElementId);
   const imgData = canvas.toDataURL("image/png", 1.0);
-  const pdf = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4", compress: true });
-  pdf.addImage(imgData, "PNG", 0, 0, 297, 210, undefined, "FAST");
+  const isPortrait = canvas.height > canvas.width;
+  const pdf = new jsPDF({
+    orientation: isPortrait ? "portrait" : "landscape",
+    unit: "mm",
+    format: "a4",
+    compress: true
+  });
+  const pageW = isPortrait ? 210 : 297;
+  const pageH = isPortrait ? 297 : 210;
+  const ratio = Math.min(pageW / canvas.width, pageH / canvas.height);
+  const imgW = canvas.width * ratio;
+  const imgH = canvas.height * ratio;
+  const offsetX = (pageW - imgW) / 2;
+  const offsetY = (pageH - imgH) / 2;
+  pdf.addImage(imgData, "PNG", offsetX, offsetY, imgW, imgH, undefined, "FAST");
   pdf.save(fileName);
 }
 

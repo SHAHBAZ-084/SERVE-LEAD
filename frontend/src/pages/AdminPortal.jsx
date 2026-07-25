@@ -247,6 +247,7 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
     const [channels, setChannels] = useState([]);
     const [feeChannels, setFeeChannels] = useState([]);
     const [teamStructure, setTeamStructure] = useState([]);
+    const [boardOfExecutive, setBoardOfExecutive] = useState([]);
     const [leadership, setLeadership] = useState({ name: "", role: "", program: "", desc: "", img: "", email: "", email_subject: "Inquiry regarding Serve & Lead Society", email_body: "Hello Chairman,\n\nI am reaching out to..." });
     const [vision, setVision] = useState({
         badgeSubtitle: "Chairman Vision",
@@ -281,6 +282,9 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
             }
             if (r.data.team_structure) {
                 try { setTeamStructure(JSON.parse(r.data.team_structure)); } catch { setTeamStructure([]); }
+            }
+            if (r.data.board_of_executive) {
+                try { setBoardOfExecutive(JSON.parse(r.data.board_of_executive)); } catch { setBoardOfExecutive([]); }
             }
             if (r.data.team_leadership) {
                 try { setLeadership(JSON.parse(r.data.team_leadership)); } catch { setLeadership({ name: "", role: "", program: "", desc: "", img: "" }); }
@@ -330,6 +334,7 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
             const payload = {
                 donation_channels: JSON.stringify(channels),
                 team_structure: JSON.stringify(teamStructure),
+                board_of_executive: JSON.stringify(boardOfExecutive),
                 team_leadership: JSON.stringify(leadership),
                 vision_section: JSON.stringify(vision),
                 ...footer,
@@ -342,6 +347,9 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
             }
             if (r.data.team_structure) {
                 try { setTeamStructure(JSON.parse(r.data.team_structure)); } catch { /* keep current */ }
+            }
+            if (r.data.board_of_executive) {
+                try { setBoardOfExecutive(JSON.parse(r.data.board_of_executive)); } catch { /* keep current */ }
             }
             if (r.data.team_leadership) {
                 try { setLeadership(JSON.parse(r.data.team_leadership)); } catch { /* keep current */ }
@@ -497,9 +505,22 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
             const r = await api.post('settings/upload', formData, auth);
             if (catId === 'leadership') setLeadership((prev) => ({ ...prev, img: r.data.imageUrl }));
             else if (catId === 'vision') setVision((prev) => ({ ...prev, img: r.data.imageUrl }));
+            else if (catId === 'board_executive') {
+                setBoardOfExecutive((prev) => prev.map((m) => m.id === memberId ? { ...m, img: r.data.imageUrl } : m));
+            }
             else updateMember(catId, memberId, 'img', r.data.imageUrl);
             notify("Photo uploaded successfully!");
         } catch { notify("Photo upload failed", "error"); }
+    };
+
+    const addBoardMember = () => setBoardOfExecutive((prev) => [...prev, {
+        id: Date.now(), name: '', role: '', description: '', details: '', img: '', email: '', linkedin: ''
+    }]);
+    const updateBoardMember = (memberId, field, value) => {
+        setBoardOfExecutive((prev) => prev.map((m) => m.id === memberId ? { ...m, [field]: value } : m));
+    };
+    const removeBoardMember = (memberId) => {
+        setBoardOfExecutive((prev) => prev.filter((m) => m.id !== memberId));
     };
 
     return (
@@ -810,6 +831,55 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
                                         </div>
                                     </div>
                                 ))}
+                            </div>
+
+                            {/* Board of Executive */}
+                            <div className="mt-14 pt-10 border-t border-slate-100">
+                                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-12 h-12 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center text-xl shadow-inner">
+                                            <i className="fas fa-landmark" />
+                                        </div>
+                                        <div>
+                                            <h3 className="text-2xl font-black text-slate-800 tracking-tight uppercase">Board of Executive</h3>
+                                            <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mt-1">Shown in the site footer</p>
+                                        </div>
+                                    </div>
+                                    <button type="button" onClick={addBoardMember} className="px-5 py-2.5 bg-amber-50 text-amber-700 rounded-xl text-[10px] font-black uppercase tracking-widest border border-amber-100 hover:bg-amber-100 transition-all">
+                                        + Add Board Member
+                                    </button>
+                                </div>
+                                <div className="grid grid-cols-1 gap-4">
+                                    {boardOfExecutive.map((m) => (
+                                        <div key={m.id} className="p-4 sm:p-5 bg-amber-50/30 rounded-2xl border border-amber-100/60 relative group flex flex-col sm:flex-row gap-5 sm:gap-6 items-center">
+                                            <button type="button" onClick={() => removeBoardMember(m.id)} className="absolute top-2 right-2 text-slate-200 hover:text-rose-500 p-2"><i className="fas fa-times" /></button>
+                                            <div className="flex flex-col items-center sm:items-start shrink-0">
+                                                <div className="w-20 h-20 rounded-2xl bg-white border border-slate-200 overflow-hidden relative group/img flex-shrink-0">
+                                                    {m.img ? <img src={getImgUrl(m.img)} className="w-full h-full object-cover" alt={m.name} /> :
+                                                        <div className="w-full h-full flex items-center justify-center text-slate-300 text-xl"><i className="fas fa-user" /></div>}
+                                                    <label className="absolute inset-0 bg-slate-900/60 opacity-0 group-hover/img:opacity-100 flex items-center justify-center cursor-pointer transition-opacity">
+                                                        <i className="fas fa-camera text-white text-xs" />
+                                                        <input type="file" className="hidden" accept="image/*" onChange={(e) => uploadPhoto('board_executive', m.id, e.target.files[0])} />
+                                                    </label>
+                                                </div>
+                                                <ImageUploadHint className="max-w-[5rem] text-center sm:text-left" />
+                                            </div>
+                                            <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-3 w-full">
+                                                <input type="text" placeholder="Full Name" value={m.name} onChange={(e) => updateBoardMember(m.id, 'name', e.target.value)} className="w-full text-xs p-2.5 rounded-xl border border-slate-200" />
+                                                <input type="text" placeholder="Role / Designation" value={m.role} onChange={(e) => updateBoardMember(m.id, 'role', e.target.value)} className="w-full text-xs p-2.5 rounded-xl border border-slate-200" />
+                                                <input type="text" placeholder="Short description" value={m.description || ''} onChange={(e) => updateBoardMember(m.id, 'description', e.target.value)} className="w-full text-xs p-2.5 rounded-xl border border-slate-200" />
+                                                <input type="email" placeholder="Email" value={m.email || ''} onChange={(e) => updateBoardMember(m.id, 'email', e.target.value)} className="w-full text-xs p-2.5 rounded-xl border border-slate-200" />
+                                                <input type="url" placeholder="LinkedIn URL" value={m.linkedin || ''} onChange={(e) => updateBoardMember(m.id, 'linkedin', e.target.value)} className="w-full text-xs p-2.5 rounded-xl border border-slate-200 sm:col-span-2" />
+                                                <textarea placeholder="Details..." rows={2} value={m.details || ''} onChange={(e) => updateBoardMember(m.id, 'details', e.target.value)} className="w-full text-xs p-2.5 rounded-xl border border-slate-200 resize-none sm:col-span-2" />
+                                            </div>
+                                        </div>
+                                    ))}
+                                    {boardOfExecutive.length === 0 && (
+                                        <p className="text-center text-slate-400 text-xs font-bold uppercase tracking-widest py-8 border border-dashed border-slate-200 rounded-2xl">
+                                            No board members yet — click Add Board Member
+                                        </p>
+                                    )}
+                                </div>
                             </div>
                         </div>
                     </div>
