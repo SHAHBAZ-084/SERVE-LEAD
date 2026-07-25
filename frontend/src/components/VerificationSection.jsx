@@ -1,34 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import api from "../api";
-import { signatureImg, stampImg, enrichCertificateData } from "../pages/CertTemplates";
-import MembershipCertificateExact from "../pages/MembershipCertificateExact";
-import { captureCertificatePdf } from "../utils/certificatePdfExport";
 
 export default function VerificationSection() {
   const [memberId, setMemberId] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
-  const [membershipCert, setMembershipCert] = useState(null);
-  const [exportData, setExportData] = useState(null);
-  const [exporting, setExporting] = useState(false);
-  const [certAssets, setCertAssets] = useState({ logo: null, signature: null, stamp: null });
-
-  useEffect(() => {
-    const loadToDataURL = async (url, key) => {
-      try {
-        const response = await fetch(url);
-        const blob = await response.blob();
-        const reader = new FileReader();
-        reader.onloadend = () => setCertAssets((prev) => ({ ...prev, [key]: reader.result }));
-        reader.readAsDataURL(blob);
-      } catch (err) {
-        console.error(`Failed to load ${key}:`, err);
-      }
-    };
-    loadToDataURL("/logo-certificate.png", "logo");
-    loadToDataURL("/signature.png", "signature");
-    loadToDataURL("/stamp.png", "stamp");
-  }, []);
 
   const handleVerify = async (e) => {
     e.preventDefault();
@@ -42,11 +18,9 @@ export default function VerificationSection() {
 
     setLoading(true);
     setResult(null);
-    setMembershipCert(null);
     try {
       const response = await api.get(`auth/verify/${cleanId}`);
       setResult(response.data.member);
-      setMembershipCert(response.data.membershipCertificate || null);
     } catch (error) {
       console.error("Verification Error:", error);
       if (error.response?.status === 404) {
@@ -56,35 +30,6 @@ export default function VerificationSection() {
       }
     } finally {
       setLoading(false);
-    }
-  };
-
-  const downloadMembershipPdf = async () => {
-    if (!membershipCert || !result) return;
-    const enriched = enrichCertificateData(
-      {
-        ...membershipCert,
-        memberId: {
-          name: result.name,
-          member_id: result.member_id,
-          joining_year: result.joining_year,
-          role: result.role,
-        },
-      },
-      { session: result.joining_year }
-    );
-    setExportData(enriched);
-    setExporting(true);
-    await new Promise((r) => setTimeout(r, 600));
-    try {
-      await captureCertificatePdf("verify-section-export", {
-        fileName: `SLS_Membership_${result.name.replace(/\s+/g, "_")}.pdf`,
-      });
-    } catch (err) {
-      alert(`Export failed: ${err.message}`);
-    } finally {
-      setExporting(false);
-      setExportData(null);
     }
   };
 
@@ -133,25 +78,13 @@ export default function VerificationSection() {
             <p className="text-sm text-emerald-700 mt-1">
               {result.role} · Session {result.joining_year}
             </p>
-            {membershipCert && (
-              <button
-                type="button"
-                onClick={downloadMembershipPdf}
-                disabled={exporting}
-                className="mt-5 w-full bg-[#002147] text-white py-3 rounded-lg text-xs font-bold uppercase tracking-widest hover:bg-slate-800 disabled:opacity-50"
-              >
-                {exporting ? "Preparing PDF..." : "Download Membership Certificate"}
-              </button>
+            {result.member_id && (
+              <p className="text-xs text-emerald-800 font-black uppercase tracking-widest mt-3">
+                ID: {result.member_id}
+              </p>
             )}
           </div>
         )}
-      </div>
-
-      <div
-        id="verify-section-export"
-        style={{ position: "fixed", top: "-9999px", left: "-9999px", opacity: 0, pointerEvents: "none", zIndex: -1000 }}
-      >
-        <MembershipCertificateExact data={exportData || {}} certAssets={certAssets} id="verify-section-inner" />
       </div>
     </section>
   );
