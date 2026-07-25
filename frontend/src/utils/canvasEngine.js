@@ -153,11 +153,30 @@ function buildMemberLines(member) {
  * @param {{ template: object, member: object, scale?: number }} opts
  * scale < 1 = faster preview (default 1 for PDF quality)
  */
+function mapZoneToImage(zone, scaleX, scaleY) {
+  if (!zone) return zone;
+  const fontScale = Math.min(scaleX, scaleY);
+  return {
+    ...zone,
+    x: (zone.x || 0) * scaleX,
+    y: (zone.y || 0) * scaleY,
+    maxWidth: (zone.maxWidth || 200) * scaleX,
+    maxHeight: (zone.maxHeight || 40) * scaleY,
+    fontSize: Math.max(8, Math.round((zone.fontSize || 22) * fontScale)),
+  };
+}
+
 export async function renderCertificateDataUrl({ template, member, scale = 1 }) {
   await ensureFonts();
 
-  const canvasWidth = template.canvasWidth || 2048;
-  const canvasHeight = template.canvasHeight || 1436;
+  const img = await loadImage(template.fileUrl);
+  // Prefer natural image size so portrait templates are never stretched into landscape canvas
+  const canvasWidth = img.naturalWidth || img.width || template.canvasWidth || 2048;
+  const canvasHeight = img.naturalHeight || img.height || template.canvasHeight || 1436;
+  const metaW = template.canvasWidth || canvasWidth;
+  const metaH = template.canvasHeight || canvasHeight;
+  const scaleX = canvasWidth / metaW;
+  const scaleY = canvasHeight / metaH;
   const zones = template.zones || {};
   const s = Math.min(Math.max(scale, 0.25), 1);
 
@@ -169,7 +188,6 @@ export async function renderCertificateDataUrl({ template, member, scale = 1 }) 
   ctx.imageSmoothingQuality = 'high';
   ctx.scale(s, s);
 
-  const img = await loadImage(template.fileUrl);
   ctx.drawImage(img, 0, 0, canvasWidth, canvasHeight);
 
   const lines = buildMemberLines(member);
@@ -178,7 +196,7 @@ export async function renderCertificateDataUrl({ template, member, scale = 1 }) 
   const drawOrder = ['date', 'name', 'mobile', 'memberId', 'joiningYear', 'membershipStatus'];
   for (const key of drawOrder) {
     if (!zones[key]) continue;
-    const zone = zones[key];
+    const zone = mapZoneToImage(zones[key], scaleX, scaleY);
     const font = resolveZoneFont(zone, key);
     const prefix = zone.prefix != null ? zone.prefix : (FIELD_DEFAULT_PREFIXES[key] ?? '');
     drawZoneText(ctx, prefix + (lines[key] ?? ''), zone, font.family, font.weight, font.italic);
@@ -187,7 +205,7 @@ export async function renderCertificateDataUrl({ template, member, scale = 1 }) 
   for (const key of Object.keys(zones)) {
     if (drawOrder.includes(key)) continue;
     if (lines[key] != null) {
-      const zone = zones[key];
+      const zone = mapZoneToImage(zones[key], scaleX, scaleY);
       const font = resolveZoneFont(zone, key);
       const prefix = zone.prefix != null ? zone.prefix : '';
       drawZoneText(ctx, prefix + lines[key], zone, font.family, font.weight, font.italic);
@@ -222,8 +240,15 @@ export async function generateCertificate({ template, member, format = 'pdf' }) 
     }
 
     const JsPDF = resolveJsPdf();
-    const canvasWidth = template.canvasWidth || 2048;
-    const canvasHeight = template.canvasHeight || 1436;
+    // Measure rendered image so PDF page matches true portrait/landscape (not stale template meta)
+    const rendered = await new Promise((resolve, reject) => {
+      const probe = new Image();
+      probe.onload = () => resolve({ width: probe.width, height: probe.height });
+      probe.onerror = () => reject(new Error('Rendered certificate could not be measured'));
+      probe.src = imgData;
+    });
+    const canvasWidth = rendered.width || template.canvasWidth || 2048;
+    const canvasHeight = rendered.height || template.canvasHeight || 1436;
     const isPortrait = canvasHeight > canvasWidth;
     const pageW = isPortrait ? 210 : 297;
     const pageH = isPortrait ? 297 : 210;

@@ -1723,28 +1723,32 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
             </div>
 
             {showPreview && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4">
                     <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => { setShowPreview(false); setPreviewUrl(null); }} />
-                    <div className="relative bg-white rounded-[32px] shadow-2xl flex flex-col max-h-[96vh] w-full max-w-5xl overflow-hidden">
-                        <div className="flex justify-between items-center px-8 py-5 border-b border-slate-100">
-                            <div>
+                    <div className="relative bg-white rounded-[28px] shadow-2xl flex flex-col max-h-[92vh] w-full max-w-md sm:max-w-lg md:max-w-xl overflow-hidden">
+                        <div className="flex justify-between items-center px-5 sm:px-6 py-4 border-b border-slate-100 shrink-0">
+                            <div className="min-w-0 pr-3">
                                 <h3 className="text-[#002147] text-base font-black uppercase tracking-tight">Preview Before Issue</h3>
-                                <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">
+                                <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest truncate">
                                     {form.title || 'Certificate'} · Active template layout
                                 </p>
                             </div>
-                            <button type="button" onClick={() => { setShowPreview(false); setPreviewUrl(null); }} className="w-10 h-10 rounded-full hover:bg-slate-100 text-slate-400">
+                            <button type="button" onClick={() => { setShowPreview(false); setPreviewUrl(null); }} className="w-10 h-10 rounded-full hover:bg-slate-100 text-slate-400 shrink-0">
                                 <i className="fas fa-times" />
                             </button>
                         </div>
-                        <div className="flex-1 overflow-auto p-6 sm:p-10 bg-slate-50/50">
+                        <div className="flex-1 min-h-0 overflow-hidden p-4 sm:p-5 bg-slate-50/50 flex items-center justify-center">
                             {previewUrl ? (
-                                <img src={previewUrl} alt="Certificate preview" className="w-full max-w-4xl mx-auto rounded-lg shadow-xl border border-slate-200" />
+                                <img
+                                    src={previewUrl}
+                                    alt="Certificate preview"
+                                    className="max-w-full max-h-[min(62vh,560px)] w-auto h-auto object-contain rounded-lg shadow-xl border border-slate-200"
+                                />
                             ) : (
                                 <div className="py-20 text-center text-slate-400 text-sm font-bold uppercase tracking-widest">Loading…</div>
                             )}
                         </div>
-                        <div className="px-8 py-5 border-t border-slate-100 flex flex-col sm:flex-row justify-end gap-3">
+                        <div className="px-5 sm:px-6 py-4 border-t border-slate-100 flex flex-col sm:flex-row justify-end gap-3 shrink-0">
                             <button
                                 type="button"
                                 onClick={() => { setShowPreview(false); setPreviewUrl(null); }}
