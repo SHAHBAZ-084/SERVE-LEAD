@@ -99,7 +99,13 @@ const StatCard = ({ icon, label, value, color }) => {
 const MemberDashboard = () => {
     const [searchParams, setSearchParams] = useSearchParams();
     const activeTab = searchParams.get("tab") || "dashboard";
-    const setActiveTab = (tab) => setSearchParams({ tab });
+    /** Push each tab into history so browser/Android back undoes one navigation step. */
+    const setActiveTab = useCallback((tab) => {
+        const next = tab || "dashboard";
+        const current = searchParams.get("tab") || "dashboard";
+        if (current === next) return;
+        setSearchParams({ tab: next }, { replace: false });
+    }, [searchParams, setSearchParams]);
     const [certificates, setCertificates] = useState([]);
     const [events, setEvents] = useState([]);
     const [announcements, setAnnouncements] = useState([]);
@@ -332,16 +338,6 @@ const MemberDashboard = () => {
             setLoading(false);
         }
     }, [auth]);
-
-    // Back-Button Trap: Force the browser to stay on this page
-    useEffect(() => {
-        window.history.pushState(null, null, window.location.pathname + window.location.search);
-        const handlePopState = (e) => {
-            window.history.go(1);
-        };
-        window.addEventListener("popstate", handlePopState);
-        return () => window.removeEventListener("popstate", handlePopState);
-    }, []);
 
     useEffect(() => {
         const token = localStorage.getItem("token");
