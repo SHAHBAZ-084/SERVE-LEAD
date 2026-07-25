@@ -224,14 +224,10 @@ export async function generateCertificate({ template, member, format = 'pdf' }) 
     const JsPDF = resolveJsPdf();
     const canvasWidth = template.canvasWidth || 2048;
     const canvasHeight = template.canvasHeight || 1436;
-    const isPortrait = template.canvasHeight > template.canvasWidth;
-    const pdf = new JsPDF({
-      orientation: isPortrait ? 'portrait' : 'landscape',
-      unit: 'mm',
-      format: 'a4'
-    });
+    const isPortrait = canvasHeight > canvasWidth;
     const pageW = isPortrait ? 210 : 297;
     const pageH = isPortrait ? 297 : 210;
+    const pdf = new JsPDF({ orientation: isPortrait ? 'portrait' : 'landscape', unit: 'mm', format: 'a4' });
     const ratio = Math.min(pageW / canvasWidth, pageH / canvasHeight);
     const drawW = canvasWidth * ratio;
     const drawH = canvasHeight * ratio;

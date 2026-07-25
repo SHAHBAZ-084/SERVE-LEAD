@@ -1,22 +1,16 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import api, { getImgUrl } from '../api';
+import api from '../api';
 import { FOOTER_DEFAULTS, parseFooterSettings } from '../constants/footerDefaults';
 
 export default function Footer() {
     const navigate = useNavigate();
     const [footer, setFooter] = useState(() => parseFooterSettings());
-    const [boardMembers, setBoardMembers] = useState([]);
 
     const loadFooterSettings = useCallback(async () => {
         try {
             const r = await api.get('settings', { params: { _t: Date.now() } });
             setFooter(parseFooterSettings(r.data));
-            if (r.data.board_of_executive) {
-                try { setBoardMembers(JSON.parse(r.data.board_of_executive)); } catch { setBoardMembers([]); }
-            } else {
-                setBoardMembers([]);
-            }
         } catch (err) {
             console.error('Failed to load footer settings:', err);
         }
@@ -75,6 +69,16 @@ export default function Footer() {
                             <button onClick={() => navigate('/login')} className="text-slate-400 hover:text-cyan-400 text-sm font-bold transition-colors flex items-center gap-2 group justify-center md:justify-start">
                                 <span className="w-1.5 h-1.5 bg-slate-700 rounded-full group-hover:bg-cyan-500 transition-colors" /> Member Login
                             </button>
+                            <button
+                                onClick={() => navigate('/board-of-executive')}
+                                className="text-slate-400 hover:text-cyan-400 text-sm font-bold transition-colors flex items-center gap-2 group justify-center md:justify-start"
+                            >
+                                <span className="w-5 h-5 rounded-full bg-cyan-500/10 group-hover:bg-cyan-500/20 flex items-center justify-center transition-colors">
+                                    <i className="fas fa-user-tie text-cyan-500 text-[10px]" />
+                                </span>
+                                Board of Executive
+                                <i className="fas fa-arrow-right text-[10px] opacity-0 group-hover:opacity-100 -translate-x-1 group-hover:translate-x-0 transition-all" />
+                            </button>
                             <button onClick={() => navigate('/register')} className="text-slate-400 hover:text-cyan-400 text-sm font-bold transition-colors flex items-center gap-2 group justify-center md:justify-start">
                                 <span className="w-1.5 h-1.5 bg-slate-700 rounded-full group-hover:bg-cyan-500 transition-colors" /> Register Now
                             </button>
@@ -107,49 +111,6 @@ export default function Footer() {
                         </div>
                     </div>
                 </div>
-
-                {boardMembers.length > 0 && (
-                    <div className="border-t border-white/10 mt-4 pt-10 mb-12">
-                        <h3 className="text-center text-sm font-bold tracking-widest text-cyan-400 uppercase mb-8">
-                            Board of Executive
-                        </h3>
-                        <div className="flex flex-wrap justify-center gap-6">
-                            {boardMembers.map((member) => (
-                                <div
-                                    key={member.id}
-                                    className="flex flex-col items-center text-center w-32 group cursor-pointer"
-                                    onClick={() => member.email && window.open(`mailto:${member.email}`)}
-                                    title={member.details || member.description}
-                                >
-                                    <div className="w-16 h-16 rounded-full overflow-hidden bg-slate-700 border-2 border-cyan-500/30 group-hover:border-cyan-400 transition-all mb-2 flex-shrink-0">
-                                        {member.img ? (
-                                            <img src={getImgUrl(member.img)} alt={member.name} className="w-full h-full object-cover" />
-                                        ) : (
-                                            <div className="w-full h-full flex items-center justify-center text-slate-400 text-xl font-black uppercase">
-                                                {member.name?.charAt(0) || 'E'}
-                                            </div>
-                                        )}
-                                    </div>
-                                    <p className="text-white text-xs font-semibold leading-tight">{member.name}</p>
-                                    <p className="text-cyan-400 text-[10px] mt-0.5 leading-tight">{member.role}</p>
-                                    {member.description && (
-                                        <p className="text-slate-500 text-[9px] mt-1 leading-tight line-clamp-2">{member.description}</p>
-                                    )}
-                                </div>
-                            ))}
-                        </div>
-                        <div className="text-center mt-8">
-                            <button
-                                type="button"
-                                onClick={() => navigate('/login')}
-                                className="inline-flex items-center gap-2 px-6 py-2.5 bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 hover:border-cyan-400 text-cyan-400 hover:text-cyan-300 text-sm font-semibold rounded-full transition-all duration-200"
-                            >
-                                <i className="fas fa-users" />
-                                Member Portal
-                            </button>
-                        </div>
-                    </div>
-                )}
 
                 <div className="pt-10 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-8 text-center md:text-left">
                     <div className="flex flex-col">

@@ -2402,7 +2402,7 @@ const ApprovalsTab = ({ pendingMembers, executiveApps, fetchPendingMembers, load
         setFeeRequestForm({
             amount: String(isRetry ? (fp.amount || membershipFee || "") : (membershipFee || "")),
             validityMonths: String(fp.validityMonths || defaultValidityMonths || "12"),
-            deadline: feeDeadline || new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 16),
+            deadline: feeDeadline ? feeDeadline.slice(0, 10) : new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10),
             message: "",
             selectedChannelIds: (fp.requestedChannels?.length ? fp.requestedChannels : allFeeChannels).map((c) => c.id).filter(Boolean),
         });
@@ -2422,7 +2422,7 @@ const ApprovalsTab = ({ pendingMembers, executiveApps, fetchPendingMembers, load
             ...prev,
             amount: prev.amount || String(membershipFee || ""),
             validityMonths: prev.validityMonths || defaultValidityMonths || "12",
-            deadline: prev.deadline || feeDeadline,
+            deadline: prev.deadline || (feeDeadline ? feeDeadline.slice(0, 10) : ''),
             selectedChannelIds: prev.selectedChannelIds.length ? prev.selectedChannelIds : allFeeChannels.map((c) => c.id).filter(Boolean),
         }));
     }, [feeRequestTarget, membershipFee, defaultValidityMonths, feeDeadline, allFeeChannels]);
@@ -3299,7 +3299,7 @@ const ApprovalsTab = ({ pendingMembers, executiveApps, fetchPendingMembers, load
                         </div>
                         <div>
                             <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1">Payment Deadline *</label>
-                            <input type="datetime-local" required value={feeRequestForm.deadline} onChange={(e) => setFeeRequestForm({ ...feeRequestForm, deadline: e.target.value })} className={inputCls} />
+                            <input type="date" required value={feeRequestForm.deadline ? feeRequestForm.deadline.slice(0, 10) : ''} onChange={(e) => setFeeRequestForm({ ...feeRequestForm, deadline: e.target.value })} className={inputCls} />
                         </div>
                         <div>
                             <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2">Payment Channels (included in email) *</label>

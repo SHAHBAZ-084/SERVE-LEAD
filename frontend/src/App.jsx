@@ -18,6 +18,7 @@ import FloatingWhatsApp from './components/FloatingWhatsApp';
 import TopVerseBar from './components/TopVerseBar';
 import BlogsPage from './pages/BlogsPage';
 import TermsPage from './pages/TermsPage';
+import BoardOfExecutivePage from './pages/BoardOfExecutivePage';
 
 
 function App() {
@@ -33,6 +34,7 @@ function App() {
         <Route path='/verify' element={<MemberVerification />} />
         <Route path="/blogs" element={<BlogsPage />} />
         <Route path="/terms" element={<TermsPage />} />
+        <Route path="/board-of-executive" element={<BoardOfExecutivePage />} />
 
         
         {/* Guest Only Routes (Redirect if already logged in) */}
