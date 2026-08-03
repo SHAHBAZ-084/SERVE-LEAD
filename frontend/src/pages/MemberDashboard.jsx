@@ -10,6 +10,7 @@ import CountdownTimer from "../components/common/CountdownTimer";
 import ImageUploadHint from "../components/common/ImageUploadHint";
 import CertificateButton from "../components/certificates/CertificateButton";
 import { generateCertificate } from "../utils/canvasEngine";
+import jsPDF from "jspdf";
 
 const Spinner = () => (
     <div className="flex justify-center py-16">
@@ -1096,90 +1097,95 @@ const MemberDashboard = () => {
     );
 
     const generateLetter = (type) => {
-        const doc = new jsPDF();
-        const pageWidth = doc.internal.pageSize.getWidth();
-        const today = new Date().toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' });
-        const memberName = user.name;
-        const memberId = user.id;
+        try {
+            const doc = new jsPDF();
+            const pageWidth = doc.internal.pageSize.getWidth();
+            const today = new Date().toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' });
+            const memberName = user.name || "Member";
+            const memberId = user.id || user.dbId || "SLS-Member";
+            const safeId = String(memberId).replace(/[^\w.-]+/g, "_");
 
-        // --- Header Section ---
-        doc.setFont("helvetica", "bold");
-        doc.setFontSize(10);
-        doc.text(`Date: ${today}`, pageWidth - 20, 20, { align: "right" });
+            // --- Header Section ---
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(10);
+            doc.text(`Date: ${today}`, pageWidth - 20, 20, { align: "right" });
 
-        doc.setFontSize(18);
-        doc.setTextColor(0, 33, 71); // SLS Navy Blue
-        let title = "";
-        if (type === 'verification') title = "MEMBERSHIP VERIFICATION LETTER";
-        else if (type === 'reference') title = "REFERENCE LETTER";
-        else if (type === 'recommendation') title = "RECOMMENDATION LETTER";
-        
-        doc.text(title, pageWidth / 2, 45, { align: "center" });
+            doc.setFontSize(18);
+            doc.setTextColor(0, 33, 71); // SLS Navy Blue
+            let title = "";
+            if (type === 'verification') title = "MEMBERSHIP VERIFICATION LETTER";
+            else if (type === 'reference') title = "REFERENCE LETTER";
+            else if (type === 'recommendation') title = "RECOMMENDATION LETTER";
 
-        // --- Salutation ---
-        doc.setFontSize(11);
-        doc.setTextColor(0, 0, 0);
-        doc.text("To Whom It May Concern,", 20, 65);
+            doc.text(title, pageWidth / 2, 45, { align: "center" });
 
-        // --- Body Text ---
-        doc.setFont("helvetica", "normal");
-        const bodyY = 80;
-        const lineSpacing = 8;
-        let lines = [];
+            // --- Salutation ---
+            doc.setFontSize(11);
+            doc.setTextColor(0, 0, 0);
+            doc.text("To Whom It May Concern,", 20, 65);
 
-        if (type === 'verification') {
-            lines = [
-                `This document serves as official verification that Mr./Ms. ${memberName} is currently an active member in good standing of the Serve and Lead Society (SLS) as of ${today}.`,
-                "",
-                `His/Her membership remains valid and active. The member is entitled to all rights and privileges accorded under the bylaws and regulations of the Serve and Lead Society.`,
-                "",
-                `This verification is issued upon institutional request to confirm the authenticity of his/her membership status with SLS. For reference purposes, the membership ID is ${memberId}.`,
-                "",
-                "The membership is active as of today."
-            ];
-        } else if (type === 'reference') {
-            lines = [
-                `This is to confirm that Mr./Ms. ${memberName}, holding Membership ID: ${memberId}, is an active member in good standing of the Serve and Lead Society (SLS).`,
-                "",
-                `He/She has been associated with the organization and continues to serve as an active member. His/her membership is valid for the current session.`,
-                "",
-                `Throughout his/her ongoing association with SLS, Mr./Ms. ${memberName} has demonstrated a strong commitment to the organization's mission of promoting leadership, social awareness, and community service across Pakistan.`,
-                "",
-                `This letter is issued as a matter of reference to verify his/her ongoing and verified membership with the organization.`
-            ];
-        } else if (type === 'recommendation') {
-            lines = [
-                `It is with great pleasure that I recommend Mr./Ms. ${memberName} for his/her exemplary performance and dedication as a member of Serve and Lead Society (SLS).`,
-                "",
-                `He/She has been an active member and has consistently demonstrated his/her commitment to our organization's mission of promoting leadership, professional development, and social welfare.`,
-                "",
-                `During his/her tenure, he/she has shown exceptional qualities of leadership, integrity, and dedication to public service. He/she has actively participated in our programs and contributed significantly to our initiatives.`,
-                "",
-                `Mr./Ms. ${memberName} has demonstrated strong analytical skills, a keen understanding of collaborative principles, and a genuine commitment to social justice. His/her contributions have been particularly noteworthy.`,
-                "",
-                `I am confident that Mr./Ms. ${memberName} will continue to excel in all his/her future endeavors and will be a valuable asset to any organization or institution.`
-            ];
-        }
+            // --- Body Text ---
+            doc.setFont("helvetica", "normal");
+            const bodyY = 80;
+            let lines = [];
 
-        let currentY = bodyY;
-        lines.forEach(line => {
-            if (line === "") {
-                currentY += 4;
-            } else {
-                const wrappedLines = doc.splitTextToSize(line, pageWidth - 40);
-                doc.text(wrappedLines, 20, currentY);
-                currentY += (wrappedLines.length * 6) + 4;
+            if (type === 'verification') {
+                lines = [
+                    `This document serves as official verification that Mr./Ms. ${memberName} is currently an active member in good standing of the Serve and Lead Society (SLS) as of ${today}.`,
+                    "",
+                    `His/Her membership remains valid and active. The member is entitled to all rights and privileges accorded under the bylaws and regulations of the Serve and Lead Society.`,
+                    "",
+                    `This verification is issued upon institutional request to confirm the authenticity of his/her membership status with SLS. For reference purposes, the membership ID is ${memberId}.`,
+                    "",
+                    "The membership is active as of today."
+                ];
+            } else if (type === 'reference') {
+                lines = [
+                    `This is to confirm that Mr./Ms. ${memberName}, holding Membership ID: ${memberId}, is an active member in good standing of the Serve and Lead Society (SLS).`,
+                    "",
+                    `He/She has been associated with the organization and continues to serve as an active member. His/her membership is valid for the current session.`,
+                    "",
+                    `Throughout his/her ongoing association with SLS, Mr./Ms. ${memberName} has demonstrated a strong commitment to the organization's mission of promoting leadership, social awareness, and community service across Pakistan.`,
+                    "",
+                    `This letter is issued as a matter of reference to verify his/her ongoing and verified membership with the organization.`
+                ];
+            } else if (type === 'recommendation') {
+                lines = [
+                    `It is with great pleasure that I recommend Mr./Ms. ${memberName} for his/her exemplary performance and dedication as a member of Serve and Lead Society (SLS).`,
+                    "",
+                    `He/She has been an active member and has consistently demonstrated his/her commitment to our organization's mission of promoting leadership, professional development, and social welfare.`,
+                    "",
+                    `During his/her tenure, he/she has shown exceptional qualities of leadership, integrity, and dedication to public service. He/she has actively participated in our programs and contributed significantly to our initiatives.`,
+                    "",
+                    `Mr./Ms. ${memberName} has demonstrated strong analytical skills, a keen understanding of collaborative principles, and a genuine commitment to social justice. His/her contributions have been particularly noteworthy.`,
+                    "",
+                    `I am confident that Mr./Ms. ${memberName} will continue to excel in all his/her future endeavors and will be a valuable asset to any organization or institution.`
+                ];
             }
-        });
 
-        // --- Closing ---
-        doc.setFont("helvetica", "bold");
-        doc.text("Yours sincerely,", 20, currentY + 15);
-        doc.setFont("helvetica", "normal");
-        doc.text("Administration Department", 20, currentY + 23);
-        doc.text("Serve and Lead Society (SLS)", 20, currentY + 29);
+            let currentY = bodyY;
+            lines.forEach(line => {
+                if (line === "") {
+                    currentY += 4;
+                } else {
+                    const wrappedLines = doc.splitTextToSize(line, pageWidth - 40);
+                    doc.text(wrappedLines, 20, currentY);
+                    currentY += (wrappedLines.length * 6) + 4;
+                }
+            });
 
-        doc.save(`${type}_letter_${memberId}.pdf`);
+            // --- Closing ---
+            doc.setFont("helvetica", "bold");
+            doc.text("Yours sincerely,", 20, currentY + 15);
+            doc.setFont("helvetica", "normal");
+            doc.text("Administration Department", 20, currentY + 23);
+            doc.text("Serve and Lead Society (SLS)", 20, currentY + 29);
+
+            doc.save(`${type}_letter_${safeId}.pdf`);
+        } catch (err) {
+            console.error("Letter PDF Error:", err);
+            alert(`Could not download letter PDF: ${err.message}`);
+        }
     };
 
     const renderLetters = () => (
@@ -1217,14 +1223,6 @@ const MemberDashboard = () => {
                         </button>
                     </div>
                 ))}
-            </div>
-
-            {/* Disclaimer */}
-            <div className="bg-amber-50/50 border border-amber-100 rounded-3xl p-6 flex items-start gap-4">
-                <i className="fas fa-circle-info text-amber-500 mt-1" />
-                <p className="text-[10px] font-bold text-amber-700 uppercase tracking-widest leading-loose">
-                    These letters are generated based on your verified profile data. If you notice any discrepancies in your Name or Member ID, please update your profile in the settings tab before downloading.
-                </p>
             </div>
         </div>
     );
