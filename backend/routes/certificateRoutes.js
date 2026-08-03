@@ -27,9 +27,9 @@ const isAdmin = async (req, res, next) => {
 async function resolveIssueTemplate(certTemplateId) {
   if (certTemplateId && mongoose.Types.ObjectId.isValid(certTemplateId)) {
     const t = await CertTemplate.findById(certTemplateId);
-    if (t && t.kind !== 'membership') return t;
+    if (t && !t.isDeleted && t.kind !== 'membership') return t;
   }
-  return CertTemplate.findOne({ isActive: true, kind: 'general' });
+  return CertTemplate.findOne({ isActive: true, kind: 'general', isDeleted: { $ne: true } });
 }
 
 function buildMemberRenderPayload(member) {

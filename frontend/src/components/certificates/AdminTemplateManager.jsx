@@ -445,11 +445,11 @@ export default function AdminTemplateManager({ auth, notify, api }) {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Delete this template?')) return;
+    if (!window.confirm('Remove from list? Members who already received certificates with this template can still download them.')) return;
     try {
       await api.delete(`cert-templates/${id}`, auth);
       await refreshTemplates();
-      notify('Template deleted.');
+      notify('Template removed from list.');
     } catch (err) {
       console.error(err);
       notify(err.response?.data?.error || 'Deactivate first', 'error');

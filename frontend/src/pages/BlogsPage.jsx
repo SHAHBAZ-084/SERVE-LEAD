@@ -1,10 +1,114 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import api, { getImgUrl } from "../api";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 
 const IMAGE_COVER_STYLE = { width: "100%", height: "100%", objectFit: "cover", display: "block" };
+
+function blogShareUrl(blogId) {
+  return `${window.location.origin}/blogs/${blogId}`;
+}
+
+const BlogShareMenu = ({ blog }) => {
+  const [open, setOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const menuRef = useRef(null);
+  const url = blogShareUrl(blog._id);
+  const title = blog.title || "";
+
+  useEffect(() => {
+    if (!open) return;
+    const onDocClick = (e) => {
+      if (menuRef.current && !menuRef.current.contains(e.target)) setOpen(false);
+    };
+    document.addEventListener("mousedown", onDocClick);
+    return () => document.removeEventListener("mousedown", onDocClick);
+  }, [open]);
+
+  const copyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(url);
+    } catch {
+      const input = document.createElement("input");
+      input.value = url;
+      document.body.appendChild(input);
+      input.select();
+      document.execCommand("copy");
+      document.body.removeChild(input);
+    }
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const whatsappHref = `https://wa.me/?text=${encodeURIComponent(title + "\n" + url)}`;
+  const linkedInHref = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}`;
+  const facebookHref = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`;
+
+  return (
+    <div className="relative" ref={menuRef}>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="w-9 h-9 rounded-xl bg-slate-50 text-[#002147] flex items-center justify-center hover:bg-[#002147] hover:text-white transition-all border border-slate-100"
+        title="Share"
+        aria-label="Share blog"
+      >
+        <i className="fas fa-share-nodes text-sm" />
+      </button>
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: 6, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 6, scale: 0.96 }}
+            className="absolute right-0 bottom-full mb-2 w-48 bg-white rounded-2xl shadow-xl border border-slate-100 p-2 z-30"
+          >
+            <button
+              type="button"
+              onClick={copyLink}
+              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left text-[10px] font-black uppercase tracking-widest text-slate-700 hover:bg-slate-50"
+            >
+              <i className={`fas ${copied ? "fa-check text-emerald-500" : "fa-link"} w-4 text-center`} />
+              {copied ? "Copied" : "Copy link"}
+            </button>
+            <a
+              href={whatsappHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest text-emerald-600 hover:bg-emerald-50"
+            >
+              <i className="fab fa-whatsapp w-4 text-center" /> WhatsApp
+            </a>
+            <a
+              href={linkedInHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest text-sky-700 hover:bg-sky-50"
+            >
+              <i className="fab fa-linkedin-in w-4 text-center" /> LinkedIn
+            </a>
+            <a
+              href={facebookHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest text-blue-600 hover:bg-blue-50"
+            >
+              <i className="fab fa-facebook-f w-4 text-center" /> Facebook
+            </a>
+            <Link
+              to={`/blogs/${blog._id}`}
+              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest text-[#002147] hover:bg-slate-50 border-t border-slate-50 mt-1 pt-3"
+            >
+              <i className="fas fa-arrow-up-right-from-square w-4 text-center" /> Open page
+            </Link>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
 
 const BlogThumbnail = ({ images }) => {
   if (!images || images.length === 0) {
@@ -192,11 +296,13 @@ export default function BlogsPage() {
                            </div>
 
                            <h2 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight leading-snug line-clamp-2">
-                              {blog.title}
+                              <Link to={`/blogs/${blog._id}`} className="hover:text-[#002147] transition-colors">
+                                {blog.title}
+                              </Link>
                            </h2>
 
                            <div className="relative flex-1">
-                              <p className={`text-slate-500 text-sm leading-relaxed font-medium whitespace-pre-wrap ${blog.isExpanded ? "" : "line-clamp-4"}`}>
+                              <p className={`text-slate-500 text-sm leading-relaxed font-medium whitespace-pre-wrap text-justify ${blog.isExpanded ? "" : "line-clamp-4"}`}>
                                  {blog.isExpanded ? blog.description : (blog.description.length > 200 ? blog.description.substring(0, 200) + "..." : blog.description)}
                               </p>
                               {blog.description.length > 200 && (
@@ -222,6 +328,7 @@ export default function BlogsPage() {
                                     <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest leading-none">Verified Author</p>
                                  </div>
                               </div>
+                              <BlogShareMenu blog={blog} />
                            </div>
                         </div>
                      </motion.article>

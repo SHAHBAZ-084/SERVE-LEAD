@@ -13,6 +13,7 @@ const CertTemplateSchema = new mongoose.Schema({
     enum: ['membership', 'general'],
     default: 'general',
   },
+  isDeleted: { type: Boolean, default: false, index: true },
   zones: { type: mongoose.Schema.Types.Mixed, default: {} },
   canvasWidth: { type: Number, default: 2048 },
   canvasHeight: { type: Number, default: 1436 },

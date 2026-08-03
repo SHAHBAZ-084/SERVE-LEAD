@@ -11,6 +11,7 @@ import { inputCls, useCountUp, StatCard, Spinner, AdminModal } from "../componen
 import { FOOTER_DEFAULTS, FOOTER_FIELDS, parseFooterSettings } from "../constants/footerDefaults";
 import { ABOUT_DEFAULTS, ABOUT_FIELDS, parseAboutSettings } from "../constants/aboutDefaults";
 import { MEMBER_TYPE_FILTER_OPTIONS } from "../constants/pakistanCities";
+import { PROVINCES } from "../constants/pakistanLocations";
 import AdminLocationFilters, { DEFAULT_ADMIN_LOCATION_FILTER, ALL_TEHSILS_LABEL, appendLocationFilterParams, matchesAdminLocationFilter } from "../components/common/AdminLocationFilters";
 import PaymentManagementTab, { getFeeApprovalBadge, canApproveMemberFee, getInterviewBadge, needsInterviewResult, canRequestFee, canRequestFeeAgain, canDirectApprove, canSkipInterviewPath, getExecutiveInterviewBadge, getExecutiveFeeBadge, needsExecutiveInterviewResult, canWaiveExecutive, canFinalApproveExecutive } from "../components/admin/PaymentManagementTab";
 
@@ -258,6 +259,7 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
     });
     const [submitting, setSubmitting] = useState(false);
     const [waLink, setWaLink] = useState("");
+    const [waGroupsByProvince, setWaGroupsByProvince] = useState({});
     const [tnc, setTnc] = useState("");
     const [footer, setFooter] = useState(
         Object.fromEntries(FOOTER_FIELDS.map(({ key }) => [key, FOOTER_DEFAULTS[key]]))
@@ -308,8 +310,21 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
             if (r.data.membership_fee_channels) {
                 try { setFeeChannels(JSON.parse(r.data.membership_fee_channels)); } catch { setFeeChannels([]); }
             }
+            if (r.data.whatsapp_groups_by_province) {
+                try {
+                    const parsed = JSON.parse(r.data.whatsapp_groups_by_province);
+                    setWaGroupsByProvince(parsed && typeof parsed === "object" ? parsed : {});
+                } catch {
+                    setWaGroupsByProvince({});
+                }
+            }
         });
-        api.get("settings/whatsapp-link").then(r => setWaLink(r.data.link || ""));
+        api.get("settings/whatsapp-link").then(r => {
+            setWaLink(r.data.link || "");
+            if (r.data.groups && typeof r.data.groups === "object") {
+                setWaGroupsByProvince(r.data.groups);
+            }
+        });
         api.get("settings/terms").then(r => setTnc(r.data.terms || ""));
     }, [api]);
 
@@ -370,8 +385,11 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
     const saveWaLink = async () => {
         setSubmitting(true);
         try {
-            await api.put("settings/whatsapp-link", { link: waLink }, auth);
-            notify("WhatsApp link updated!");
+            await api.put("settings/whatsapp-link", { link: waLink, groups: waGroupsByProvince }, auth);
+            await api.put("settings", {
+                whatsapp_groups_by_province: JSON.stringify(waGroupsByProvince),
+            }, auth);
+            notify("WhatsApp group links updated!");
         } catch { notify("Failed to update WhatsApp link", "error"); }
         finally { setSubmitting(false); }
     };
@@ -678,13 +696,37 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
                     <div className="p-8 md:p-10 border-t border-slate-100 bg-slate-50/30 space-y-8">
                         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
                             <div className="flex-1 w-full">
-                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 block">WhatsApp Group Link (For Success Screen)</label>
+                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 block">Default / Fallback WhatsApp Group Link</label>
                                 <div className="flex gap-3">
                                     <input type="text" placeholder="https://chat.whatsapp.com/..." value={waLink} onChange={e => setWaLink(e.target.value)} className={inputCls} />
-                                    <button type="button" onClick={saveWaLink} disabled={submitting} className="px-6 py-3 bg-emerald-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-600 transition-all shadow-md disabled:opacity-50">
-                                        Update
-                                    </button>
                                 </div>
+                                <p className="text-[10px] text-slate-400 font-medium mt-2">Used when a province has no specific group link.</p>
+                            </div>
+                        </div>
+
+                        <div className="space-y-4">
+                            <div>
+                                <h4 className="text-sm font-black text-slate-800 uppercase tracking-widest">Province WhatsApp Groups</h4>
+                                <p className="text-[10px] text-slate-400 font-medium mt-1">Optional invite link per province for registration success screen.</p>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-80 overflow-y-auto pr-1">
+                                {PROVINCES.map((province) => (
+                                    <div key={province}>
+                                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 block">{province}</label>
+                                        <input
+                                            type="text"
+                                            placeholder="https://chat.whatsapp.com/..."
+                                            value={waGroupsByProvince[province] || ""}
+                                            onChange={(e) => setWaGroupsByProvince((prev) => ({ ...prev, [province]: e.target.value }))}
+                                            className={inputCls}
+                                        />
+                                    </div>
+                                ))}
+                            </div>
+                            <div className="flex justify-end">
+                                <button type="button" onClick={saveWaLink} disabled={submitting} className="px-6 py-3 bg-emerald-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-600 transition-all shadow-md disabled:opacity-50">
+                                    Update WhatsApp Links
+                                </button>
                             </div>
                         </div>
 
@@ -5051,6 +5093,27 @@ const BlogsTab = ({ blogs, fetchBlogs, api, auth, notify, getImgUrl, inputCls })
                                         </td>
                                         <td className="px-8 py-6 text-right">
                                             <div className="flex justify-end gap-2">
+                                                <button
+                                                    type="button"
+                                                    title="Copy link / share on WhatsApp"
+                                                    onClick={async () => {
+                                                        const url = `${window.location.origin}/blogs/${blog._id}`;
+                                                        try {
+                                                            await navigator.clipboard.writeText(url);
+                                                            notify?.("Blog link copied — opening WhatsApp share");
+                                                        } catch {
+                                                            notify?.("Opening WhatsApp share with blog link");
+                                                        }
+                                                        window.open(
+                                                            `https://wa.me/?text=${encodeURIComponent((blog.title || "Blog") + "\n" + url)}`,
+                                                            "_blank",
+                                                            "noopener,noreferrer"
+                                                        );
+                                                    }}
+                                                    className="w-9 h-9 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center hover:bg-emerald-500 hover:text-white transition-all shadow-sm"
+                                                >
+                                                    <i className="fas fa-share-nodes" />
+                                                </button>
                                                 <button onClick={() => startEdit(blog)} className="w-9 h-9 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center hover:bg-[#002147] hover:text-white transition-all shadow-sm">
                                                     <i className="fas fa-edit" />
                                                 </button>

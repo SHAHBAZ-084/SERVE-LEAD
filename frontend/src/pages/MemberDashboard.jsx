@@ -475,7 +475,12 @@ const MemberDashboard = () => {
                 });
             } catch (err) {
                 console.error(err);
-                alert(err.response?.data?.error || err.message || 'PDF download failed');
+                const msg = err.response?.data?.error || err.message || 'PDF download failed';
+                if (/template no longer exists/i.test(msg)) {
+                    alert('This certificate template is no longer available for new certificates, but your issued certificate record remains. Please contact admin if download still fails.');
+                } else {
+                    alert(msg);
+                }
             } finally {
                 setExporting(false);
             }
@@ -512,7 +517,12 @@ const MemberDashboard = () => {
                 });
             } catch (err) {
                 console.error(err);
-                alert(err.response?.data?.error || err.message || 'PNG download failed');
+                const msg = err.response?.data?.error || err.message || 'PNG download failed';
+                if (/template no longer exists/i.test(msg)) {
+                    alert('This certificate template is no longer available for new certificates, but your issued certificate record remains. Please contact admin if download still fails.');
+                } else {
+                    alert(msg);
+                }
             } finally {
                 setExporting(false);
             }

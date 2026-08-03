@@ -77,6 +77,7 @@ export default function RegisterPage() {
   const [otpSent, setOtpSent] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
   const [waLink, setWaLink] = useState("");
+  const [waProvinceLabel, setWaProvinceLabel] = useState("");
 
   const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
 
@@ -222,8 +223,11 @@ export default function RegisterPage() {
       };
       await api.post("auth/register", payload);
       try {
-        const settingRes = await api.get("settings/whatsapp-link");
+        const settingRes = await api.get("settings/whatsapp-link", { params: { province: formData.province } });
         setWaLink(settingRes.data.link || "");
+        const groups = settingRes.data.groups || {};
+        const hasProvinceLink = !!(formData.province && groups[formData.province]);
+        setWaProvinceLabel(hasProvinceLink ? formData.province : "");
       } catch (e) { console.error("Error fetching WA link:", e); }
       setSuccess(true);
       setTimeout(() => navigate("/"), 15000); // Extended timeout to allow joining group
@@ -288,7 +292,8 @@ export default function RegisterPage() {
               </p>
               {waLink && (
                 <a href={waLink} target="_blank" rel="noopener noreferrer" className="btn-whatsapp">
-                  <i className="fab fa-whatsapp text-lg" /> Join WhatsApp Group
+                  <i className="fab fa-whatsapp text-lg" />{" "}
+                  {waProvinceLabel ? `Join ${waProvinceLabel} WhatsApp Group` : "Join WhatsApp Group"}
                 </a>
               )}
               <div className="mt-14 space-y-4">

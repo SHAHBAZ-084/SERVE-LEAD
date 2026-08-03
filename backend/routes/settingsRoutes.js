@@ -104,8 +104,37 @@ router.put('/', authMiddleware, isSuperuser, async (req, res) => {
 // Add a GET route (public) to fetch the link:
 router.get('/whatsapp-link', async (req, res) => {
   try {
-    const setting = await SystemSetting.findOne();
-    res.json({ link: setting?.whatsappGroupLink || "" });
+    const province = req.query.province;
+    const settings = await SystemSetting.find();
+    const settingsMap = {};
+    settings.forEach((s) => {
+      if (s.key) settingsMap[s.key] = s.value;
+    });
+
+    let groups = {};
+    const rawGroups = settingsMap.whatsapp_groups_by_province;
+    if (rawGroups) {
+      try {
+        const parsed = typeof rawGroups === 'string' ? JSON.parse(rawGroups) : rawGroups;
+        if (parsed && typeof parsed === 'object') groups = parsed;
+      } catch {
+        groups = {};
+      }
+    }
+
+    // Fallback default from legacy findOne document field OR key-value if present
+    const legacyDoc = settings.find((s) => s.whatsappGroupLink) || settings[0];
+    const defaultLink =
+      settingsMap.whatsappGroupLink ||
+      legacyDoc?.whatsappGroupLink ||
+      '';
+
+    let link = defaultLink;
+    if (province && groups[province]) {
+      link = groups[province];
+    }
+
+    res.json({ link: link || '', groups });
   } catch (error) {
     res.status(500).json({ error: 'Server Error' });
   }
@@ -124,8 +153,17 @@ router.get('/terms', async (req, res) => {
 // Add a PUT route (admin only) to update it:
 router.put('/whatsapp-link', authMiddleware, async (req, res) => {
   try {
-    const { link } = req.body;
-    await SystemSetting.findOneAndUpdate({}, { whatsappGroupLink: link }, { upsert: true });
+    const { link, groups } = req.body;
+    if (link !== undefined) {
+      await SystemSetting.findOneAndUpdate({}, { whatsappGroupLink: link }, { upsert: true });
+    }
+    if (groups !== undefined && groups !== null && typeof groups === 'object') {
+      await SystemSetting.findOneAndUpdate(
+        { key: 'whatsapp_groups_by_province' },
+        { $set: { key: 'whatsapp_groups_by_province', value: JSON.stringify(groups) } },
+        { upsert: true, new: true, runValidators: true }
+      );
+    }
     res.json({ message: "WhatsApp link updated successfully." });
   } catch (error) {
     res.status(500).json({ error: 'Server Error' });

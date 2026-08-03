@@ -17,6 +17,7 @@ import MemberVerification from './pages/MemberVerification';
 import FloatingWhatsApp from './components/FloatingWhatsApp';
 import TopVerseBar from './components/TopVerseBar';
 import BlogsPage from './pages/BlogsPage';
+import BlogDetailPage from './pages/BlogDetailPage';
 import TermsPage from './pages/TermsPage';
 import BoardOfExecutivePage from './pages/BoardOfExecutivePage';
 
@@ -33,6 +34,7 @@ function App() {
         <Route path='/verification' element={<Verification />} />
         <Route path='/verify' element={<MemberVerification />} />
         <Route path="/blogs" element={<BlogsPage />} />
+        <Route path="/blogs/:id" element={<BlogDetailPage />} />
         <Route path="/terms" element={<TermsPage />} />
         <Route path="/board-of-executive" element={<BoardOfExecutivePage />} />
 
