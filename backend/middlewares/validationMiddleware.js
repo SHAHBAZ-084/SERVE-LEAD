@@ -18,6 +18,7 @@ const schemas = {
         password: Joi.string().min(6).required(),
         joining_year: Joi.number().integer().min(2000).max(new Date().getFullYear() + 1),
         father_name: Joi.string().max(50).optional().allow(''),
+        gender: Joi.string().valid('Male', 'Female').required(),
         whatsapp: Joi.string().pattern(/^[0-9+ ]+$/).max(20).optional().allow(''),
         education_level: Joi.string().optional().allow(''),
         applicant_type: Joi.string().valid('university', 'college', 'school', 'not_student').default('university'),
@@ -32,13 +33,7 @@ const schemas = {
         tehsil: Joi.string().max(80).required(),
         requestedRole: Joi.string().valid('General', 'Executive').default('General'),
         sls_official_id: Joi.string().max(50).optional().allow(''),
-        cnic_number: Joi.string()
-            .pattern(/^\d{5}-\d{7}-\d$/)
-            .required()
-            .messages({
-                'string.pattern.base': 'CNIC/B-Form must be 13 digits in format #####-#######-#',
-                'any.required': 'CNIC/B-Form number is required',
-            }),
+        cnic_number: Joi.string().max(20).optional().allow(''),
         referredBy: Joi.string().max(30).optional().allow(''),
     }),
     login: Joi.object({

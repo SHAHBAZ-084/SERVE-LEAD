@@ -168,6 +168,7 @@ router.post('/register', validateRequest(schemas.register), asyncHandler(async (
         password,
         joining_year,
         father_name,
+        gender: rawGender,
         whatsapp,
         education_level,
         applicant_type: rawApplicantType,
@@ -193,17 +194,17 @@ router.post('/register', validateRequest(schemas.register), asyncHandler(async (
     const requestedRole = rawRequestedRole === 'Executive' ? 'Executive' : 'General';
     const allowedTypes = ['university', 'college', 'school', 'not_student'];
     const applicant_type = allowedTypes.includes(rawApplicantType) ? rawApplicantType : 'university';
-
-    const cnicTrimmed = cnic_number?.trim() || '';
-    if (!/^\d{5}-\d{7}-\d$/.test(cnicTrimmed)) {
-        return res.status(400).json({
-            error: 'CNIC/B-Form number is required and must be 13 digits (#####-#######-#).',
-        });
+    const gender = rawGender === 'Female' ? 'Female' : rawGender === 'Male' ? 'Male' : '';
+    if (!gender) {
+        return res.status(400).json({ error: 'Gender is required.' });
     }
 
     if (requestedRole === 'Executive') {
-        if (!sls_official_id?.trim()) {
-            return res.status(400).json({ error: 'SLS Official ID is required for Executive membership.' });
+        if (!sls_official_id?.trim() || !cnic_number?.trim()) {
+            return res.status(400).json({ error: 'SLS Official ID and CNIC are required for Executive membership.' });
+        }
+        if (!/^\d{5}-\d{7}-\d$/.test(cnic_number.trim())) {
+            return res.status(400).json({ error: 'CNIC/B-Form must be 13 digits (#####-#######-#).' });
         }
     }
 
@@ -249,6 +250,7 @@ router.post('/register', validateRequest(schemas.register), asyncHandler(async (
         password: hashedPassword,
         joining_year,
         father_name,
+        gender,
         whatsapp,
         education_level,
         applicant_type,
@@ -266,7 +268,7 @@ router.post('/register', validateRequest(schemas.register), asyncHandler(async (
         city: tehsilName,
         requestedRole,
         sls_official_id: requestedRole === 'Executive' ? sls_official_id?.trim() : '',
-        cnic_number: cnicTrimmed,
+        cnic_number: requestedRole === 'Executive' ? cnic_number.trim() : '',
         referred_by,
         status: 'pending',
         role: 'General',
@@ -504,6 +506,7 @@ router.post('/apply-executive', asyncHandler(async (req, res) => {
         father_name,
         city,
         address,
+        cnic_number,
     } = req.body;
 
     if (!memberId) {
@@ -516,6 +519,11 @@ router.post('/apply-executive', asyncHandler(async (req, res) => {
     }
     if (member.role !== 'General' || member.status !== 'approved') {
         return res.status(400).json({ error: 'Only approved General Members can apply for Executive membership.' });
+    }
+
+    const cnicTrimmed = (cnic_number || '').trim();
+    if (!/^\d{5}-\d{7}-\d$/.test(cnicTrimmed)) {
+        return res.status(400).json({ error: 'CNIC/B-Form number is required and must be 13 digits (#####-#######-#).' });
     }
 
     const existingPending = await ExecutiveApplication.findOne({ memberId: member._id, status: 'pending' });
@@ -551,6 +559,9 @@ router.post('/apply-executive', asyncHandler(async (req, res) => {
     if (!hours || hours < 1 || hours > 40) {
         return res.status(400).json({ error: 'Availability must be between 1 and 40 hours per week.' });
     }
+
+    member.cnic_number = cnicTrimmed;
+    await member.save();
 
     await ExecutiveApplication.create({
         memberId: member._id,

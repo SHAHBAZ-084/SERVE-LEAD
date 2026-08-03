@@ -105,6 +105,11 @@ const memberSchema = new mongoose.Schema({
   father_name: {
     type: String,
   },
+  gender: {
+    type: String,
+    enum: ['Male', 'Female', ''],
+    default: '',
+  },
   whatsapp: {
     type: String,
   },

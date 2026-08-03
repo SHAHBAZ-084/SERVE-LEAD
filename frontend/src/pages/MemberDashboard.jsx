@@ -114,6 +114,7 @@ const MemberDashboard = () => {
     const [user, setUser] = useState({ name: "", email: "", id: "", dbId: "", role: "General Member", rawRole: "General", year: "20XX" });
     const [profileForm, setProfileForm] = useState({ name: "", email: "", password: "" });
     const [profileMsg, setProfileMsg] = useState(null);
+    const [waGroupLinks, setWaGroupLinks] = useState([]);
     const [mobileNav, setMobileNav] = useState(false);
     const [selectedEvent, setSelectedEvent] = useState(null);
     const [joining, setJoining] = useState(false);
@@ -363,7 +364,15 @@ const MemberDashboard = () => {
                     interview_called: member.interview_called,
                     feeStatus: member.feeStatus || "not_requested",
                     interviewResult: member.interviewResult,
+                    gender: member.gender || "",
+                    province: member.province || "",
                 });
+                try {
+                    const waRes = await api.get("settings/my-whatsapp-groups", auth);
+                    setWaGroupLinks(Array.isArray(waRes.data.links) ? waRes.data.links : []);
+                } catch {
+                    setWaGroupLinks([]);
+                }
                 if (member.status === "pending" || member.status === "fee_pending") {
                     try {
                         const feeRes = await api.get("fees/my-fee", auth);
@@ -574,6 +583,22 @@ const MemberDashboard = () => {
                                 )}
                             </div>
                             <p className="text-slate-400 text-[9px] sm:text-[10px] font-semibold uppercase tracking-[0.4em] mt-2 sm:mt-3">SLS Society Member Portal</p>
+                            {waGroupLinks.length > 0 && (
+                                <div className="flex flex-wrap gap-2 mt-5">
+                                    {waGroupLinks.map((item) => (
+                                        <a
+                                            key={item.key + item.url}
+                                            href={item.url}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-500 text-white text-[10px] font-black uppercase tracking-widest hover:bg-emerald-600 transition-all shadow-md shadow-emerald-500/20"
+                                        >
+                                            <i className="fab fa-whatsapp text-sm" />
+                                            {item.label || "WhatsApp Group"}
+                                        </a>
+                                    ))}
+                                </div>
+                            )}
                         </div>
                         <div className="flex -space-x-3 sm:-space-x-4">
                             {["S", "L", "S", "+"].map((char, i) => (

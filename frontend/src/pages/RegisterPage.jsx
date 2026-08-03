@@ -5,7 +5,6 @@ import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 
 import { PROVINCES, getDistricts, getTehsils, getDefaultDistrict, getDefaultTehsil } from "../constants/pakistanLocations";
-import { formatCnicInput, isValidCnic, normalizeCnic } from "../utils/cnic";
 
 const pakistaniUniversities = [
   "University of the Punjab", "Quaid-i-Azam University", "NUST", "UET Lahore", "UET Peshawar", 
@@ -50,6 +49,7 @@ export default function RegisterPage() {
     requestedRole: "General",
     name: "",
     father_name: "",
+    gender: "",
     whatsapp: "",
     email: "",
     password: "",
@@ -77,15 +77,10 @@ export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [otpSent, setOtpSent] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
-  const [waLink, setWaLink] = useState("");
-  const [waProvinceLabel, setWaProvinceLabel] = useState("");
+  const [waLinks, setWaLinks] = useState([]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    if (name === "cnic_number") {
-      setFormData({ ...formData, cnic_number: formatCnicInput(value) });
-      return;
-    }
     if (name === "whatsapp") {
       setFormData({ ...formData, whatsapp: value.replace(/\D/g, "").slice(0, 11) });
       return;
@@ -133,11 +128,10 @@ export default function RegisterPage() {
   const tehsilOptions = getTehsils(formData.province, formData.district);
 
   const validateStep = () => {
-    const { name, father_name, whatsapp, email, password, otp, address, province, district, tehsil, cnic_number } = formData;
+    const { name, father_name, gender, whatsapp, email, password, otp, address, province, district, tehsil } = formData;
     if (step === 1) {
       if (!name || !father_name || !whatsapp || !email || !password) return "All personal fields are mandatory.";
-      if (!cnic_number?.trim()) return "CNIC / B-Form number is mandatory.";
-      if (!isValidCnic(cnic_number)) return "CNIC / B-Form must be 13 digits (#####-#######-#).";
+      if (!gender || (gender !== "Male" && gender !== "Female")) return "Please select your gender.";
       if (whatsapp.length !== 11 || !/^\d+$/.test(whatsapp)) return "WhatsApp must be exactly 11 numeric digits.";
       if (!email.toLowerCase().endsWith("@gmail.com")) return "Only official @gmail.com accounts are permitted.";
       if (password.length < 6) return "Portal password must be at least 6 characters.";
@@ -231,17 +225,19 @@ export default function RegisterPage() {
       const payload = {
         ...rest,
         email: formData.email.trim(),
+        gender: formData.gender,
         requestedRole: "General",
         sls_official_id: "",
-        cnic_number: normalizeCnic(formData.cnic_number),
+        cnic_number: "",
       };
       await api.post("auth/register", payload);
       try {
-        const settingRes = await api.get("settings/whatsapp-link", { params: { province: formData.province } });
-        setWaLink(settingRes.data.link || "");
-        const groups = settingRes.data.groups || {};
-        const hasProvinceLink = !!(formData.province && groups[formData.province]);
-        setWaProvinceLabel(hasProvinceLink ? formData.province : "");
+        const settingRes = await api.get("settings/whatsapp-link", {
+          params: { province: formData.province, gender: formData.gender },
+        });
+        setWaLinks(Array.isArray(settingRes.data.links) ? settingRes.data.links : (
+          settingRes.data.link ? [{ key: "default", label: "WhatsApp Group", url: settingRes.data.link }] : []
+        ));
       } catch (e) { console.error("Error fetching WA link:", e); }
       setSuccess(true);
       setTimeout(() => navigate("/"), 15000); // Extended timeout to allow joining group
@@ -304,11 +300,20 @@ export default function RegisterPage() {
               <p className="text-slate-400 text-sm font-bold uppercase tracking-widest leading-loose max-w-xs mx-auto mb-6">
                 Your application has been successfully submitted. Our team will contact you shortly for further processing.
               </p>
-              {waLink && (
-                <a href={waLink} target="_blank" rel="noopener noreferrer" className="btn-whatsapp">
-                  <i className="fab fa-whatsapp text-lg" />{" "}
-                  {waProvinceLabel ? `Join ${waProvinceLabel} WhatsApp Group` : "Join WhatsApp Group"}
-                </a>
+              {waLinks.length > 0 && (
+                <div className="flex flex-col gap-3 items-center mb-2">
+                  {waLinks.map((item) => (
+                    <a
+                      key={item.key + item.url}
+                      href={item.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="btn-whatsapp"
+                    >
+                      <i className="fab fa-whatsapp text-lg" /> {item.label || "Join WhatsApp Group"}
+                    </a>
+                  ))}
+                </div>
               )}
               <div className="mt-14 space-y-4">
                 <div className="w-12 h-1.5 bg-slate-100 rounded-full mx-auto overflow-hidden">
@@ -364,17 +369,27 @@ export default function RegisterPage() {
                         <input name="father_name" placeholder="FATHER NAME" value={formData.father_name} onChange={handleChange} className="w-full bg-slate-50 border border-slate-100 rounded-[1.25rem] md:rounded-[1.5rem] px-5 py-4 md:px-6 md:py-5 text-sm font-bold text-slate-800 placeholder:text-slate-200 placeholder:font-black focus:ring-8 focus:ring-blue-500/5 focus:border-[#002147] outline-none transition-all shadow-inner" />
                       </div>
                       <div className="md:col-span-2 group">
-                        <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 ml-2 group-focus-within:text-[#002147] transition-colors">03. CNIC / B-Form Number</label>
-                        <input
-                          name="cnic_number"
-                          inputMode="numeric"
-                          autoComplete="off"
-                          placeholder="XXXXX-XXXXXXX-X"
-                          value={formData.cnic_number}
-                          onChange={handleChange}
-                          className="w-full bg-slate-50 border border-slate-100 rounded-[1.25rem] md:rounded-[1.5rem] px-5 py-4 md:px-6 md:py-5 text-sm font-bold text-slate-800 placeholder:text-slate-200 placeholder:font-black focus:ring-8 focus:ring-blue-500/5 focus:border-[#002147] outline-none transition-all shadow-inner tracking-wider"
-                        />
-                        <p className="text-[10px] font-bold text-slate-300 uppercase tracking-widest mt-2 ml-2">13 digits · dashes auto · e.g. 35202-1234567-1</p>
+                        <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 ml-2">03. Gender</label>
+                        <div className="grid grid-cols-2 gap-3">
+                          {["Male", "Female"].map((g) => {
+                            const active = formData.gender === g;
+                            return (
+                              <button
+                                key={g}
+                                type="button"
+                                onClick={() => setFormData({ ...formData, gender: g })}
+                                className={`px-5 py-4 rounded-[1.25rem] border-2 text-sm font-black uppercase tracking-widest transition-all ${
+                                  active
+                                    ? "border-[#002147] bg-[#002147] text-white shadow-md"
+                                    : "border-slate-100 bg-slate-50 text-slate-500 hover:border-slate-200"
+                                }`}
+                              >
+                                <i className={`fas ${g === "Male" ? "fa-mars" : "fa-venus"} mr-2`} />
+                                {g}
+                              </button>
+                            );
+                          })}
+                        </div>
                       </div>
                       <div className="group">
                         <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 ml-2 group-focus-within:text-[#002147] transition-colors">04. WhatsApp (11 Digits)</label>

@@ -260,6 +260,7 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
     const [submitting, setSubmitting] = useState(false);
     const [waLink, setWaLink] = useState("");
     const [waGroupsByProvince, setWaGroupsByProvince] = useState({});
+    const [waGroupsByGender, setWaGroupsByGender] = useState({ male: "", female: "", all: "" });
     const [tnc, setTnc] = useState("");
     const [footer, setFooter] = useState(
         Object.fromEntries(FOOTER_FIELDS.map(({ key }) => [key, FOOTER_DEFAULTS[key]]))
@@ -318,11 +319,30 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
                     setWaGroupsByProvince({});
                 }
             }
+            if (r.data.whatsapp_groups_by_gender) {
+                try {
+                    const parsed = JSON.parse(r.data.whatsapp_groups_by_gender);
+                    setWaGroupsByGender({
+                        male: parsed?.male || "",
+                        female: parsed?.female || "",
+                        all: parsed?.all || "",
+                    });
+                } catch {
+                    setWaGroupsByGender({ male: "", female: "", all: "" });
+                }
+            }
         });
         api.get("settings/whatsapp-link").then(r => {
             setWaLink(r.data.link || "");
             if (r.data.groups && typeof r.data.groups === "object") {
                 setWaGroupsByProvince(r.data.groups);
+            }
+            if (r.data.genderGroups && typeof r.data.genderGroups === "object") {
+                setWaGroupsByGender({
+                    male: r.data.genderGroups.male || "",
+                    female: r.data.genderGroups.female || "",
+                    all: r.data.genderGroups.all || "",
+                });
             }
         });
         api.get("settings/terms").then(r => setTnc(r.data.terms || ""));
@@ -385,11 +405,16 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
     const saveWaLink = async () => {
         setSubmitting(true);
         try {
-            await api.put("settings/whatsapp-link", { link: waLink, groups: waGroupsByProvince }, auth);
+            await api.put("settings/whatsapp-link", {
+                link: waLink,
+                groups: waGroupsByProvince,
+                genderGroups: waGroupsByGender,
+            }, auth);
             await api.put("settings", {
                 whatsapp_groups_by_province: JSON.stringify(waGroupsByProvince),
+                whatsapp_groups_by_gender: JSON.stringify(waGroupsByGender),
             }, auth);
-            notify("WhatsApp group links updated!");
+            notify("WhatsApp group links updated! Matching members see them on their profiles.");
         } catch { notify("Failed to update WhatsApp link", "error"); }
         finally { setSubmitting(false); }
     };
@@ -700,14 +725,39 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
                                 <div className="flex gap-3">
                                     <input type="text" placeholder="https://chat.whatsapp.com/..." value={waLink} onChange={e => setWaLink(e.target.value)} className={inputCls} />
                                 </div>
-                                <p className="text-[10px] text-slate-400 font-medium mt-2">Used when a province has no specific group link.</p>
+                                <p className="text-[10px] text-slate-400 font-medium mt-2">Used only when no gender or province link matches a member.</p>
+                            </div>
+                        </div>
+
+                        <div className="space-y-4">
+                            <div>
+                                <h4 className="text-sm font-black text-slate-800 uppercase tracking-widest">Gender WhatsApp Groups</h4>
+                                <p className="text-[10px] text-slate-400 font-medium mt-1">Female link appears for all females; Male for all males; All for every member. Shown on member profiles immediately after save.</p>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                {[
+                                    { key: "female", label: "Female" },
+                                    { key: "male", label: "Male" },
+                                    { key: "all", label: "All Members" },
+                                ].map(({ key, label }) => (
+                                    <div key={key}>
+                                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 block">{label}</label>
+                                        <input
+                                            type="text"
+                                            placeholder="https://chat.whatsapp.com/..."
+                                            value={waGroupsByGender[key] || ""}
+                                            onChange={(e) => setWaGroupsByGender((prev) => ({ ...prev, [key]: e.target.value }))}
+                                            className={inputCls}
+                                        />
+                                    </div>
+                                ))}
                             </div>
                         </div>
 
                         <div className="space-y-4">
                             <div>
                                 <h4 className="text-sm font-black text-slate-800 uppercase tracking-widest">Province WhatsApp Groups</h4>
-                                <p className="text-[10px] text-slate-400 font-medium mt-1">Optional invite link per province for registration success screen.</p>
+                                <p className="text-[10px] text-slate-400 font-medium mt-1">Province link goes to all candidates in that province (male and female).</p>
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-80 overflow-y-auto pr-1">
                                 {PROVINCES.map((province) => (
@@ -3433,6 +3483,7 @@ const ApprovalsTab = ({ pendingMembers, executiveApps, fetchPendingMembers, load
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                 <DetailItem label="Full Name" value={viewMember.name} icon="fa-user" />
                                 <DetailItem label="Father Name" value={viewMember.father_name} icon="fa-user-friends" />
+                                <DetailItem label="Gender" value={viewMember.gender || "—"} icon="fa-venus-mars" />
                                 <DetailItem label="Email Address" value={viewMember.email} icon="fa-envelope" />
                                 <DetailItem label="WhatsApp Number" value={viewMember.whatsapp} icon="fa-phone" />
                                 <DetailItem label="University" value={viewMember.university} icon="fa-university" />

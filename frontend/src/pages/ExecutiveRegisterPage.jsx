@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import api from "../api";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
+import { formatCnicInput, isValidCnic, normalizeCnic } from "../utils/cnic";
 
 const CITIES = [
   "Karachi", "Lahore", "Islamabad", "Rawalpindi", "Faisalabad", "Multan",
@@ -29,6 +30,7 @@ const labelCls = "text-[10px] font-black text-slate-400 uppercase tracking-wides
 const emptyForm = {
   name: "",
   father_name: "",
+  cnic_number: "",
   city: "Lahore",
   address: "",
   area_of_interest: "Community Development",
@@ -53,7 +55,14 @@ export default function ExecutiveRegisterPage() {
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
-  const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    if (name === "cnic_number") {
+      setForm({ ...form, cnic_number: formatCnicInput(value) });
+      return;
+    }
+    setForm({ ...form, [name]: value });
+  };
 
   const handleVerify = async (e) => {
     e.preventDefault();
@@ -79,6 +88,8 @@ export default function ExecutiveRegisterPage() {
       if (!form.name.trim() || !form.father_name.trim() || !form.city || !form.address.trim()) {
         return "Please complete all personal details.";
       }
+      if (!form.cnic_number?.trim()) return "CNIC / B-Form number is mandatory.";
+      if (!isValidCnic(form.cnic_number)) return "CNIC / B-Form must be 13 digits (#####-#######-#).";
     }
     if (s === 3) {
       if (!form.skills.trim()) return "Skills are required.";
@@ -110,6 +121,7 @@ export default function ExecutiveRegisterPage() {
       await api.post("auth/apply-executive", {
         memberId,
         ...form,
+        cnic_number: normalizeCnic(form.cnic_number),
         availability: Number(form.availability),
       });
       setSubmitted(true);
@@ -222,6 +234,20 @@ export default function ExecutiveRegisterPage() {
                   <div>
                     <label className={labelCls}>Father Name *</label>
                     <input name="father_name" required value={form.father_name} onChange={handleChange} className={inputCls} />
+                  </div>
+                  <div className="sm:col-span-2">
+                    <label className={labelCls}>CNIC / B-Form Number *</label>
+                    <input
+                      name="cnic_number"
+                      required
+                      inputMode="numeric"
+                      autoComplete="off"
+                      placeholder="XXXXX-XXXXXXX-X"
+                      value={form.cnic_number}
+                      onChange={handleChange}
+                      className={`${inputCls} tracking-wider`}
+                    />
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1.5">13 digits · auto dashes · e.g. 35202-1234567-1</p>
                   </div>
                   <div>
                     <label className={labelCls}>City *</label>
