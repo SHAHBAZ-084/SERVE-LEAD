@@ -32,7 +32,13 @@ const schemas = {
         tehsil: Joi.string().max(80).required(),
         requestedRole: Joi.string().valid('General', 'Executive').default('General'),
         sls_official_id: Joi.string().max(50).optional().allow(''),
-        cnic_number: Joi.string().max(20).optional().allow(''),
+        cnic_number: Joi.string()
+            .pattern(/^\d{5}-\d{7}-\d$/)
+            .required()
+            .messages({
+                'string.pattern.base': 'CNIC/B-Form must be 13 digits in format #####-#######-#',
+                'any.required': 'CNIC/B-Form number is required',
+            }),
         referredBy: Joi.string().max(30).optional().allow(''),
     }),
     login: Joi.object({

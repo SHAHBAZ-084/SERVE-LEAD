@@ -194,9 +194,16 @@ router.post('/register', validateRequest(schemas.register), asyncHandler(async (
     const allowedTypes = ['university', 'college', 'school', 'not_student'];
     const applicant_type = allowedTypes.includes(rawApplicantType) ? rawApplicantType : 'university';
 
+    const cnicTrimmed = cnic_number?.trim() || '';
+    if (!/^\d{5}-\d{7}-\d$/.test(cnicTrimmed)) {
+        return res.status(400).json({
+            error: 'CNIC/B-Form number is required and must be 13 digits (#####-#######-#).',
+        });
+    }
+
     if (requestedRole === 'Executive') {
-        if (!sls_official_id?.trim() || !cnic_number?.trim()) {
-            return res.status(400).json({ error: 'SLS Official ID and CNIC are required for Executive membership.' });
+        if (!sls_official_id?.trim()) {
+            return res.status(400).json({ error: 'SLS Official ID is required for Executive membership.' });
         }
     }
 
@@ -259,7 +266,7 @@ router.post('/register', validateRequest(schemas.register), asyncHandler(async (
         city: tehsilName,
         requestedRole,
         sls_official_id: requestedRole === 'Executive' ? sls_official_id?.trim() : '',
-        cnic_number: requestedRole === 'Executive' ? cnic_number?.trim() : '',
+        cnic_number: cnicTrimmed,
         referred_by,
         status: 'pending',
         role: 'General',

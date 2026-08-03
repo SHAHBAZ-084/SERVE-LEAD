@@ -5,6 +5,7 @@ import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 
 import { PROVINCES, getDistricts, getTehsils, getDefaultDistrict, getDefaultTehsil } from "../constants/pakistanLocations";
+import { formatCnicInput, isValidCnic, normalizeCnic } from "../utils/cnic";
 
 const pakistaniUniversities = [
   "University of the Punjab", "Quaid-i-Azam University", "NUST", "UET Lahore", "UET Peshawar", 
@@ -79,7 +80,18 @@ export default function RegisterPage() {
   const [waLink, setWaLink] = useState("");
   const [waProvinceLabel, setWaProvinceLabel] = useState("");
 
-  const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    if (name === "cnic_number") {
+      setFormData({ ...formData, cnic_number: formatCnicInput(value) });
+      return;
+    }
+    if (name === "whatsapp") {
+      setFormData({ ...formData, whatsapp: value.replace(/\D/g, "").slice(0, 11) });
+      return;
+    }
+    setFormData({ ...formData, [name]: value });
+  };
 
   const setApplicantType = (type) => {
     const levels = EDUCATION_BY_TYPE[type] || EDUCATION_BY_TYPE.university;
@@ -121,9 +133,11 @@ export default function RegisterPage() {
   const tehsilOptions = getTehsils(formData.province, formData.district);
 
   const validateStep = () => {
-    const { name, father_name, whatsapp, email, password, otp, program, passing_year, address, province, district, tehsil } = formData;
+    const { name, father_name, whatsapp, email, password, otp, address, province, district, tehsil, cnic_number } = formData;
     if (step === 1) {
       if (!name || !father_name || !whatsapp || !email || !password) return "All personal fields are mandatory.";
+      if (!cnic_number?.trim()) return "CNIC / B-Form number is mandatory.";
+      if (!isValidCnic(cnic_number)) return "CNIC / B-Form must be 13 digits (#####-#######-#).";
       if (whatsapp.length !== 11 || !/^\d+$/.test(whatsapp)) return "WhatsApp must be exactly 11 numeric digits.";
       if (!email.toLowerCase().endsWith("@gmail.com")) return "Only official @gmail.com accounts are permitted.";
       if (password.length < 6) return "Portal password must be at least 6 characters.";
@@ -219,7 +233,7 @@ export default function RegisterPage() {
         email: formData.email.trim(),
         requestedRole: "General",
         sls_official_id: "",
-        cnic_number: "",
+        cnic_number: normalizeCnic(formData.cnic_number),
       };
       await api.post("auth/register", payload);
       try {
@@ -349,12 +363,25 @@ export default function RegisterPage() {
                         <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 ml-2 group-focus-within:text-[#002147] transition-colors">02. Father Name</label>
                         <input name="father_name" placeholder="FATHER NAME" value={formData.father_name} onChange={handleChange} className="w-full bg-slate-50 border border-slate-100 rounded-[1.25rem] md:rounded-[1.5rem] px-5 py-4 md:px-6 md:py-5 text-sm font-bold text-slate-800 placeholder:text-slate-200 placeholder:font-black focus:ring-8 focus:ring-blue-500/5 focus:border-[#002147] outline-none transition-all shadow-inner" />
                       </div>
+                      <div className="md:col-span-2 group">
+                        <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 ml-2 group-focus-within:text-[#002147] transition-colors">03. CNIC / B-Form Number</label>
+                        <input
+                          name="cnic_number"
+                          inputMode="numeric"
+                          autoComplete="off"
+                          placeholder="XXXXX-XXXXXXX-X"
+                          value={formData.cnic_number}
+                          onChange={handleChange}
+                          className="w-full bg-slate-50 border border-slate-100 rounded-[1.25rem] md:rounded-[1.5rem] px-5 py-4 md:px-6 md:py-5 text-sm font-bold text-slate-800 placeholder:text-slate-200 placeholder:font-black focus:ring-8 focus:ring-blue-500/5 focus:border-[#002147] outline-none transition-all shadow-inner tracking-wider"
+                        />
+                        <p className="text-[10px] font-bold text-slate-300 uppercase tracking-widest mt-2 ml-2">13 digits · dashes auto · e.g. 35202-1234567-1</p>
+                      </div>
                       <div className="group">
-                        <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 ml-2 group-focus-within:text-[#002147] transition-colors">03. WhatsApp (11 Digits)</label>
+                        <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 ml-2 group-focus-within:text-[#002147] transition-colors">04. WhatsApp (11 Digits)</label>
                         <input name="whatsapp" maxLength="11" placeholder="03XXXXXXXXX" value={formData.whatsapp} onChange={handleChange} className="w-full bg-slate-50 border border-slate-100 rounded-[1.25rem] md:rounded-[1.5rem] px-5 py-4 md:px-6 md:py-5 text-sm font-bold text-slate-800 placeholder:text-slate-200 placeholder:font-black focus:ring-8 focus:ring-blue-500/5 focus:border-[#002147] outline-none transition-all shadow-inner" />
                       </div>
                       <div className="md:col-span-2 group">
-                        <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 ml-2 group-focus-within:text-[#002147] transition-colors">04. Gmail Address</label>
+                        <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 ml-2 group-focus-within:text-[#002147] transition-colors">05. Gmail Address</label>
                         <div className="flex flex-col sm:flex-row gap-4">
                           <input type="email" name="email" placeholder="USER@GMAIL.COM" value={formData.email} onChange={(e) => { setOtpSent(false); handleChange(e); }} className="flex-1 bg-slate-50 border border-slate-100 rounded-[1.25rem] md:rounded-[1.5rem] px-5 py-4 md:px-6 md:py-5 text-sm font-bold text-slate-800 placeholder:text-slate-200 placeholder:font-black focus:ring-8 focus:ring-blue-500/5 focus:border-[#002147] outline-none transition-all shadow-inner" />
                           {!otpSent && (
@@ -368,14 +395,14 @@ export default function RegisterPage() {
                       {otpSent && (
                         <div className="md:col-span-2 group animate-fade-up">
                            <label className="block text-xs font-bold text-emerald-500 uppercase tracking-widest mb-3 ml-2 group-focus-within:text-emerald-600 transition-colors flex items-center gap-2">
-                             <i className="fas fa-paper-plane" /> 04B. Enter 6-Digit Code
+                             <i className="fas fa-paper-plane" /> 05B. Enter 6-Digit Code
                            </label>
                            <input type="text" maxLength="6" name="otp" placeholder="XXXXXX" value={formData.otp} onChange={handleChange} className="w-full bg-emerald-50/50 border-2 border-emerald-100 rounded-[1.25rem] md:rounded-[1.5rem] px-5 py-4 md:px-6 md:py-5 text-center text-xl font-black text-emerald-700 tracking-[0.5em] shadow-inner focus:border-emerald-500 outline-none transition-all placeholder:text-emerald-200" />
                         </div>
                       )}
 
                       <div className="md:col-span-2 group">
-                        <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 ml-2 group-focus-within:text-[#002147] transition-colors">05. Password (Min 6)</label>
+                        <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 ml-2 group-focus-within:text-[#002147] transition-colors">06. Password (Min 6)</label>
                         <div className="relative">
                           <input type={showPassword ? "text" : "password"} name="password" value={formData.password} onChange={handleChange} className="w-full bg-slate-50 border border-slate-100 rounded-[1.25rem] md:rounded-[1.5rem] px-5 py-4 md:px-6 md:py-5 text-sm font-bold text-slate-800 placeholder:text-slate-200 placeholder:font-black focus:ring-8 focus:ring-blue-500/5 focus:border-[#002147] outline-none transition-all pr-16 shadow-inner" placeholder="••••••••" />
                           <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-6 top-1/2 -translate-y-1/2 text-slate-200 hover:text-[#002147] transition-colors">
