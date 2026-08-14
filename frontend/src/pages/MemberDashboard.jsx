@@ -7,6 +7,7 @@ import { RenderCertificate, logo, signatureImg, stampImg, MEMBERSHIP_TEMPLATE_ID
 import MembershipCertificateExact, { isMembershipCertificate } from "./MembershipCertificateExact";
 import { captureCertificatePdf, captureCertificatePng } from "../utils/certificatePdfExport";
 import CountdownTimer from "../components/common/CountdownTimer";
+import EventShareButton from "../components/EventShareButton";
 import ImageUploadHint from "../components/common/ImageUploadHint";
 import CertificateButton from "../components/certificates/CertificateButton";
 import { generateCertificate } from "../utils/canvasEngine";
@@ -960,7 +961,8 @@ const MemberDashboard = () => {
                                     </div>
 
                                     {/* Status Badge */}
-                                    <div className="absolute top-6 right-6">
+                                    <div className="absolute top-6 right-6 flex items-center gap-2">
+                                        <EventShareButton event={event} variant="overlay" />
                                         <span className={`px-4 py-2 rounded-xl text-[9px] font-bold uppercase tracking-widest shadow-xl border backdrop-blur-md ${hasEnded ? "bg-slate-900/80 text-slate-300 border-white/10" : "bg-emerald-500/90 text-white border-emerald-400/30"
                                             }`}>
                                             {hasEnded ? "Event Ended" : "Upcoming Event"}
@@ -1066,7 +1068,8 @@ const MemberDashboard = () => {
                             </div>
                         </div>
 
-                        <div className="p-8 bg-slate-50 border-t border-slate-100 flex justify-end gap-4">
+                        <div className="p-8 bg-slate-50 border-t border-slate-100 flex flex-wrap justify-end gap-4">
+                            <EventShareButton event={selectedEvent} variant="plain" />
                             <button onClick={() => setSelectedEvent(null)} className="px-8 py-3.5 text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:text-slate-600 transition-colors">Dismiss</button>
                             {!(Date.now() > new Date(`${selectedEvent.endDate || selectedEvent.date}T23:59:59`).getTime()) && !selectedEvent.participants?.some(p => p.memberId === user.dbId || p.memberId?._id === user.dbId) && (
                                 <button

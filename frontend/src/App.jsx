@@ -18,6 +18,7 @@ import FloatingWhatsApp from './components/FloatingWhatsApp';
 import TopVerseBar from './components/TopVerseBar';
 import BlogsPage from './pages/BlogsPage';
 import BlogDetailPage from './pages/BlogDetailPage';
+import EventDetailPage from './pages/EventDetailPage';
 import TermsPage from './pages/TermsPage';
 import BoardOfExecutivePage from './pages/BoardOfExecutivePage';
 
@@ -35,6 +36,7 @@ function App() {
         <Route path='/verify' element={<MemberVerification />} />
         <Route path="/blogs" element={<BlogsPage />} />
         <Route path="/blogs/:id" element={<BlogDetailPage />} />
+        <Route path="/events/:id" element={<EventDetailPage />} />
         <Route path="/terms" element={<TermsPage />} />
         <Route path="/board-of-executive" element={<BoardOfExecutivePage />} />
 

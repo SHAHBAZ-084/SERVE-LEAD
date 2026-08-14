@@ -1,7 +1,9 @@
 import React, { useEffect, useState, useRef } from 'react';
+import { Link } from 'react-router-dom';
 import api from '../api';
 import defaultImg from '../assets/welcome.jpg';
 import CountdownTimer from './common/CountdownTimer';
+import EventShareButton from './EventShareButton';
 
 const API_BASE_URL = 'https://api.serveandlead.org';
 const getImgUrl = (path) => {
@@ -107,10 +109,13 @@ export default function EventsSection() {
                                                     {new Date(event.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}
                                                 </p>
                                             </div>
+                                            <div className="absolute top-6 right-6 z-20">
+                                                <EventShareButton event={event} variant="overlay" />
+                                            </div>
                                         </div>
                                         <div className="p-8 flex-1 flex flex-col min-w-0">
                                             <h3 className="text-xl font-black text-slate-800 mb-4 group-hover:text-cyan-600 transition-colors break-words">
-                                                {event.title}
+                                                <Link to={`/events/${event._id}`}>{event.title}</Link>
                                             </h3>
                                             <p className="text-slate-500 text-sm line-clamp-3 mb-8 leading-relaxed break-words">
                                                 {event.description}
@@ -125,6 +130,12 @@ export default function EventsSection() {
                                                         </div>
                                                     )}
                                                 </div>
+                                                <Link
+                                                    to={`/events/${event._id}`}
+                                                    className="w-full text-center bg-[#002147] text-white py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 transition-all"
+                                                >
+                                                    View & Share
+                                                </Link>
                                                 <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-slate-400 border-t border-slate-50 pt-4">
                                                     <span className="flex items-center gap-2 max-w-[50%] truncate" title={event.location}><i className="fas fa-map-marker-alt text-cyan-500" /> {event.location || "TBA"}</span>
                                                     <span className="flex items-center gap-2"><i className="fas fa-clock text-cyan-500" /> {event.time || "TBA"}</span>

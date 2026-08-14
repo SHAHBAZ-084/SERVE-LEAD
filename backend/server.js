@@ -111,6 +111,7 @@ app.use('/api/admin', require('./routes/admin/members'));
 app.use('/api/admin', require('./routes/admin/logs'));
 app.use('/api/admin', require('./routes/admin/backup'));
 app.use('/api/events', require('./routes/eventRoutes'));
+app.get('/share/event/:id', require('./utils/eventSharePreview').renderEventSharePreview);
 app.use('/api/announcements', require('./routes/announcementRoutes'));
 app.use('/api/settings', require('./routes/settingsRoutes'));
 app.use('/api/certificates', require('./routes/certificateRoutes'));
