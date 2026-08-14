@@ -261,6 +261,9 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
     const [waLink, setWaLink] = useState("");
     const [waGroupsByProvince, setWaGroupsByProvince] = useState({});
     const [waGroupsByGender, setWaGroupsByGender] = useState({ male: "", female: "", all: "" });
+    const [waGroupsByRole, setWaGroupsByRole] = useState({ general: "", executive: "" });
+    const [waRemoveTarget, setWaRemoveTarget] = useState(null);
+    const [waRemoving, setWaRemoving] = useState(false);
     const [tnc, setTnc] = useState("");
     const [footer, setFooter] = useState(
         Object.fromEntries(FOOTER_FIELDS.map(({ key }) => [key, FOOTER_DEFAULTS[key]]))
@@ -273,6 +276,24 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
     const [defaultFeeDeadlineDays, setDefaultFeeDeadlineDays] = useState("7");
     const [savingFee, setSavingFee] = useState(false);
 
+    const applyWaGroupsFromResponse = (data) => {
+        if (data?.groups && typeof data.groups === "object") {
+            setWaGroupsByProvince(data.groups);
+        }
+        if (data?.genderGroups && typeof data.genderGroups === "object") {
+            setWaGroupsByGender({
+                male: data.genderGroups.male || "",
+                female: data.genderGroups.female || "",
+                all: data.genderGroups.all || "",
+            });
+        }
+        if (data?.roleGroups && typeof data.roleGroups === "object") {
+            setWaGroupsByRole({
+                general: data.roleGroups.general || "",
+                executive: data.roleGroups.executive || "",
+            });
+        }
+    };
 
     // Admin Promotion State
     const [adminSearch, setAdminSearch] = useState("");
@@ -331,19 +352,21 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
                     setWaGroupsByGender({ male: "", female: "", all: "" });
                 }
             }
+            if (r.data.whatsapp_groups_by_role) {
+                try {
+                    const parsed = JSON.parse(r.data.whatsapp_groups_by_role);
+                    setWaGroupsByRole({
+                        general: parsed?.general || "",
+                        executive: parsed?.executive || "",
+                    });
+                } catch {
+                    setWaGroupsByRole({ general: "", executive: "" });
+                }
+            }
         });
         api.get("settings/whatsapp-link").then(r => {
             setWaLink(r.data.link || "");
-            if (r.data.groups && typeof r.data.groups === "object") {
-                setWaGroupsByProvince(r.data.groups);
-            }
-            if (r.data.genderGroups && typeof r.data.genderGroups === "object") {
-                setWaGroupsByGender({
-                    male: r.data.genderGroups.male || "",
-                    female: r.data.genderGroups.female || "",
-                    all: r.data.genderGroups.all || "",
-                });
-            }
+            applyWaGroupsFromResponse(r.data);
         });
         api.get("settings/terms").then(r => setTnc(r.data.terms || ""));
     }, [api]);
@@ -409,14 +432,35 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
                 link: waLink,
                 groups: waGroupsByProvince,
                 genderGroups: waGroupsByGender,
+                roleGroups: waGroupsByRole,
+                whatsapp_groups_by_role: JSON.stringify(waGroupsByRole),
             }, auth);
             await api.put("settings", {
                 whatsapp_groups_by_province: JSON.stringify(waGroupsByProvince),
                 whatsapp_groups_by_gender: JSON.stringify(waGroupsByGender),
+                whatsapp_groups_by_role: JSON.stringify(waGroupsByRole),
             }, auth);
             notify("WhatsApp group links updated! Matching members see them on their profiles.");
         } catch { notify("Failed to update WhatsApp link", "error"); }
         finally { setSubmitting(false); }
+    };
+
+    const confirmWaRemove = async (mode) => {
+        if (!waRemoveTarget) return;
+        setWaRemoving(true);
+        try {
+            const r = await api.delete(
+                `settings/whatsapp-link/${encodeURIComponent(waRemoveTarget.groupKey)}`,
+                { ...auth, data: { mode } }
+            );
+            applyWaGroupsFromResponse(r.data);
+            notify(r.data.message || "WhatsApp group updated.");
+            setWaRemoveTarget(null);
+        } catch {
+            notify("Failed to remove WhatsApp group", "error");
+        } finally {
+            setWaRemoving(false);
+        }
     };
 
     const saveMembershipFee = async () => {
@@ -742,13 +786,61 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
                                 ].map(({ key, label }) => (
                                     <div key={key}>
                                         <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 block">{label}</label>
-                                        <input
-                                            type="text"
-                                            placeholder="https://chat.whatsapp.com/..."
-                                            value={waGroupsByGender[key] || ""}
-                                            onChange={(e) => setWaGroupsByGender((prev) => ({ ...prev, [key]: e.target.value }))}
-                                            className={inputCls}
-                                        />
+                                        <div className="flex gap-2">
+                                            <input
+                                                type="text"
+                                                placeholder="https://chat.whatsapp.com/..."
+                                                value={waGroupsByGender[key] || ""}
+                                                onChange={(e) => setWaGroupsByGender((prev) => ({ ...prev, [key]: e.target.value }))}
+                                                className={inputCls}
+                                            />
+                                            {waGroupsByGender[key] ? (
+                                                <button
+                                                    type="button"
+                                                    title="Remove"
+                                                    onClick={() => setWaRemoveTarget({ groupKey: `gender:${key}`, label: `${label} WhatsApp Group` })}
+                                                    className="px-3 rounded-lg bg-rose-50 text-rose-600 border border-rose-100 hover:bg-rose-100 shrink-0"
+                                                >
+                                                    <i className="fas fa-trash-alt text-xs" />
+                                                </button>
+                                            ) : null}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="space-y-4">
+                            <div>
+                                <h4 className="text-sm font-black text-slate-800 uppercase tracking-widest">Role WhatsApp Groups</h4>
+                                <p className="text-[10px] text-slate-400 font-medium mt-1">General link appears for General members; Executive for Executive members. Not shown to Admin or Superuser.</p>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {[
+                                    { key: "general", label: "General" },
+                                    { key: "executive", label: "Executive" },
+                                ].map(({ key, label }) => (
+                                    <div key={key}>
+                                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 block">{label}</label>
+                                        <div className="flex gap-2">
+                                            <input
+                                                type="text"
+                                                placeholder="https://chat.whatsapp.com/..."
+                                                value={waGroupsByRole[key] || ""}
+                                                onChange={(e) => setWaGroupsByRole((prev) => ({ ...prev, [key]: e.target.value }))}
+                                                className={inputCls}
+                                            />
+                                            {waGroupsByRole[key] ? (
+                                                <button
+                                                    type="button"
+                                                    title="Remove"
+                                                    onClick={() => setWaRemoveTarget({ groupKey: `role:${key}`, label: `${label} WhatsApp Group` })}
+                                                    className="px-3 rounded-lg bg-rose-50 text-rose-600 border border-rose-100 hover:bg-rose-100 shrink-0"
+                                                >
+                                                    <i className="fas fa-trash-alt text-xs" />
+                                                </button>
+                                            ) : null}
+                                        </div>
                                     </div>
                                 ))}
                             </div>
@@ -763,13 +855,25 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
                                 {PROVINCES.map((province) => (
                                     <div key={province}>
                                         <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 block">{province}</label>
-                                        <input
-                                            type="text"
-                                            placeholder="https://chat.whatsapp.com/..."
-                                            value={waGroupsByProvince[province] || ""}
-                                            onChange={(e) => setWaGroupsByProvince((prev) => ({ ...prev, [province]: e.target.value }))}
-                                            className={inputCls}
-                                        />
+                                        <div className="flex gap-2">
+                                            <input
+                                                type="text"
+                                                placeholder="https://chat.whatsapp.com/..."
+                                                value={waGroupsByProvince[province] || ""}
+                                                onChange={(e) => setWaGroupsByProvince((prev) => ({ ...prev, [province]: e.target.value }))}
+                                                className={inputCls}
+                                            />
+                                            {waGroupsByProvince[province] ? (
+                                                <button
+                                                    type="button"
+                                                    title="Remove"
+                                                    onClick={() => setWaRemoveTarget({ groupKey: `province:${province}`, label: `${province} WhatsApp Group` })}
+                                                    className="px-3 rounded-lg bg-rose-50 text-rose-600 border border-rose-100 hover:bg-rose-100 shrink-0"
+                                                >
+                                                    <i className="fas fa-trash-alt text-xs" />
+                                                </button>
+                                            ) : null}
+                                        </div>
                                     </div>
                                 ))}
                             </div>
@@ -1155,6 +1259,40 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
                     Apply All Changes
                 </button>
             </div>
+
+            <AdminModal open={!!waRemoveTarget} onClose={() => setWaRemoveTarget(null)} maxWidth="max-w-md">
+                <div className="p-8 space-y-4">
+                    <h3 className="text-lg font-black text-slate-900 uppercase">Remove WhatsApp Group</h3>
+                    <p className="text-sm text-slate-500">
+                        Remove <strong>{waRemoveTarget?.label}</strong> from settings?
+                    </p>
+                    <div className="flex flex-col gap-2">
+                        <button
+                            type="button"
+                            disabled={waRemoving}
+                            onClick={() => confirmWaRemove("remove_now")}
+                            className="w-full py-3 bg-rose-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest disabled:opacity-50"
+                        >
+                            Remove now (members lose access immediately)
+                        </button>
+                        <button
+                            type="button"
+                            disabled={waRemoving}
+                            onClick={() => confirmWaRemove("keep_existing")}
+                            className="w-full py-3 bg-[#002147] text-white rounded-xl text-[10px] font-black uppercase tracking-widest disabled:opacity-50"
+                        >
+                            Keep for members who already have it
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setWaRemoveTarget(null)}
+                            className="w-full py-3 border border-slate-200 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-500"
+                        >
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            </AdminModal>
         </div>
     );
 };
@@ -1183,6 +1321,7 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
     const [previewUrl, setPreviewUrl] = useState(null);
     const [previewPayload, setPreviewPayload] = useState(null);
     const [previewLoading, setPreviewLoading] = useState(false);
+    const [bulkSkipDetails, setBulkSkipDetails] = useState(null);
 
     const [form, setForm] = useState({
         memberId: "",
@@ -1290,10 +1429,18 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
                 eventId: form.eventId || undefined,
             }), auth);
             notify(`Issued ${r.data.count} certificate(s) to members.`);
+            if (r.data.skippedCount > 0) {
+                notify(`${r.data.skippedCount} selected member(s) were skipped.`, "error");
+                setBulkSkipDetails(r.data.skippedDetails || []);
+            }
             setShowForm(false);
             resetForm();
             fetchCertificates();
         } catch (err) {
+            const skipped = err.response?.data?.skippedDetails;
+            if (Array.isArray(skipped) && skipped.length > 0) {
+                setBulkSkipDetails(skipped);
+            }
             notify(err.response?.data?.error || "Failed to bulk issue certificates", "error");
         } finally {
             setSubmitting(false);
@@ -1813,6 +1960,30 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
                     </div>
                 )}
             </div>
+
+            <AdminModal open={!!bulkSkipDetails} onClose={() => setBulkSkipDetails(null)} maxWidth="max-w-md">
+                <div className="p-8 space-y-4">
+                    <h3 className="text-lg font-black text-slate-900 uppercase">Some members were skipped</h3>
+                    <p className="text-sm text-slate-500">
+                        {bulkSkipDetails?.length || 0} selected member(s) did not receive a certificate.
+                    </p>
+                    <ul className="max-h-56 overflow-y-auto divide-y divide-slate-100 border border-slate-100 rounded-xl">
+                        {(bulkSkipDetails || []).map((row, i) => (
+                            <li key={`${row.name}-${i}`} className="px-4 py-2.5 flex justify-between gap-3 text-sm">
+                                <span className="font-bold text-slate-800">{row.name}</span>
+                                <span className="text-[10px] font-black uppercase tracking-widest text-rose-600 shrink-0">{row.reason}</span>
+                            </li>
+                        ))}
+                    </ul>
+                    <button
+                        type="button"
+                        onClick={() => setBulkSkipDetails(null)}
+                        className="w-full py-3 bg-[#002147] text-white rounded-xl text-[10px] font-black uppercase tracking-widest"
+                    >
+                        Close
+                    </button>
+                </div>
+            </AdminModal>
 
             {showPreview && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4">

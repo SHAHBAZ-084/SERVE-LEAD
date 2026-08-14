@@ -20,6 +20,7 @@ function detectZones(imageWidth = 2048, imageHeight = 1436) {
       fontSize: Math.round(W * 0.031),
       color: ink,
       eraseColor: erase,
+      eraseMode: 'none',
     },
     // Top-right date value (covers "Issued on: …" sample date)
     date: {
@@ -31,6 +32,7 @@ function detectZones(imageWidth = 2048, imageHeight = 1436) {
       fontSize: Math.round(W * 0.011),
       color: ink,
       eraseColor: erase,
+      eraseMode: 'none',
       prefix: 'Issued on: ',
     },
     // Optional mobile line under name / above member info strip
@@ -43,6 +45,7 @@ function detectZones(imageWidth = 2048, imageHeight = 1436) {
       fontSize: Math.round(W * 0.01),
       color: ink,
       eraseColor: erase,
+      eraseMode: 'none',
     },
     // Left column — Membership ID value under label
     memberId: {
@@ -54,6 +57,7 @@ function detectZones(imageWidth = 2048, imageHeight = 1436) {
       fontSize: Math.round(W * 0.012),
       color: ink,
       eraseColor: erase,
+      eraseMode: 'none',
     },
     // Middle column — Membership Session / joining year
     joiningYear: {
@@ -65,6 +69,7 @@ function detectZones(imageWidth = 2048, imageHeight = 1436) {
       fontSize: Math.round(W * 0.013),
       color: ink,
       eraseColor: erase,
+      eraseMode: 'none',
     },
     // Right column — Status (General Member / Executive Member)
     membershipStatus: {
@@ -76,6 +81,7 @@ function detectZones(imageWidth = 2048, imageHeight = 1436) {
       fontSize: Math.round(W * 0.011),
       color: ink,
       eraseColor: erase,
+      eraseMode: 'none',
     },
   };
 }

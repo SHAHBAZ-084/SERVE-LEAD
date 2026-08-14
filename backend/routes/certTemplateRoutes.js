@@ -6,6 +6,7 @@ const https = require('https');
 const http = require('http');
 const { GetObjectCommand, S3Client } = require('@aws-sdk/client-s3');
 const CertTemplate = require('../models/CertTemplate');
+const Certificate = require('../models/Certificate');
 const Member = require('../models/Member');
 const authMiddleware = require('../middlewares/authMiddleware');
 const { isAdmin } = require('../middlewares/adminMiddlewares');
@@ -379,23 +380,41 @@ router.put('/:id/zones', authMiddleware, isAdmin, async (req, res) => {
   }
 });
 
-// DELETE /api/cert-templates/:id — soft-delete (keep image for issued certs)
+// DELETE /api/cert-templates/:id — 409 confirm if active/referenced; ?mode=soft|hard on retry
 router.delete('/:id', authMiddleware, isAdmin, async (req, res) => {
   try {
     const doc = await CertTemplate.findById(req.params.id);
     if (!doc) return res.status(404).json({ error: 'Template not found.' });
-    if (doc.isDeleted) {
+    if (doc.isDeleted && req.query.mode !== 'hard') {
       return res.json({ message: 'Template removed from list. Issued certificates remain downloadable.' });
     }
-    if (doc.isActive) {
-      return res.status(400).json({ error: 'Deactivate this template before deleting.' });
+
+    const mode = String(req.query.mode || '').toLowerCase();
+    const isActive = !!(doc.isActive || doc.status === 'active' || doc.active);
+    const referenced = await Certificate.exists({ certTemplateId: doc._id });
+
+    if (mode !== 'soft' && mode !== 'hard') {
+      if (isActive || referenced) {
+        return res.status(409).json({
+          needsConfirmation: true,
+          isActive,
+          referenced: !!referenced,
+        });
+      }
+      doc.isDeleted = true;
+      doc.isActive = false;
+      await doc.save();
+      return res.json({ message: 'Template removed from list. Issued certificates remain downloadable.' });
     }
 
-    doc.isDeleted = true;
-    doc.isActive = false;
-    await doc.save();
-    // DO NOT deleteFile — keep image for issued certificates
-    return res.json({ message: 'Template removed from list. Issued certificates remain downloadable.' });
+    if (mode === 'soft') {
+      doc.isActive = false;
+      await doc.save();
+      return res.json({ message: 'Template deactivated. Issued certificates remain downloadable.' });
+    }
+
+    await CertTemplate.findByIdAndDelete(doc._id);
+    return res.json({ message: 'Template permanently deleted.' });
   } catch (error) {
     console.error('Cert template delete error:', error);
     res.status(500).json({ error: 'Failed to delete template.' });

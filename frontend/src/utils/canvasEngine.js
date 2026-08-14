@@ -55,6 +55,8 @@ async function ensureFonts() {
 
 function eraseZone(ctx, zone) {
   if (!zone) return;
+  const eraseMode = zone.eraseMode ?? 'none';
+  if (eraseMode !== 'solid') return;
   const padX = 10;
   const padY = 6;
   const w = zone.maxWidth || 200;

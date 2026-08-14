@@ -32,6 +32,19 @@ async function resolveIssueTemplate(certTemplateId) {
   return CertTemplate.findOne({ isActive: true, kind: 'general', isDeleted: { $ne: true } });
 }
 
+async function buildBulkSkippedDetails(memberIds, targetMembers) {
+  const foundIds = new Set(targetMembers.map((m) => String(m._id)));
+  const skipped = (memberIds || []).filter((id) => !foundIds.has(String(id)));
+  if (skipped.length === 0) return [];
+  const skippedMembers = await Member.find({ _id: { $in: skipped } }).select('name status role');
+  return skippedMembers.map((m) => {
+    let reason = 'excluded';
+    if (m.status !== 'approved') reason = 'not approved/suspended';
+    else if (m.role === 'Admin' || m.role === 'Superuser') reason = 'admin account';
+    return { name: m.name, reason };
+  });
+}
+
 function buildMemberRenderPayload(member) {
   const membershipStatus =
     member.role === 'Executive' || member.role === 'Admin' || member.role === 'Superuser'
@@ -193,7 +206,12 @@ router.post('/bulk', authMiddleware, isAdmin, async (req, res) => {
         role: { $nin: ['Admin', 'Superuser'] },
       }).select('_id name member_id');
       if (targetMembers.length === 0) {
-        return res.status(400).json({ error: 'No valid approved members selected.' });
+        const skippedDetails = await buildBulkSkippedDetails(memberIds, targetMembers);
+        return res.status(400).json({
+          error: 'No valid approved members selected.',
+          skippedCount: skippedDetails.length,
+          skippedDetails,
+        });
       }
       if (eventId) {
         const event = await Event.findById(eventId);
@@ -245,9 +263,14 @@ router.post('/bulk', authMiddleware, isAdmin, async (req, res) => {
     }
 
     await Certificate.insertMany(certificates);
+    const skippedDetails = Array.isArray(memberIds) && memberIds.length > 0
+      ? await buildBulkSkippedDetails(memberIds, targetMembers)
+      : [];
     res.status(201).json({
       message: `Successfully issued ${certificates.length} certificates.`,
       count: certificates.length,
+      skippedCount: skippedDetails.length,
+      skippedDetails,
     });
   } catch (error) {
     console.error('CRITICAL: Bulk Issue Certificate Error:', error.message, error.stack);

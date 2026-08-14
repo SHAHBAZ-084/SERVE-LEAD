@@ -81,6 +81,7 @@ export function createDefaultZone(key, canvasW = 2048, canvasH = 1436, index = 0
     fontSize: meta?.defaultFontSize || 22,
     color: '#002147',
     eraseColor: '#F7F3EB',
+    eraseMode: 'none',
   };
 }
 

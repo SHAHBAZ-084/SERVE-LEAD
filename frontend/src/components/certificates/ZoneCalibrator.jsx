@@ -358,6 +358,7 @@ export default function ZoneCalibrator({
                     >
                       <i className="fas fa-eye-dropper mr-1" /> Pick text color
                     </button>
+                    {(active.eraseMode ?? 'none') === 'solid' && (
                     <button
                       type="button"
                       onClick={() => setPickMode(pickMode === 'erase' ? null : 'erase')}
@@ -369,6 +370,7 @@ export default function ZoneCalibrator({
                     >
                       <i className="fas fa-eye-dropper mr-1" /> Pick erase fill
                     </button>
+                    )}
                   </div>
                   {pickMode && (
                     <p className="text-[11px] text-[#0097a7] font-semibold">
@@ -393,6 +395,7 @@ export default function ZoneCalibrator({
                         >
                           → Text
                         </button>
+                        {(active.eraseMode ?? 'none') === 'solid' && (
                         <button
                           type="button"
                           onClick={() => applySampleToActive('erase')}
@@ -400,6 +403,7 @@ export default function ZoneCalibrator({
                         >
                           → Erase
                         </button>
+                        )}
                       </div>
                     </div>
                   )}
@@ -519,26 +523,50 @@ export default function ZoneCalibrator({
                     </div>
                   </div>
                   <div className="text-xs text-slate-600 font-semibold col-span-2">
-                    Erase fill
-                    <div className="mt-1 flex items-center gap-2">
-                      <input
-                        type="color"
-                        value={active.eraseColor || '#F7F3EB'}
-                        onChange={(e) => updateZoneField(activeKey, 'eraseColor', e.target.value)}
-                        className="w-10 h-9 cursor-pointer bg-white rounded-lg"
-                      />
-                      <div className="font-mono text-[10px] text-slate-600 leading-tight">
-                        <div>{(active.eraseColor || '#F7F3EB').toUpperCase()}</div>
-                        {eraseRgb && <div>RGB({eraseRgb.r}, {eraseRgb.g}, {eraseRgb.b})</div>}
+                    Background type
+                    <select
+                      value={active.eraseMode ?? 'none'}
+                      onChange={(e) => {
+                        updateZoneField(activeKey, 'eraseMode', e.target.value);
+                        if (e.target.value !== 'solid' && pickMode === 'erase') setPickMode(null);
+                      }}
+                      className="mt-1 w-full bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-sm"
+                    >
+                      <option value="none">Designed/Photo (no box, recommended)</option>
+                      <option value="solid">Flat solid color (box match)</option>
+                    </select>
+                    {(active.eraseMode ?? 'none') === 'none' ? (
+                      <p className="mt-2 text-[11px] font-normal text-slate-500 leading-relaxed">
+                        Upload template with this area already blank — text will sit directly on your artwork.
+                      </p>
+                    ) : (
+                      <div className="mt-2">
+                        <p className="mb-1">Erase fill</p>
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="color"
+                            value={active.eraseColor || '#F7F3EB'}
+                            onChange={(e) => updateZoneField(activeKey, 'eraseColor', e.target.value)}
+                            className="w-10 h-9 cursor-pointer bg-white rounded-lg"
+                          />
+                          <div className="font-mono text-[10px] text-slate-600 leading-tight">
+                            <div>{(active.eraseColor || '#F7F3EB').toUpperCase()}</div>
+                            {eraseRgb && <div>RGB({eraseRgb.r}, {eraseRgb.g}, {eraseRgb.b})</div>}
+                          </div>
+                        </div>
                       </div>
-                    </div>
+                    )}
                   </div>
                 </div>
 
                 {/* Mini live style swatch — same canvas font size as Preview Draft */}
                 <div
                   className="rounded-xl border border-slate-200 p-4 text-center"
-                  style={{ backgroundColor: active.eraseColor || '#F7F3EB' }}
+                  style={{
+                    backgroundColor: (active.eraseMode ?? 'none') === 'solid'
+                      ? (active.eraseColor || '#F7F3EB')
+                      : 'transparent',
+                  }}
                 >
                   <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-2">
                     Style preview · {active.fontSize || 22}px canvas
@@ -642,7 +670,7 @@ export default function ZoneCalibrator({
                       height: `${(h / CANVAS_H) * 100}%`,
                       border: selected ? `2px solid ${accent}` : `2px dashed ${accent}`,
                       background: showLivePreview
-                        ? (zone.eraseColor || '#F7F3EB')
+                        ? ((zone.eraseMode ?? 'none') === 'solid' ? (zone.eraseColor || '#F7F3EB') : 'transparent')
                         : `${accent}22`,
                       cursor: pickMode ? 'crosshair' : 'move',
                       userSelect: 'none',

@@ -42,8 +42,33 @@ function parseJsonSetting(raw, fallback = {}) {
   }
 }
 
-/** Resolve WA invite links for a member by province + gender targeting. */
-function resolveWhatsAppLinks({ province, gender, defaultLink, provinceGroups = {}, genderGroups = {} }) {
+function pickGroupUrl(live = {}, archived = {}, key) {
+  const liveVal = String(live[key] || '').trim();
+  if (liveVal) return liveVal;
+  return String(archived[key] || '').trim();
+}
+
+async function upsertJsonSetting(key, obj) {
+  return SystemSetting.findOneAndUpdate(
+    { key },
+    { $set: { key, value: JSON.stringify(obj && typeof obj === 'object' ? obj : {}) } },
+    { upsert: true, new: true, runValidators: true }
+  );
+}
+
+/** Resolve WA invite links for a member by province + gender + role targeting. */
+function resolveWhatsAppLinks({
+  province,
+  gender,
+  role,
+  defaultLink,
+  provinceGroups = {},
+  genderGroups = {},
+  roleGroups = {},
+  archivedProvinceGroups = {},
+  archivedGenderGroups = {},
+  archivedRoleGroups = {},
+}) {
   const links = [];
   const seen = new Set();
   const add = (key, label, url) => {
@@ -53,19 +78,34 @@ function resolveWhatsAppLinks({ province, gender, defaultLink, provinceGroups = 
     links.push({ key, label, url: u });
   };
 
-  if (province && provinceGroups[province]) {
-    add('province', `${province} WhatsApp Group`, provinceGroups[province]);
+  if (province) {
+    const provinceUrl = pickGroupUrl(provinceGroups, archivedProvinceGroups, province);
+    if (provinceUrl) add('province', `${province} WhatsApp Group`, provinceUrl);
   }
 
   const g = String(gender || '').toLowerCase();
-  if (g === 'male' && genderGroups.male) {
-    add('gender', 'Male WhatsApp Group', genderGroups.male);
-  } else if (g === 'female' && genderGroups.female) {
-    add('gender', 'Female WhatsApp Group', genderGroups.female);
+  if (g === 'male') {
+    const maleUrl = pickGroupUrl(genderGroups, archivedGenderGroups, 'male');
+    if (maleUrl) add('gender', 'Male WhatsApp Group', maleUrl);
+  } else if (g === 'female') {
+    const femaleUrl = pickGroupUrl(genderGroups, archivedGenderGroups, 'female');
+    if (femaleUrl) add('gender', 'Female WhatsApp Group', femaleUrl);
   }
 
-  if (genderGroups.all) {
-    add('all', 'All Members WhatsApp Group', genderGroups.all);
+  const allUrl = pickGroupUrl(genderGroups, archivedGenderGroups, 'all');
+  if (allUrl) {
+    add('all', 'All Members WhatsApp Group', allUrl);
+  }
+
+  const r = String(role || '');
+  if (r && r !== 'Admin' && r !== 'Superuser') {
+    const roleKey = r === 'Executive' ? 'executive' : r === 'General' ? 'general' : '';
+    if (roleKey) {
+      const roleUrl = pickGroupUrl(roleGroups, archivedRoleGroups, roleKey);
+      if (roleUrl) {
+        add('role', `${r} WhatsApp Group`, roleUrl);
+      }
+    }
   }
 
   if (!links.length && defaultLink) {
@@ -73,6 +113,24 @@ function resolveWhatsAppLinks({ province, gender, defaultLink, provinceGroups = 
   }
 
   return links;
+}
+
+function loadWhatsAppGroupMaps(settingsMap) {
+  return {
+    groups: parseJsonSetting(settingsMap.whatsapp_groups_by_province, {}),
+    genderGroups: parseJsonSetting(settingsMap.whatsapp_groups_by_gender, {
+      male: '',
+      female: '',
+      all: '',
+    }),
+    roleGroups: parseJsonSetting(settingsMap.whatsapp_groups_by_role, {
+      general: '',
+      executive: '',
+    }),
+    archivedProvinceGroups: parseJsonSetting(settingsMap.whatsapp_groups_by_province_archived, {}),
+    archivedGenderGroups: parseJsonSetting(settingsMap.whatsapp_groups_by_gender_archived, {}),
+    archivedRoleGroups: parseJsonSetting(settingsMap.whatsapp_groups_by_role_archived, {}),
+  };
 }
 
 // Multer Config (Hybrid: Local/Cloud)
@@ -155,12 +213,14 @@ router.get('/whatsapp-link', async (req, res) => {
       if (s.key) settingsMap[s.key] = s.value;
     });
 
-    const groups = parseJsonSetting(settingsMap.whatsapp_groups_by_province, {});
-    const genderGroups = parseJsonSetting(settingsMap.whatsapp_groups_by_gender, {
-      male: '',
-      female: '',
-      all: '',
-    });
+    const {
+      groups,
+      genderGroups,
+      roleGroups,
+      archivedProvinceGroups,
+      archivedGenderGroups,
+      archivedRoleGroups,
+    } = loadWhatsAppGroupMaps(settingsMap);
 
     // Fallback default from legacy findOne document field OR key-value if present
     const legacyDoc = settings.find((s) => s.whatsappGroupLink) || settings[0];
@@ -169,12 +229,18 @@ router.get('/whatsapp-link', async (req, res) => {
       legacyDoc?.whatsappGroupLink ||
       '';
 
+    const role = req.query.role;
     const links = resolveWhatsAppLinks({
       province,
       gender,
+      role,
       defaultLink,
       provinceGroups: groups,
       genderGroups,
+      roleGroups,
+      archivedProvinceGroups,
+      archivedGenderGroups,
+      archivedRoleGroups,
     });
 
     res.json({
@@ -182,6 +248,7 @@ router.get('/whatsapp-link', async (req, res) => {
       links,
       groups,
       genderGroups,
+      roleGroups,
     });
   } catch (error) {
     res.status(500).json({ error: 'Server Error' });
@@ -193,9 +260,18 @@ router.get('/my-whatsapp-groups', authMiddleware, async (req, res) => {
   try {
     const Member = require('../models/Member');
     const member = await Member.findById(req.user.memberId || req.user.id)
-      .select('province gender')
+      .select('province gender role status')
       .lean();
     if (!member) return res.status(404).json({ error: 'Member not found' });
+
+    if (member.status !== 'approved') {
+      return res.json({
+        links: [],
+        province: member.province || '',
+        gender: member.gender || '',
+        role: member.role || '',
+      });
+    }
 
     const settings = await SystemSetting.find();
     const settingsMap = {};
@@ -203,12 +279,14 @@ router.get('/my-whatsapp-groups', authMiddleware, async (req, res) => {
       if (s.key) settingsMap[s.key] = s.value;
     });
 
-    const groups = parseJsonSetting(settingsMap.whatsapp_groups_by_province, {});
-    const genderGroups = parseJsonSetting(settingsMap.whatsapp_groups_by_gender, {
-      male: '',
-      female: '',
-      all: '',
-    });
+    const {
+      groups,
+      genderGroups,
+      roleGroups,
+      archivedProvinceGroups,
+      archivedGenderGroups,
+      archivedRoleGroups,
+    } = loadWhatsAppGroupMaps(settingsMap);
     const legacyDoc = settings.find((s) => s.whatsappGroupLink) || settings[0];
     const defaultLink =
       settingsMap.whatsappGroupLink ||
@@ -218,12 +296,22 @@ router.get('/my-whatsapp-groups', authMiddleware, async (req, res) => {
     const links = resolveWhatsAppLinks({
       province: member.province,
       gender: member.gender,
+      role: member.role,
       defaultLink,
       provinceGroups: groups,
       genderGroups,
+      roleGroups,
+      archivedProvinceGroups,
+      archivedGenderGroups,
+      archivedRoleGroups,
     });
 
-    res.json({ links, province: member.province || '', gender: member.gender || '' });
+    res.json({
+      links,
+      province: member.province || '',
+      gender: member.gender || '',
+      role: member.role || '',
+    });
   } catch (error) {
     res.status(500).json({ error: 'Server Error' });
   }
@@ -242,16 +330,12 @@ router.get('/terms', async (req, res) => {
 // Add a PUT route (admin only) to update it:
 router.put('/whatsapp-link', authMiddleware, async (req, res) => {
   try {
-    const { link, groups, genderGroups } = req.body;
+    const { link, groups, genderGroups, roleGroups, whatsapp_groups_by_role } = req.body;
     if (link !== undefined) {
       await SystemSetting.findOneAndUpdate({}, { whatsappGroupLink: link }, { upsert: true });
     }
     if (groups !== undefined && groups !== null && typeof groups === 'object') {
-      await SystemSetting.findOneAndUpdate(
-        { key: 'whatsapp_groups_by_province' },
-        { $set: { key: 'whatsapp_groups_by_province', value: JSON.stringify(groups) } },
-        { upsert: true, new: true, runValidators: true }
-      );
+      await upsertJsonSetting('whatsapp_groups_by_province', groups);
     }
     if (genderGroups !== undefined && genderGroups !== null && typeof genderGroups === 'object') {
       const normalized = {
@@ -259,13 +343,81 @@ router.put('/whatsapp-link', authMiddleware, async (req, res) => {
         female: String(genderGroups.female || '').trim(),
         all: String(genderGroups.all || '').trim(),
       };
-      await SystemSetting.findOneAndUpdate(
-        { key: 'whatsapp_groups_by_gender' },
-        { $set: { key: 'whatsapp_groups_by_gender', value: JSON.stringify(normalized) } },
-        { upsert: true, new: true, runValidators: true }
-      );
+      await upsertJsonSetting('whatsapp_groups_by_gender', normalized);
+    }
+    let incomingRoleGroups = roleGroups;
+    if (incomingRoleGroups == null && whatsapp_groups_by_role) {
+      incomingRoleGroups = parseJsonSetting(whatsapp_groups_by_role, null);
+    }
+    if (incomingRoleGroups !== undefined && incomingRoleGroups !== null && typeof incomingRoleGroups === 'object') {
+      const normalizedRoles = {
+        general: String(incomingRoleGroups.general || '').trim(),
+        executive: String(incomingRoleGroups.executive || '').trim(),
+      };
+      await upsertJsonSetting('whatsapp_groups_by_role', normalizedRoles);
     }
     res.json({ message: "WhatsApp link updated successfully." });
+  } catch (error) {
+    res.status(500).json({ error: 'Server Error' });
+  }
+});
+
+const WA_GROUP_KEY_MAP = {
+  province: { live: 'whatsapp_groups_by_province', archived: 'whatsapp_groups_by_province_archived' },
+  gender: { live: 'whatsapp_groups_by_gender', archived: 'whatsapp_groups_by_gender_archived' },
+  role: { live: 'whatsapp_groups_by_role', archived: 'whatsapp_groups_by_role_archived' },
+};
+
+router.delete('/whatsapp-link/:groupKey', authMiddleware, async (req, res) => {
+  try {
+    const rawKey = decodeURIComponent(req.params.groupKey || '');
+    const colon = rawKey.indexOf(':');
+    const kind = colon === -1 ? rawKey : rawKey.slice(0, colon);
+    const itemKey = colon === -1 ? '' : rawKey.slice(colon + 1);
+    const mode = req.body?.mode;
+    if (!['remove_now', 'keep_existing'].includes(mode)) {
+      return res.status(400).json({ error: "mode must be 'remove_now' or 'keep_existing'." });
+    }
+    const mapping = WA_GROUP_KEY_MAP[kind];
+    if (!mapping || !itemKey) {
+      return res.status(400).json({ error: 'Invalid groupKey. Use province:<name>, gender:male|female|all, or role:general|executive.' });
+    }
+
+    const settings = await SystemSetting.find();
+    const settingsMap = {};
+    settings.forEach((s) => {
+      if (s.key) settingsMap[s.key] = s.value;
+    });
+
+    const live = parseJsonSetting(settingsMap[mapping.live], {});
+    const archived = parseJsonSetting(settingsMap[mapping.archived], {});
+    const value = live[itemKey];
+
+    if (mode === 'keep_existing') {
+      if (value) archived[itemKey] = value;
+      delete live[itemKey];
+    } else {
+      delete live[itemKey];
+      delete archived[itemKey];
+    }
+
+    await upsertJsonSetting(mapping.live, live);
+    await upsertJsonSetting(mapping.archived, archived);
+
+    const maps = loadWhatsAppGroupMaps({
+      ...settingsMap,
+      [mapping.live]: JSON.stringify(live),
+      [mapping.archived]: JSON.stringify(archived),
+    });
+
+    res.json({
+      message: mode === 'remove_now'
+        ? 'Group removed. Members lose access immediately.'
+        : 'Removed from settings. Existing members keep the link.',
+      groups: maps.groups,
+      genderGroups: maps.genderGroups,
+      roleGroups: maps.roleGroups,
+    });
   } catch (error) {
     res.status(500).json({ error: 'Server Error' });
   }
