@@ -310,6 +310,10 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
                     setTeamStructure(parsed.map((c, i) => ({
                         ...c,
                         order: c.order != null && c.order !== '' ? Number(c.order) : i + 1,
+                        members: (c.members || []).map((m, mi) => ({
+                            ...m,
+                            order: m.order != null && m.order !== '' ? Number(m.order) : mi + 1,
+                        })),
                     })));
                 } catch {
                     setTeamStructure([]);
@@ -422,6 +426,10 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
                     setTeamStructure(parsed.map((c, i) => ({
                         ...c,
                         order: c.order != null && c.order !== '' ? Number(c.order) : i + 1,
+                        members: (c.members || []).map((m, mi) => ({
+                            ...m,
+                            order: m.order != null && m.order !== '' ? Number(m.order) : mi + 1,
+                        })),
                     })));
                 } catch { /* keep current */ }
             }
@@ -593,6 +601,17 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
         return n;
     };
 
+    const getNextMemberOrder = (cat) => {
+        const used = new Set(
+            (cat.members || [])
+                .map((m) => Number(m.order))
+                .filter((n) => Number.isFinite(n) && n > 0)
+        );
+        let n = 1;
+        while (used.has(n)) n += 1;
+        return n;
+    };
+
     const validateTeamStructureOrders = () => {
         if (teamStructure.length === 0) return null;
         const orders = teamStructure.map((c) => Number(c.order));
@@ -600,7 +619,18 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
             return 'Each team category needs an order number (1 = top, e.g. President).';
         }
         if (orders.length !== new Set(orders).size) {
-            return 'Team hierarchy order numbers must be unique — no duplicate positions.';
+            return 'Team hierarchy category order numbers must be unique — no duplicate positions.';
+        }
+        for (const cat of teamStructure) {
+            const members = cat.members || [];
+            if (members.length === 0) continue;
+            const memberOrders = members.map((m) => Number(m.order));
+            if (memberOrders.some((n) => !Number.isFinite(n) || n < 1)) {
+                return `Each member in "${cat.name}" needs an order number.`;
+            }
+            if (memberOrders.length !== new Set(memberOrders).size) {
+                return `Member order numbers in "${cat.name}" must be unique.`;
+            }
         }
         return null;
     };
@@ -626,8 +656,25 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
 
     const addMember = (catId) => {
         setTeamStructure(teamStructure.map(c => c.id === catId ? {
-            ...c, members: [...c.members, { id: Date.now(), name: "Full Name", role: "Role", program: "Program", desc: "Bio", img: "" }]
+            ...c, members: [...c.members, { id: Date.now(), name: "Full Name", role: "Role", program: "Program", desc: "Bio", img: "", order: getNextMemberOrder(c) }]
         } : c));
+    };
+
+    const updateMemberOrder = (catId, memberId, rawValue) => {
+        const cat = teamStructure.find((c) => c.id === catId);
+        if (!cat) return;
+        const num = parseInt(String(rawValue), 10);
+        if (!Number.isFinite(num) || num < 1) {
+            setTeamStructure(teamStructure.map((c) => c.id === catId ? {
+                ...c, members: c.members.map((m) => m.id === memberId ? { ...m, order: '' } : m)
+            } : c));
+            return;
+        }
+        if ((cat.members || []).some((m) => m.id !== memberId && Number(m.order) === num)) {
+            notify(`Order #${num} is already assigned to another member in this category.`, 'error');
+            return;
+        }
+        updateMember(catId, memberId, 'order', num);
     };
 
     const updateMember = (catId, memberId, field, value) => {
@@ -1038,7 +1085,7 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
                                     </div>
                                     <div>
                                         <h3 className="text-2xl font-black text-slate-800 tracking-tight uppercase">Team Hierarchy</h3>
-                                        <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mt-1">Set order per category (1 = President, 2 = Deputy…) — numbers must be unique</p>
+                                        <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mt-1">Category order + member order inside each category — numbers must be unique</p>
                                     </div>
                                 </div>
                                 <button type="button" onClick={addCategory} className="px-5 py-2.5 bg-purple-50 text-purple-600 rounded-xl text-[10px] font-black uppercase tracking-widest border border-purple-100 hover:bg-purple-100 transition-all">
@@ -1071,7 +1118,9 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
                                         </div>
 
                                         <div className="grid grid-cols-1 gap-4">
-                                            {cat.members.map((m) => (
+                                            {[...(cat.members || [])]
+                                                .sort((a, b) => (Number(a.order) || 9999) - (Number(b.order) || 9999))
+                                                .map((m) => (
                                                 <div key={m.id} className="p-4 sm:p-5 bg-slate-50/50 rounded-2xl border border-slate-100 relative group flex flex-col sm:flex-row gap-5 sm:gap-6 items-center">
                                                     <button type="button" onClick={() => removeMember(cat.id, m.id)} className="absolute top-2 right-2 text-slate-200 hover:text-rose-500 p-2"><i className="fas fa-times" /></button>
 
@@ -1088,10 +1137,22 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
                                                     </div>
 
                                                     <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-3 w-full">
+                                                        <div className="flex items-center gap-2">
+                                                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest shrink-0">Order</label>
+                                                            <input
+                                                                type="number"
+                                                                min={1}
+                                                                placeholder="#"
+                                                                value={m.order ?? ''}
+                                                                onChange={(e) => updateMemberOrder(cat.id, m.id, e.target.value)}
+                                                                className="w-16 text-xs font-bold p-2.5 rounded-xl border border-purple-100 text-purple-700 bg-purple-50/50 text-center"
+                                                                title="Display position inside this category"
+                                                            />
+                                                        </div>
                                                         <input type="text" placeholder="Full Name" value={m.name} onChange={e => updateMember(cat.id, m.id, 'name', e.target.value)} className="w-full text-xs p-2.5 rounded-xl border border-slate-200" />
                                                         <input type="text" placeholder="Designation" value={m.role} onChange={e => updateMember(cat.id, m.id, 'role', e.target.value)} className="w-full text-xs p-2.5 rounded-xl border border-slate-200" />
                                                         <input type="text" placeholder="Program/Field" value={m.program} onChange={e => updateMember(cat.id, m.id, 'program', e.target.value)} className="w-full text-xs p-2.5 rounded-xl border border-slate-200" />
-                                                        <textarea placeholder="Bio description..." rows={1} value={m.desc} onChange={e => updateMember(cat.id, m.id, 'desc', e.target.value)} className="w-full text-xs p-2.5 rounded-xl border border-slate-200 resize-none" />
+                                                        <textarea placeholder="Bio description..." rows={1} value={m.desc} onChange={e => updateMember(cat.id, m.id, 'desc', e.target.value)} className="w-full text-xs p-2.5 rounded-xl border border-slate-200 resize-none sm:col-span-2" />
                                                     </div>
                                                 </div>
                                             ))}

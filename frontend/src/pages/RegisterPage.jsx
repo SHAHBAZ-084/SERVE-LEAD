@@ -232,11 +232,12 @@ export default function RegisterPage() {
       };
       await api.post("auth/register", payload);
       try {
-        const settingRes = await api.get("settings/whatsapp-link", {
-          params: { defaultOnly: 1 },
-        });
-        const defaultItem = (settingRes.data.links || []).find((l) => l.key === "default");
-        const url = defaultItem?.url || settingRes.data.link || "";
+        const settingRes = await api.get("settings/whatsapp-link");
+        const url = String(
+          settingRes.data.defaultLink
+          || (settingRes.data.links || []).find((l) => l.key === "default")?.url
+          || ""
+        ).trim();
         setWaLinks(url ? [{ key: "default", label: "Society WhatsApp Group", url }] : []);
       } catch (e) { console.error("Error fetching WA link:", e); }
       setSuccess(true);
@@ -300,9 +301,9 @@ export default function RegisterPage() {
               <p className="text-slate-400 text-sm font-bold uppercase tracking-widest leading-loose max-w-xs mx-auto mb-6">
                 Your application has been successfully submitted. Our team will contact you shortly for further processing.
               </p>
-              {waLinks.length > 0 && (
+              {waLinks.filter((item) => item.key === "default").slice(0, 1).length > 0 && (
                 <div className="flex flex-col gap-3 items-center mb-2">
-                  {waLinks.map((item) => (
+                  {waLinks.filter((item) => item.key === "default").slice(0, 1).map((item) => (
                     <a
                       key={item.key + item.url}
                       href={item.url}

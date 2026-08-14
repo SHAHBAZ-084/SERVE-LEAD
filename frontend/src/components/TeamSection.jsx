@@ -26,7 +26,19 @@ export default function TeamSection({ memberData = "none", hide = false }) {
             if (bOk) return 1;
             return 0;
           });
-          setTeamStructure(sorted);
+          setTeamStructure(sorted.map((c) => ({
+            ...c,
+            members: [...(c.members || [])].sort((a, b) => {
+              const ao = Number(a.order);
+              const bo = Number(b.order);
+              const aOk = Number.isFinite(ao) && ao > 0;
+              const bOk = Number.isFinite(bo) && bo > 0;
+              if (aOk && bOk) return ao - bo;
+              if (aOk) return -1;
+              if (bOk) return 1;
+              return 0;
+            }),
+          })));
         } catch (e) { console.error("Parse error", e); }
       }
       if (r.data.team_leadership) {
