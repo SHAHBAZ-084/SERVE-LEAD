@@ -371,8 +371,12 @@ const MemberDashboard = () => {
                     province: member.province || "",
                 });
                 try {
-                    const waRes = await api.get("settings/my-whatsapp-groups", auth);
-                    setWaGroupLinks(Array.isArray(waRes.data.links) ? waRes.data.links : []);
+                    if (member.status === "approved") {
+                        const waRes = await api.get("settings/my-whatsapp-groups", auth);
+                        setWaGroupLinks(Array.isArray(waRes.data.links) ? waRes.data.links : []);
+                    } else {
+                        setWaGroupLinks([]);
+                    }
                 } catch {
                     setWaGroupLinks([]);
                 }

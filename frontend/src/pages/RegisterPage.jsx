@@ -233,11 +233,11 @@ export default function RegisterPage() {
       await api.post("auth/register", payload);
       try {
         const settingRes = await api.get("settings/whatsapp-link", {
-          params: { province: formData.province, gender: formData.gender },
+          params: { defaultOnly: 1 },
         });
-        setWaLinks(Array.isArray(settingRes.data.links) ? settingRes.data.links : (
-          settingRes.data.link ? [{ key: "default", label: "WhatsApp Group", url: settingRes.data.link }] : []
-        ));
+        const defaultItem = (settingRes.data.links || []).find((l) => l.key === "default");
+        const url = defaultItem?.url || settingRes.data.link || "";
+        setWaLinks(url ? [{ key: "default", label: "Society WhatsApp Group", url }] : []);
       } catch (e) { console.error("Error fetching WA link:", e); }
       setSuccess(true);
       setTimeout(() => navigate("/"), 15000); // Extended timeout to allow joining group

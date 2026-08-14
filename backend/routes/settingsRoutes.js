@@ -207,6 +207,7 @@ router.get('/whatsapp-link', async (req, res) => {
   try {
     const province = req.query.province;
     const gender = req.query.gender;
+    const defaultOnly = String(req.query.defaultOnly || '') === '1' || String(req.query.defaultOnly || '').toLowerCase() === 'true';
     const settings = await SystemSetting.find();
     const settingsMap = {};
     settings.forEach((s) => {
@@ -230,18 +231,20 @@ router.get('/whatsapp-link', async (req, res) => {
       '';
 
     const role = req.query.role;
-    const links = resolveWhatsAppLinks({
-      province,
-      gender,
-      role,
-      defaultLink,
-      provinceGroups: groups,
-      genderGroups,
-      roleGroups,
-      archivedProvinceGroups,
-      archivedGenderGroups,
-      archivedRoleGroups,
-    });
+    const links = defaultOnly
+      ? (defaultLink ? [{ key: 'default', label: 'Society WhatsApp Group', url: String(defaultLink).trim() }] : [])
+      : resolveWhatsAppLinks({
+          province,
+          gender,
+          role,
+          defaultLink,
+          provinceGroups: groups,
+          genderGroups,
+          roleGroups,
+          archivedProvinceGroups,
+          archivedGenderGroups,
+          archivedRoleGroups,
+        });
 
     res.json({
       link: links[0]?.url || '',
