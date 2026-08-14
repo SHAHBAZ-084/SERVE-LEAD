@@ -6,9 +6,9 @@ const crypto = require('crypto');
 const rateLimit = require('express-rate-limit');
 
 const otpLimiter = rateLimit({
-    windowMs: 10 * 60 * 1000,
-    max: 8,
-    message: { error: 'Too many OTP requests. Please try again after 10 minutes.' }
+    windowMs: 5 * 60 * 1000, // 5 minutes
+    max: 3, // limit each IP to 3 OTP requests per window
+    message: { error: 'Too many OTP requests. Please try again after 5 minutes.' }
 });
 
 const Member = require('../models/Member');

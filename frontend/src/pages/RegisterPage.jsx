@@ -400,13 +400,12 @@ export default function RegisterPage() {
                         <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 ml-2 group-focus-within:text-[#002147] transition-colors">05. Gmail Address</label>
                         <div className="flex flex-col sm:flex-row gap-4">
                           <input type="email" name="email" placeholder="USER@GMAIL.COM" value={formData.email} onChange={(e) => { setOtpSent(false); handleChange(e); }} className="flex-1 bg-slate-50 border border-slate-100 rounded-[1.25rem] md:rounded-[1.5rem] px-5 py-4 md:px-6 md:py-5 text-sm font-bold text-slate-800 placeholder:text-slate-200 placeholder:font-black focus:ring-8 focus:ring-blue-500/5 focus:border-[#002147] outline-none transition-all shadow-inner" />
-                          <button type="button" onClick={handleSendOtp} disabled={isVerifying} className="bg-[#002147] text-white px-8 py-4 sm:py-0 rounded-[1.25rem] md:rounded-[1.5rem] text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 transition-all shadow-lg active:scale-95 disabled:opacity-50">
-                             {isVerifying ? <i className="fas fa-spinner fa-spin" /> : otpSent ? "Resend Code" : "Verify Gmail"}
-                          </button>
+                          {!otpSent && (
+                             <button type="button" onClick={handleSendOtp} disabled={isVerifying} className="bg-[#002147] text-white px-8 py-4 sm:py-0 rounded-[1.25rem] md:rounded-[1.5rem] text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 transition-all shadow-lg active:scale-95 disabled:opacity-50">
+                                {isVerifying ? <i className="fas fa-spinner fa-spin" /> : "Verify Gmail"}
+                             </button>
+                          )}
                         </div>
-                        <p className="text-[11px] font-bold text-amber-700 mt-3 ml-2">
-                          Also check your Spam / Junk box. Gmail often puts this code there.
-                        </p>
                       </div>
 
                       {otpSent && (
@@ -414,14 +413,6 @@ export default function RegisterPage() {
                            <label className="block text-xs font-bold text-emerald-500 uppercase tracking-widest mb-3 ml-2 group-focus-within:text-emerald-600 transition-colors flex items-center gap-2">
                              <i className="fas fa-paper-plane" /> 05B. Enter 6-Digit Code
                            </label>
-                           <div className="mb-3 ml-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
-                             <p className="text-[12px] font-black uppercase tracking-widest text-amber-800">
-                               Check Spam box also
-                             </p>
-                             <p className="text-[11px] font-semibold text-amber-900 mt-1 leading-relaxed">
-                               Code sent to {formData.email.trim()}. Open Inbox, then also open Spam / Junk. Subject: Your SLS Verification Code.
-                             </p>
-                           </div>
                            <input type="text" maxLength="6" name="otp" placeholder="XXXXXX" value={formData.otp} onChange={handleChange} className="w-full bg-emerald-50/50 border-2 border-emerald-100 rounded-[1.25rem] md:rounded-[1.5rem] px-5 py-4 md:px-6 md:py-5 text-center text-xl font-black text-emerald-700 tracking-[0.5em] shadow-inner focus:border-emerald-500 outline-none transition-all placeholder:text-emerald-200" />
                         </div>
                       )}

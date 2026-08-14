@@ -1,47 +1,18 @@
 const nodemailer = require('nodemailer');
 
-const smtpAuth = () => {
+const createTransporter = () => {
   if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
-    throw new Error('EMAIL_USER or EMAIL_PASS environment variables are missing');
-  }
-  return {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  };
-};
-
-const createTransporter = (startTls = false) => {
-  const host = process.env.SMTP_HOST || 'smtp.hostinger.com';
-  if (startTls) {
-    return nodemailer.createTransport({
-      host,
-      port: Number(process.env.SMTP_PORT_ALT) || 587,
-      secure: false,
-      requireTLS: true,
-      auth: smtpAuth(),
-      connectionTimeout: 20000,
-      greetingTimeout: 15000,
-      socketTimeout: 25000,
-    });
+      throw new Error('EMAIL_USER or EMAIL_PASS environment variables are missing');
   }
   return nodemailer.createTransport({
-    host,
-    port: Number(process.env.SMTP_PORT) || 465,
+    host: 'smtp.hostinger.com',
+    port: 465,
     secure: true,
-    auth: smtpAuth(),
-    connectionTimeout: 20000,
-    greetingTimeout: 15000,
-    socketTimeout: 25000,
+    auth: {
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASS,
+    },
   });
-};
-
-const sendMailWithFallback = async (mailOptions) => {
-  try {
-    return await createTransporter(false).sendMail(mailOptions);
-  } catch (firstErr) {
-    console.error('SMTP 465 failed, retrying 587 STARTTLS:', firstErr.message);
-    return await createTransporter(true).sendMail(mailOptions);
-  }
 };
 
 const sendWelcomeEmail = async (email, name, memberId, membershipValidUntil) => {
@@ -303,12 +274,13 @@ const sendInterviewFailedEmail = async (email, name, note) => {
 
 const sendOTPEmail = async (email, otp) => {
   try {
+    const transporter = createTransporter();
     const mailOptions = {
         from: `"Serve & Lead Security" <${process.env.EMAIL_USER}>`,
         to: email,
         replyTo: "serveandleadsociety@serveandlead.org",
-        subject: `Your SLS Verification Code: ${otp}`,
-        text: `Your SLS verification code is: ${otp}. It expires in 5 minutes. If this is in Spam, mark it as Not spam.`,
+        subject: 'Your SLS Verification Code',
+        text: `Your SLS verification code is: ${otp}. It expires in 5 minutes.`,
         html: `
         <div style="font-family: 'Segoe UI', Arial, sans-serif; padding: 20px 10px; color: #1e293b; line-height: 1.6; background-color: #f8fafc;">
             <div style="width: 100%; max-width: 500px; margin: 0 auto; background-color: #ffffff; border-radius: 32px; overflow: hidden; box-shadow: 0 30px 60px -12px rgba(0,0,0,0.1); border: 1px solid #e2e8f0;">
@@ -334,7 +306,7 @@ const sendOTPEmail = async (email, otp) => {
         </div>
         `,
     };
-    await sendMailWithFallback(mailOptions);
+    await transporter.sendMail(mailOptions);
     return { success: true };
   } catch (error) {
     console.error('Email Service Error:', error);
