@@ -18,6 +18,16 @@ export function eventPosterUrl(event) {
   return getImgUrl(path);
 }
 
+export function formatEventTime(time) {
+  if (!time) return "TBA";
+  const [h, m] = String(time).split(":");
+  const hour = Number(h);
+  if (Number.isNaN(hour)) return time;
+  const suffix = hour >= 12 ? "PM" : "AM";
+  const h12 = hour % 12 || 12;
+  return `${h12}:${(m || "00").padStart(2, "0")} ${suffix}`;
+}
+
 export function formatEventDateRange(event) {
   if (!event?.date) return "TBA";
   const start = new Date(event.date);
@@ -38,24 +48,31 @@ export function formatEventDateRange(event) {
   return `${startLabel} – ${endLabel}`;
 }
 
-export function formatEventShareText(event) {
-  const joinUrl = eventJoinUrl(event._id);
-  const poster = eventPosterUrl(event);
+function shortDescription(event, max = 180) {
+  const raw = String(event.description || "").replace(/\s+/g, " ").trim();
+  if (!raw) return "";
+  if (raw.length <= max) return raw;
+  return `${raw.slice(0, max).trim()}…`;
+}
+
+export function formatEventShareCaption(event) {
+  const title = event.title || "Serve & Lead Society Event";
+  const desc = shortDescription(event);
   const lines = [
-    event.title || "Serve & Lead Society Event",
+    `*${title}*`,
+    "_Serve & Lead Society · Official Event_",
     "",
-    event.description?.trim() || null,
-    event.description?.trim() ? "" : null,
-    `Date: ${formatEventDateRange(event)}`,
-    `Time: ${event.time || "TBA"}`,
-    `Venue: ${event.location || "TBA"}`,
-    poster ? `Poster: ${poster}` : null,
-    `Join: ${joinUrl}`,
-    "",
-    "Serve & Lead Society",
-    SITE_ORIGIN,
+    desc || null,
+    desc ? "" : null,
+    `📅 ${formatEventDateRange(event)}`,
+    `⏰ ${formatEventTime(event.time)}`,
+    `📍 ${event.location || "TBA"}`,
   ].filter((line) => line !== null);
   return lines.join("\n");
+}
+
+export function formatEventShareText(event) {
+  return `${formatEventShareCaption(event)}\n\nView poster & join:\n${eventSharePreviewUrl(event._id)}`;
 }
 
 async function posterAsFile(event) {
@@ -73,14 +90,19 @@ async function posterAsFile(event) {
 
 export async function shareEventNative(event) {
   if (typeof navigator === "undefined" || !navigator.share) return false;
-  const text = formatEventShareText(event);
+  const caption = formatEventShareCaption(event);
   const title = event.title || "Serve & Lead Society Event";
-  const url = eventJoinUrl(event._id);
+  const joinUrl = eventJoinUrl(event._id);
+  const previewUrl = eventSharePreviewUrl(event._id);
 
   try {
     const file = await posterAsFile(event);
     if (file) {
-      const withFile = { title, text, files: [file] };
+      const withFile = {
+        title,
+        text: `${caption}\n\nJoin: ${joinUrl}`,
+        files: [file],
+      };
       if (!navigator.canShare || navigator.canShare(withFile)) {
         await navigator.share(withFile);
         return true;
@@ -91,7 +113,7 @@ export async function shareEventNative(event) {
   }
 
   try {
-    await navigator.share({ title, text, url });
+    await navigator.share({ title, text: caption, url: previewUrl });
     return true;
   } catch (err) {
     if (err?.name === "AbortError") return true;
