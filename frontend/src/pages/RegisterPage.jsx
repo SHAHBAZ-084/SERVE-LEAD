@@ -401,11 +401,9 @@ export default function RegisterPage() {
                         <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 ml-2 group-focus-within:text-[#002147] transition-colors">05. Gmail Address</label>
                         <div className="flex flex-col sm:flex-row gap-4">
                           <input type="email" name="email" placeholder="USER@GMAIL.COM" value={formData.email} onChange={(e) => { setOtpSent(false); handleChange(e); }} className="flex-1 bg-slate-50 border border-slate-100 rounded-[1.25rem] md:rounded-[1.5rem] px-5 py-4 md:px-6 md:py-5 text-sm font-bold text-slate-800 placeholder:text-slate-200 placeholder:font-black focus:ring-8 focus:ring-blue-500/5 focus:border-[#002147] outline-none transition-all shadow-inner" />
-                          {!otpSent && (
-                             <button type="button" onClick={handleSendOtp} disabled={isVerifying} className="bg-[#002147] text-white px-8 py-4 sm:py-0 rounded-[1.25rem] md:rounded-[1.5rem] text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 transition-all shadow-lg active:scale-95 disabled:opacity-50">
-                                {isVerifying ? <i className="fas fa-spinner fa-spin" /> : "Verify Gmail"}
-                             </button>
-                          )}
+                          <button type="button" onClick={handleSendOtp} disabled={isVerifying} className="bg-[#002147] text-white px-8 py-4 sm:py-0 rounded-[1.25rem] md:rounded-[1.5rem] text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 transition-all shadow-lg active:scale-95 disabled:opacity-50">
+                             {isVerifying ? <i className="fas fa-spinner fa-spin" /> : otpSent ? "Resend Code" : "Verify Gmail"}
+                          </button>
                         </div>
                       </div>
 
@@ -415,7 +413,7 @@ export default function RegisterPage() {
                              <i className="fas fa-paper-plane" /> 05B. Enter 6-Digit Code
                            </label>
                            <p className="text-[11px] font-bold text-amber-700 mb-3 ml-2">
-                             Search Gmail for “SLS Verification”. Also check Spam, Promotions, and All Mail.
+                             Use the latest code from Gmail (valid 15 minutes). Also check Spam. Resend keeps the same code until it expires.
                            </p>
                            <input type="text" maxLength="6" name="otp" placeholder="XXXXXX" value={formData.otp} onChange={handleChange} className="w-full bg-emerald-50/50 border-2 border-emerald-100 rounded-[1.25rem] md:rounded-[1.5rem] px-5 py-4 md:px-6 md:py-5 text-center text-xl font-black text-emerald-700 tracking-[0.5em] shadow-inner focus:border-emerald-500 outline-none transition-all placeholder:text-emerald-200" />
                         </div>

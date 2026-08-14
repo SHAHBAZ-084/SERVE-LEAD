@@ -96,7 +96,11 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Database connection
 mongoose.connect(process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/slsuet')
-    .then(() => console.log('📡 MongoDB Connected'))
+    .then(async () => {
+        console.log('📡 MongoDB Connected');
+        const OTP = require('./models/OTP');
+        await OTP.syncIndexes().catch((err) => logger.error(`OTP index sync failed: ${err.message}`));
+    })
     .catch(err => logger.error(`❌ DB Connection Error: ${err.message}`));
 
 // Setup Routes

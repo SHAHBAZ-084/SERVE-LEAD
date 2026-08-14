@@ -71,6 +71,20 @@ router.post('/check-email', asyncHandler(async (req, res) => {
     res.status(200).json({ message: 'Email is available' });
 }));
 
+const issueRegistrationOtp = async (email) => {
+    let rec = await OTP.findOne({ email, code: { $ne: 'VERIFIED' } });
+    const otpCode = rec?.code || crypto.randomInt(100000, 1000000).toString();
+    const result = await sendOTPEmail(email, otpCode);
+    if (!result.success) return result;
+    if (rec) {
+        rec.createdAt = new Date();
+        await rec.save();
+    } else {
+        await OTP.create({ email, code: otpCode });
+    }
+    return { success: true };
+};
+
 // Send Registration OTP
 router.post('/send-otp', otpLimiter, async (req, res) => {
     try {
@@ -90,15 +104,7 @@ router.post('/send-otp', otpLimiter, async (req, res) => {
             return res.status(400).json({ error: 'Account already exists for this Gmail.' });
         }
 
-        // 3. Generate 6-digit OTP (securely)
-        const otpCode = crypto.randomInt(100000, 1000000).toString();
-
-        // 4. Save to DB (overwrite if already exists for this email)
-        await OTP.deleteMany({ email: email.toLowerCase() });
-        await OTP.create({ email: email.toLowerCase(), code: otpCode });
-
-        // 5. Send Email
-        const result = await sendOTPEmail(email, otpCode);
+        const result = await issueRegistrationOtp(email);
         if (!result.success) {
             return res.status(500).json({ 
                 error: 'The email service failed to dispatch the code.',
@@ -133,11 +139,7 @@ router.post('/resend-otp', otpLimiter, asyncHandler(async (req, res) => {
         return res.status(400).json({ error: 'Account already exists for this Gmail.' });
     }
 
-    const otpCode = crypto.randomInt(100000, 1000000).toString();
-    await OTP.deleteMany({ email });
-    await OTP.create({ email, code: otpCode });
-    
-    const result = await sendOTPEmail(email, otpCode);
+    const result = await issueRegistrationOtp(email);
     if (!result.success) {
         return res.status(500).json({ error: 'Failed to resend code.' });
     }
@@ -154,8 +156,7 @@ router.post('/verify-otp', asyncHandler(async (req, res) => {
     }
     // Mark as verified instead of deleting immediately, so /register can check it
     otp.code = "VERIFIED";
-    // Extend TTL for verified record to 10 minutes so user has time to finish the form
-    otp.createdAt = new Date(Date.now() + 300000); 
+    otp.createdAt = new Date();
     await otp.save();
     res.status(200).json({ message: 'Email verified successfully.' });
 }));
