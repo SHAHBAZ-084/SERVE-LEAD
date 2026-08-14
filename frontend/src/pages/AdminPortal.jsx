@@ -765,18 +765,18 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
                     <div className="p-8 md:p-10 border-t border-slate-100 bg-slate-50/30 space-y-8">
                         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
                             <div className="flex-1 w-full">
-                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 block">Default / Fallback WhatsApp Group Link</label>
+                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 block">Default Society WhatsApp Group Link</label>
                                 <div className="flex gap-3">
                                     <input type="text" placeholder="https://chat.whatsapp.com/..." value={waLink} onChange={e => setWaLink(e.target.value)} className={inputCls} />
                                 </div>
-                                <p className="text-[10px] text-slate-400 font-medium mt-2">Used only when no gender or province link matches a member.</p>
+                                <p className="text-[10px] text-slate-400 font-medium mt-2">Shown on every approved member profile. Gender, province, and role links appear in addition when they match.</p>
                             </div>
                         </div>
 
                         <div className="space-y-4">
                             <div>
                                 <h4 className="text-sm font-black text-slate-800 uppercase tracking-widest">Gender WhatsApp Groups</h4>
-                                <p className="text-[10px] text-slate-400 font-medium mt-1">Female link appears for all females; Male for all males; All for every member. Shown on member profiles immediately after save.</p>
+                                <p className="text-[10px] text-slate-400 font-medium mt-1">Female link on female profiles only; Male on male profiles only; All Members on every profile (in addition to the default link).</p>
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 {[
@@ -813,7 +813,7 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
                         <div className="space-y-4">
                             <div>
                                 <h4 className="text-sm font-black text-slate-800 uppercase tracking-widest">Role WhatsApp Groups</h4>
-                                <p className="text-[10px] text-slate-400 font-medium mt-1">General link appears for General members; Executive for Executive members. Not shown to Admin or Superuser.</p>
+                                <p className="text-[10px] text-slate-400 font-medium mt-1">General link on General member profiles only; Executive on Executive profiles only (in addition to the default link).</p>
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 {[

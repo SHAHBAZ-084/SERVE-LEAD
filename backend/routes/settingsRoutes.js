@@ -78,6 +78,10 @@ function resolveWhatsAppLinks({
     links.push({ key, label, url: u });
   };
 
+  if (defaultLink) {
+    add('default', 'Society WhatsApp Group', defaultLink);
+  }
+
   if (province) {
     const provinceUrl = pickGroupUrl(provinceGroups, archivedProvinceGroups, province);
     if (provinceUrl) add('province', `${province} WhatsApp Group`, provinceUrl);
@@ -106,10 +110,6 @@ function resolveWhatsAppLinks({
         add('role', `${r} WhatsApp Group`, roleUrl);
       }
     }
-  }
-
-  if (!links.length && defaultLink) {
-    add('default', 'WhatsApp Group', defaultLink);
   }
 
   return links;
