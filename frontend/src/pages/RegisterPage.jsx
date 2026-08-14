@@ -174,7 +174,8 @@ export default function RegisterPage() {
         setOtpSent(true);
         setError(null);
     } catch (err) {
-        setError(err.response?.data?.error || "Failed to send verification code.");
+        const data = err.response?.data;
+        setError(data?.details ? `${data.error} (${data.details})` : (data?.error || "Failed to send verification code."));
     } finally {
         setIsVerifying(false);
     }
@@ -414,7 +415,7 @@ export default function RegisterPage() {
                              <i className="fas fa-paper-plane" /> 05B. Enter 6-Digit Code
                            </label>
                            <p className="text-[11px] font-bold text-amber-700 mb-3 ml-2">
-                             Also check your Spam box if the code is not in Inbox.
+                             Search Gmail for “SLS Verification”. Also check Spam, Promotions, and All Mail.
                            </p>
                            <input type="text" maxLength="6" name="otp" placeholder="XXXXXX" value={formData.otp} onChange={handleChange} className="w-full bg-emerald-50/50 border-2 border-emerald-100 rounded-[1.25rem] md:rounded-[1.5rem] px-5 py-4 md:px-6 md:py-5 text-center text-xl font-black text-emerald-700 tracking-[0.5em] shadow-inner focus:border-emerald-500 outline-none transition-all placeholder:text-emerald-200" />
                         </div>
