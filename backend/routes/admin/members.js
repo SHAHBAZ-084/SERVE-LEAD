@@ -97,7 +97,7 @@ router.get('/members', authMiddleware, isAdmin, asyncHandler(async (req, res) =>
     const exactRegex = (s) => new RegExp(`^${escapeRegex(s)}$`, 'i');
     const isActiveFilter = (value, allLabel) => value && value !== allLabel;
 
-    let query = { status: req.user.role === 'Superuser' ? { $in: ['approved', 'blocked'] } : 'approved' };
+    let query = { status: { $in: ['approved', 'blocked'] } };
     
     if (req.user.role === 'Admin') query.role = { $nin: ['Admin', 'Superuser'] };
     if (search) {
@@ -162,7 +162,7 @@ router.get('/pending-members', authMiddleware, isAdmin, asyncHandler(async (req,
         isSuper
             ? ExecutiveApplication.find({ status: 'pending' })
                 .sort({ createdAt: -1 })
-                .populate('memberId', 'name email member_id city')
+                .populate('memberId', 'name email member_id city whatsapp gender province sls_official_id cnic_number')
                 .lean()
             : Promise.resolve([]),
     ]);
@@ -430,7 +430,7 @@ router.patch('/members/:id/demote', authMiddleware, isSuperuser, asyncHandler(as
 router.get('/executive-applications', authMiddleware, isSuperuser, asyncHandler(async (req, res) => {
     const applications = await ExecutiveApplication.find({ status: 'pending' })
         .sort({ createdAt: -1 })
-        .populate('memberId', 'name email member_id city')
+        .populate('memberId', 'name email member_id city whatsapp gender province sls_official_id cnic_number')
         .lean();
 
     res.json(applications);

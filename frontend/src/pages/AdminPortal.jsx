@@ -3282,6 +3282,12 @@ const ApprovalsTab = ({ pendingMembers, executiveApps, fetchPendingMembers, load
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
                                 {[
+                                    ["CNIC / B-Form", viewExecApp.cnic_number || viewExecApp.memberId?.cnic_number || "—"],
+                                    ["LinkedIn", viewExecApp.linkedin_url || "—"],
+                                    ["Email", viewExecApp.memberId?.email || "—"],
+                                    ["WhatsApp", viewExecApp.memberId?.whatsapp || "—"],
+                                    ["Gender", viewExecApp.memberId?.gender || "—"],
+                                    ["Province", viewExecApp.memberId?.province || "—"],
                                     ["Mission Statement", viewExecApp.mission_statement],
                                     ["Short-Term Goals", viewExecApp.short_term_goals],
                                     ["Long-Term Goals", viewExecApp.long_term_goals],

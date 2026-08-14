@@ -580,6 +580,7 @@ router.post('/apply-executive', asyncHandler(async (req, res) => {
         why_executive: why_executive.trim(),
         availability: hours,
         linkedin_url: (linkedin_url || '').trim(),
+        cnic_number: cnicTrimmed,
     });
 
     res.status(201).json({ message: 'Executive application submitted successfully.' });
