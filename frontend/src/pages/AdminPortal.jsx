@@ -305,7 +305,15 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
                 try { setChannels(JSON.parse(r.data.donation_channels)); } catch { setChannels([]); }
             }
             if (r.data.team_structure) {
-                try { setTeamStructure(JSON.parse(r.data.team_structure)); } catch { setTeamStructure([]); }
+                try {
+                    const parsed = JSON.parse(r.data.team_structure);
+                    setTeamStructure(parsed.map((c, i) => ({
+                        ...c,
+                        order: c.order != null && c.order !== '' ? Number(c.order) : i + 1,
+                    })));
+                } catch {
+                    setTeamStructure([]);
+                }
             }
             if (r.data.board_of_executive) {
                 try { setBoardOfExecutive(JSON.parse(r.data.board_of_executive)); } catch { setBoardOfExecutive([]); }
@@ -387,6 +395,11 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
 
     const save = async (e) => {
         if (e) e.preventDefault();
+        const orderErr = validateTeamStructureOrders();
+        if (orderErr) {
+            notify(orderErr, 'error');
+            return;
+        }
         setSubmitting(true);
         try {
             const payload = {
@@ -404,7 +417,13 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
                 try { setChannels(JSON.parse(r.data.donation_channels)); } catch { /* keep current */ }
             }
             if (r.data.team_structure) {
-                try { setTeamStructure(JSON.parse(r.data.team_structure)); } catch { /* keep current */ }
+                try {
+                    const parsed = JSON.parse(r.data.team_structure);
+                    setTeamStructure(parsed.map((c, i) => ({
+                        ...c,
+                        order: c.order != null && c.order !== '' ? Number(c.order) : i + 1,
+                    })));
+                } catch { /* keep current */ }
             }
             if (r.data.board_of_executive) {
                 try { setBoardOfExecutive(JSON.parse(r.data.board_of_executive)); } catch { /* keep current */ }
@@ -563,8 +582,46 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
 
     const updateChannel = (id, field, value) => setChannels(channels.map(c => c.id === id ? { ...c, [field]: value } : c));
     const removeChannel = (id) => setChannels(channels.filter(c => c.id !== id));
-    const addCategory = () => setTeamStructure([...teamStructure, { id: Date.now(), name: "N/A Category", members: [] }]);
+    const getNextCategoryOrder = () => {
+        const used = new Set(
+            teamStructure
+                .map((c) => Number(c.order))
+                .filter((n) => Number.isFinite(n) && n > 0)
+        );
+        let n = 1;
+        while (used.has(n)) n += 1;
+        return n;
+    };
+
+    const validateTeamStructureOrders = () => {
+        if (teamStructure.length === 0) return null;
+        const orders = teamStructure.map((c) => Number(c.order));
+        if (orders.some((n) => !Number.isFinite(n) || n < 1)) {
+            return 'Each team category needs an order number (1 = top, e.g. President).';
+        }
+        if (orders.length !== new Set(orders).size) {
+            return 'Team hierarchy order numbers must be unique — no duplicate positions.';
+        }
+        return null;
+    };
+
+    const addCategory = () => setTeamStructure([
+        ...teamStructure,
+        { id: Date.now(), name: "N/A Category", members: [], order: getNextCategoryOrder() },
+    ]);
     const updateCategory = (id, name) => setTeamStructure(teamStructure.map(c => c.id === id ? { ...c, name } : c));
+    const updateCategoryOrder = (id, rawValue) => {
+        const num = parseInt(String(rawValue), 10);
+        if (!Number.isFinite(num) || num < 1) {
+            setTeamStructure(teamStructure.map((c) => (c.id === id ? { ...c, order: '' } : c)));
+            return;
+        }
+        if (teamStructure.some((c) => c.id !== id && Number(c.order) === num)) {
+            notify(`Order #${num} is already assigned to another category.`, 'error');
+            return;
+        }
+        setTeamStructure(teamStructure.map((c) => (c.id === id ? { ...c, order: num } : c)));
+    };
     const removeCategory = (id) => setTeamStructure(teamStructure.filter(c => c.id !== id));
 
     const addMember = (catId) => {
@@ -981,7 +1038,7 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
                                     </div>
                                     <div>
                                         <h3 className="text-2xl font-black text-slate-800 tracking-tight uppercase">Team Hierarchy</h3>
-                                        <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mt-1">Society Chapters & Core Members</p>
+                                        <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mt-1">Set order per category (1 = President, 2 = Deputy…) — numbers must be unique</p>
                                     </div>
                                 </div>
                                 <button type="button" onClick={addCategory} className="px-5 py-2.5 bg-purple-50 text-purple-600 rounded-xl text-[10px] font-black uppercase tracking-widest border border-purple-100 hover:bg-purple-100 transition-all">
@@ -990,11 +1047,25 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
                             </div>
 
                             <div className="space-y-10">
-                                {teamStructure.map((cat) => (
+                                {[...teamStructure]
+                                    .sort((a, b) => (Number(a.order) || 9999) - (Number(b.order) || 9999))
+                                    .map((cat) => (
                                     <div key={cat.id} className="space-y-6">
-                                        <div className="flex items-center gap-4 border-b border-slate-100 pb-3">
+                                        <div className="flex flex-wrap items-center gap-3 sm:gap-4 border-b border-slate-100 pb-3">
+                                            <div className="flex items-center gap-2">
+                                                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Order</label>
+                                                <input
+                                                    type="number"
+                                                    min={1}
+                                                    placeholder="#"
+                                                    value={cat.order ?? ''}
+                                                    onChange={(e) => updateCategoryOrder(cat.id, e.target.value)}
+                                                    className="w-16 text-xs font-bold p-2 rounded-xl border border-purple-100 text-purple-700 bg-purple-50/50 text-center"
+                                                    title="Display position (1 = first)"
+                                                />
+                                            </div>
                                             <input type="text" value={cat.name} onChange={e => updateCategory(cat.id, e.target.value)}
-                                                className="text-xs font-black text-slate-400 hover:text-purple-600 transition-colors uppercase tracking-[0.2em] bg-transparent border-none focus:ring-0 p-0" />
+                                                className="flex-1 min-w-[140px] text-xs font-black text-slate-400 hover:text-purple-600 transition-colors uppercase tracking-[0.2em] bg-transparent border-none focus:ring-0 p-0" />
                                             <button type="button" onClick={() => addMember(cat.id)} className="ml-auto text-[10px] font-black uppercase text-purple-600 hover:underline">Add Member</button>
                                             <button type="button" onClick={() => removeCategory(cat.id)} className="text-slate-200 hover:text-rose-500 transition-colors p-1"><i className="fas fa-trash-alt text-xs" /></button>
                                         </div>
