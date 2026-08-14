@@ -1,28 +1,55 @@
 const nodemailer = require('nodemailer');
 const crypto = require('crypto');
 
-const mailFromAddress = () => String(process.env.EMAIL_FROM || process.env.EMAIL_USER || '').trim();
+const mailFromAddress = () => String(process.env.EMAIL_USER || '').trim();
 const mailFromDomain = () => {
   const addr = mailFromAddress();
   const at = addr.lastIndexOf('@');
   return at > 0 ? addr.slice(at + 1) : 'serveandlead.org';
 };
 
-const createTransporter = () => {
+const smtpAuth = () => {
   if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
-      throw new Error('EMAIL_USER or EMAIL_PASS environment variables are missing');
+    throw new Error('EMAIL_USER or EMAIL_PASS environment variables are missing');
+  }
+  return {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
+  };
+};
+
+const createTransporter = (startTls = false) => {
+  const host = process.env.SMTP_HOST || 'smtp.hostinger.com';
+  if (startTls) {
+    return nodemailer.createTransport({
+      host,
+      port: Number(process.env.SMTP_PORT_ALT) || 587,
+      secure: false,
+      requireTLS: true,
+      auth: smtpAuth(),
+      connectionTimeout: 20000,
+      greetingTimeout: 15000,
+      socketTimeout: 25000,
+    });
   }
   return nodemailer.createTransport({
-    host: 'smtp.hostinger.com',
-    port: 465,
+    host,
+    port: Number(process.env.SMTP_PORT) || 465,
     secure: true,
-    name: mailFromDomain(),
-    auth: {
-      user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASS,
-    },
-    tls: { minVersion: 'TLSv1.2' },
+    auth: smtpAuth(),
+    connectionTimeout: 20000,
+    greetingTimeout: 15000,
+    socketTimeout: 25000,
   });
+};
+
+const sendMailWithFallback = async (mailOptions) => {
+  try {
+    return await createTransporter(false).sendMail(mailOptions);
+  } catch (firstErr) {
+    console.error('SMTP 465 failed, retrying 587 STARTTLS:', firstErr.message);
+    return await createTransporter(true).sendMail(mailOptions);
+  }
 };
 
 const sendWelcomeEmail = async (email, name, memberId, membershipValidUntil) => {
@@ -284,13 +311,13 @@ const sendInterviewFailedEmail = async (email, name, note) => {
 
 const sendOTPEmail = async (email, otp) => {
   try {
-    const transporter = createTransporter();
     const fromAddr = mailFromAddress();
     const domain = mailFromDomain();
     const mailOptions = {
-        from: { name: 'Serve and Lead Society', address: fromAddr },
+        from: `"Serve & Lead Society" <${fromAddr}>`,
         to: email,
         replyTo: fromAddr,
+        envelope: { from: fromAddr, to: email },
         subject: `${otp} is your Serve and Lead Society verification code`,
         text:
           `Hello,\n\n` +
@@ -313,7 +340,7 @@ const sendOTPEmail = async (email, otp) => {
         },
         date: new Date(),
     };
-    await transporter.sendMail(mailOptions);
+    await sendMailWithFallback(mailOptions);
     return { success: true };
   } catch (error) {
     console.error('Email Service Error:', error);
