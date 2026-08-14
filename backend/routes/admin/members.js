@@ -6,6 +6,7 @@ const Event = require('../../models/Event');
 const Counter = require('../../models/Counter');
 const FeeRecord = require('../../models/FeeRecord');
 const ExecutiveApplication = require('../../models/ExecutiveApplication');
+const Certificate = require('../../models/Certificate');
 const SystemSetting = require('../../models/SystemSetting');
 const authMiddleware = require('../../middlewares/authMiddleware');
 const asyncHandler = require('../../middlewares/asyncHandler');
@@ -394,6 +395,43 @@ router.patch('/members/:id/toggle-block', authMiddleware, isAdmin, asyncHandler(
     await member.save();
     res.json({ message: `Account ${member.status}`, status: member.status });
     logActivity(req.user.memberId, 'Toggled Account Status', `Changed status of ${member.name} to ${member.status}`, member._id);
+}));
+
+// PATCH revoke Executive → General (Superuser only): role, executive fields, apps, all certificates
+router.patch('/members/:id/revoke-executive', authMiddleware, isSuperuser, asyncHandler(async (req, res) => {
+    const member = await Member.findById(req.params.id);
+    if (!member) return res.status(404).json({ error: 'Member not found.' });
+    if (member.role !== 'Executive') {
+        return res.status(400).json({ error: 'Only Executive members can be revoked to General.' });
+    }
+
+    const certDelete = await Certificate.deleteMany({ memberId: member._id });
+    await ExecutiveApplication.deleteMany({ memberId: member._id });
+
+    if (member.certificate_url) {
+        await deleteFile(member.certificate_url).catch(() => {});
+    }
+
+    member.role = 'General';
+    member.requestedRole = 'General';
+    member.sls_official_id = '';
+    member.cnic_number = '';
+    member.certificate_url = '';
+    member.certificateIssuedAt = null;
+    await member.save();
+
+    logActivity(
+        req.user.memberId,
+        'Revoked Executive',
+        `Revoked executive status for ${member.name} (${member.member_id}); removed ${certDelete.deletedCount} certificate(s)`,
+        member._id
+    );
+
+    res.json({
+        message: `${member.name} is now a General member. Executive status, applications, and ${certDelete.deletedCount} certificate(s) were removed.`,
+        role: 'General',
+        certificatesRemoved: certDelete.deletedCount,
+    });
 }));
 
 // PATCH Promote member to Admin (Superuser only)

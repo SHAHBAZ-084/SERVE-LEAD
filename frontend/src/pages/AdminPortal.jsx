@@ -2155,7 +2155,7 @@ const DossierView = ({ memberId, members, onBack }) => {
 // ── Settings Tab (SELF-MANAGEMENT) ───────────────────────
 
 // ── Members Tab (Moved Outside to fix Search Strokes) ────────
-const MembersTab = ({ members, fetchMembers, loading, search, setSearch, auth, notify, Spinner, adminUser, api, inputCls, page, setPage, totalPages, locationFilter, setLocationFilter, roleFilter, setRoleFilter }) => {
+const MembersTab = ({ members, fetchMembers, loading, search, setSearch, auth, notify, Spinner, adminUser, api, inputCls, page, setPage, totalPages, locationFilter, setLocationFilter, roleFilter, setRoleFilter, isSuper }) => {
     const [selectedIds, setSelectedIds] = useState([]);
     const [isProcessing, setIsProcessing] = useState(false);
     const [bulkMode, setBulkMode] = useState(false);
@@ -2185,6 +2185,22 @@ const MembersTab = ({ members, fetchMembers, loading, search, setSearch, auth, n
             notify(res.data.message);
         } catch (err) {
             notify(err.response?.data?.error || "Failed to update member status", "error");
+        }
+    };
+
+    const revokeExecutive = async (memberDbId, name) => {
+        if (!window.confirm(
+            `Revoke Executive status for ${name}?\n\nThey will return to General Member. All certificates and executive application data will be permanently removed.`
+        )) return;
+        setIsProcessing(true);
+        try {
+            const res = await api.patch(`admin/members/${memberDbId}/revoke-executive`, {}, auth);
+            fetchMembers();
+            notify(res.data.message || "Executive status revoked.");
+        } catch (err) {
+            notify(err.response?.data?.error || "Failed to revoke executive status", "error");
+        } finally {
+            setIsProcessing(false);
         }
     };
 
@@ -2286,9 +2302,19 @@ const MembersTab = ({ members, fetchMembers, loading, search, setSearch, auth, n
                                     </div>
                                 </div>
 
-                                <div className="flex gap-2">
+                                <div className="flex gap-2 flex-wrap">
                                     {m.role !== 'Superuser' && m.member_id !== adminUser && (
                                         <>
+                                            {isSuper && m.role === 'Executive' && (
+                                                <button
+                                                    type="button"
+                                                    disabled={isProcessing}
+                                                    onClick={() => revokeExecutive(m._id, m.name)}
+                                                    className="flex-1 min-w-[40%] text-[9px] font-black uppercase tracking-widest py-2 rounded-lg transition-all border bg-purple-50 text-purple-700 border-purple-100"
+                                                >
+                                                    Revoke Executive
+                                                </button>
+                                            )}
                                             <button onClick={() => toggleSuspend(m._id)}
                                                 className={`flex-1 text-[9px] font-black uppercase tracking-widest py-2 rounded-lg transition-all border ${m.status === 'blocked' ? "bg-emerald-50 text-emerald-600 border-emerald-100" : "bg-amber-50 text-amber-600 border-amber-100"}`}>
                                                 {m.status === 'blocked' ? "Active" : "Suspend"}
@@ -2351,9 +2377,20 @@ const MembersTab = ({ members, fetchMembers, loading, search, setSearch, auth, n
                                                 </span>
                                             </td>
                                             <td className="px-6 py-5 text-right">
-                                                <div className="flex justify-end gap-2">
+                                                <div className="flex justify-end gap-2 flex-wrap">
                                                     {m.role !== 'Superuser' && m.member_id !== adminUser && (
                                                         <>
+                                                            {isSuper && m.role === 'Executive' && (
+                                                                <button
+                                                                    type="button"
+                                                                    disabled={isProcessing}
+                                                                    onClick={() => revokeExecutive(m._id, m.name)}
+                                                                    title="Revoke Executive — return to General and remove certificates"
+                                                                    className="text-xs font-bold uppercase tracking-widest px-3 py-1.5 rounded-lg transition-all text-purple-600 hover:bg-purple-50"
+                                                                >
+                                                                    <i className="fas fa-user-minus mr-1" /> Revoke
+                                                                </button>
+                                                            )}
                                                             <button onClick={() => toggleSuspend(m._id)}
                                                                 title={m.status === 'blocked' ? "Reactivate Membership" : "Suspend Membership"}
                                                                 className={`text-xs font-bold uppercase tracking-widest px-3 py-1.5 rounded-lg transition-all ${m.status === 'blocked' ? "text-emerald-500 hover:bg-emerald-50" : "text-amber-500 hover:bg-amber-50"}`}>
@@ -5724,6 +5761,7 @@ const AdminPortal = () => {
                             setLocationFilter={setMembersLocationFilter}
                             roleFilter={membersRoleFilter}
                             setRoleFilter={setMembersRoleFilter}
+                            isSuper={isSuper}
                         />
                     )}
                     {activeTab === "pending" && <ApprovalsTab pendingMembers={pendingMembers} executiveApps={isSuper ? executiveApps : []} fetchPendingMembers={fetchPendingMembers} loading={loading} auth={auth} notify={notify} Spinner={Spinner} api={api} isSuper={isSuper} />}
