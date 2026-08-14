@@ -1,4 +1,12 @@
 const nodemailer = require('nodemailer');
+const crypto = require('crypto');
+
+const mailFromAddress = () => String(process.env.EMAIL_FROM || process.env.EMAIL_USER || '').trim();
+const mailFromDomain = () => {
+  const addr = mailFromAddress();
+  const at = addr.lastIndexOf('@');
+  return at > 0 ? addr.slice(at + 1) : 'serveandlead.org';
+};
 
 const createTransporter = () => {
   if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
@@ -8,10 +16,12 @@ const createTransporter = () => {
     host: 'smtp.hostinger.com',
     port: 465,
     secure: true,
+    name: mailFromDomain(),
     auth: {
       user: process.env.EMAIL_USER,
       pass: process.env.EMAIL_PASS,
     },
+    tls: { minVersion: 'TLSv1.2' },
   });
 };
 
@@ -275,36 +285,33 @@ const sendInterviewFailedEmail = async (email, name, note) => {
 const sendOTPEmail = async (email, otp) => {
   try {
     const transporter = createTransporter();
+    const fromAddr = mailFromAddress();
+    const domain = mailFromDomain();
     const mailOptions = {
-        from: `"Serve & Lead Security" <${process.env.EMAIL_USER}>`,
+        from: { name: 'Serve and Lead Society', address: fromAddr },
         to: email,
-        replyTo: "serveandleadsociety@serveandlead.org",
-        subject: 'Your SLS Verification Code',
-        text: `Your SLS verification code is: ${otp}. It expires in 5 minutes.`,
+        replyTo: fromAddr,
+        subject: `${otp} is your Serve and Lead Society verification code`,
+        text:
+          `Hello,\n\n` +
+          `Your Serve and Lead Society verification code is ${otp}.\n\n` +
+          `This code expires in 5 minutes.\n\n` +
+          `If you did not request this code, you can ignore this email.\n\n` +
+          `Serve and Lead Society\nhttps://serveandlead.org\n`,
         html: `
-        <div style="font-family: 'Segoe UI', Arial, sans-serif; padding: 20px 10px; color: #1e293b; line-height: 1.6; background-color: #f8fafc;">
-            <div style="width: 100%; max-width: 500px; margin: 0 auto; background-color: #ffffff; border-radius: 32px; overflow: hidden; box-shadow: 0 30px 60px -12px rgba(0,0,0,0.1); border: 1px solid #e2e8f0;">
-                <div style="background-color: #002147; padding: 30px 20px; text-align: center;">
-                    <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: 900; letter-spacing: -0.03em;">Verify Your Identity</h1>
-                </div>
-                <div style="padding: 30px 20px;">
-                    <p style="font-size: 16px; color: #475569; text-align: center; margin-bottom: 40px;">To ensure this Gmail address is active and secure, please use the verification code below to complete your registration:</p>
-                    
-                    <div style="background: linear-gradient(to bottom, #f8fafc, #f1f5f9); border-radius: 20px; padding: 30px 20px; text-align: center; border: 2px dashed #cbd5e1; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);">
-                        <span style="font-size: 48px; font-weight: 900; color: #002147; letter-spacing: 0.3em; font-family: 'Courier New', Courier, monospace; text-shadow: 0 1px 0 #fff;">${otp}</span>
-                    </div>
-                    
-                    <p style="font-size: 13px; color: #94a3b8; text-align: center; margin-top: 40px; font-weight: 600;">
-                        Code expires in 5 minutes.
-                    </p>
-                    
-                    <p style="font-size: 11px; color: #cbd5e1; text-align: center; margin-top: 20px;">
-                        If you did not request this code, please ignore this communication.
-                    </p>
-                </div>
-            </div>
+        <div style="font-family: Arial, Helvetica, sans-serif; color: #0f172a; line-height: 1.5; max-width: 560px; margin: 0 auto; padding: 24px 16px;">
+          <p style="margin: 0 0 16px; font-size: 16px;">Hello,</p>
+          <p style="margin: 0 0 16px; font-size: 16px;">Your Serve and Lead Society verification code is:</p>
+          <p style="margin: 0 0 24px; font-size: 28px; font-weight: 700; letter-spacing: 6px; color: #002147;">${otp}</p>
+          <p style="margin: 0 0 16px; font-size: 14px; color: #334155;">This code expires in 5 minutes.</p>
+          <p style="margin: 0 0 24px; font-size: 13px; color: #64748b;">If you did not request this code, you can ignore this email.</p>
+          <p style="margin: 0; font-size: 12px; color: #94a3b8;">Serve and Lead Society<br/>https://serveandlead.org</p>
         </div>
         `,
+        headers: {
+          'Message-ID': `<otp.${Date.now()}.${crypto.randomBytes(6).toString('hex')}@${domain}>`,
+        },
+        date: new Date(),
     };
     await transporter.sendMail(mailOptions);
     return { success: true };

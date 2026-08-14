@@ -413,6 +413,9 @@ export default function RegisterPage() {
                            <label className="block text-xs font-bold text-emerald-500 uppercase tracking-widest mb-3 ml-2 group-focus-within:text-emerald-600 transition-colors flex items-center gap-2">
                              <i className="fas fa-paper-plane" /> 05B. Enter 6-Digit Code
                            </label>
+                           <p className="text-[11px] font-semibold text-slate-500 mb-3 ml-2">
+                             Code sent to your Gmail inbox from Serve and Lead Society. It is also in the email subject line.
+                           </p>
                            <input type="text" maxLength="6" name="otp" placeholder="XXXXXX" value={formData.otp} onChange={handleChange} className="w-full bg-emerald-50/50 border-2 border-emerald-100 rounded-[1.25rem] md:rounded-[1.5rem] px-5 py-4 md:px-6 md:py-5 text-center text-xl font-black text-emerald-700 tracking-[0.5em] shadow-inner focus:border-emerald-500 outline-none transition-all placeholder:text-emerald-200" />
                         </div>
                       )}
