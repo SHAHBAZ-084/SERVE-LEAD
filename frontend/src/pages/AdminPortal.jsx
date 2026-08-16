@@ -258,6 +258,7 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
     });
     const [submitting, setSubmitting] = useState(false);
     const [waLink, setWaLink] = useState("");
+    const [dsContact, setDsContact] = useState({ email: "", whatsapp: "" });
     const [tnc, setTnc] = useState("");
     const [footer, setFooter] = useState(
         Object.fromEntries(FOOTER_FIELDS.map(({ key }) => [key, FOOTER_DEFAULTS[key]]))
@@ -310,6 +311,10 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
             }
         });
         api.get("settings/whatsapp-link").then(r => setWaLink(r.data.link || ""));
+        api.get("settings/digital-solutions-contact").then(r => setDsContact({
+            email: r.data.email || "",
+            whatsapp: r.data.whatsapp || "",
+        })).catch(() => setDsContact({ email: "", whatsapp: "" }));
         api.get("settings/terms").then(r => setTnc(r.data.terms || ""));
     }, [api]);
 
@@ -373,6 +378,18 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
             await api.put("settings/whatsapp-link", { link: waLink }, auth);
             notify("WhatsApp link updated!");
         } catch { notify("Failed to update WhatsApp link", "error"); }
+        finally { setSubmitting(false); }
+    };
+
+    const saveDsContact = async () => {
+        setSubmitting(true);
+        try {
+            await api.put("settings/digital-solutions-contact", {
+                email: dsContact.email,
+                whatsapp: dsContact.whatsapp,
+            }, auth);
+            notify("Digital Solutions contact updated!");
+        } catch { notify("Failed to update Digital Solutions contact", "error"); }
         finally { setSubmitting(false); }
     };
 
@@ -683,6 +700,40 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
                                     <input type="text" placeholder="https://chat.whatsapp.com/..." value={waLink} onChange={e => setWaLink(e.target.value)} className={inputCls} />
                                     <button type="button" onClick={saveWaLink} disabled={submitting} className="px-6 py-3 bg-emerald-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-600 transition-all shadow-md disabled:opacity-50">
                                         Update
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Digital Solutions Contact */}
+                        <div className="flex flex-col items-start gap-6 pt-6 border-t border-slate-100">
+                            <div className="flex-1 w-full space-y-4">
+                                <h3 className="text-lg font-black text-slate-800 tracking-tight">Digital Solutions Contact</h3>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 block">Email</label>
+                                        <input
+                                            type="email"
+                                            placeholder="contact@asdigitalsolutions.com"
+                                            value={dsContact.email}
+                                            onChange={e => setDsContact({ ...dsContact, email: e.target.value })}
+                                            className={inputCls}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 block">WhatsApp Number</label>
+                                        <input
+                                            type="text"
+                                            placeholder="03XXXXXXXXX or +92..."
+                                            value={dsContact.whatsapp}
+                                            onChange={e => setDsContact({ ...dsContact, whatsapp: e.target.value })}
+                                            className={inputCls}
+                                        />
+                                    </div>
+                                </div>
+                                <div className="flex justify-end">
+                                    <button type="button" onClick={saveDsContact} disabled={submitting} className="px-6 py-3 bg-emerald-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-600 transition-all shadow-md disabled:opacity-50">
+                                        Save
                                     </button>
                                 </div>
                             </div>

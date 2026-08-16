@@ -5,6 +5,7 @@ const path = require('path');
 const fs = require('fs');
 const SystemSetting = require('../models/SystemSetting');
 const authMiddleware = require('../middlewares/authMiddleware');
+const { isAdmin } = require('../middlewares/adminMiddlewares');
 
 const FOOTER_DEFAULTS = {
   footer_email: 'serveandleadsociety@serveandlead.org',
@@ -137,6 +138,39 @@ router.put('/terms', authMiddleware, async (req, res) => {
     const { terms } = req.body;
     await SystemSetting.findOneAndUpdate({}, { termsAndConditions: terms }, { upsert: true });
     res.json({ message: "Terms updated successfully." });
+  } catch (error) {
+    res.status(500).json({ error: 'Server Error' });
+  }
+});
+
+// Digital Solutions contact (public GET / admin PUT)
+router.get('/digital-solutions-contact', async (req, res) => {
+  try {
+    const emailSetting = await SystemSetting.findOne({ key: 'digital_solutions_email' });
+    const whatsappSetting = await SystemSetting.findOne({ key: 'digital_solutions_whatsapp' });
+    res.json({
+      email: emailSetting?.value || '',
+      whatsapp: whatsappSetting?.value || '',
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Server Error' });
+  }
+});
+
+router.put('/digital-solutions-contact', authMiddleware, isAdmin, async (req, res) => {
+  try {
+    const { email, whatsapp } = req.body;
+    await SystemSetting.findOneAndUpdate(
+      { key: 'digital_solutions_email' },
+      { $set: { key: 'digital_solutions_email', value: String(email ?? '') } },
+      { upsert: true, new: true, runValidators: true }
+    );
+    await SystemSetting.findOneAndUpdate(
+      { key: 'digital_solutions_whatsapp' },
+      { $set: { key: 'digital_solutions_whatsapp', value: String(whatsapp ?? '') } },
+      { upsert: true, new: true, runValidators: true }
+    );
+    res.json({ message: 'Digital Solutions contact updated successfully.' });
   } catch (error) {
     res.status(500).json({ error: 'Server Error' });
   }
