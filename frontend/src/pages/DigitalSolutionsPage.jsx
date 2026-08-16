@@ -16,6 +16,7 @@ import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import api from "../api";
 import asHeroBanner from "../assets/digital-solutions/as-hero-banner.jpeg";
+import asLogo from "../assets/digital-solutions/as-logo.jpeg";
 
 const SERVICES = [
   {
@@ -209,25 +210,27 @@ export default function DigitalSolutionsPage() {
         </div>
       </section>
 
-      {/* CONTACT — emerald band, distinct from site contact card */}
-      <section id="contact" className="relative py-20 md:py-24 bg-emerald-600 overflow-hidden">
-        <div className="absolute inset-0 opacity-15 pointer-events-none">
+      {/* CONTACT — white theme with AS logo as background */}
+      <section id="contact" className="relative py-20 md:py-24 bg-white overflow-hidden border-t border-slate-100">
+        <div className="absolute inset-0 pointer-events-none">
           <img
-            src={asHeroBanner}
+            src={asLogo}
             alt=""
             aria-hidden="true"
-            className="w-full h-full object-cover mix-blend-luminosity"
+            className="absolute inset-0 w-full h-full object-cover object-center opacity-25"
           />
+          <div className="absolute inset-0 bg-white/80" />
+          <div className="absolute inset-0 bg-gradient-to-r from-white via-white/90 to-white/70" />
         </div>
         <div className="relative z-10 max-w-6xl mx-auto px-6 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-10">
           <div className="max-w-xl">
-            <p className="text-emerald-100 font-black tracking-[0.25em] uppercase text-[10px] mb-3">
+            <p className="text-emerald-600 font-black tracking-[0.25em] uppercase text-[10px] mb-3">
               Start a project
             </p>
-            <h2 className="text-3xl md:text-4xl font-black text-white tracking-tight mb-4">
+            <h2 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tight mb-4">
               Let&apos;s build something
             </h2>
-            <p className="text-emerald-50/90 text-base leading-relaxed font-medium">
+            <p className="text-slate-500 text-base leading-relaxed font-medium">
               Reach AS Digital Solutions by email or WhatsApp — we&apos;ll help turn your idea into a shipped product.
             </p>
           </div>
@@ -236,19 +239,19 @@ export default function DigitalSolutionsPage() {
             {contact.email ? (
               <a
                 href={`mailto:${contact.email}`}
-                className="inline-flex items-center justify-center gap-2 bg-white text-emerald-700 px-7 py-3.5 rounded-full text-xs font-black uppercase tracking-widest hover:bg-slate-900 hover:text-white transition-all duration-300 shadow-lg"
+                className="inline-flex items-center justify-center gap-2 bg-emerald-600 text-white px-7 py-3.5 rounded-full text-xs font-black uppercase tracking-widest hover:bg-slate-900 transition-all duration-300 shadow-lg shadow-emerald-600/20"
               >
                 <Mail className="w-4 h-4" /> Email
               </a>
             ) : (
-              <span className="text-emerald-100 text-sm font-medium self-center">Email coming soon</span>
+              <span className="text-slate-400 text-sm font-medium self-center">Email coming soon</span>
             )}
             {waDigits ? (
               <a
                 href={`https://wa.me/${waDigits}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center justify-center gap-2 border-2 border-white text-white px-7 py-3.5 rounded-full text-xs font-black uppercase tracking-widest hover:bg-white hover:text-emerald-700 transition-all duration-300"
+                className="inline-flex items-center justify-center gap-2 border-2 border-slate-900 text-slate-900 px-7 py-3.5 rounded-full text-xs font-black uppercase tracking-widest hover:bg-slate-900 hover:text-white transition-all duration-300 bg-white/80"
               >
                 <MessageCircle className="w-4 h-4" /> WhatsApp
               </a>
