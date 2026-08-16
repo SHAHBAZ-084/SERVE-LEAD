@@ -15,7 +15,7 @@ async function resolveIssuerId(preferredId) {
 }
 
 async function getActiveMembershipTemplate() {
-  return CertTemplate.findOne({ kind: 'membership', isActive: true });
+  return CertTemplate.findOne({ kind: 'membership', isActive: true, isDeleted: { $ne: true } });
 }
 
 /**

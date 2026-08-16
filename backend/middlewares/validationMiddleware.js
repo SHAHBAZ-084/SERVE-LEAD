@@ -18,6 +18,7 @@ const schemas = {
         password: Joi.string().min(6).required(),
         joining_year: Joi.number().integer().min(2000).max(new Date().getFullYear() + 1),
         father_name: Joi.string().max(50).optional().allow(''),
+        gender: Joi.string().valid('Male', 'Female').required(),
         whatsapp: Joi.string().pattern(/^[0-9+ ]+$/).max(20).optional().allow(''),
         education_level: Joi.string().optional().allow(''),
         applicant_type: Joi.string().valid('university', 'college', 'school', 'not_student').default('university'),

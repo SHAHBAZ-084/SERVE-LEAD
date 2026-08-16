@@ -11,6 +11,7 @@ import { inputCls, useCountUp, StatCard, Spinner, AdminModal } from "../componen
 import { FOOTER_DEFAULTS, FOOTER_FIELDS, parseFooterSettings } from "../constants/footerDefaults";
 import { ABOUT_DEFAULTS, ABOUT_FIELDS, parseAboutSettings } from "../constants/aboutDefaults";
 import { MEMBER_TYPE_FILTER_OPTIONS } from "../constants/pakistanCities";
+import { PROVINCES } from "../constants/pakistanLocations";
 import AdminLocationFilters, { DEFAULT_ADMIN_LOCATION_FILTER, ALL_TEHSILS_LABEL, appendLocationFilterParams, matchesAdminLocationFilter } from "../components/common/AdminLocationFilters";
 import PaymentManagementTab, { getFeeApprovalBadge, canApproveMemberFee, getInterviewBadge, needsInterviewResult, canRequestFee, canRequestFeeAgain, canDirectApprove, canSkipInterviewPath, getExecutiveInterviewBadge, getExecutiveFeeBadge, needsExecutiveInterviewResult, canWaiveExecutive, canFinalApproveExecutive } from "../components/admin/PaymentManagementTab";
 
@@ -259,6 +260,11 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
     const [submitting, setSubmitting] = useState(false);
     const [waLink, setWaLink] = useState("");
     const [dsContact, setDsContact] = useState({ email: "", whatsapp: "" });
+    const [waGroupsByProvince, setWaGroupsByProvince] = useState({});
+    const [waGroupsByGender, setWaGroupsByGender] = useState({ male: "", female: "", all: "" });
+    const [waGroupsByRole, setWaGroupsByRole] = useState({ general: "", executive: "" });
+    const [waRemoveTarget, setWaRemoveTarget] = useState(null);
+    const [waRemoving, setWaRemoving] = useState(false);
     const [tnc, setTnc] = useState("");
     const [footer, setFooter] = useState(
         Object.fromEntries(FOOTER_FIELDS.map(({ key }) => [key, FOOTER_DEFAULTS[key]]))
@@ -271,6 +277,24 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
     const [defaultFeeDeadlineDays, setDefaultFeeDeadlineDays] = useState("7");
     const [savingFee, setSavingFee] = useState(false);
 
+    const applyWaGroupsFromResponse = (data) => {
+        if (data?.groups && typeof data.groups === "object") {
+            setWaGroupsByProvince(data.groups);
+        }
+        if (data?.genderGroups && typeof data.genderGroups === "object") {
+            setWaGroupsByGender({
+                male: data.genderGroups.male || "",
+                female: data.genderGroups.female || "",
+                all: data.genderGroups.all || "",
+            });
+        }
+        if (data?.roleGroups && typeof data.roleGroups === "object") {
+            setWaGroupsByRole({
+                general: data.roleGroups.general || "",
+                executive: data.roleGroups.executive || "",
+            });
+        }
+    };
 
     // Admin Promotion State
     const [adminSearch, setAdminSearch] = useState("");
@@ -282,7 +306,19 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
                 try { setChannels(JSON.parse(r.data.donation_channels)); } catch { setChannels([]); }
             }
             if (r.data.team_structure) {
-                try { setTeamStructure(JSON.parse(r.data.team_structure)); } catch { setTeamStructure([]); }
+                try {
+                    const parsed = JSON.parse(r.data.team_structure);
+                    setTeamStructure(parsed.map((c, i) => ({
+                        ...c,
+                        order: c.order != null && c.order !== '' ? Number(c.order) : i + 1,
+                        members: (c.members || []).map((m, mi) => ({
+                            ...m,
+                            order: m.order != null && m.order !== '' ? Number(m.order) : mi + 1,
+                        })),
+                    })));
+                } catch {
+                    setTeamStructure([]);
+                }
             }
             if (r.data.board_of_executive) {
                 try { setBoardOfExecutive(JSON.parse(r.data.board_of_executive)); } catch { setBoardOfExecutive([]); }
@@ -309,8 +345,42 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
             if (r.data.membership_fee_channels) {
                 try { setFeeChannels(JSON.parse(r.data.membership_fee_channels)); } catch { setFeeChannels([]); }
             }
+            if (r.data.whatsapp_groups_by_province) {
+                try {
+                    const parsed = JSON.parse(r.data.whatsapp_groups_by_province);
+                    setWaGroupsByProvince(parsed && typeof parsed === "object" ? parsed : {});
+                } catch {
+                    setWaGroupsByProvince({});
+                }
+            }
+            if (r.data.whatsapp_groups_by_gender) {
+                try {
+                    const parsed = JSON.parse(r.data.whatsapp_groups_by_gender);
+                    setWaGroupsByGender({
+                        male: parsed?.male || "",
+                        female: parsed?.female || "",
+                        all: parsed?.all || "",
+                    });
+                } catch {
+                    setWaGroupsByGender({ male: "", female: "", all: "" });
+                }
+            }
+            if (r.data.whatsapp_groups_by_role) {
+                try {
+                    const parsed = JSON.parse(r.data.whatsapp_groups_by_role);
+                    setWaGroupsByRole({
+                        general: parsed?.general || "",
+                        executive: parsed?.executive || "",
+                    });
+                } catch {
+                    setWaGroupsByRole({ general: "", executive: "" });
+                }
+            }
         });
-        api.get("settings/whatsapp-link").then(r => setWaLink(r.data.link || ""));
+        api.get("settings/whatsapp-link").then(r => {
+            setWaLink(r.data.link || "");
+            applyWaGroupsFromResponse(r.data);
+        });
         api.get("settings/digital-solutions-contact").then(r => setDsContact({
             email: r.data.email || "",
             whatsapp: r.data.whatsapp || "",
@@ -334,6 +404,11 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
 
     const save = async (e) => {
         if (e) e.preventDefault();
+        const orderErr = validateTeamStructureOrders();
+        if (orderErr) {
+            notify(orderErr, 'error');
+            return;
+        }
         setSubmitting(true);
         try {
             const payload = {
@@ -351,7 +426,17 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
                 try { setChannels(JSON.parse(r.data.donation_channels)); } catch { /* keep current */ }
             }
             if (r.data.team_structure) {
-                try { setTeamStructure(JSON.parse(r.data.team_structure)); } catch { /* keep current */ }
+                try {
+                    const parsed = JSON.parse(r.data.team_structure);
+                    setTeamStructure(parsed.map((c, i) => ({
+                        ...c,
+                        order: c.order != null && c.order !== '' ? Number(c.order) : i + 1,
+                        members: (c.members || []).map((m, mi) => ({
+                            ...m,
+                            order: m.order != null && m.order !== '' ? Number(m.order) : mi + 1,
+                        })),
+                    })));
+                } catch { /* keep current */ }
             }
             if (r.data.board_of_executive) {
                 try { setBoardOfExecutive(JSON.parse(r.data.board_of_executive)); } catch { /* keep current */ }
@@ -375,8 +460,19 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
     const saveWaLink = async () => {
         setSubmitting(true);
         try {
-            await api.put("settings/whatsapp-link", { link: waLink }, auth);
-            notify("WhatsApp link updated!");
+            await api.put("settings/whatsapp-link", {
+                link: waLink,
+                groups: waGroupsByProvince,
+                genderGroups: waGroupsByGender,
+                roleGroups: waGroupsByRole,
+                whatsapp_groups_by_role: JSON.stringify(waGroupsByRole),
+            }, auth);
+            await api.put("settings", {
+                whatsapp_groups_by_province: JSON.stringify(waGroupsByProvince),
+                whatsapp_groups_by_gender: JSON.stringify(waGroupsByGender),
+                whatsapp_groups_by_role: JSON.stringify(waGroupsByRole),
+            }, auth);
+            notify("WhatsApp group links updated! Matching members see them on their profiles.");
         } catch { notify("Failed to update WhatsApp link", "error"); }
         finally { setSubmitting(false); }
     };
@@ -391,6 +487,24 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
             notify("Digital Solutions contact updated!");
         } catch { notify("Failed to update Digital Solutions contact", "error"); }
         finally { setSubmitting(false); }
+    };
+
+    const confirmWaRemove = async (mode) => {
+        if (!waRemoveTarget) return;
+        setWaRemoving(true);
+        try {
+            const r = await api.delete(
+                `settings/whatsapp-link/${encodeURIComponent(waRemoveTarget.groupKey)}`,
+                { ...auth, data: { mode } }
+            );
+            applyWaGroupsFromResponse(r.data);
+            notify(r.data.message || "WhatsApp group updated.");
+            setWaRemoveTarget(null);
+        } catch {
+            notify("Failed to remove WhatsApp group", "error");
+        } finally {
+            setWaRemoving(false);
+        }
     };
 
     const saveMembershipFee = async () => {
@@ -493,14 +607,91 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
 
     const updateChannel = (id, field, value) => setChannels(channels.map(c => c.id === id ? { ...c, [field]: value } : c));
     const removeChannel = (id) => setChannels(channels.filter(c => c.id !== id));
-    const addCategory = () => setTeamStructure([...teamStructure, { id: Date.now(), name: "N/A Category", members: [] }]);
+    const getNextCategoryOrder = () => {
+        const used = new Set(
+            teamStructure
+                .map((c) => Number(c.order))
+                .filter((n) => Number.isFinite(n) && n > 0)
+        );
+        let n = 1;
+        while (used.has(n)) n += 1;
+        return n;
+    };
+
+    const getNextMemberOrder = (cat) => {
+        const used = new Set(
+            (cat.members || [])
+                .map((m) => Number(m.order))
+                .filter((n) => Number.isFinite(n) && n > 0)
+        );
+        let n = 1;
+        while (used.has(n)) n += 1;
+        return n;
+    };
+
+    const validateTeamStructureOrders = () => {
+        if (teamStructure.length === 0) return null;
+        const orders = teamStructure.map((c) => Number(c.order));
+        if (orders.some((n) => !Number.isFinite(n) || n < 1)) {
+            return 'Each team category needs an order number (1 = top, e.g. President).';
+        }
+        if (orders.length !== new Set(orders).size) {
+            return 'Team hierarchy category order numbers must be unique — no duplicate positions.';
+        }
+        for (const cat of teamStructure) {
+            const members = cat.members || [];
+            if (members.length === 0) continue;
+            const memberOrders = members.map((m) => Number(m.order));
+            if (memberOrders.some((n) => !Number.isFinite(n) || n < 1)) {
+                return `Each member in "${cat.name}" needs an order number.`;
+            }
+            if (memberOrders.length !== new Set(memberOrders).size) {
+                return `Member order numbers in "${cat.name}" must be unique.`;
+            }
+        }
+        return null;
+    };
+
+    const addCategory = () => setTeamStructure([
+        ...teamStructure,
+        { id: Date.now(), name: "N/A Category", members: [], order: getNextCategoryOrder() },
+    ]);
     const updateCategory = (id, name) => setTeamStructure(teamStructure.map(c => c.id === id ? { ...c, name } : c));
+    const updateCategoryOrder = (id, rawValue) => {
+        const num = parseInt(String(rawValue), 10);
+        if (!Number.isFinite(num) || num < 1) {
+            setTeamStructure(teamStructure.map((c) => (c.id === id ? { ...c, order: '' } : c)));
+            return;
+        }
+        if (teamStructure.some((c) => c.id !== id && Number(c.order) === num)) {
+            notify(`Order #${num} is already assigned to another category.`, 'error');
+            return;
+        }
+        setTeamStructure(teamStructure.map((c) => (c.id === id ? { ...c, order: num } : c)));
+    };
     const removeCategory = (id) => setTeamStructure(teamStructure.filter(c => c.id !== id));
 
     const addMember = (catId) => {
         setTeamStructure(teamStructure.map(c => c.id === catId ? {
-            ...c, members: [...c.members, { id: Date.now(), name: "Full Name", role: "Role", program: "Program", desc: "Bio", img: "" }]
+            ...c, members: [...c.members, { id: Date.now(), name: "Full Name", role: "Role", program: "Program", desc: "Bio", img: "", order: getNextMemberOrder(c) }]
         } : c));
+    };
+
+    const updateMemberOrder = (catId, memberId, rawValue) => {
+        const cat = teamStructure.find((c) => c.id === catId);
+        if (!cat) return;
+        const num = parseInt(String(rawValue), 10);
+        if (!Number.isFinite(num) || num < 1) {
+            setTeamStructure(teamStructure.map((c) => c.id === catId ? {
+                ...c, members: c.members.map((m) => m.id === memberId ? { ...m, order: '' } : m)
+            } : c));
+            return;
+        }
+        if ((cat.members || []).some((m) => m.id !== memberId && Number(m.order) === num)) {
+            notify(`Order #${num} is already assigned to another member in this category.`, 'error');
+            return;
+        }
+        updateMember(catId, memberId, 'order', num);
     };
 
     const updateMember = (catId, memberId, field, value) => {
@@ -695,13 +886,122 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
                     <div className="p-8 md:p-10 border-t border-slate-100 bg-slate-50/30 space-y-8">
                         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
                             <div className="flex-1 w-full">
-                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 block">WhatsApp Group Link (For Success Screen)</label>
+                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 block">Default Society WhatsApp Group Link</label>
                                 <div className="flex gap-3">
                                     <input type="text" placeholder="https://chat.whatsapp.com/..." value={waLink} onChange={e => setWaLink(e.target.value)} className={inputCls} />
-                                    <button type="button" onClick={saveWaLink} disabled={submitting} className="px-6 py-3 bg-emerald-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-600 transition-all shadow-md disabled:opacity-50">
-                                        Update
-                                    </button>
                                 </div>
+                                <p className="text-[10px] text-slate-400 font-medium mt-2">Shown on every approved member profile. Gender, province, and role links appear in addition when they match.</p>
+                            </div>
+                        </div>
+
+                        <div className="space-y-4">
+                            <div>
+                                <h4 className="text-sm font-black text-slate-800 uppercase tracking-widest">Gender WhatsApp Groups</h4>
+                                <p className="text-[10px] text-slate-400 font-medium mt-1">Female link on female profiles only; Male on male profiles only; All Members on every profile (in addition to the default link).</p>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                {[
+                                    { key: "female", label: "Female" },
+                                    { key: "male", label: "Male" },
+                                    { key: "all", label: "All Members" },
+                                ].map(({ key, label }) => (
+                                    <div key={key}>
+                                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 block">{label}</label>
+                                        <div className="flex gap-2">
+                                            <input
+                                                type="text"
+                                                placeholder="https://chat.whatsapp.com/..."
+                                                value={waGroupsByGender[key] || ""}
+                                                onChange={(e) => setWaGroupsByGender((prev) => ({ ...prev, [key]: e.target.value }))}
+                                                className={inputCls}
+                                            />
+                                            {waGroupsByGender[key] ? (
+                                                <button
+                                                    type="button"
+                                                    title="Remove"
+                                                    onClick={() => setWaRemoveTarget({ groupKey: `gender:${key}`, label: `${label} WhatsApp Group` })}
+                                                    className="px-3 rounded-lg bg-rose-50 text-rose-600 border border-rose-100 hover:bg-rose-100 shrink-0"
+                                                >
+                                                    <i className="fas fa-trash-alt text-xs" />
+                                                </button>
+                                            ) : null}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="space-y-4">
+                            <div>
+                                <h4 className="text-sm font-black text-slate-800 uppercase tracking-widest">Role WhatsApp Groups</h4>
+                                <p className="text-[10px] text-slate-400 font-medium mt-1">General link on General member profiles only; Executive on Executive profiles only (in addition to the default link).</p>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {[
+                                    { key: "general", label: "General" },
+                                    { key: "executive", label: "Executive" },
+                                ].map(({ key, label }) => (
+                                    <div key={key}>
+                                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 block">{label}</label>
+                                        <div className="flex gap-2">
+                                            <input
+                                                type="text"
+                                                placeholder="https://chat.whatsapp.com/..."
+                                                value={waGroupsByRole[key] || ""}
+                                                onChange={(e) => setWaGroupsByRole((prev) => ({ ...prev, [key]: e.target.value }))}
+                                                className={inputCls}
+                                            />
+                                            {waGroupsByRole[key] ? (
+                                                <button
+                                                    type="button"
+                                                    title="Remove"
+                                                    onClick={() => setWaRemoveTarget({ groupKey: `role:${key}`, label: `${label} WhatsApp Group` })}
+                                                    className="px-3 rounded-lg bg-rose-50 text-rose-600 border border-rose-100 hover:bg-rose-100 shrink-0"
+                                                >
+                                                    <i className="fas fa-trash-alt text-xs" />
+                                                </button>
+                                            ) : null}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="space-y-4">
+                            <div>
+                                <h4 className="text-sm font-black text-slate-800 uppercase tracking-widest">Province WhatsApp Groups</h4>
+                                <p className="text-[10px] text-slate-400 font-medium mt-1">Province link goes to all candidates in that province (male and female).</p>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-80 overflow-y-auto pr-1">
+                                {PROVINCES.map((province) => (
+                                    <div key={province}>
+                                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 block">{province}</label>
+                                        <div className="flex gap-2">
+                                            <input
+                                                type="text"
+                                                placeholder="https://chat.whatsapp.com/..."
+                                                value={waGroupsByProvince[province] || ""}
+                                                onChange={(e) => setWaGroupsByProvince((prev) => ({ ...prev, [province]: e.target.value }))}
+                                                className={inputCls}
+                                            />
+                                            {waGroupsByProvince[province] ? (
+                                                <button
+                                                    type="button"
+                                                    title="Remove"
+                                                    onClick={() => setWaRemoveTarget({ groupKey: `province:${province}`, label: `${province} WhatsApp Group` })}
+                                                    className="px-3 rounded-lg bg-rose-50 text-rose-600 border border-rose-100 hover:bg-rose-100 shrink-0"
+                                                >
+                                                    <i className="fas fa-trash-alt text-xs" />
+                                                </button>
+                                            ) : null}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                            <div className="flex justify-end">
+                                <button type="button" onClick={saveWaLink} disabled={submitting} className="px-6 py-3 bg-emerald-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-600 transition-all shadow-md disabled:opacity-50">
+                                    Update WhatsApp Links
+                                </button>
                             </div>
                         </div>
 
@@ -836,7 +1136,7 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
                                     </div>
                                     <div>
                                         <h3 className="text-2xl font-black text-slate-800 tracking-tight uppercase">Team Hierarchy</h3>
-                                        <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mt-1">Society Chapters & Core Members</p>
+                                        <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mt-1">Category order + member order inside each category — numbers must be unique</p>
                                     </div>
                                 </div>
                                 <button type="button" onClick={addCategory} className="px-5 py-2.5 bg-purple-50 text-purple-600 rounded-xl text-[10px] font-black uppercase tracking-widest border border-purple-100 hover:bg-purple-100 transition-all">
@@ -845,17 +1145,33 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
                             </div>
 
                             <div className="space-y-10">
-                                {teamStructure.map((cat) => (
+                                {[...teamStructure]
+                                    .sort((a, b) => (Number(a.order) || 9999) - (Number(b.order) || 9999))
+                                    .map((cat) => (
                                     <div key={cat.id} className="space-y-6">
-                                        <div className="flex items-center gap-4 border-b border-slate-100 pb-3">
+                                        <div className="flex flex-wrap items-center gap-3 sm:gap-4 border-b border-slate-100 pb-3">
+                                            <div className="flex items-center gap-2">
+                                                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Order</label>
+                                                <input
+                                                    type="number"
+                                                    min={1}
+                                                    placeholder="#"
+                                                    value={cat.order ?? ''}
+                                                    onChange={(e) => updateCategoryOrder(cat.id, e.target.value)}
+                                                    className="w-16 text-xs font-bold p-2 rounded-xl border border-purple-100 text-purple-700 bg-purple-50/50 text-center"
+                                                    title="Display position (1 = first)"
+                                                />
+                                            </div>
                                             <input type="text" value={cat.name} onChange={e => updateCategory(cat.id, e.target.value)}
-                                                className="text-xs font-black text-slate-400 hover:text-purple-600 transition-colors uppercase tracking-[0.2em] bg-transparent border-none focus:ring-0 p-0" />
+                                                className="flex-1 min-w-[140px] text-xs font-black text-slate-400 hover:text-purple-600 transition-colors uppercase tracking-[0.2em] bg-transparent border-none focus:ring-0 p-0" />
                                             <button type="button" onClick={() => addMember(cat.id)} className="ml-auto text-[10px] font-black uppercase text-purple-600 hover:underline">Add Member</button>
                                             <button type="button" onClick={() => removeCategory(cat.id)} className="text-slate-200 hover:text-rose-500 transition-colors p-1"><i className="fas fa-trash-alt text-xs" /></button>
                                         </div>
 
                                         <div className="grid grid-cols-1 gap-4">
-                                            {cat.members.map((m) => (
+                                            {[...(cat.members || [])]
+                                                .sort((a, b) => (Number(a.order) || 9999) - (Number(b.order) || 9999))
+                                                .map((m) => (
                                                 <div key={m.id} className="p-4 sm:p-5 bg-slate-50/50 rounded-2xl border border-slate-100 relative group flex flex-col sm:flex-row gap-5 sm:gap-6 items-center">
                                                     <button type="button" onClick={() => removeMember(cat.id, m.id)} className="absolute top-2 right-2 text-slate-200 hover:text-rose-500 p-2"><i className="fas fa-times" /></button>
 
@@ -872,10 +1188,22 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
                                                     </div>
 
                                                     <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-3 w-full">
+                                                        <div className="flex items-center gap-2">
+                                                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest shrink-0">Order</label>
+                                                            <input
+                                                                type="number"
+                                                                min={1}
+                                                                placeholder="#"
+                                                                value={m.order ?? ''}
+                                                                onChange={(e) => updateMemberOrder(cat.id, m.id, e.target.value)}
+                                                                className="w-16 text-xs font-bold p-2.5 rounded-xl border border-purple-100 text-purple-700 bg-purple-50/50 text-center"
+                                                                title="Display position inside this category"
+                                                            />
+                                                        </div>
                                                         <input type="text" placeholder="Full Name" value={m.name} onChange={e => updateMember(cat.id, m.id, 'name', e.target.value)} className="w-full text-xs p-2.5 rounded-xl border border-slate-200" />
                                                         <input type="text" placeholder="Designation" value={m.role} onChange={e => updateMember(cat.id, m.id, 'role', e.target.value)} className="w-full text-xs p-2.5 rounded-xl border border-slate-200" />
                                                         <input type="text" placeholder="Program/Field" value={m.program} onChange={e => updateMember(cat.id, m.id, 'program', e.target.value)} className="w-full text-xs p-2.5 rounded-xl border border-slate-200" />
-                                                        <textarea placeholder="Bio description..." rows={1} value={m.desc} onChange={e => updateMember(cat.id, m.id, 'desc', e.target.value)} className="w-full text-xs p-2.5 rounded-xl border border-slate-200 resize-none" />
+                                                        <textarea placeholder="Bio description..." rows={1} value={m.desc} onChange={e => updateMember(cat.id, m.id, 'desc', e.target.value)} className="w-full text-xs p-2.5 rounded-xl border border-slate-200 resize-none sm:col-span-2" />
                                                     </div>
                                                 </div>
                                             ))}
@@ -1114,6 +1442,40 @@ const CustomizationTabComponent = ({ auth, notify, getImgUrl, inputCls, api, mem
                     Apply All Changes
                 </button>
             </div>
+
+            <AdminModal open={!!waRemoveTarget} onClose={() => setWaRemoveTarget(null)} maxWidth="max-w-md">
+                <div className="p-8 space-y-4">
+                    <h3 className="text-lg font-black text-slate-900 uppercase">Remove WhatsApp Group</h3>
+                    <p className="text-sm text-slate-500">
+                        Remove <strong>{waRemoveTarget?.label}</strong> from settings?
+                    </p>
+                    <div className="flex flex-col gap-2">
+                        <button
+                            type="button"
+                            disabled={waRemoving}
+                            onClick={() => confirmWaRemove("remove_now")}
+                            className="w-full py-3 bg-rose-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest disabled:opacity-50"
+                        >
+                            Remove now (members lose access immediately)
+                        </button>
+                        <button
+                            type="button"
+                            disabled={waRemoving}
+                            onClick={() => confirmWaRemove("keep_existing")}
+                            className="w-full py-3 bg-[#002147] text-white rounded-xl text-[10px] font-black uppercase tracking-widest disabled:opacity-50"
+                        >
+                            Keep for members who already have it
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setWaRemoveTarget(null)}
+                            className="w-full py-3 border border-slate-200 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-500"
+                        >
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            </AdminModal>
         </div>
     );
 };
@@ -1142,6 +1504,7 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
     const [previewUrl, setPreviewUrl] = useState(null);
     const [previewPayload, setPreviewPayload] = useState(null);
     const [previewLoading, setPreviewLoading] = useState(false);
+    const [bulkSkipDetails, setBulkSkipDetails] = useState(null);
 
     const [form, setForm] = useState({
         memberId: "",
@@ -1249,10 +1612,18 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
                 eventId: form.eventId || undefined,
             }), auth);
             notify(`Issued ${r.data.count} certificate(s) to members.`);
+            if (r.data.skippedCount > 0) {
+                notify(`${r.data.skippedCount} selected member(s) were skipped.`, "error");
+                setBulkSkipDetails(r.data.skippedDetails || []);
+            }
             setShowForm(false);
             resetForm();
             fetchCertificates();
         } catch (err) {
+            const skipped = err.response?.data?.skippedDetails;
+            if (Array.isArray(skipped) && skipped.length > 0) {
+                setBulkSkipDetails(skipped);
+            }
             notify(err.response?.data?.error || "Failed to bulk issue certificates", "error");
         } finally {
             setSubmitting(false);
@@ -1773,6 +2144,30 @@ const CertificatesTab = ({ auth, notify, api, members, events }) => {
                 )}
             </div>
 
+            <AdminModal open={!!bulkSkipDetails} onClose={() => setBulkSkipDetails(null)} maxWidth="max-w-md">
+                <div className="p-8 space-y-4">
+                    <h3 className="text-lg font-black text-slate-900 uppercase">Some members were skipped</h3>
+                    <p className="text-sm text-slate-500">
+                        {bulkSkipDetails?.length || 0} selected member(s) did not receive a certificate.
+                    </p>
+                    <ul className="max-h-56 overflow-y-auto divide-y divide-slate-100 border border-slate-100 rounded-xl">
+                        {(bulkSkipDetails || []).map((row, i) => (
+                            <li key={`${row.name}-${i}`} className="px-4 py-2.5 flex justify-between gap-3 text-sm">
+                                <span className="font-bold text-slate-800">{row.name}</span>
+                                <span className="text-[10px] font-black uppercase tracking-widest text-rose-600 shrink-0">{row.reason}</span>
+                            </li>
+                        ))}
+                    </ul>
+                    <button
+                        type="button"
+                        onClick={() => setBulkSkipDetails(null)}
+                        className="w-full py-3 bg-[#002147] text-white rounded-xl text-[10px] font-black uppercase tracking-widest"
+                    >
+                        Close
+                    </button>
+                </div>
+            </AdminModal>
+
             {showPreview && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4">
                     <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => { setShowPreview(false); setPreviewUrl(null); }} />
@@ -1943,7 +2338,7 @@ const DossierView = ({ memberId, members, onBack }) => {
 // ── Settings Tab (SELF-MANAGEMENT) ───────────────────────
 
 // ── Members Tab (Moved Outside to fix Search Strokes) ────────
-const MembersTab = ({ members, fetchMembers, loading, search, setSearch, auth, notify, Spinner, adminUser, api, inputCls, page, setPage, totalPages, locationFilter, setLocationFilter, roleFilter, setRoleFilter }) => {
+const MembersTab = ({ members, fetchMembers, loading, search, setSearch, auth, notify, Spinner, adminUser, api, inputCls, page, setPage, totalPages, locationFilter, setLocationFilter, roleFilter, setRoleFilter, isSuper }) => {
     const [selectedIds, setSelectedIds] = useState([]);
     const [isProcessing, setIsProcessing] = useState(false);
     const [bulkMode, setBulkMode] = useState(false);
@@ -1973,6 +2368,22 @@ const MembersTab = ({ members, fetchMembers, loading, search, setSearch, auth, n
             notify(res.data.message);
         } catch (err) {
             notify(err.response?.data?.error || "Failed to update member status", "error");
+        }
+    };
+
+    const revokeExecutive = async (memberDbId, name) => {
+        if (!window.confirm(
+            `Revoke Executive status for ${name}?\n\nThey will return to General Member. All certificates and executive application data will be permanently removed.`
+        )) return;
+        setIsProcessing(true);
+        try {
+            const res = await api.patch(`admin/members/${memberDbId}/revoke-executive`, {}, auth);
+            fetchMembers();
+            notify(res.data.message || "Executive status revoked.");
+        } catch (err) {
+            notify(err.response?.data?.error || "Failed to revoke executive status", "error");
+        } finally {
+            setIsProcessing(false);
         }
     };
 
@@ -2074,9 +2485,19 @@ const MembersTab = ({ members, fetchMembers, loading, search, setSearch, auth, n
                                     </div>
                                 </div>
 
-                                <div className="flex gap-2">
+                                <div className="flex gap-2 flex-wrap">
                                     {m.role !== 'Superuser' && m.member_id !== adminUser && (
                                         <>
+                                            {isSuper && m.role === 'Executive' && (
+                                                <button
+                                                    type="button"
+                                                    disabled={isProcessing}
+                                                    onClick={() => revokeExecutive(m._id, m.name)}
+                                                    className="flex-1 min-w-[40%] text-[9px] font-black uppercase tracking-widest py-2 rounded-lg transition-all border bg-purple-50 text-purple-700 border-purple-100"
+                                                >
+                                                    Revoke Executive
+                                                </button>
+                                            )}
                                             <button onClick={() => toggleSuspend(m._id)}
                                                 className={`flex-1 text-[9px] font-black uppercase tracking-widest py-2 rounded-lg transition-all border ${m.status === 'blocked' ? "bg-emerald-50 text-emerald-600 border-emerald-100" : "bg-amber-50 text-amber-600 border-amber-100"}`}>
                                                 {m.status === 'blocked' ? "Active" : "Suspend"}
@@ -2139,9 +2560,20 @@ const MembersTab = ({ members, fetchMembers, loading, search, setSearch, auth, n
                                                 </span>
                                             </td>
                                             <td className="px-6 py-5 text-right">
-                                                <div className="flex justify-end gap-2">
+                                                <div className="flex justify-end gap-2 flex-wrap">
                                                     {m.role !== 'Superuser' && m.member_id !== adminUser && (
                                                         <>
+                                                            {isSuper && m.role === 'Executive' && (
+                                                                <button
+                                                                    type="button"
+                                                                    disabled={isProcessing}
+                                                                    onClick={() => revokeExecutive(m._id, m.name)}
+                                                                    title="Revoke Executive — return to General and remove certificates"
+                                                                    className="text-xs font-bold uppercase tracking-widest px-3 py-1.5 rounded-lg transition-all text-purple-600 hover:bg-purple-50"
+                                                                >
+                                                                    <i className="fas fa-user-minus mr-1" /> Revoke
+                                                                </button>
+                                                            )}
                                                             <button onClick={() => toggleSuspend(m._id)}
                                                                 title={m.status === 'blocked' ? "Reactivate Membership" : "Suspend Membership"}
                                                                 className={`text-xs font-bold uppercase tracking-widest px-3 py-1.5 rounded-lg transition-all ${m.status === 'blocked' ? "text-emerald-500 hover:bg-emerald-50" : "text-amber-500 hover:bg-amber-50"}`}>
@@ -3070,6 +3502,12 @@ const ApprovalsTab = ({ pendingMembers, executiveApps, fetchPendingMembers, load
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
                                 {[
+                                    ["CNIC / B-Form", viewExecApp.cnic_number || viewExecApp.memberId?.cnic_number || "—"],
+                                    ["LinkedIn", viewExecApp.linkedin_url || "—"],
+                                    ["Email", viewExecApp.memberId?.email || "—"],
+                                    ["WhatsApp", viewExecApp.memberId?.whatsapp || "—"],
+                                    ["Gender", viewExecApp.memberId?.gender || "—"],
+                                    ["Province", viewExecApp.memberId?.province || "—"],
                                     ["Mission Statement", viewExecApp.mission_statement],
                                     ["Short-Term Goals", viewExecApp.short_term_goals],
                                     ["Long-Term Goals", viewExecApp.long_term_goals],
@@ -3442,6 +3880,7 @@ const ApprovalsTab = ({ pendingMembers, executiveApps, fetchPendingMembers, load
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                 <DetailItem label="Full Name" value={viewMember.name} icon="fa-user" />
                                 <DetailItem label="Father Name" value={viewMember.father_name} icon="fa-user-friends" />
+                                <DetailItem label="Gender" value={viewMember.gender || "—"} icon="fa-venus-mars" />
                                 <DetailItem label="Email Address" value={viewMember.email} icon="fa-envelope" />
                                 <DetailItem label="WhatsApp Number" value={viewMember.whatsapp} icon="fa-phone" />
                                 <DetailItem label="University" value={viewMember.university} icon="fa-university" />
@@ -5102,6 +5541,27 @@ const BlogsTab = ({ blogs, fetchBlogs, api, auth, notify, getImgUrl, inputCls })
                                         </td>
                                         <td className="px-8 py-6 text-right">
                                             <div className="flex justify-end gap-2">
+                                                <button
+                                                    type="button"
+                                                    title="Copy link / share on WhatsApp"
+                                                    onClick={async () => {
+                                                        const url = `${window.location.origin}/blogs/${blog._id}`;
+                                                        try {
+                                                            await navigator.clipboard.writeText(url);
+                                                            notify?.("Blog link copied — opening WhatsApp share");
+                                                        } catch {
+                                                            notify?.("Opening WhatsApp share with blog link");
+                                                        }
+                                                        window.open(
+                                                            `https://wa.me/?text=${encodeURIComponent((blog.title || "Blog") + "\n" + url)}`,
+                                                            "_blank",
+                                                            "noopener,noreferrer"
+                                                        );
+                                                    }}
+                                                    className="w-9 h-9 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center hover:bg-emerald-500 hover:text-white transition-all shadow-sm"
+                                                >
+                                                    <i className="fas fa-share-nodes" />
+                                                </button>
                                                 <button onClick={() => startEdit(blog)} className="w-9 h-9 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center hover:bg-[#002147] hover:text-white transition-all shadow-sm">
                                                     <i className="fas fa-edit" />
                                                 </button>
@@ -5484,6 +5944,7 @@ const AdminPortal = () => {
                             setLocationFilter={setMembersLocationFilter}
                             roleFilter={membersRoleFilter}
                             setRoleFilter={setMembersRoleFilter}
+                            isSuper={isSuper}
                         />
                     )}
                     {activeTab === "pending" && <ApprovalsTab pendingMembers={pendingMembers} executiveApps={isSuper ? executiveApps : []} fetchPendingMembers={fetchPendingMembers} loading={loading} auth={auth} notify={notify} Spinner={Spinner} api={api} isSuper={isSuper} />}

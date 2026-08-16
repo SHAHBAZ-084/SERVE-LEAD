@@ -280,7 +280,7 @@ const sendOTPEmail = async (email, otp) => {
         to: email,
         replyTo: "serveandleadsociety@serveandlead.org",
         subject: 'Your SLS Verification Code',
-        text: `Your SLS verification code is: ${otp}. It expires in 5 minutes.`,
+        text: `Your SLS verification code is: ${otp}. It expires in 15 minutes.`,
         html: `
         <div style="font-family: 'Segoe UI', Arial, sans-serif; padding: 20px 10px; color: #1e293b; line-height: 1.6; background-color: #f8fafc;">
             <div style="width: 100%; max-width: 500px; margin: 0 auto; background-color: #ffffff; border-radius: 32px; overflow: hidden; box-shadow: 0 30px 60px -12px rgba(0,0,0,0.1); border: 1px solid #e2e8f0;">
@@ -295,7 +295,7 @@ const sendOTPEmail = async (email, otp) => {
                     </div>
                     
                     <p style="font-size: 13px; color: #94a3b8; text-align: center; margin-top: 40px; font-weight: 600;">
-                        Code expires in 5 minutes.
+                        Code expires in 15 minutes.
                     </p>
                     
                     <p style="font-size: 11px; color: #cbd5e1; text-align: center; margin-top: 20px;">
@@ -366,7 +366,7 @@ const sendFeeRequestedEmail = async (email, name, amount, channels, deadline, va
     const portalUrl = `${process.env.FRONTEND_URL || 'https://serveandlead.org'}/login?redirect=${encodeURIComponent('/dashboard?fee=submit')}`;
     const channelsHtml = formatChannelsHtml(channels);
     const deadlineText = deadline
-      ? new Date(deadline).toLocaleString('en-PK', { dateStyle: 'full', timeStyle: 'short' })
+      ? new Date(deadline).toLocaleDateString('en-PK', { dateStyle: 'full' })
       : 'As communicated by administration';
     const messageBlock = adminMessage
       ? `<div style="background:#f0f9ff;border-left:4px solid #0284c7;padding:16px;border-radius:8px;margin:20px 0;"><p style="margin:0;color:#0c4a6e;"><strong>Message from administration:</strong> ${adminMessage}</p></div>`
@@ -385,7 +385,7 @@ const sendFeeRequestedEmail = async (email, name, amount, channels, deadline, va
       to: email,
       replyTo: 'serveandleadsociety@serveandlead.org',
       subject: isRetry ? 'Updated Membership Fee Required' : 'Action Required: Membership Fee Payment',
-      text: `Dear ${name}, membership fee PKR ${amount} due by ${deadlineText}. Membership valid for ${validityMonths} months. Submit proof: ${portalUrl}`,
+      text: `Dear ${name}, membership fee PKR ${amount} due by end of ${deadlineText}. Membership valid for ${validityMonths} months. Submit proof: ${portalUrl}`,
       html: emailShell(isRetry ? 'Updated Fee Required' : 'Membership Fee Required', `
         <h2 style="color:#0f172a;margin-top:0;">Dear ${name},</h2>
         <p style="font-size:16px;color:#475569;">${intro}</p>
@@ -394,7 +394,7 @@ const sendFeeRequestedEmail = async (email, name, amount, channels, deadline, va
           <p style="margin:0 0 8px;color:#64748b;font-size:13px;text-transform:uppercase;letter-spacing:0.08em;font-weight:700;">${isRetry ? 'Revised Fee Amount' : 'Fee Amount'}</p>
           <p style="margin:0;font-size:28px;font-weight:900;color:#002147;">PKR ${amount}</p>
           <p style="margin:12px 0 0;color:#475569;font-size:14px;"><strong>Membership duration:</strong> ${validityMonths} month${validityMonths === 1 ? '' : 's'} from approval</p>
-          <p style="margin:8px 0 0;color:#92400e;font-size:14px;font-weight:700;"><strong>Payment deadline:</strong> ${deadlineText}</p>
+          <p style="margin:8px 0 0;color:#92400e;font-size:14px;font-weight:700;"><strong>Payment deadline:</strong> by end of ${deadlineText}</p>
         </div>
         ${messageBlock}
         <h3 style="color:#002147;font-size:14px;text-transform:uppercase;letter-spacing:0.1em;">Payment Channels</h3>

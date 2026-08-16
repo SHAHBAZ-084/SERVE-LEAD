@@ -6,11 +6,12 @@ const https = require('https');
 const http = require('http');
 const { GetObjectCommand, S3Client } = require('@aws-sdk/client-s3');
 const CertTemplate = require('../models/CertTemplate');
+const Certificate = require('../models/Certificate');
 const Member = require('../models/Member');
 const authMiddleware = require('../middlewares/authMiddleware');
 const { isAdmin } = require('../middlewares/adminMiddlewares');
 const { detectZones, mergeZonesWithDefaults } = require('../utils/certZoneDetector');
-const { createUpload, getFileUrl, deleteFile } = require('../utils/storage');
+const { createUpload, getFileUrl } = require('../utils/storage');
 
 const upload = createUpload('cert-templates', 15 * 1024 * 1024);
 
@@ -131,19 +132,20 @@ router.post('/upload', authMiddleware, isAdmin, uploadMiddleware, async (req, re
 });
 
 async function enforceSingleActivePerKind() {
-  const membershipActives = await CertTemplate.find({ kind: 'membership', isActive: true })
+  const membershipActives = await CertTemplate.find({ kind: 'membership', isActive: true, isDeleted: { $ne: true } })
     .sort({ uploadedAt: -1 })
     .select('_id');
   if (membershipActives.length > 1) {
     const keep = membershipActives[0]._id;
     await CertTemplate.updateMany(
-      { kind: 'membership', isActive: true, _id: { $ne: keep } },
+      { kind: 'membership', isActive: true, _id: { $ne: keep }, isDeleted: { $ne: true } },
       { $set: { isActive: false } }
     );
   }
 
   const generalActives = await CertTemplate.find({
     isActive: true,
+    isDeleted: { $ne: true },
     $or: [{ kind: 'general' }, { kind: { $exists: false } }, { kind: null }],
   })
     .sort({ uploadedAt: -1 })
@@ -153,6 +155,7 @@ async function enforceSingleActivePerKind() {
     await CertTemplate.updateMany(
       {
         isActive: true,
+        isDeleted: { $ne: true },
         _id: { $ne: keep },
         $or: [{ kind: 'general' }, { kind: { $exists: false } }, { kind: null }],
       },
@@ -165,7 +168,7 @@ async function enforceSingleActivePerKind() {
 router.get('/', authMiddleware, isAdmin, async (req, res) => {
   try {
     await enforceSingleActivePerKind();
-    const templates = await CertTemplate.find()
+    const templates = await CertTemplate.find({ isDeleted: { $ne: true } })
       .sort({ kind: 1, isActive: -1, uploadedAt: -1 })
       .select('name fileUrl isActive calibrated uploadedAt kind');
     return res.json(templates);
@@ -184,7 +187,7 @@ router.get('/active-config', authMiddleware, async (req, res) => {
       return res.status(403).json({ error: 'Certificate not available. Membership not approved.' });
     }
 
-    const template = await CertTemplate.findOne({ isActive: true, kind: 'membership' });
+    const template = await CertTemplate.findOne({ isActive: true, kind: 'membership', isDeleted: { $ne: true } });
     if (!template) {
       return res.status(404).json({ error: 'No membership certificate posted yet. Contact admin.' });
     }
@@ -234,6 +237,7 @@ router.get('/:id/image', authMiddleware, async (req, res) => {
     const isAdminUser = req.user && (req.user.role === 'Admin' || req.user.role === 'Superuser');
     if (!isAdminUser && !doc.isActive) {
       // Members may download templates tied to certificates issued to them
+      // (including soft-deleted templates so issued certs stay downloadable)
       const Certificate = require('../models/Certificate');
       const owns = await Certificate.exists({
         memberId: req.user.memberId || req.user.id,
@@ -272,18 +276,22 @@ router.put('/:id/activate', authMiddleware, isAdmin, async (req, res) => {
     const id = req.params.id;
     const exists = await CertTemplate.findById(id);
     if (!exists) return res.status(404).json({ error: 'Template not found.' });
+    if (exists.isDeleted) {
+      return res.status(400).json({ error: 'Cannot activate a removed template.' });
+    }
 
     const kind = exists.kind === 'membership' ? 'membership' : 'general';
 
     // Deactivate every peer of this kind (include legacy docs with missing kind as "general")
     if (kind === 'membership') {
       await CertTemplate.updateMany(
-        { kind: 'membership' },
+        { kind: 'membership', isDeleted: { $ne: true } },
         { $set: { isActive: false } }
       );
     } else {
       await CertTemplate.updateMany(
         {
+          isDeleted: { $ne: true },
           $or: [
             { kind: 'general' },
             { kind: { $exists: false } },
@@ -303,13 +311,14 @@ router.put('/:id/activate', authMiddleware, isAdmin, async (req, res) => {
     // Hard guarantee: only this template is active for its kind
     if (kind === 'membership') {
       await CertTemplate.updateMany(
-        { kind: 'membership', _id: { $ne: doc._id } },
+        { kind: 'membership', _id: { $ne: doc._id }, isDeleted: { $ne: true } },
         { $set: { isActive: false } }
       );
     } else {
       await CertTemplate.updateMany(
         {
           _id: { $ne: doc._id },
+          isDeleted: { $ne: true },
           $or: [{ kind: 'general' }, { kind: { $exists: false } }, { kind: null }],
         },
         { $set: { isActive: false, kind: 'general' } }
@@ -371,18 +380,41 @@ router.put('/:id/zones', authMiddleware, isAdmin, async (req, res) => {
   }
 });
 
-// DELETE /api/cert-templates/:id
+// DELETE /api/cert-templates/:id — 409 confirm if active/referenced; ?mode=soft|hard on retry
 router.delete('/:id', authMiddleware, isAdmin, async (req, res) => {
   try {
     const doc = await CertTemplate.findById(req.params.id);
     if (!doc) return res.status(404).json({ error: 'Template not found.' });
-    if (doc.isActive) {
-      return res.status(400).json({ error: 'Deactivate this template before deleting.' });
+    if (doc.isDeleted && req.query.mode !== 'hard') {
+      return res.json({ message: 'Template removed from list. Issued certificates remain downloadable.' });
     }
 
-    await deleteFile(doc.fileUrl);
-    await CertTemplate.findByIdAndDelete(req.params.id);
-    return res.json({ message: 'Deleted' });
+    const mode = String(req.query.mode || '').toLowerCase();
+    const isActive = !!(doc.isActive || doc.status === 'active' || doc.active);
+    const referenced = await Certificate.exists({ certTemplateId: doc._id });
+
+    if (mode !== 'soft' && mode !== 'hard') {
+      if (isActive || referenced) {
+        return res.status(409).json({
+          needsConfirmation: true,
+          isActive,
+          referenced: !!referenced,
+        });
+      }
+      doc.isDeleted = true;
+      doc.isActive = false;
+      await doc.save();
+      return res.json({ message: 'Template removed from list. Issued certificates remain downloadable.' });
+    }
+
+    if (mode === 'soft') {
+      doc.isActive = false;
+      await doc.save();
+      return res.json({ message: 'Template deactivated. Issued certificates remain downloadable.' });
+    }
+
+    await CertTemplate.findByIdAndDelete(doc._id);
+    return res.json({ message: 'Template permanently deleted.' });
   } catch (error) {
     console.error('Cert template delete error:', error);
     res.status(500).json({ error: 'Failed to delete template.' });

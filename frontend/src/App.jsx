@@ -18,6 +18,8 @@ import FloatingWhatsApp from './components/FloatingWhatsApp';
 import FloatingWhatsAppButton from './components/common/FloatingWhatsAppButton';
 import TopVerseBar from './components/TopVerseBar';
 import BlogsPage from './pages/BlogsPage';
+import BlogDetailPage from './pages/BlogDetailPage';
+import EventDetailPage from './pages/EventDetailPage';
 import TermsPage from './pages/TermsPage';
 import BoardOfExecutivePage from './pages/BoardOfExecutivePage';
 import DigitalSolutionsPage from './pages/DigitalSolutionsPage';
@@ -35,6 +37,8 @@ function App() {
         <Route path='/verification' element={<Verification />} />
         <Route path='/verify' element={<MemberVerification />} />
         <Route path="/blogs" element={<BlogsPage />} />
+        <Route path="/blogs/:id" element={<BlogDetailPage />} />
+        <Route path="/events/:id" element={<EventDetailPage />} />
         <Route path="/digital-solutions" element={<DigitalSolutionsPage />} />
         <Route path="/terms" element={<TermsPage />} />
         <Route path="/board-of-executive" element={<BoardOfExecutivePage />} />

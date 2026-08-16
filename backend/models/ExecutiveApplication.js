@@ -22,6 +22,7 @@ const executiveApplicationSchema = new mongoose.Schema({
   why_executive: { type: String, required: true, minlength: 50 },
   availability: { type: Number, required: true, min: 1, max: 40 },
   linkedin_url: { type: String, default: '' },
+  cnic_number: { type: String, default: '' },
   interview_called: { type: Boolean, default: false },
   interviewDetails: {
     venue: { type: String, default: '' },

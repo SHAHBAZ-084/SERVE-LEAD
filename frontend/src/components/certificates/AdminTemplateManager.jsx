@@ -4,6 +4,7 @@ import ZoneCalibrator from './ZoneCalibrator';
 import { clearCertificateImageCache, renderCertificateDataUrl } from '../../utils/canvasEngine';
 import { isPdfFile, pdfFileToPngFile } from '../../utils/pdfToImage';
 import { PREVIEW_SAMPLE_TEXT } from '../../utils/certZoneTools';
+import { AdminModal } from '../common/AdminUiComponents';
 
 function TemplateUploadCard({
   title,
@@ -184,9 +185,8 @@ function TemplateList({
                   </button>
                   <button
                     type="button"
-                    disabled={isActive}
                     onClick={() => onDelete(t._id)}
-                    className="px-3 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest bg-rose-50 text-rose-600 border border-rose-100 disabled:opacity-40"
+                    className="px-3 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest bg-rose-50 text-rose-600 border border-rose-100"
                   >
                     Delete
                   </button>
@@ -219,6 +219,8 @@ export default function AdminTemplateManager({ auth, notify, api }) {
   const [showTemplatePreview, setShowTemplatePreview] = useState(false);
   const [templatePreviewUrl, setTemplatePreviewUrl] = useState(null);
   const [templatePreviewName, setTemplatePreviewName] = useState('');
+  const [pendingDeleteId, setPendingDeleteId] = useState(null);
+  const [deletingTemplate, setDeletingTemplate] = useState(false);
   const membershipFileRef = useRef(null);
   const generalFileRef = useRef(null);
 
@@ -445,14 +447,35 @@ export default function AdminTemplateManager({ auth, notify, api }) {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Delete this template?')) return;
     try {
       await api.delete(`cert-templates/${id}`, auth);
       await refreshTemplates();
-      notify('Template deleted.');
+      notify('Template removed from list.');
+    } catch (err) {
+      if (err.response?.status === 409 && err.response?.data?.needsConfirmation) {
+        setPendingDeleteId(id);
+        return;
+      }
+      console.error(err);
+      notify(err.response?.data?.error || 'Failed to delete template', 'error');
+    }
+  };
+
+  const confirmTemplateDelete = async (mode) => {
+    if (!pendingDeleteId) return;
+    setDeletingTemplate(true);
+    try {
+      await api.delete(`cert-templates/${pendingDeleteId}?mode=${mode}`, auth);
+      await refreshTemplates();
+      notify(mode === 'soft'
+        ? 'Template deactivated. Issued certificates still work.'
+        : 'Template permanently deleted.');
+      setPendingDeleteId(null);
     } catch (err) {
       console.error(err);
-      notify(err.response?.data?.error || 'Deactivate first', 'error');
+      notify(err.response?.data?.error || 'Failed to delete template', 'error');
+    } finally {
+      setDeletingTemplate(false);
     }
   };
 
@@ -602,6 +625,40 @@ export default function AdminTemplateManager({ auth, notify, api }) {
           }}
         />
       )}
+
+      <AdminModal open={!!pendingDeleteId} onClose={() => setPendingDeleteId(null)} maxWidth="max-w-md">
+        <div className="p-8 space-y-4">
+          <h3 className="text-lg font-black text-slate-900 uppercase">Delete template?</h3>
+          <p className="text-sm text-slate-500">
+            This template is active or already used on issued certificates. Choose how to proceed.
+          </p>
+          <div className="flex flex-col gap-2">
+            <button
+              type="button"
+              disabled={deletingTemplate}
+              onClick={() => confirmTemplateDelete('soft')}
+              className="w-full py-3 bg-[#002147] text-white rounded-xl text-[10px] font-black uppercase tracking-widest disabled:opacity-50"
+            >
+              Deactivate (keep issued certs working)
+            </button>
+            <button
+              type="button"
+              disabled={deletingTemplate}
+              onClick={() => confirmTemplateDelete('hard')}
+              className="w-full py-3 bg-rose-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest disabled:opacity-50"
+            >
+              Permanently delete
+            </button>
+            <button
+              type="button"
+              onClick={() => setPendingDeleteId(null)}
+              className="w-full py-3 border border-slate-200 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-500"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      </AdminModal>
     </div>
   );
 }

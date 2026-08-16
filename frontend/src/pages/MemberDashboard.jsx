@@ -7,9 +7,11 @@ import { RenderCertificate, logo, signatureImg, stampImg, MEMBERSHIP_TEMPLATE_ID
 import MembershipCertificateExact, { isMembershipCertificate } from "./MembershipCertificateExact";
 import { captureCertificatePdf, captureCertificatePng } from "../utils/certificatePdfExport";
 import CountdownTimer from "../components/common/CountdownTimer";
+import EventShareButton from "../components/EventShareButton";
 import ImageUploadHint from "../components/common/ImageUploadHint";
 import CertificateButton from "../components/certificates/CertificateButton";
 import { generateCertificate } from "../utils/canvasEngine";
+import jsPDF from "jspdf";
 
 const Spinner = () => (
     <div className="flex justify-center py-16">
@@ -113,6 +115,7 @@ const MemberDashboard = () => {
     const [user, setUser] = useState({ name: "", email: "", id: "", dbId: "", role: "General Member", rawRole: "General", year: "20XX" });
     const [profileForm, setProfileForm] = useState({ name: "", email: "", password: "" });
     const [profileMsg, setProfileMsg] = useState(null);
+    const [waGroupLinks, setWaGroupLinks] = useState([]);
     const [mobileNav, setMobileNav] = useState(false);
     const [selectedEvent, setSelectedEvent] = useState(null);
     const [joining, setJoining] = useState(false);
@@ -208,7 +211,7 @@ const MemberDashboard = () => {
                 <div className="mb-6 p-5 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-2xl text-left">
                     <h3 className="text-sm font-black text-amber-900 uppercase tracking-widest mb-2">Membership Fee Payment Required</h3>
                     <p className="text-sm text-amber-800/80 mb-2">Your membership fee of <strong>PKR {feeInfo?.amount ?? "—"}</strong> is due.</p>
-                    {deadlineText && <p className="text-xs font-bold text-rose-600 mb-4">Deadline: {new Date(deadlineText).toLocaleString()}</p>}
+                    {deadlineText && <p className="text-xs font-bold text-rose-600 mb-4">Valid till end of day {new Date(deadlineText).toLocaleDateString()}</p>}
                     <button type="button" onClick={() => { setShowFeeModal(true); setFeeStep(1); setFeeError(null); }} className="px-6 py-3 bg-[#002147] text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg">Submit Payment Proof</button>
                 </div>
             );
@@ -357,12 +360,27 @@ const MemberDashboard = () => {
                     dbId: member._id,
                     role: `${member.role} Member`,
                     rawRole: member.role,
+                    requestedRole: member.requestedRole,
+                    cnic_number: member.cnic_number || "",
+                    sls_official_id: member.sls_official_id || "",
                     year: member.joining_year || "20XX",
                     status: member.status,
                     interview_called: member.interview_called,
                     feeStatus: member.feeStatus || "not_requested",
                     interviewResult: member.interviewResult,
+                    gender: member.gender || "",
+                    province: member.province || "",
                 });
+                try {
+                    if (member.status === "approved") {
+                        const waRes = await api.get("settings/my-whatsapp-groups", auth);
+                        setWaGroupLinks(Array.isArray(waRes.data.links) ? waRes.data.links : []);
+                    } else {
+                        setWaGroupLinks([]);
+                    }
+                } catch {
+                    setWaGroupLinks([]);
+                }
                 if (member.status === "pending" || member.status === "fee_pending") {
                     try {
                         const feeRes = await api.get("fees/my-fee", auth);
@@ -474,7 +492,12 @@ const MemberDashboard = () => {
                 });
             } catch (err) {
                 console.error(err);
-                alert(err.response?.data?.error || err.message || 'PDF download failed');
+                const msg = err.response?.data?.error || err.message || 'PDF download failed';
+                if (/template no longer exists/i.test(msg)) {
+                    alert('This certificate template is no longer available for new certificates, but your issued certificate record remains. Please contact admin if download still fails.');
+                } else {
+                    alert(msg);
+                }
             } finally {
                 setExporting(false);
             }
@@ -511,7 +534,12 @@ const MemberDashboard = () => {
                 });
             } catch (err) {
                 console.error(err);
-                alert(err.response?.data?.error || err.message || 'PNG download failed');
+                const msg = err.response?.data?.error || err.message || 'PNG download failed';
+                if (/template no longer exists/i.test(msg)) {
+                    alert('This certificate template is no longer available for new certificates, but your issued certificate record remains. Please contact admin if download still fails.');
+                } else {
+                    alert(msg);
+                }
             } finally {
                 setExporting(false);
             }
@@ -563,6 +591,22 @@ const MemberDashboard = () => {
                                 )}
                             </div>
                             <p className="text-slate-400 text-[9px] sm:text-[10px] font-semibold uppercase tracking-[0.4em] mt-2 sm:mt-3">SLS Society Member Portal</p>
+                            {waGroupLinks.length > 0 && (
+                                <div className="flex flex-wrap gap-2 mt-5">
+                                    {waGroupLinks.map((item) => (
+                                        <a
+                                            key={item.key + item.url}
+                                            href={item.url}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-500 text-white text-[10px] font-black uppercase tracking-widest hover:bg-emerald-600 transition-all shadow-md shadow-emerald-500/20"
+                                        >
+                                            <i className="fab fa-whatsapp text-sm" />
+                                            {item.label || "WhatsApp Group"}
+                                        </a>
+                                    ))}
+                                </div>
+                            )}
                         </div>
                         <div className="flex -space-x-3 sm:-space-x-4">
                             {["S", "L", "S", "+"].map((char, i) => (
@@ -917,7 +961,8 @@ const MemberDashboard = () => {
                                     </div>
 
                                     {/* Status Badge */}
-                                    <div className="absolute top-6 right-6">
+                                    <div className="absolute top-6 right-6 flex items-center gap-2">
+                                        <EventShareButton event={event} variant="overlay" />
                                         <span className={`px-4 py-2 rounded-xl text-[9px] font-bold uppercase tracking-widest shadow-xl border backdrop-blur-md ${hasEnded ? "bg-slate-900/80 text-slate-300 border-white/10" : "bg-emerald-500/90 text-white border-emerald-400/30"
                                             }`}>
                                             {hasEnded ? "Event Ended" : "Upcoming Event"}
@@ -1023,7 +1068,8 @@ const MemberDashboard = () => {
                             </div>
                         </div>
 
-                        <div className="p-8 bg-slate-50 border-t border-slate-100 flex justify-end gap-4">
+                        <div className="p-8 bg-slate-50 border-t border-slate-100 flex flex-wrap justify-end gap-4">
+                            <EventShareButton event={selectedEvent} variant="plain" />
                             <button onClick={() => setSelectedEvent(null)} className="px-8 py-3.5 text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:text-slate-600 transition-colors">Dismiss</button>
                             {!(Date.now() > new Date(`${selectedEvent.endDate || selectedEvent.date}T23:59:59`).getTime()) && !selectedEvent.participants?.some(p => p.memberId === user.dbId || p.memberId?._id === user.dbId) && (
                                 <button
@@ -1096,90 +1142,95 @@ const MemberDashboard = () => {
     );
 
     const generateLetter = (type) => {
-        const doc = new jsPDF();
-        const pageWidth = doc.internal.pageSize.getWidth();
-        const today = new Date().toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' });
-        const memberName = user.name;
-        const memberId = user.id;
+        try {
+            const doc = new jsPDF();
+            const pageWidth = doc.internal.pageSize.getWidth();
+            const today = new Date().toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' });
+            const memberName = user.name || "Member";
+            const memberId = user.id || user.dbId || "SLS-Member";
+            const safeId = String(memberId).replace(/[^\w.-]+/g, "_");
 
-        // --- Header Section ---
-        doc.setFont("helvetica", "bold");
-        doc.setFontSize(10);
-        doc.text(`Date: ${today}`, pageWidth - 20, 20, { align: "right" });
+            // --- Header Section ---
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(10);
+            doc.text(`Date: ${today}`, pageWidth - 20, 20, { align: "right" });
 
-        doc.setFontSize(18);
-        doc.setTextColor(0, 33, 71); // SLS Navy Blue
-        let title = "";
-        if (type === 'verification') title = "MEMBERSHIP VERIFICATION LETTER";
-        else if (type === 'reference') title = "REFERENCE LETTER";
-        else if (type === 'recommendation') title = "RECOMMENDATION LETTER";
-        
-        doc.text(title, pageWidth / 2, 45, { align: "center" });
+            doc.setFontSize(18);
+            doc.setTextColor(0, 33, 71); // SLS Navy Blue
+            let title = "";
+            if (type === 'verification') title = "MEMBERSHIP VERIFICATION LETTER";
+            else if (type === 'reference') title = "REFERENCE LETTER";
+            else if (type === 'recommendation') title = "RECOMMENDATION LETTER";
 
-        // --- Salutation ---
-        doc.setFontSize(11);
-        doc.setTextColor(0, 0, 0);
-        doc.text("To Whom It May Concern,", 20, 65);
+            doc.text(title, pageWidth / 2, 45, { align: "center" });
 
-        // --- Body Text ---
-        doc.setFont("helvetica", "normal");
-        const bodyY = 80;
-        const lineSpacing = 8;
-        let lines = [];
+            // --- Salutation ---
+            doc.setFontSize(11);
+            doc.setTextColor(0, 0, 0);
+            doc.text("To Whom It May Concern,", 20, 65);
 
-        if (type === 'verification') {
-            lines = [
-                `This document serves as official verification that Mr./Ms. ${memberName} is currently an active member in good standing of the Serve and Lead Society (SLS) as of ${today}.`,
-                "",
-                `His/Her membership remains valid and active. The member is entitled to all rights and privileges accorded under the bylaws and regulations of the Serve and Lead Society.`,
-                "",
-                `This verification is issued upon institutional request to confirm the authenticity of his/her membership status with SLS. For reference purposes, the membership ID is ${memberId}.`,
-                "",
-                "The membership is active as of today."
-            ];
-        } else if (type === 'reference') {
-            lines = [
-                `This is to confirm that Mr./Ms. ${memberName}, holding Membership ID: ${memberId}, is an active member in good standing of the Serve and Lead Society (SLS).`,
-                "",
-                `He/She has been associated with the organization and continues to serve as an active member. His/her membership is valid for the current session.`,
-                "",
-                `Throughout his/her ongoing association with SLS, Mr./Ms. ${memberName} has demonstrated a strong commitment to the organization's mission of promoting leadership, social awareness, and community service across Pakistan.`,
-                "",
-                `This letter is issued as a matter of reference to verify his/her ongoing and verified membership with the organization.`
-            ];
-        } else if (type === 'recommendation') {
-            lines = [
-                `It is with great pleasure that I recommend Mr./Ms. ${memberName} for his/her exemplary performance and dedication as a member of Serve and Lead Society (SLS).`,
-                "",
-                `He/She has been an active member and has consistently demonstrated his/her commitment to our organization's mission of promoting leadership, professional development, and social welfare.`,
-                "",
-                `During his/her tenure, he/she has shown exceptional qualities of leadership, integrity, and dedication to public service. He/she has actively participated in our programs and contributed significantly to our initiatives.`,
-                "",
-                `Mr./Ms. ${memberName} has demonstrated strong analytical skills, a keen understanding of collaborative principles, and a genuine commitment to social justice. His/her contributions have been particularly noteworthy.`,
-                "",
-                `I am confident that Mr./Ms. ${memberName} will continue to excel in all his/her future endeavors and will be a valuable asset to any organization or institution.`
-            ];
-        }
+            // --- Body Text ---
+            doc.setFont("helvetica", "normal");
+            const bodyY = 80;
+            let lines = [];
 
-        let currentY = bodyY;
-        lines.forEach(line => {
-            if (line === "") {
-                currentY += 4;
-            } else {
-                const wrappedLines = doc.splitTextToSize(line, pageWidth - 40);
-                doc.text(wrappedLines, 20, currentY);
-                currentY += (wrappedLines.length * 6) + 4;
+            if (type === 'verification') {
+                lines = [
+                    `This document serves as official verification that Mr./Ms. ${memberName} is currently an active member in good standing of the Serve and Lead Society (SLS) as of ${today}.`,
+                    "",
+                    `His/Her membership remains valid and active. The member is entitled to all rights and privileges accorded under the bylaws and regulations of the Serve and Lead Society.`,
+                    "",
+                    `This verification is issued upon institutional request to confirm the authenticity of his/her membership status with SLS. For reference purposes, the membership ID is ${memberId}.`,
+                    "",
+                    "The membership is active as of today."
+                ];
+            } else if (type === 'reference') {
+                lines = [
+                    `This is to confirm that Mr./Ms. ${memberName}, holding Membership ID: ${memberId}, is an active member in good standing of the Serve and Lead Society (SLS).`,
+                    "",
+                    `He/She has been associated with the organization and continues to serve as an active member. His/her membership is valid for the current session.`,
+                    "",
+                    `Throughout his/her ongoing association with SLS, Mr./Ms. ${memberName} has demonstrated a strong commitment to the organization's mission of promoting leadership, social awareness, and community service across Pakistan.`,
+                    "",
+                    `This letter is issued as a matter of reference to verify his/her ongoing and verified membership with the organization.`
+                ];
+            } else if (type === 'recommendation') {
+                lines = [
+                    `It is with great pleasure that I recommend Mr./Ms. ${memberName} for his/her exemplary performance and dedication as a member of Serve and Lead Society (SLS).`,
+                    "",
+                    `He/She has been an active member and has consistently demonstrated his/her commitment to our organization's mission of promoting leadership, professional development, and social welfare.`,
+                    "",
+                    `During his/her tenure, he/she has shown exceptional qualities of leadership, integrity, and dedication to public service. He/she has actively participated in our programs and contributed significantly to our initiatives.`,
+                    "",
+                    `Mr./Ms. ${memberName} has demonstrated strong analytical skills, a keen understanding of collaborative principles, and a genuine commitment to social justice. His/her contributions have been particularly noteworthy.`,
+                    "",
+                    `I am confident that Mr./Ms. ${memberName} will continue to excel in all his/her future endeavors and will be a valuable asset to any organization or institution.`
+                ];
             }
-        });
 
-        // --- Closing ---
-        doc.setFont("helvetica", "bold");
-        doc.text("Yours sincerely,", 20, currentY + 15);
-        doc.setFont("helvetica", "normal");
-        doc.text("Administration Department", 20, currentY + 23);
-        doc.text("Serve and Lead Society (SLS)", 20, currentY + 29);
+            let currentY = bodyY;
+            lines.forEach(line => {
+                if (line === "") {
+                    currentY += 4;
+                } else {
+                    const wrappedLines = doc.splitTextToSize(line, pageWidth - 40);
+                    doc.text(wrappedLines, 20, currentY);
+                    currentY += (wrappedLines.length * 6) + 4;
+                }
+            });
 
-        doc.save(`${type}_letter_${memberId}.pdf`);
+            // --- Closing ---
+            doc.setFont("helvetica", "bold");
+            doc.text("Yours sincerely,", 20, currentY + 15);
+            doc.setFont("helvetica", "normal");
+            doc.text("Administration Department", 20, currentY + 23);
+            doc.text("Serve and Lead Society (SLS)", 20, currentY + 29);
+
+            doc.save(`${type}_letter_${safeId}.pdf`);
+        } catch (err) {
+            console.error("Letter PDF Error:", err);
+            alert(`Could not download letter PDF: ${err.message}`);
+        }
     };
 
     const renderLetters = () => (
@@ -1217,14 +1268,6 @@ const MemberDashboard = () => {
                         </button>
                     </div>
                 ))}
-            </div>
-
-            {/* Disclaimer */}
-            <div className="bg-amber-50/50 border border-amber-100 rounded-3xl p-6 flex items-start gap-4">
-                <i className="fas fa-circle-info text-amber-500 mt-1" />
-                <p className="text-[10px] font-bold text-amber-700 uppercase tracking-widest leading-loose">
-                    These letters are generated based on your verified profile data. If you notice any discrepancies in your Name or Member ID, please update your profile in the settings tab before downloading.
-                </p>
             </div>
         </div>
     );
@@ -1266,6 +1309,18 @@ const MemberDashboard = () => {
                             <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1 mb-2">Registered Email</label>
                             <input type="email" value={profileForm.email} onChange={e => setProfileForm({ ...profileForm, email: e.target.value })} className={inputCls} />
                         </div>
+                        {(user.rawRole === 'Executive' || user.requestedRole === 'Executive') && user.sls_official_id ? (
+                            <div>
+                                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1 mb-2">SLS Official ID</label>
+                                <input type="text" value={user.sls_official_id} readOnly className={`${inputCls} bg-slate-100 cursor-default`} />
+                            </div>
+                        ) : null}
+                        {(user.rawRole === 'Executive' || user.requestedRole === 'Executive') && (
+                            <div>
+                                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1 mb-2">CNIC Number</label>
+                                <input type="text" value={user.cnic_number || "—"} readOnly className={`${inputCls} bg-slate-100 cursor-default`} />
+                            </div>
+                        )}
                         <div>
                             <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1 mb-2">Update Password (Optional)</label>
                             <input type="password" value={profileForm.password} onChange={e => setProfileForm({ ...profileForm, password: e.target.value })} className={inputCls} placeholder="Leave blank to maintain current" />
@@ -1327,8 +1382,8 @@ const MemberDashboard = () => {
                                         <p className="text-xl font-black text-slate-800 mt-1">{validityMonths || "—"} months</p>
                                     </div>
                                     <div className="p-4 bg-amber-50 rounded-2xl border border-amber-100">
-                                        <p className="text-[10px] font-black text-amber-700 uppercase tracking-widest">Deadline</p>
-                                        <p className="text-sm font-bold text-amber-900 mt-1">{deadlineText ? new Date(deadlineText).toLocaleString() : "—"}</p>
+                                        <p className="text-[10px] font-black text-amber-700 uppercase tracking-widest">Valid till end of day</p>
+                                        <p className="text-sm font-bold text-amber-900 mt-1">{deadlineText ? new Date(deadlineText).toLocaleDateString() : "—"}</p>
                                     </div>
                                 </div>
                                 {adminMessage && (
@@ -1488,6 +1543,12 @@ const MemberDashboard = () => {
                 <div className="px-8 pb-6">
                     <p className="text-[10px] font-bold text-white/30 uppercase tracking-[0.2em] mb-1.5 pl-1">Official Member ID</p>
                     <p className="text-sm font-bold text-white tracking-widest pl-1">{user.id || "Awaiting Approval"}</p>
+                    {(user.rawRole === 'Executive' || user.requestedRole === 'Executive') && user.cnic_number ? (
+                        <>
+                            <p className="text-[10px] font-bold text-white/30 uppercase tracking-[0.2em] mt-3 mb-1.5 pl-1">CNIC Number</p>
+                            <p className="text-sm font-bold text-white tracking-widest pl-1">{user.cnic_number}</p>
+                        </>
+                    ) : null}
                 </div>
 
                 <nav className="flex-1 px-4 py-2 space-y-2 overflow-y-auto custom-scrollbar">

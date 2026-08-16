@@ -133,7 +133,7 @@ const PaymentManagementTab = ({ pendingMembers, fetchPendingMembers, auth, notif
       const days = Number(r.data.default_fee_deadline_days) || 7;
       const d = new Date();
       d.setDate(d.getDate() + days);
-      setFeeDeadline(d.toISOString().slice(0, 16));
+      setFeeDeadline(d.toISOString().slice(0, 10));
     }).catch(() => {});
   }, [api]);
 
@@ -281,7 +281,7 @@ const PaymentManagementTab = ({ pendingMembers, fetchPendingMembers, auth, notif
       const days = Number(defaultFeeDeadlineDays) || 7;
       const d = new Date();
       d.setDate(d.getDate() + days);
-      setFeeDeadline(d.toISOString().slice(0, 16));
+      setFeeDeadline(d.toISOString().slice(0, 10));
     } catch (err) {
       notify(err.response?.data?.error || "Failed to save settings", "error");
     } finally {
@@ -398,7 +398,7 @@ const PaymentManagementTab = ({ pendingMembers, fetchPendingMembers, auth, notif
                         <p className="text-sm text-slate-700">Request <strong>PKR {membershipFee || "—"}</strong> membership fee. Member will be emailed with payment deadline.</p>
                         <div>
                           <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1">Payment Deadline</label>
-                          <input type="datetime-local" value={feeDeadline} onChange={(e) => setFeeDeadline(e.target.value)} className={inputCls} />
+                          <input type="date" value={feeDeadline} onChange={(e) => setFeeDeadline(e.target.value)} className={inputCls} />
                         </div>
                         <div className="flex gap-2">
                           <button type="button" disabled={processing} onClick={() => handleRequestFee(m._id)} className="px-4 py-2 bg-[#002147] text-white rounded-xl text-[10px] font-black uppercase tracking-widest disabled:opacity-50">Confirm & Send</button>
@@ -430,7 +430,7 @@ const PaymentManagementTab = ({ pendingMembers, fetchPendingMembers, auth, notif
                           </div>
                           <div>
                             <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1">Payment Deadline</label>
-                            <input type="datetime-local" value={retryForm.deadline || feeDeadline} onChange={(e) => setRetryForm({ ...retryForm, deadline: e.target.value })} className={inputCls} />
+                            <input type="date" value={retryForm.deadline || feeDeadline} onChange={(e) => setRetryForm({ ...retryForm, deadline: e.target.value })} className={inputCls} />
                           </div>
                         </div>
                         <div>
@@ -470,7 +470,7 @@ const PaymentManagementTab = ({ pendingMembers, fetchPendingMembers, auth, notif
                               <p><span className="font-bold text-slate-500">TID:</span> {fp.transactionId || "—"}</p>
                               <p><span className="font-bold text-slate-500">Channel:</span> {fp.paymentChannel || "—"}</p>
                               <p><span className="font-bold text-slate-500">Sender:</span> {fp.accountNumber || "—"}</p>
-                              <p><span className="font-bold text-slate-500">Deadline:</span> {fp.deadline ? new Date(fp.deadline).toLocaleString() : "—"}</p>
+                              <p><span className="font-bold text-slate-500">Deadline:</span> {fp.deadline ? new Date(fp.deadline).toLocaleDateString() : "—"}</p>
                             </div>
                             {fp.screenshotUrl && (
                               <button type="button" onClick={() => setLightboxUrl(getImgUrl(fp.screenshotUrl))}>

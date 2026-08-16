@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const mongoose = require('mongoose');
 const Event = require('../models/Event');
 const Member = require('../models/Member');
 const authMiddleware = require('../middlewares/authMiddleware');
@@ -47,6 +48,26 @@ router.get('/', asyncHandler(async (req, res) => {
 router.get('/admin', authMiddleware, isAdmin, asyncHandler(async (req, res) => {
     const events = await Event.find().sort({ date: -1 }).lean();
     res.json(events);
+}));
+
+router.get('/:id', asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    let event = null;
+    if (mongoose.isValidObjectId(id)) {
+        event = await Event.findOne({ _id: id, is_active: true }).lean();
+    }
+    if (!event) {
+        event = await Event.findOne({ slug: id, is_active: true }).lean();
+    }
+    if (!event) return res.status(404).json({ error: 'Event not found' });
+    res.json({
+        ...event,
+        _id: event._id.toString(),
+        participants: event.participants ? event.participants.map(p => ({
+            ...p,
+            memberId: p.memberId ? p.memberId.toString() : null
+        })) : []
+    });
 }));
 
 // GET participants for a specific event (Admin only - with pagination)

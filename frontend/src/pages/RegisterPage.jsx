@@ -49,6 +49,7 @@ export default function RegisterPage() {
     requestedRole: "General",
     name: "",
     father_name: "",
+    gender: "",
     whatsapp: "",
     email: "",
     password: "",
@@ -76,9 +77,16 @@ export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [otpSent, setOtpSent] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
-  const [waLink, setWaLink] = useState("");
+  const [waLinks, setWaLinks] = useState([]);
 
-  const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    if (name === "whatsapp") {
+      setFormData({ ...formData, whatsapp: value.replace(/\D/g, "").slice(0, 11) });
+      return;
+    }
+    setFormData({ ...formData, [name]: value });
+  };
 
   const setApplicantType = (type) => {
     const levels = EDUCATION_BY_TYPE[type] || EDUCATION_BY_TYPE.university;
@@ -120,9 +128,10 @@ export default function RegisterPage() {
   const tehsilOptions = getTehsils(formData.province, formData.district);
 
   const validateStep = () => {
-    const { name, father_name, whatsapp, email, password, otp, program, passing_year, address, province, district, tehsil } = formData;
+    const { name, father_name, gender, whatsapp, email, password, otp, address, province, district, tehsil } = formData;
     if (step === 1) {
       if (!name || !father_name || !whatsapp || !email || !password) return "All personal fields are mandatory.";
+      if (!gender || (gender !== "Male" && gender !== "Female")) return "Please select your gender.";
       if (whatsapp.length !== 11 || !/^\d+$/.test(whatsapp)) return "WhatsApp must be exactly 11 numeric digits.";
       if (!email.toLowerCase().endsWith("@gmail.com")) return "Only official @gmail.com accounts are permitted.";
       if (password.length < 6) return "Portal password must be at least 6 characters.";
@@ -165,7 +174,8 @@ export default function RegisterPage() {
         setOtpSent(true);
         setError(null);
     } catch (err) {
-        setError(err.response?.data?.error || "Failed to send verification code.");
+        const data = err.response?.data;
+        setError(data?.details ? `${data.error} (${data.details})` : (data?.error || "Failed to send verification code."));
     } finally {
         setIsVerifying(false);
     }
@@ -216,6 +226,7 @@ export default function RegisterPage() {
       const payload = {
         ...rest,
         email: formData.email.trim(),
+        gender: formData.gender,
         requestedRole: "General",
         sls_official_id: "",
         cnic_number: "",
@@ -223,7 +234,12 @@ export default function RegisterPage() {
       await api.post("auth/register", payload);
       try {
         const settingRes = await api.get("settings/whatsapp-link");
-        setWaLink(settingRes.data.link || "");
+        const url = String(
+          settingRes.data.defaultLink
+          || (settingRes.data.links || []).find((l) => l.key === "default")?.url
+          || ""
+        ).trim();
+        setWaLinks(url ? [{ key: "default", label: "Society WhatsApp Group", url }] : []);
       } catch (e) { console.error("Error fetching WA link:", e); }
       setSuccess(true);
       setTimeout(() => navigate("/"), 15000); // Extended timeout to allow joining group
@@ -286,10 +302,20 @@ export default function RegisterPage() {
               <p className="text-slate-400 text-sm font-bold uppercase tracking-widest leading-loose max-w-xs mx-auto mb-6">
                 Your application has been successfully submitted. Our team will contact you shortly for further processing.
               </p>
-              {waLink && (
-                <a href={waLink} target="_blank" rel="noopener noreferrer" className="btn-whatsapp">
-                  <i className="fab fa-whatsapp text-lg" /> Join WhatsApp Group
-                </a>
+              {waLinks.filter((item) => item.key === "default").slice(0, 1).length > 0 && (
+                <div className="flex flex-col gap-3 items-center mb-2">
+                  {waLinks.filter((item) => item.key === "default").slice(0, 1).map((item) => (
+                    <a
+                      key={item.key + item.url}
+                      href={item.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="btn-whatsapp"
+                    >
+                      <i className="fab fa-whatsapp text-lg" /> {item.label || "Join WhatsApp Group"}
+                    </a>
+                  ))}
+                </div>
               )}
               <div className="mt-14 space-y-4">
                 <div className="w-12 h-1.5 bg-slate-100 rounded-full mx-auto overflow-hidden">
@@ -344,33 +370,57 @@ export default function RegisterPage() {
                         <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 ml-2 group-focus-within:text-[#002147] transition-colors">02. Father Name</label>
                         <input name="father_name" placeholder="FATHER NAME" value={formData.father_name} onChange={handleChange} className="w-full bg-slate-50 border border-slate-100 rounded-[1.25rem] md:rounded-[1.5rem] px-5 py-4 md:px-6 md:py-5 text-sm font-bold text-slate-800 placeholder:text-slate-200 placeholder:font-black focus:ring-8 focus:ring-blue-500/5 focus:border-[#002147] outline-none transition-all shadow-inner" />
                       </div>
+                      <div className="md:col-span-2 group">
+                        <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 ml-2">03. Gender</label>
+                        <div className="grid grid-cols-2 gap-3">
+                          {["Male", "Female"].map((g) => {
+                            const active = formData.gender === g;
+                            return (
+                              <button
+                                key={g}
+                                type="button"
+                                onClick={() => setFormData({ ...formData, gender: g })}
+                                className={`px-5 py-4 rounded-[1.25rem] border-2 text-sm font-black uppercase tracking-widest transition-all ${
+                                  active
+                                    ? "border-[#002147] bg-[#002147] text-white shadow-md"
+                                    : "border-slate-100 bg-slate-50 text-slate-500 hover:border-slate-200"
+                                }`}
+                              >
+                                <i className={`fas ${g === "Male" ? "fa-mars" : "fa-venus"} mr-2`} />
+                                {g}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
                       <div className="group">
-                        <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 ml-2 group-focus-within:text-[#002147] transition-colors">03. WhatsApp (11 Digits)</label>
+                        <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 ml-2 group-focus-within:text-[#002147] transition-colors">04. WhatsApp (11 Digits)</label>
                         <input name="whatsapp" maxLength="11" placeholder="03XXXXXXXXX" value={formData.whatsapp} onChange={handleChange} className="w-full bg-slate-50 border border-slate-100 rounded-[1.25rem] md:rounded-[1.5rem] px-5 py-4 md:px-6 md:py-5 text-sm font-bold text-slate-800 placeholder:text-slate-200 placeholder:font-black focus:ring-8 focus:ring-blue-500/5 focus:border-[#002147] outline-none transition-all shadow-inner" />
                       </div>
                       <div className="md:col-span-2 group">
-                        <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 ml-2 group-focus-within:text-[#002147] transition-colors">04. Gmail Address</label>
+                        <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 ml-2 group-focus-within:text-[#002147] transition-colors">05. Gmail Address</label>
                         <div className="flex flex-col sm:flex-row gap-4">
                           <input type="email" name="email" placeholder="USER@GMAIL.COM" value={formData.email} onChange={(e) => { setOtpSent(false); handleChange(e); }} className="flex-1 bg-slate-50 border border-slate-100 rounded-[1.25rem] md:rounded-[1.5rem] px-5 py-4 md:px-6 md:py-5 text-sm font-bold text-slate-800 placeholder:text-slate-200 placeholder:font-black focus:ring-8 focus:ring-blue-500/5 focus:border-[#002147] outline-none transition-all shadow-inner" />
-                          {!otpSent && (
-                             <button type="button" onClick={handleSendOtp} disabled={isVerifying} className="bg-[#002147] text-white px-8 py-4 sm:py-0 rounded-[1.25rem] md:rounded-[1.5rem] text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 transition-all shadow-lg active:scale-95 disabled:opacity-50">
-                                {isVerifying ? <i className="fas fa-spinner fa-spin" /> : "Verify Gmail"}
-                             </button>
-                          )}
+                          <button type="button" onClick={handleSendOtp} disabled={isVerifying} className="bg-[#002147] text-white px-8 py-4 sm:py-0 rounded-[1.25rem] md:rounded-[1.5rem] text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 transition-all shadow-lg active:scale-95 disabled:opacity-50">
+                             {isVerifying ? <i className="fas fa-spinner fa-spin" /> : otpSent ? "Resend Code" : "Verify Gmail"}
+                          </button>
                         </div>
                       </div>
 
                       {otpSent && (
                         <div className="md:col-span-2 group animate-fade-up">
                            <label className="block text-xs font-bold text-emerald-500 uppercase tracking-widest mb-3 ml-2 group-focus-within:text-emerald-600 transition-colors flex items-center gap-2">
-                             <i className="fas fa-paper-plane" /> 04B. Enter 6-Digit Code
+                             <i className="fas fa-paper-plane" /> 05B. Enter 6-Digit Code
                            </label>
+                           <p className="text-[11px] font-bold text-amber-700 mb-3 ml-2">
+                             Use the latest code from Gmail (valid 15 minutes). Also check Spam. Resend keeps the same code until it expires.
+                           </p>
                            <input type="text" maxLength="6" name="otp" placeholder="XXXXXX" value={formData.otp} onChange={handleChange} className="w-full bg-emerald-50/50 border-2 border-emerald-100 rounded-[1.25rem] md:rounded-[1.5rem] px-5 py-4 md:px-6 md:py-5 text-center text-xl font-black text-emerald-700 tracking-[0.5em] shadow-inner focus:border-emerald-500 outline-none transition-all placeholder:text-emerald-200" />
                         </div>
                       )}
 
                       <div className="md:col-span-2 group">
-                        <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 ml-2 group-focus-within:text-[#002147] transition-colors">05. Password (Min 6)</label>
+                        <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 ml-2 group-focus-within:text-[#002147] transition-colors">06. Password (Min 6)</label>
                         <div className="relative">
                           <input type={showPassword ? "text" : "password"} name="password" value={formData.password} onChange={handleChange} className="w-full bg-slate-50 border border-slate-100 rounded-[1.25rem] md:rounded-[1.5rem] px-5 py-4 md:px-6 md:py-5 text-sm font-bold text-slate-800 placeholder:text-slate-200 placeholder:font-black focus:ring-8 focus:ring-blue-500/5 focus:border-[#002147] outline-none transition-all pr-16 shadow-inner" placeholder="••••••••" />
                           <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-6 top-1/2 -translate-y-1/2 text-slate-200 hover:text-[#002147] transition-colors">

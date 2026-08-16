@@ -6,9 +6,9 @@ const crypto = require('crypto');
 const rateLimit = require('express-rate-limit');
 
 const otpLimiter = rateLimit({
-    windowMs: 5 * 60 * 1000, // 5 minutes
-    max: 3, // limit each IP to 3 OTP requests per window
-    message: { error: 'Too many OTP requests. Please try again after 5 minutes.' }
+    windowMs: 15 * 60 * 1000,
+    max: 20,
+    message: { error: 'Too many OTP requests. Please try again after 15 minutes.' }
 });
 
 const Member = require('../models/Member');
@@ -71,6 +71,20 @@ router.post('/check-email', asyncHandler(async (req, res) => {
     res.status(200).json({ message: 'Email is available' });
 }));
 
+const issueRegistrationOtp = async (email) => {
+    let rec = await OTP.findOne({ email, code: { $ne: 'VERIFIED' } });
+    const otpCode = rec?.code || crypto.randomInt(100000, 1000000).toString();
+    const result = await sendOTPEmail(email, otpCode);
+    if (!result.success) return result;
+    if (rec) {
+        rec.createdAt = new Date();
+        await rec.save();
+    } else {
+        await OTP.create({ email, code: otpCode });
+    }
+    return { success: true };
+};
+
 // Send Registration OTP
 router.post('/send-otp', otpLimiter, async (req, res) => {
     try {
@@ -90,15 +104,7 @@ router.post('/send-otp', otpLimiter, async (req, res) => {
             return res.status(400).json({ error: 'Account already exists for this Gmail.' });
         }
 
-        // 3. Generate 6-digit OTP (securely)
-        const otpCode = crypto.randomInt(100000, 1000000).toString();
-
-        // 4. Save to DB (overwrite if already exists for this email)
-        await OTP.deleteMany({ email: email.toLowerCase() });
-        await OTP.create({ email: email.toLowerCase(), code: otpCode });
-
-        // 5. Send Email
-        const result = await sendOTPEmail(email, otpCode);
+        const result = await issueRegistrationOtp(email);
         if (!result.success) {
             return res.status(500).json({ 
                 error: 'The email service failed to dispatch the code.',
@@ -133,11 +139,7 @@ router.post('/resend-otp', otpLimiter, asyncHandler(async (req, res) => {
         return res.status(400).json({ error: 'Account already exists for this Gmail.' });
     }
 
-    const otpCode = crypto.randomInt(100000, 1000000).toString();
-    await OTP.deleteMany({ email });
-    await OTP.create({ email, code: otpCode });
-    
-    const result = await sendOTPEmail(email, otpCode);
+    const result = await issueRegistrationOtp(email);
     if (!result.success) {
         return res.status(500).json({ error: 'Failed to resend code.' });
     }
@@ -154,8 +156,7 @@ router.post('/verify-otp', asyncHandler(async (req, res) => {
     }
     // Mark as verified instead of deleting immediately, so /register can check it
     otp.code = "VERIFIED";
-    // Extend TTL for verified record to 10 minutes so user has time to finish the form
-    otp.createdAt = new Date(Date.now() + 300000); 
+    otp.createdAt = new Date();
     await otp.save();
     res.status(200).json({ message: 'Email verified successfully.' });
 }));
@@ -168,6 +169,7 @@ router.post('/register', validateRequest(schemas.register), asyncHandler(async (
         password,
         joining_year,
         father_name,
+        gender: rawGender,
         whatsapp,
         education_level,
         applicant_type: rawApplicantType,
@@ -193,10 +195,17 @@ router.post('/register', validateRequest(schemas.register), asyncHandler(async (
     const requestedRole = rawRequestedRole === 'Executive' ? 'Executive' : 'General';
     const allowedTypes = ['university', 'college', 'school', 'not_student'];
     const applicant_type = allowedTypes.includes(rawApplicantType) ? rawApplicantType : 'university';
+    const gender = rawGender === 'Female' ? 'Female' : rawGender === 'Male' ? 'Male' : '';
+    if (!gender) {
+        return res.status(400).json({ error: 'Gender is required.' });
+    }
 
     if (requestedRole === 'Executive') {
         if (!sls_official_id?.trim() || !cnic_number?.trim()) {
             return res.status(400).json({ error: 'SLS Official ID and CNIC are required for Executive membership.' });
+        }
+        if (!/^\d{5}-\d{7}-\d$/.test(cnic_number.trim())) {
+            return res.status(400).json({ error: 'CNIC/B-Form must be 13 digits (#####-#######-#).' });
         }
     }
 
@@ -242,6 +251,7 @@ router.post('/register', validateRequest(schemas.register), asyncHandler(async (
         password: hashedPassword,
         joining_year,
         father_name,
+        gender,
         whatsapp,
         education_level,
         applicant_type,
@@ -259,7 +269,7 @@ router.post('/register', validateRequest(schemas.register), asyncHandler(async (
         city: tehsilName,
         requestedRole,
         sls_official_id: requestedRole === 'Executive' ? sls_official_id?.trim() : '',
-        cnic_number: requestedRole === 'Executive' ? cnic_number?.trim() : '',
+        cnic_number: requestedRole === 'Executive' ? cnic_number.trim() : '',
         referred_by,
         status: 'pending',
         role: 'General',
@@ -497,6 +507,7 @@ router.post('/apply-executive', asyncHandler(async (req, res) => {
         father_name,
         city,
         address,
+        cnic_number,
     } = req.body;
 
     if (!memberId) {
@@ -509,6 +520,11 @@ router.post('/apply-executive', asyncHandler(async (req, res) => {
     }
     if (member.role !== 'General' || member.status !== 'approved') {
         return res.status(400).json({ error: 'Only approved General Members can apply for Executive membership.' });
+    }
+
+    const cnicTrimmed = (cnic_number || '').trim();
+    if (!/^\d{5}-\d{7}-\d$/.test(cnicTrimmed)) {
+        return res.status(400).json({ error: 'CNIC/B-Form number is required and must be 13 digits (#####-#######-#).' });
     }
 
     const existingPending = await ExecutiveApplication.findOne({ memberId: member._id, status: 'pending' });
@@ -545,6 +561,9 @@ router.post('/apply-executive', asyncHandler(async (req, res) => {
         return res.status(400).json({ error: 'Availability must be between 1 and 40 hours per week.' });
     }
 
+    member.cnic_number = cnicTrimmed;
+    await member.save();
+
     await ExecutiveApplication.create({
         memberId: member._id,
         memberName: member.name,
@@ -562,6 +581,7 @@ router.post('/apply-executive', asyncHandler(async (req, res) => {
         why_executive: why_executive.trim(),
         availability: hours,
         linkedin_url: (linkedin_url || '').trim(),
+        cnic_number: cnicTrimmed,
     });
 
     res.status(201).json({ message: 'Executive application submitted successfully.' });
