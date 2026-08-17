@@ -90,7 +90,7 @@ router.post('/members/bulk-delete', authMiddleware, isAdmin, asyncHandler(async 
 
 // GET all approved members (with pagination and search)
 router.get('/members', authMiddleware, isAdmin, asyncHandler(async (req, res) => {
-    let { search, page = 1, limit = 10, province, district, tehsil, city, role } = req.query;
+    let { search, page = 1, limit = 10, province, district, tehsil, city, role, gender } = req.query;
     page = parseInt(page, 10) || 1;
     limit = parseInt(limit, 10) || 10;
 
@@ -126,6 +126,9 @@ router.get('/members', authMiddleware, isAdmin, asyncHandler(async (req, res) =>
     if (role && role !== 'All' && ['General', 'Executive'].includes(role)) {
         query.role = role;
     }
+    if (gender && gender !== 'All' && ['Male', 'Female'].includes(gender)) {
+        query.gender = gender;
+    }
 
     const members = await Member.find(query)
         .select('-password')
@@ -140,7 +143,7 @@ router.get('/members', authMiddleware, isAdmin, asyncHandler(async (req, res) =>
 
 // GET all approved/blocked members matching filters (no pagination) — for PDF/Excel export
 router.get('/members/export', authMiddleware, isAdmin, asyncHandler(async (req, res) => {
-    let { search, province, district, tehsil, city, role } = req.query;
+    let { search, province, district, tehsil, city, role, gender } = req.query;
 
     const escapeRegex = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const exactRegex = (s) => new RegExp(`^${escapeRegex(s)}$`, 'i');
@@ -174,6 +177,9 @@ router.get('/members/export', authMiddleware, isAdmin, asyncHandler(async (req, 
     }
     if (role && role !== 'All' && ['General', 'Executive'].includes(role)) {
         query.role = role;
+    }
+    if (gender && gender !== 'All' && ['Male', 'Female'].includes(gender)) {
+        query.gender = gender;
     }
 
     const members = await Member.find(query)

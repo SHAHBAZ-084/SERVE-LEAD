@@ -10,7 +10,7 @@ import ImageUploadHint from "../components/common/ImageUploadHint";
 import { inputCls, useCountUp, StatCard, Spinner, AdminModal } from "../components/common/AdminUiComponents";
 import { FOOTER_DEFAULTS, FOOTER_FIELDS, parseFooterSettings } from "../constants/footerDefaults";
 import { ABOUT_DEFAULTS, ABOUT_FIELDS, parseAboutSettings } from "../constants/aboutDefaults";
-import { MEMBER_TYPE_FILTER_OPTIONS } from "../constants/pakistanCities";
+import { MEMBER_TYPE_FILTER_OPTIONS, MEMBER_GENDER_FILTER_OPTIONS } from "../constants/pakistanCities";
 import { PROVINCES } from "../constants/pakistanLocations";
 import AdminLocationFilters, { DEFAULT_ADMIN_LOCATION_FILTER, ALL_TEHSILS_LABEL, appendLocationFilterParams, matchesAdminLocationFilter } from "../components/common/AdminLocationFilters";
 import PaymentManagementTab, { getFeeApprovalBadge, canApproveMemberFee, getInterviewBadge, needsInterviewResult, canRequestFee, canRequestFeeAgain, canDirectApprove, canSkipInterviewPath, getExecutiveInterviewBadge, getExecutiveFeeBadge, needsExecutiveInterviewResult, canWaiveExecutive, canFinalApproveExecutive } from "../components/admin/PaymentManagementTab";
@@ -2294,7 +2294,7 @@ const DossierView = ({ memberId, members, onBack }) => {
 // ── Settings Tab (SELF-MANAGEMENT) ───────────────────────
 
 // ── Members Tab (Moved Outside to fix Search Strokes) ────────
-const MembersTab = ({ members, fetchMembers, loading, search, setSearch, auth, notify, Spinner, adminUser, api, inputCls, page, setPage, totalPages, locationFilter, setLocationFilter, roleFilter, setRoleFilter, isSuper }) => {
+const MembersTab = ({ members, fetchMembers, loading, search, setSearch, auth, notify, Spinner, adminUser, api, inputCls, page, setPage, totalPages, locationFilter, setLocationFilter, roleFilter, setRoleFilter, genderFilter, setGenderFilter, isSuper }) => {
     const [selectedIds, setSelectedIds] = useState([]);
     const [isProcessing, setIsProcessing] = useState(false);
     const [bulkMode, setBulkMode] = useState(false);
@@ -2310,6 +2310,7 @@ const MembersTab = ({ members, fetchMembers, loading, search, setSearch, auth, n
         const params = new URLSearchParams({ search: search || "" });
         appendLocationFilterParams(params, locationFilter);
         if (roleFilter !== "All") params.set("role", roleFilter);
+        if (genderFilter !== "All") params.set("gender", genderFilter);
         const r = await api.get(`admin/members/export?${params.toString()}`, auth);
         return (r.data.members || []).filter((m) => m.role !== "Admin" && m.role !== "Superuser");
     };
@@ -2456,6 +2457,15 @@ const MembersTab = ({ members, fetchMembers, loading, search, setSearch, auth, n
                     className={adminFilterSelectCls}
                 >
                     {MEMBER_TYPE_FILTER_OPTIONS.map(({ value, label }) => (
+                        <option key={value} value={value}>{label}</option>
+                    ))}
+                </select>
+                <select
+                    value={genderFilter}
+                    onChange={(e) => { setPage(1); setGenderFilter(e.target.value); }}
+                    className={adminFilterSelectCls}
+                >
+                    {MEMBER_GENDER_FILTER_OPTIONS.map(({ value, label }) => (
                         <option key={value} value={value}>{label}</option>
                     ))}
                 </select>
@@ -2733,6 +2743,7 @@ const ApprovalsTab = ({ pendingMembers, executiveApps, fetchPendingMembers, load
     const [viewMember, setViewMember] = useState(null);
     const [locationFilter, setLocationFilter] = useState({ ...DEFAULT_ADMIN_LOCATION_FILTER });
     const [memberTypeFilter, setMemberTypeFilter] = useState("All");
+    const [genderFilter, setGenderFilter] = useState("All");
     const [viewExecApp, setViewExecApp] = useState(null);
     const [execInterviewTarget, setExecInterviewTarget] = useState(null);
     const [execInterviewResultTarget, setExecInterviewResultTarget] = useState(null);
@@ -2926,8 +2937,9 @@ const ApprovalsTab = ({ pendingMembers, executiveApps, fetchPendingMembers, load
             m.joining_year?.toString().includes(searchTerm);
         const memberRole = m.requestedRole || m.role || "General";
         const matchesType = memberTypeFilter === "All" || (memberTypeFilter === "General" && memberRole === "General") || (memberTypeFilter === "Executive" && memberRole === "Executive");
-        return matchesSearch && matchesAdminLocationFilter(m, locationFilter) && matchesType;
-    }), [pendingMembers, searchTerm, memberTypeFilter, locationFilter]);
+        const matchesGender = genderFilter === "All" || m.gender === genderFilter;
+        return matchesSearch && matchesAdminLocationFilter(m, locationFilter) && matchesType && matchesGender;
+    }), [pendingMembers, searchTerm, memberTypeFilter, genderFilter, locationFilter]);
 
     const filteredExecutiveApps = useMemo(() => (executiveApps || []).filter((app) => {
         if (memberTypeFilter === "General") return false;
@@ -2944,8 +2956,10 @@ const ApprovalsTab = ({ pendingMembers, executiveApps, fetchPendingMembers, load
             const tehsil = locationFilter.tehsil.trim().toLowerCase();
             matchesLocation = loc === tehsil || loc.includes(tehsil) || tehsil.includes(loc);
         }
-        return matchesSearch && matchesLocation;
-    }), [executiveApps, searchTerm, memberTypeFilter, locationFilter]);
+        const appGender = app.memberId?.gender || app.gender || "";
+        const matchesGender = genderFilter === "All" || appGender === genderFilter;
+        return matchesSearch && matchesLocation && matchesGender;
+    }), [executiveApps, searchTerm, memberTypeFilter, genderFilter, locationFilter]);
 
     const totalInQueue = (pendingMembers?.length || 0) + (executiveApps?.length || 0);
     const totalShowing = filtered.length + filteredExecutiveApps.length;
@@ -3200,6 +3214,15 @@ const ApprovalsTab = ({ pendingMembers, executiveApps, fetchPendingMembers, load
                                 ? MEMBER_TYPE_FILTER_OPTIONS
                                 : MEMBER_TYPE_FILTER_OPTIONS.filter((o) => o.value !== 'Executive')
                             ).map(({ value, label }) => (
+                                <option key={value} value={value}>{label}</option>
+                            ))}
+                        </select>
+                        <select
+                            value={genderFilter}
+                            onChange={(e) => setGenderFilter(e.target.value)}
+                            className={adminFilterSelectCls}
+                        >
+                            {MEMBER_GENDER_FILTER_OPTIONS.map(({ value, label }) => (
                                 <option key={value} value={value}>{label}</option>
                             ))}
                         </select>
@@ -5732,6 +5755,7 @@ const AdminPortal = () => {
     const [membersTotalPages, setMembersTotalPages] = useState(1);
     const [membersLocationFilter, setMembersLocationFilter] = useState({ ...DEFAULT_ADMIN_LOCATION_FILTER });
     const [membersRoleFilter, setMembersRoleFilter] = useState("All");
+    const [membersGenderFilter, setMembersGenderFilter] = useState("All");
 
     const token = localStorage.getItem("adminToken");
     const [adminUser, setAdminUser] = useState(localStorage.getItem("adminUser"));
@@ -5759,6 +5783,7 @@ const AdminPortal = () => {
             });
             appendLocationFilterParams(params, membersLocationFilter);
             if (membersRoleFilter !== "All") params.set("role", membersRoleFilter);
+            if (membersGenderFilter !== "All") params.set("gender", membersGenderFilter);
             const r = await api.get(`admin/members?${params.toString()}`, { ...auth, signal });
             if (signal?.aborted) return;
             setMembers(r.data.members || []);
@@ -5771,7 +5796,7 @@ const AdminPortal = () => {
         finally {
             if (!signal?.aborted) setLoading(false);
         }
-    }, [search, membersPage, membersLocationFilter, membersRoleFilter, auth]);
+    }, [search, membersPage, membersLocationFilter, membersRoleFilter, membersGenderFilter, auth]);
 
     const fetchAllMembers = useCallback(async (signal) => {
         try {
@@ -5854,7 +5879,7 @@ const AdminPortal = () => {
         const controller = new AbortController();
         fetchMembers(controller.signal);
         return () => controller.abort();
-    }, [membersPage, membersLocationFilter, membersRoleFilter, fetchMembers, activeTab]);
+    }, [membersPage, membersLocationFilter, membersRoleFilter, membersGenderFilter, fetchMembers, activeTab]);
 
     // Back-Button Trap: Force the browser to stay on this page
     useEffect(() => {
@@ -6000,6 +6025,8 @@ const AdminPortal = () => {
                             setLocationFilter={setMembersLocationFilter}
                             roleFilter={membersRoleFilter}
                             setRoleFilter={setMembersRoleFilter}
+                            genderFilter={membersGenderFilter}
+                            setGenderFilter={setMembersGenderFilter}
                             isSuper={isSuper}
                         />
                     )}
