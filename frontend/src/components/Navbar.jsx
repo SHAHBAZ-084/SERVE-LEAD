@@ -18,7 +18,6 @@ export default function Navbar() {
     { name: "Contact", path: "/#contact" },
     { name: "Donate", path: "/donate" },
     { name: "Blogs", path: "/blogs" },
-    { name: "Digital Solutions", path: "/digital-solutions" },
     { name: "Verify", path: "/verify" },
   ];
 
