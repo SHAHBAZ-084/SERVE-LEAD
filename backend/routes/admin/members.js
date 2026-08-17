@@ -138,6 +138,52 @@ router.get('/members', authMiddleware, isAdmin, asyncHandler(async (req, res) =>
     res.json({ members, totalPages: Math.ceil(count / limit), currentPage: page });
 }));
 
+// GET all approved/blocked members matching filters (no pagination) — for PDF/Excel export
+router.get('/members/export', authMiddleware, isAdmin, asyncHandler(async (req, res) => {
+    let { search, province, district, tehsil, city, role } = req.query;
+
+    const escapeRegex = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const exactRegex = (s) => new RegExp(`^${escapeRegex(s)}$`, 'i');
+    const isActiveFilter = (value, allLabel) => value && value !== allLabel;
+
+    let query = { status: { $in: ['approved', 'blocked'] } };
+
+    if (req.user.role === 'Admin') query.role = { $nin: ['Admin', 'Superuser'] };
+    if (search) {
+        query.$or = [
+            { name: new RegExp(search, 'i') },
+            { member_id: new RegExp(search, 'i') },
+            { email: new RegExp(search, 'i') },
+        ];
+    }
+    const filterTehsil = isActiveFilter(tehsil, 'All Tehsils')
+        ? tehsil
+        : (city && city !== 'All Cities' && city !== 'All Tehsils' ? city : null);
+
+    if (isActiveFilter(province, 'All Provinces')) {
+        query.$and = query.$and || [];
+        query.$and.push({ province: exactRegex(province) });
+    }
+    if (isActiveFilter(district, 'All Districts')) {
+        query.$and = query.$and || [];
+        query.$and.push({ district: exactRegex(district) });
+    }
+    if (filterTehsil) {
+        query.$and = query.$and || [];
+        query.$and.push({ $or: [{ tehsil: exactRegex(filterTehsil) }, { city: exactRegex(filterTehsil) }] });
+    }
+    if (role && role !== 'All' && ['General', 'Executive'].includes(role)) {
+        query.role = role;
+    }
+
+    const members = await Member.find(query)
+        .select('-password')
+        .sort({ createdAt: -1 })
+        .lean();
+
+    res.json({ members, count: members.length });
+}));
+
 // GET all pending members + executive upgrade applications
 // General pending → Admin + Superuser
 // Executive applications / Executive requestedRole → Superuser only

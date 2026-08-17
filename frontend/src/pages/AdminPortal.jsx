@@ -14,6 +14,13 @@ import { MEMBER_TYPE_FILTER_OPTIONS } from "../constants/pakistanCities";
 import { PROVINCES } from "../constants/pakistanLocations";
 import AdminLocationFilters, { DEFAULT_ADMIN_LOCATION_FILTER, ALL_TEHSILS_LABEL, appendLocationFilterParams, matchesAdminLocationFilter } from "../components/common/AdminLocationFilters";
 import PaymentManagementTab, { getFeeApprovalBadge, canApproveMemberFee, getInterviewBadge, needsInterviewResult, canRequestFee, canRequestFeeAgain, canDirectApprove, canSkipInterviewPath, getExecutiveInterviewBadge, getExecutiveFeeBadge, needsExecutiveInterviewResult, canWaiveExecutive, canFinalApproveExecutive } from "../components/admin/PaymentManagementTab";
+import {
+    downloadMembersExcel,
+    downloadMembersPdf,
+    ACTIVE_MEMBER_EXPORT_COLUMNS,
+    PENDING_MEMBER_EXPORT_COLUMNS,
+    PENDING_EXEC_EXPORT_COLUMNS,
+} from "../utils/memberListExport";
 
 const adminFilterSelectCls =
   "bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold text-slate-700 outline-none focus:border-[#002147] min-w-[140px]";
@@ -2292,11 +2299,41 @@ const MembersTab = ({ members, fetchMembers, loading, search, setSearch, auth, n
     const [isProcessing, setIsProcessing] = useState(false);
     const [bulkMode, setBulkMode] = useState(false);
     const [localSearch, setLocalSearch] = useState(search);
+    const [exporting, setExporting] = useState(null);
 
     const generalMembers = members.filter(m => m.role !== 'Admin' && m.role !== 'Superuser');
 
     const handleSelectAll = (e) => setSelectedIds(e.target.checked ? generalMembers.map(m => m._id) : []);
     const toggleSelect = (id) => setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
+
+    const fetchExportMembers = async () => {
+        const params = new URLSearchParams({ search: search || "" });
+        appendLocationFilterParams(params, locationFilter);
+        if (roleFilter !== "All") params.set("role", roleFilter);
+        const r = await api.get(`admin/members/export?${params.toString()}`, auth);
+        return (r.data.members || []).filter((m) => m.role !== "Admin" && m.role !== "Superuser");
+    };
+
+    const exportActive = async (format) => {
+        setExporting(format);
+        try {
+            const rows = await fetchExportMembers();
+            if (!rows.length) {
+                notify("No members match the current filters.", "error");
+                return;
+            }
+            if (format === "pdf") {
+                downloadMembersPdf(rows, ACTIVE_MEMBER_EXPORT_COLUMNS, "Active Members", "SLS_Active_Members");
+            } else {
+                downloadMembersExcel(rows, ACTIVE_MEMBER_EXPORT_COLUMNS, "Active Members", "SLS_Active_Members");
+            }
+            notify(`${format === "pdf" ? "PDF" : "Excel"} downloaded (${rows.length} members).`);
+        } catch (err) {
+            notify(err.response?.data?.error || "Export failed", "error");
+        } finally {
+            setExporting(null);
+        }
+    };
 
     const deleteSingle = async (dbId, name) => {
         if (!window.confirm(`Are you sure you want to PERMANENTLY DELETE ${name}? This action cannot be undone.`)) return;
@@ -2372,7 +2409,25 @@ const MembersTab = ({ members, fetchMembers, loading, search, setSearch, auth, n
                     <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Active Members</h2>
                     <p className="text-slate-500 text-xs font-bold mt-1 uppercase tracking-widest">{generalMembers.length} Approved Members</p>
                 </div>
-                <div className="flex gap-3 w-full sm:w-auto">
+                <div className="flex gap-3 w-full sm:w-auto flex-wrap">
+                    <button
+                        type="button"
+                        onClick={() => exportActive("pdf")}
+                        disabled={!!exporting}
+                        className="px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-widest transition-all bg-rose-50 text-rose-600 border border-rose-100 hover:bg-rose-100 disabled:opacity-50"
+                    >
+                        <i className={`fas ${exporting === "pdf" ? "fa-spinner fa-spin" : "fa-file-pdf"} mr-2`} />
+                        PDF
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => exportActive("excel")}
+                        disabled={!!exporting}
+                        className="px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-widest transition-all bg-emerald-50 text-emerald-700 border border-emerald-100 hover:bg-emerald-100 disabled:opacity-50"
+                    >
+                        <i className={`fas ${exporting === "excel" ? "fa-spinner fa-spin" : "fa-file-excel"} mr-2`} />
+                        Excel
+                    </button>
                     <button onClick={() => { setBulkMode(!bulkMode); setSelectedIds([]); }} className={`px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-widest transition-all ${bulkMode ? 'bg-[#002147] text-white shadow-sm' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>
                         <i className="fas fa-layer-group mr-2" /> {bulkMode ? "Done" : "Select"}
                     </button>
@@ -2687,6 +2742,7 @@ const ApprovalsTab = ({ pendingMembers, executiveApps, fetchPendingMembers, load
     const [execDirectApproveNote, setExecDirectApproveNote] = useState("");
     const [rejectExecTarget, setRejectExecTarget] = useState(null);
     const [rejectExecReason, setRejectExecReason] = useState("");
+    const [exporting, setExporting] = useState(null);
 
     const handleApproveExecutive = async (id) => {
         if (!window.confirm("Approve this member as Executive? Interview is optional.")) return;
@@ -2893,6 +2949,39 @@ const ApprovalsTab = ({ pendingMembers, executiveApps, fetchPendingMembers, load
 
     const totalInQueue = (pendingMembers?.length || 0) + (executiveApps?.length || 0);
     const totalShowing = filtered.length + filteredExecutiveApps.length;
+
+    const exportPending = (format) => {
+        setExporting(format);
+        try {
+            const memberRows = filtered;
+            const execRows = filteredExecutiveApps;
+            if (!memberRows.length && !execRows.length) {
+                notify("No pending records match the current filters.", "error");
+                return;
+            }
+
+            if (format === "pdf") {
+                if (memberRows.length) {
+                    downloadMembersPdf(memberRows, PENDING_MEMBER_EXPORT_COLUMNS, "Pending Members", "SLS_Pending_Members");
+                }
+                if (execRows.length) {
+                    downloadMembersPdf(execRows, PENDING_EXEC_EXPORT_COLUMNS, "Pending Executive Upgrades", "SLS_Pending_Executive");
+                }
+            } else {
+                if (memberRows.length) {
+                    downloadMembersExcel(memberRows, PENDING_MEMBER_EXPORT_COLUMNS, "Pending Members", "SLS_Pending_Members");
+                }
+                if (execRows.length) {
+                    downloadMembersExcel(execRows, PENDING_EXEC_EXPORT_COLUMNS, "Pending Executive", "SLS_Pending_Executive");
+                }
+            }
+            notify(`${format === "pdf" ? "PDF" : "Excel"} downloaded (${memberRows.length + execRows.length} record(s)).`);
+        } catch {
+            notify("Export failed", "error");
+        } finally {
+            setExporting(null);
+        }
+    };
 
     const handleSelectAll = (e) => setSelectedIds(e.target.checked ? filtered.map(m => m._id) : []);
     const toggleSelect = (id) => setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
@@ -3116,6 +3205,24 @@ const ApprovalsTab = ({ pendingMembers, executiveApps, fetchPendingMembers, load
                         </select>
                     </div>
                     <div className="flex flex-col sm:flex-row gap-3">
+                    <button
+                        type="button"
+                        onClick={() => exportPending("pdf")}
+                        disabled={!!exporting}
+                        className="px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-widest transition-all bg-rose-50 text-rose-600 border border-rose-100 hover:bg-rose-100 disabled:opacity-50"
+                    >
+                        <i className={`fas ${exporting === "pdf" ? "fa-spinner fa-spin" : "fa-file-pdf"} mr-2`} />
+                        PDF
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => exportPending("excel")}
+                        disabled={!!exporting}
+                        className="px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-widest transition-all bg-emerald-50 text-emerald-700 border border-emerald-100 hover:bg-emerald-100 disabled:opacity-50"
+                    >
+                        <i className={`fas ${exporting === "excel" ? "fa-spinner fa-spin" : "fa-file-excel"} mr-2`} />
+                        Excel
+                    </button>
                     <button onClick={() => { setBulkMode(!bulkMode); setSelectedIds([]); }} className={`px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-widest transition-all ${bulkMode ? 'bg-[#002147] text-white shadow-sm' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>
                         <i className="fas fa-layer-group mr-2" /> {bulkMode ? "Done" : "Select"}
                     </button>
