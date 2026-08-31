@@ -119,7 +119,17 @@ export default function Footer() {
                         </p>
                         <p className="text-slate-400 text-[8px] font-black uppercase tracking-[0.4em] mt-3 flex items-center justify-center md:justify-start gap-3 opacity-60 hover:opacity-100 transition-all duration-700">
                             <span className="w-1.5 h-1.5 bg-cyan-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(6,182,212,0.6)]" />
-                            {FOOTER_DEFAULTS.footer_developer_credits}
+                            <span>
+                                Designed & Built by{' '}
+                                <a
+                                    href="https://asdigitalsolution.online"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-cyan-500 hover:text-cyan-400 transition-colors"
+                                >
+                                    AS digital Solutions
+                                </a>
+                            </span>
                         </p>
                     </div>
                     <div className="flex gap-6">

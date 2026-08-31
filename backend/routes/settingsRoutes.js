@@ -13,7 +13,7 @@ const FOOTER_DEFAULTS = {
   footer_phone2: '0325-6604404',
   footer_copyright: '© 2025 Serve & Lead Society. All rights reserved.',
   footer_org_name: 'Serve & Lead Society',
-  footer_developer_credits: 'Designed & Built by Shahbaz & Ali',
+  footer_developer_credits: 'Designed & Built by AS digital Solutions',
   footer_extra_text:
     'Building a strong community of motivated individuals who learn, serve, and lead for a better future.',
 };
